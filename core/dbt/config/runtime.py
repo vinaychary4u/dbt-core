@@ -88,6 +88,7 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
             asset_paths=project.asset_paths,
             target_path=project.target_path,
             snapshot_paths=project.snapshot_paths,
+            managed_schemas=project.managed_schemas,
             clean_targets=project.clean_targets,
             log_path=project.log_path,
             packages_install_path=project.packages_install_path,
@@ -118,6 +119,7 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
             args=args,
             cli_vars=cli_vars,
             dependencies=dependencies,
+            manage_schemas=profile.manage_schemas,
         )
 
     # Called by 'load_projects' in this class
@@ -520,6 +522,7 @@ class UnsetProfileConfig(RuntimeConfig):
             asset_paths=project.asset_paths,
             target_path=project.target_path,
             snapshot_paths=project.snapshot_paths,
+            managed_schemas=project.managed_schemas,
             clean_targets=project.clean_targets,
             log_path=project.log_path,
             packages_install_path=project.packages_install_path,

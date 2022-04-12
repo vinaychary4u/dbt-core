@@ -36,6 +36,7 @@ from dbt.config.selectors import SelectorDict
 from dbt.contracts.project import (
     Project as ProjectContract,
     SemverString,
+    SchemaManagementConfiguration,
 )
 from dbt.contracts.project import PackageConfig
 from dbt.dataclass_schema import ValidationError
@@ -355,12 +356,13 @@ class PartialProject(RenderComponents):
         )
         test_paths: List[str] = value_or(cfg.test_paths, ["tests"])
         analysis_paths: List[str] = value_or(cfg.analysis_paths, ["analyses"])
-        snapshot_paths: List[str] = value_or(cfg.snapshot_paths, ["snapshots"])
+        snapshot_paths: List[SchemaManagementConfiguration] = value_or(cfg.snapshot_paths, ["snapshots"])
 
         all_source_paths: List[str] = _all_source_paths(
             model_paths, seed_paths, snapshot_paths, analysis_paths, macro_paths
         )
 
+        managed_schemas: List[str] = value_or(cfg.managed_schemas, [])
         docs_paths: List[str] = value_or(cfg.docs_paths, all_source_paths)
         asset_paths: List[str] = value_or(cfg.asset_paths, [])
         target_path: str = flag_or(flags.TARGET_PATH, cfg.target_path, "target")
@@ -424,6 +426,7 @@ class PartialProject(RenderComponents):
             asset_paths=asset_paths,
             target_path=target_path,
             snapshot_paths=snapshot_paths,
+            managed_schemas=managed_schemas,
             clean_targets=clean_targets,
             log_path=log_path,
             packages_install_path=packages_install_path,
@@ -531,6 +534,7 @@ class Project:
     asset_paths: List[str]
     target_path: str
     snapshot_paths: List[str]
+    managed_schemas: List[SchemaManagementConfiguration]
     clean_targets: List[str]
     log_path: str
     packages_install_path: str
@@ -604,6 +608,7 @@ class Project:
                 "asset-paths": self.asset_paths,
                 "target-path": self.target_path,
                 "snapshot-paths": self.snapshot_paths,
+                "managed-schemas": [schema.to_dict() for schema in self.managed_schemas],
                 "clean-targets": self.clean_targets,
                 "log-path": self.log_path,
                 "quoting": self.quoting,

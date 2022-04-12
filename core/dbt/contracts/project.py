@@ -161,6 +161,13 @@ BANNED_PROJECT_NAMES = {
 
 
 @dataclass
+class SchemaManagementConfiguration(HyphenatedDbtClassMixin, Replaceable):
+    database: Optional[str] = None
+    schema: Optional[str] = None
+    action: Optional[str] = None
+
+
+@dataclass
 class Project(HyphenatedDbtClassMixin, Replaceable):
     name: Identifier
     version: Union[SemverString, float]
@@ -177,6 +184,7 @@ class Project(HyphenatedDbtClassMixin, Replaceable):
     asset_paths: Optional[List[str]] = None
     target_path: Optional[str] = None
     snapshot_paths: Optional[List[str]] = None
+    managed_schemas: Optional[List[SchemaManagementConfiguration]] = None
     clean_targets: Optional[List[str]] = None
     profile: Optional[str] = None
     log_path: Optional[str] = None
@@ -244,6 +252,7 @@ class ProfileConfig(HyphenatedDbtClassMixin, Replaceable):
     threads: int
     # TODO: make this a dynamic union of some kind?
     credentials: Optional[Dict[str, Any]]
+    manage_schemas: Optional[bool] = field(metadata={"preserve_underscore": True})
 
 
 @dataclass

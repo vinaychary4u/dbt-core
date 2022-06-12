@@ -4,7 +4,6 @@ import os
 from dbt.tests.util import (
     run_dbt,
     check_table_does_exist,
-    check_table_does_not_exist,
 )
 
 model = """
@@ -49,7 +48,7 @@ class TestDanglingModels:
                 {
                     "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
                     "schema": unique_schema,
-                    "action": "drop",
+                    "action": "warn",
                 }
             ]
         }
@@ -68,5 +67,5 @@ class TestDanglingModels:
             }
         )
         run_dbt(["run"])
-        check_table_does_not_exist(project.adapter, "model_a")
+        check_table_does_exist(project.adapter, "model_a")
         check_table_does_exist(project.adapter, "model_b")

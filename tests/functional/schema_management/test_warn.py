@@ -20,7 +20,7 @@ VALUES (1, 'one'),
 """
 
 
-class TestDanglingModels:
+class TestWarn:
     @pytest.fixture(scope="class")
     def models(self):
         return {

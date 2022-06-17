@@ -21,7 +21,7 @@ VALUES (1, 'one'),
 """
 
 
-class TestDanglingModels:
+class TestDrop:
     @pytest.fixture(scope="class")
     def models(self):
         return {

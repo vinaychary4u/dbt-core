@@ -38,22 +38,10 @@ class TestDanglingModels:
             "user": os.getenv("POSTGRES_TEST_USER", "root"),
             "pass": os.getenv("POSTGRES_TEST_PASS", "password"),
             "dbname": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
-            "manage_schemas": True,
+            "manage_schemas": False,
         }
 
-    @pytest.fixture(scope="class")
-    def project_config_update(self, unique_schema):
-        return {
-            "managed-schemas": [
-                {
-                    "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
-                    "schema": unique_schema,
-                    "action": "noop",
-                }
-            ]
-        }
-
-    def test_drop(
+    def test_disabled(
         self,
         project,
     ):

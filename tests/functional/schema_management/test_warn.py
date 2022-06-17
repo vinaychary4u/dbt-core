@@ -53,7 +53,7 @@ class TestDanglingModels:
             ]
         }
 
-    def test_drop(
+    def test_warn(
         self,
         project,
     ):

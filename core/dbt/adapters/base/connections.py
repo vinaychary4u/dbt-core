@@ -3,8 +3,8 @@ import os
 from time import sleep
 import sys
 
-# multiprocessing.RLock is a function returning this type
-from multiprocessing.synchronize import RLock
+# dbt.clients.parallel.RLock is a function returning this type
+from dbt.clients.parallel import RLock
 from threading import get_ident
 from typing import (
     Any,

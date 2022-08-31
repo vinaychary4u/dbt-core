@@ -7,22 +7,23 @@ from dbt.events.types import (
     PluginLoadError,
     PrintStartLine,
 )
+from dbt.events.functions import event_to_dict, LOG_VERSION
 from dbt.events import proto_types as pl
 from dbt.version import installed
-import betterproto
 
-info_keys = {"name", "code", "msg", "level", "invocation_id", "pid", "thread", "ts"}
+
+info_keys = {"name", "code", "msg", "level", "invocation_id", "pid", "thread", "ts", "extra"}
 
 
 def test_events():
 
     # A001 event
-    event = MainReportVersion(version=str(installed))
-    event_dict = event.to_dict(casing=betterproto.Casing.SNAKE)
+    event = MainReportVersion(version=str(installed), log_version=LOG_VERSION)
+    event_dict = event_to_dict(event)
     event_json = event.to_json()
     serialized = bytes(event)
     assert "Running with dbt=" in str(serialized)
-    assert set(event_dict.keys()) == {"version", "info"}
+    assert set(event_dict.keys()) == {"version", "info", "log_version"}
     assert set(event_dict["info"].keys()) == info_keys
     assert event_json
     assert event.info.code == "A001"
@@ -38,7 +39,7 @@ def test_events():
 
     # A002 event
     event = MainReportArgs(args={"one": "1", "two": "2"})
-    event_dict = event.to_dict(casing=betterproto.Casing.SNAKE)
+    event_dict = event_to_dict(event)
     event_json = event.to_json()
 
     assert set(event_dict.keys()) == {"info", "args"}
@@ -49,7 +50,7 @@ def test_events():
 
 def test_exception_events():
     event = RollbackFailed(conn_name="test", exc_info="something failed")
-    event_dict = event.to_dict(casing=betterproto.Casing.SNAKE)
+    event_dict = event_to_dict(event)
     event_json = event.to_json()
     assert set(event_dict.keys()) == {"info", "conn_name", "exc_info"}
     assert set(event_dict["info"].keys()) == info_keys
@@ -57,7 +58,7 @@ def test_exception_events():
     assert event.info.code == "E009"
 
     event = PluginLoadError(exc_info="something failed")
-    event_dict = event.to_dict(casing=betterproto.Casing.SNAKE)
+    event_dict = event_to_dict(event)
     event_json = event.to_json()
     assert set(event_dict.keys()) == {"info", "exc_info"}
     assert set(event_dict["info"].keys()) == info_keys
@@ -68,7 +69,7 @@ def test_exception_events():
 
     # Z002 event
     event = MainEncounteredError(exc="Rollback failed")
-    event_dict = event.to_dict(casing=betterproto.Casing.SNAKE)
+    event_dict = event_to_dict(event)
     event_json = event.to_json()
 
     assert set(event_dict.keys()) == {"info", "exc"}

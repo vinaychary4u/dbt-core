@@ -20,6 +20,9 @@ class EventInfo(betterproto.Message):
     pid: int = betterproto.int32_field(6)
     thread: str = betterproto.string_field(7)
     ts: datetime = betterproto.message_field(8)
+    extra: Dict[str, str] = betterproto.map_field(
+        9, betterproto.TYPE_STRING, betterproto.TYPE_STRING
+    )
 
 
 @dataclass
@@ -1684,7 +1687,7 @@ class RunningOperationUncaughtError(betterproto.Message):
 
 
 @dataclass
-class EndResult(betterproto.Message):
+class EndRunResult(betterproto.Message):
     """Q037"""
 
     info: "EventInfo" = betterproto.message_field(1)

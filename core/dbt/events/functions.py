@@ -133,20 +133,23 @@ def scrub_secrets(msg: str, secrets: List[str]) -> str:
 # returns a dictionary representation of the event fields.
 # the message may contain secrets which must be scrubbed at the usage site.
 def event_to_json(
-    e: BaseEvent,
+    event: BaseEvent,
 ) -> str:
+    event_dict = event_to_dict(event)
+    raw_log_line = json.dumps(event_dict, sort_keys=True)
+    return raw_log_line
 
+
+def event_to_dict(event: BaseEvent) -> dict:
     event_dict = dict()
-    code: str
     try:
         # We could use to_json here, but it wouldn't sort the keys.
         # The 'to_json' method just does json.dumps on the dict anyway.
-        event_dict = e.to_dict(casing=betterproto.Casing.SNAKE, include_default_values=True)  # type: ignore
+        event_dict = event.to_dict(casing=betterproto.Casing.SNAKE, include_default_values=True)  # type: ignore
     except AttributeError as exc:
-        event_type = type(e).__name__
+        event_type = type(event).__name__
         raise Exception(f"type {event_type} is not serializable. {str(exc)}")
-    raw_log_line = json.dumps(event_dict, sort_keys=True)
-    return raw_log_line
+    return event_dict
 
 
 # translates an Event to a completely formatted text-based log line

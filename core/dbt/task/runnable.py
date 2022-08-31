@@ -35,7 +35,7 @@ from dbt.events.types import (
     NodeFinished,
     QueryCancelationUnsupported,
     ConcurrencyLine,
-    EndResult,
+    EndRunResult,
 )
 from dbt.contracts.graph.compiled import CompileResultNode
 from dbt.contracts.graph.manifest import Manifest
@@ -472,15 +472,17 @@ class GraphRunnableTask(ManifestTask):
             selected_uids = frozenset(n.unique_id for n in self._flattened_nodes)
             result = self.execute_with_hooks(selected_uids)
 
-        result_msgs = [result.to_msg() for result in result.results]
-        fire_event(
-            EndResult(
-                results=result_msgs,
-                generated_at=result.generated_at,
-                elapsed_time=result.elapsed_time,
-                success=GraphRunnableTask.interpret_results(result.results),
+        # We have other result types here too, including FreshnessResult
+        if isinstance(result, RunExecutionResult):
+            result_msgs = [result.to_msg() for result in result.results]
+            fire_event(
+                EndRunResult(
+                    results=result_msgs,
+                    generated_at=result.generated_at,
+                    elapsed_time=result.elapsed_time,
+                    success=GraphRunnableTask.interpret_results(result.results),
+                )
             )
-        )
 
         if flags.WRITE_JSON:
             self.write_manifest()

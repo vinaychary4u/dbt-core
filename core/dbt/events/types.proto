@@ -14,6 +14,7 @@ message EventInfo {
     int32 pid = 6;
     string thread = 7;
     google.protobuf.Timestamp ts = 8;
+    map<string, string> extra = 9;
 }
 
 // TimingInfo
@@ -1299,7 +1300,7 @@ message RunningOperationUncaughtError {
 }
 
 // Q037
-message EndResult {
+message EndRunResult {
     EventInfo info = 1;
     repeated RunResultMsg results = 2;
     float elapsed_time = 3;

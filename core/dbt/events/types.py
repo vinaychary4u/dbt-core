@@ -1962,7 +1962,7 @@ class RunningOperationUncaughtError(ErrorLevel, pl.RunningOperationUncaughtError
 
 
 @dataclass
-class EndResult(DebugLevel, pl.EndResult):
+class EndRunResult(DebugLevel, pl.EndRunResult):
     def code(self):
         return "Q037"
 
@@ -2797,7 +2797,7 @@ if 1 == 0:
         total=0,
     )
     RunningOperationUncaughtError(exc="")
-    EndResult()
+    EndRunResult()
 
     # W - Node testing ======================
 

@@ -3,7 +3,6 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 import time
-
 import pytz
 import pytest
 from dbt.tests.util import run_dbt, check_relations_equal
@@ -18,8 +17,8 @@ from tests.functional.simple_snapshot.fixtures import (
 # These tests uses the same seed data, containing 20 records of which we hard delete the last 10.
 # These deleted records set the dbt_valid_to to time the snapshot was ran.
 
-# Using replace on a timestamp won't account for hour differences unless given the local timezone.
-# We can force python as utc but not postgres fields which need to be handled as local timestamps.
+# using replace on a timestamp won't account for hour differences unless given the local timezone.
+# we can force python as utc but not postgres fields which need to be handled as local timestamps.
 def currenttz():
     if time.daylight:
         return timezone(timedelta(seconds=-time.altzone), time.tzname[1])
@@ -34,12 +33,6 @@ def datetime_snapshot():
     assert len(results) == NUM_SNAPSHOT_MODELS
 
     return begin_snapshot_datetime
-
-
-@pytest.fixture(scope="class", autouse=True)
-def setUp(project):
-    path = os.path.join(project.test_data_dir, "seed_pg.sql")
-    project.run_sql_file(path)
 
 
 @pytest.fixture(scope="class")
@@ -61,6 +54,9 @@ def macros():
 
 
 def test_snapshot_hard_delete(project):
+    path = os.path.join(project.test_data_dir, "seed_pg.sql")
+    project.run_sql_file(path)
+
     # run the first snapshot
     datetime_snapshot()
 

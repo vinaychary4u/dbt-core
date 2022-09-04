@@ -234,9 +234,9 @@ class TestPrePostModelHooksOnSeeds(object):
         }
 
     def test_hooks_on_seeds(self, project):
-        res = run_dbt(["seed"])
+        res = run_dbt(["--single-threaded", "seed", "--log-cache-events"])
         assert len(res) == 1, "Expected exactly one item"
-        res = run_dbt(["test"])
+        res = run_dbt(["--single-threaded", "test", "--log-cache-events"])
         assert len(res) == 1, "Expected exactly one item"
 
 

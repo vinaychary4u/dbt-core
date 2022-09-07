@@ -91,7 +91,6 @@ class Profile(HasCredentials):
     threads: int
     credentials: Credentials
     profile_env_vars: Dict[str, Any]
-    manage_schemas: Optional[bool]
 
     def __init__(
         self,

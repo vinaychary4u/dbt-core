@@ -56,6 +56,7 @@ from dbt.ui import line_wrap_message
 from dbt import flags
 from dbt import tracking
 import dbt.utils
+import copy
 
 NodeEdgeMap = Dict[str, List[str]]
 PackageName = str
@@ -790,6 +791,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             metadata=self.metadata,
             disabled={k: _deepcopy(v) for k, v in self.disabled.items()},
             files={k: _deepcopy(v) for k, v in self.files.items()},
+            flat_graph={k: copy.deepcopy(v) for k, v in self.flat_graph.items()},
             state_check=_deepcopy(self.state_check),
         )
 

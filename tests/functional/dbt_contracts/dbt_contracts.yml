@@ -1,0 +1,54 @@
+# dbt_contracts.yml
+# upstream-only config for illustration
+contracts-upstream:
+  core-only: # give the project a plain name to ref
+  path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+  version: 0.2.0 # UPDATE THIS TO v0.2.0
+  models:
+    - ref('fct_orders')
+    - ref('dim_customers')
+  requirements: # these can be LESS strict compared to the upstream contract, but NEVER more
+    - tests
+    - '>5 run history' # I don't trust data until it's been run a few times
+  api_private_key: 'jioq2hfj28338' # replace with env_var for security
+
+# dbt_contracts.yml
+# core-only config for illustration
+contracts-downstream:
+  version: 0.2.0 # version at the top-level only, forced to update if config is different from dbt_contracts.json state file
+  finance-only: # give the project a plain name to ref
+    path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+    models: # I have 5 models but I only expose data for 4
+      - ref('fct_orders')
+      - ref('dim_customers')
+      - ref('dim_parts')
+      - ref('dbt_metric')
+    requirements:
+      - tests
+      - freshness
+      - '>5 run history' # I don't expect downstream users to trust data until it's been run a few times
+    max_upgrade_time: # enforce how long someone has to upgrade from a previous version to the latest
+      - days: 5
+    api_public_key: 'asfawef3' # replace with env_var for security
+
+  marketing-only: # give the project a plain name to ref
+    path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+    models: # I have 5 models but I only expose data for 1
+      - ref('dim_customers')
+    requirements:
+      - tests
+      - freshness
+      - '>5 run history' # I don't expect downstream users to trust data until it's been run a few times
+    max_upgrade_time: # enforce how long someone has to upgrade from a previous version to the latest
+      - days: 10
+    api_public_key: 'asfawef3' # replace with env_var for security
+
+  any: # any downstream project and ref this contract
+    path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+    models: # I have 5 models but I only expose data for 1
+      - ref('example_analysis')
+    requirements:
+      - tests
+    max_upgrade_time: # enforce how long someone has to upgrade from a previous version to the latest
+      - days: 10
+    api_public_key: 'asfawef3' # replace with env_var for security

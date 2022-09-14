@@ -814,6 +814,7 @@ class ParsedMetric(UnparsedBaseNode, HasUniqueID, HasFqn):
     time_grains: List[str]
     dimensions: List[str]
     window: Optional[MetricTime]
+    fill_missing_values: Optional[bool] = True
     model: Optional[str] = None
     model_unique_id: Optional[str] = None
     resource_type: NodeType = NodeType.Metric
@@ -838,6 +839,9 @@ class ParsedMetric(UnparsedBaseNode, HasUniqueID, HasFqn):
 
     def same_window(self, old: "ParsedMetric") -> bool:
         return self.window == old.window
+
+    def same_fill_missing_values(self, old: "ParsedMetric") -> bool:
+        return self.fill_missing_values == old.fill_missing_values
 
     def same_dimensions(self, old: "ParsedMetric") -> bool:
         return self.dimensions == old.dimensions
@@ -872,6 +876,7 @@ class ParsedMetric(UnparsedBaseNode, HasUniqueID, HasFqn):
         return (
             self.same_model(old)
             and self.same_window(old)
+            and self.same_fill_missing_values(old)
             and self.same_dimensions(old)
             and self.same_filters(old)
             and self.same_description(old)
@@ -879,6 +884,7 @@ class ParsedMetric(UnparsedBaseNode, HasUniqueID, HasFqn):
             and self.same_calculation_method(old)
             and self.same_expression(old)
             and self.same_timestamp(old)
+            and self.same_time_grains(old)
             and self.same_time_grains(old)
             and True
         )

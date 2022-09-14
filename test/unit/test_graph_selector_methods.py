@@ -381,6 +381,7 @@ def make_metric(pkg, name, path=None):
            operator="=",
         )],
         window=MetricTime(),
+        fill_missing_values=True,
         meta={'is_okr': True},
         tags=['okrs'],
     )

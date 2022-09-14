@@ -19,6 +19,7 @@ metrics:
     expression: "*"
     timestamp: created_at
     time_grains: [day, week, month]
+    fill_missing_values: False
     dimensions:
       - favorite_color
       - loves_dbt
@@ -82,12 +83,25 @@ class TestSimpleMetrics:
         assert len(results) == 1
         manifest = get_manifest(project.project_root)
         metric_ids = list(manifest.metrics.keys())
+        fill_missing_values_settings = {}
+        for metric_id in list(manifest.metrics.keys()):
+            parsed_metric_node = manifest.metrics[metric_id]
+            fill_missing_values_settings[metric_id] = getattr(
+                parsed_metric_node, "fill_missing_values"
+            )
+        expected_fill_missing_values_settings = {
+            "metric.test.number_of_people": False,
+            "metric.test.collective_tenure": True,
+            "metric.test.collective_window": True,
+        }
+
         expected_metric_ids = [
             "metric.test.number_of_people",
             "metric.test.collective_tenure",
             "metric.test.collective_window",
         ]
         assert metric_ids == expected_metric_ids
+        assert fill_missing_values_settings == expected_fill_missing_values_settings
 
 
 invalid_models__people_metrics_yml = """

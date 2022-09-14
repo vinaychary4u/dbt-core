@@ -690,6 +690,7 @@ class TestUnparsedMetric(ContractTestCase):
             'timestamp': 'signup_date',
             'time_grains': ['day', 'week', 'month'],
             'dimensions': ['plan', 'country'],
+            'fill_missing_values': False,
             'filters': [
                 {
                     "field": "is_paying",
@@ -718,6 +719,7 @@ class TestUnparsedMetric(ContractTestCase):
             'time_grains': ['day', 'week', 'month'],
             'timestamp': 'signup_date',
             'dimensions': [],
+            'fill_missing_values': True,
             'filters': [],
             'tags': [],
             'window': {},
@@ -737,6 +739,7 @@ class TestUnparsedMetric(ContractTestCase):
             timestamp="signup_date",
             time_grains=['day', 'week', 'month'],
             dimensions=['plan', 'country'],
+            fill_missing_values=False,
             filters=[MetricFilter(
                 field="is_paying",
                 value='True',

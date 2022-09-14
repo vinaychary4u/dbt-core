@@ -117,6 +117,7 @@ class ManifestTest(unittest.TestCase):
                 meta={'is_okr': True},
                 tags=['okrs'],
                 window=MetricTime(),
+                fill_missing_values=True,
                 resource_type=NodeType.Metric,
                 depends_on=DependsOn(nodes=['model.root.multi']),
                 refs=[['multi']],

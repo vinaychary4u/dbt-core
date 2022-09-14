@@ -1051,6 +1051,7 @@ class MetricParser(YamlReader):
             timestamp=unparsed.timestamp,
             dimensions=unparsed.dimensions,
             window=unparsed.window,
+            fill_missing_values=unparsed.fill_missing_values,
             time_grains=unparsed.time_grains,
             filters=unparsed.filters,
             meta=unparsed.meta,

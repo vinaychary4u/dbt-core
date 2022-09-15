@@ -204,6 +204,7 @@ def _deep_map_render(
     return ret
 
 
+# TODO: We'll have to re-use this function for dbt_contracts.yml rendering
 def deep_map_render(func: Callable[[Any, Tuple[Union[str, int], ...]], Any], value: Any) -> Any:
     """This function renders a nested dictionary derived from a yaml
     file. It is used to render dbt_project.yml, profiles.yml, and

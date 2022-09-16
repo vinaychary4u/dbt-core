@@ -1,0 +1,7 @@
+kind: Features
+body: Default to current working directory for `profiles.yml` and fall back to `~/.dbt`
+time: 2022-09-15T18:30:51.310013-06:00
+custom:
+  Author: dbeatty10
+  Issue: "5411"
+  PR: "5412"

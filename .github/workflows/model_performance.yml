@@ -227,6 +227,12 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: ${{ needs.latest-runner.outputs.release_branch }}
+          
+      - name: Create PR branch
+        run: |
+          git checkout -b performance-bot/release_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}
+          git push origin performance-bot/release_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}
+          git branch --set-upstream-to=origin/performance-bot/release_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}} performance-bot/release_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}
 
       - name: '[DEBUG] ls baselines before artifact download'
         run: ls -R performance/baselines/
@@ -239,16 +245,15 @@ jobs:
       - name: '[DEBUG] ls baselines after artifact download'
         run: ls -R performance/baselines/
 
-      - name: Make Branch
-        uses: EndBug/add-and-commit@v8
+      - name: Commit baseline
+        uses: EndBug/add-and-commit@v9
         with:
           add: 'performance/baselines/*'
           author_name: 'Github Build Bot'
           author_email: 'buildbot@fishtownanalytics.com'
           message: 'adding performance baseline for ${{ needs.latest-runner.outputs.release_id }}'
-          new_branch: 'performance-bot/release_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'
-          push: true
-
+          push: 'origin origin/performance-bot/release_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'
+          
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v3
         with:
@@ -281,6 +286,12 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: main
+          
+      - name: Create PR branch
+        run: |
+          git checkout -b performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}
+          git push origin performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}
+          git branch --set-upstream-to=origin/performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}} performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}
 
       - name: '[DEBUG] ls baselines before artifact download'
         run: ls -R performance/baselines/
@@ -294,17 +305,18 @@ jobs:
         run: ls -R performance/baselines/
         
       - name: '[DEBUG] git status'
-        run: git status
-
-      - name: Make Branch
-        uses: EndBug/add-and-commit@v8
+        run: |
+          git status
+          
+      - name: Commit baseline
+        uses: EndBug/add-and-commit@v9
         with:
           add: 'performance/baselines/*'
           author_name: 'Github Build Bot'
           author_email: 'buildbot@fishtownanalytics.com'
           message: 'adding performance baseline for ${{ needs.latest-runner.outputs.release_id }}'
-          new_branch: 'performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'
-          push: true
+          branch: 'performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'
+          push: 'origin origin/performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'
           
       - name: '[DEBUG] git status'
         run: git status

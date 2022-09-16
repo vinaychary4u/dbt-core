@@ -204,76 +204,25 @@ jobs:
           name: baseline
           path: performance/baselines/${{ needs.latest-runner.outputs.release_id }}/
 
-  pr-release-branch:
-    if: ${{ needs.latest-runner.outputs.open_prs == 'yes' && needs.latest-runner.outputs.release_branch != 'main' }}
-    # depends on `model` as a separate job so that the baseline can be committed to more than one branch
-    # i.e. release branch and main
-    needs: [latest-runner, model]
-    name: Open PR for release branch (if specified)
-    runs-on: ubuntu-latest
-    steps:
-
-      - name: '[DEBUG] print variables'
-        run: |
-          echo "all variables defined in latest-runner > Set Variables > outputs"
-          echo "cache_key:      ${{ needs.latest-runner.outputs.cache_key }}"
-          echo "release_id:     ${{ needs.latest-runner.outputs.release_id }}"
-          echo "open_prs:       ${{ needs.latest-runner.outputs.open_prs }}"
-          echo "release_branch: ${{ needs.latest-runner.outputs.release_branch }}"
-
-
-      # explicitly checkout the branch specified during dispatch
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ needs.latest-runner.outputs.release_branch }}
-          
-      - name: Create PR branch
-        run: |
-          git checkout -b performance-bot/release_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}
-          git push origin performance-bot/release_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}
-          git branch --set-upstream-to=origin/performance-bot/release_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}} performance-bot/release_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}
-
-      - name: '[DEBUG] ls baselines before artifact download'
-        run: ls -R performance/baselines/
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: baseline
-          path: performance/baselines/${{ needs.latest-runner.outputs.release_id }}
-
-      - name: '[DEBUG] ls baselines after artifact download'
-        run: ls -R performance/baselines/
-
-      - name: Commit baseline
-        uses: EndBug/add-and-commit@v9
-        with:
-          add: 'performance/baselines/*'
-          author_name: 'Github Build Bot'
-          author_email: 'buildbot@fishtownanalytics.com'
-          message: 'adding performance baseline for ${{ needs.latest-runner.outputs.release_id }}'
-          push: 'origin origin/performance-bot/release_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'
-          
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v3
-        with:
-          author: 'Github Build Bot <buildbot@fishtownanalytics.com>'
-          base: refs/heads/${{ needs.latest-runner.outputs.release_branch }}
-          draft: true
-          title: 'Adding performance modeling for ${{needs.latest-runner.outputs.release_id}} to release branch'
-          branch: 'performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'
-          labels: |
-            Skip Changelog
-
-  pr-main-branch:
+  create-pr:
+    name: Open PR for ${{ matrix.base-branch }}
     if: ${{ needs.latest-runner.outputs.open_prs == 'yes' }}
+    
     # depends on `model` as a separate job so that the baseline can be committed to more than one branch
     # i.e. release branch and main
     needs: [latest-runner, model]
-    name: Open PR for main (if specified)
+    
     runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        include:
+          - base-branch: "refs/heads/main"
+            target-branch: "performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}"
+          - base-branch: "refs/heads/${{ needs.latest-runner.outputs.release_branch }}"
+            target-branch: "performance-bot/release_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}"
+      
     steps:
-
       - name: '[DEBUG] print variables'
         run: |
           echo "all variables defined in latest-runner > Set Variables > outputs"
@@ -281,28 +230,17 @@ jobs:
           echo "release_id:     ${{ needs.latest-runner.outputs.release_id }}"
           echo "open_prs:       ${{ needs.latest-runner.outputs.open_prs }}"
           echo "release_branch: ${{ needs.latest-runner.outputs.release_branch }}"
-          
-      - name: Set branch name
-        id: branch
-        run: |
-          echo "::set-output name=BRANCH_NAME::performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}"
 
-      # explicitly checkout main
       - name: Checkout
         uses: actions/checkout@v2
         with:
-          ref: main
+          ref: ${{ matrix.base-branch }}
           
       - name: Create PR branch
         run: |
-          git log -1
-          git checkout -b ${{ steps.branch.outputs.BRANCH_NAME }}
-          git push origin ${{ steps.branch.outputs.BRANCH_NAME }}
-          git branch --set-upstream-to=origin/${{ steps.branch.outputs.BRANCH_NAME }} ${{ steps.branch.outputs.BRANCH_NAME }}
-          git log -1
-
-      - name: '[DEBUG] ls baselines before artifact download'
-        run: ls -R performance/baselines/
+          git checkout -b ${{ matrix.target-branch }}
+          git push origin ${{ matrix.target-branch }}
+          git branch --set-upstream-to=origin/${{ matrix.target-branch }} ${{ matrix.target-branch }}
 
       - uses: actions/download-artifact@v3
         with:
@@ -311,10 +249,6 @@ jobs:
 
       - name: '[DEBUG] ls baselines after artifact download'
         run: ls -R performance/baselines/
-        
-      - name: '[DEBUG] git status'
-        run: |
-          git status
           
       - name: Commit baseline
         uses: EndBug/add-and-commit@v9
@@ -323,19 +257,15 @@ jobs:
           author_name: 'Github Build Bot'
           author_email: 'buildbot@fishtownanalytics.com'
           message: 'adding performance baseline for ${{ needs.latest-runner.outputs.release_id }}'
-          branch: '${{ steps.branch.outputs.BRANCH_NAME }}'
-          push: 'origin origin/${{ steps.branch.outputs.BRANCH_NAME }}'
-          
-      - name: '[DEBUG] git status'
-        run: git status
+          branch: '${{ matrix.target-branch }}'
+          push: 'origin origin/${{ matrix.target-branch }}'
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v3
         with:
           author: 'Github Build Bot <buildbot@fishtownanalytics.com>'
-          base: refs/heads/main
-          draft: true
-          title: 'Adding performance modeling for ${{needs.latest-runner.outputs.release_id}} to main'
-          branch: '${{ steps.branch.outputs.BRANCH_NAME }}'
+          base: ${{ matrix.base-branch }}
+          title: 'Adding performance modeling for ${{needs.latest-runner.outputs.release_id}} to ${{ matrix.base-branch }}'
+          branch: '${{ matrix.target-branch }}'
           labels: |
             Skip Changelog

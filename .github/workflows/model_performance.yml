@@ -83,9 +83,9 @@ jobs:
             echo "release event detected"
             with_v=${{github.event.release.tag_name}}
             without_v=${with_v:1}
+            without_v=1.2.1 # TODO: just for testing
             local_release_id=$without_v
-            # echo "::set-output name=release_id::$without_v" will add back in when not testing
-            echo "::set-output name=release_id::1.2.1"
+            echo "::set-output name=release_id::$without_v"
             echo "::set-output name=open_prs::yes"
           fi
 

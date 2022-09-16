@@ -260,7 +260,7 @@ jobs:
           author: 'Github Build Bot <buildbot@fishtownanalytics.com>'
           base: refs/heads/${{ needs.latest-runner.outputs.release_branch }}
           draft: true
-          title: 'Adding performance modeling for ${{needs.latest-runner.outputs.release_id}}'
+          title: 'Adding performance modeling for ${{needs.latest-runner.outputs.release_id}} to release branch'
           branch: 'performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'
           labels: |
             Skip Changelog
@@ -281,6 +281,11 @@ jobs:
           echo "release_id:     ${{ needs.latest-runner.outputs.release_id }}"
           echo "open_prs:       ${{ needs.latest-runner.outputs.open_prs }}"
           echo "release_branch: ${{ needs.latest-runner.outputs.release_branch }}"
+          
+      - name: Set branch name
+        id: branch
+        run: |
+          echo "::set-output name=BRANCH_NAME::performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}"
 
       # explicitly checkout main
       - name: Checkout
@@ -290,9 +295,11 @@ jobs:
           
       - name: Create PR branch
         run: |
-          git checkout -b performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}
-          git push origin performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}
-          git branch --set-upstream-to=origin/performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}} performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}
+          git log -1
+          git checkout -b ${{ steps.branch.outputs.BRANCH_NAME }}
+          git push origin ${{ steps.branch.outputs.BRANCH_NAME }}
+          git branch --set-upstream-to=origin/${{ steps.branch.outputs.BRANCH_NAME }} ${{ steps.branch.outputs.BRANCH_NAME }}
+          git log -1
 
       - name: '[DEBUG] ls baselines before artifact download'
         run: ls -R performance/baselines/
@@ -316,8 +323,8 @@ jobs:
           author_name: 'Github Build Bot'
           author_email: 'buildbot@fishtownanalytics.com'
           message: 'adding performance baseline for ${{ needs.latest-runner.outputs.release_id }}'
-          branch: 'performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'
-          push: 'origin origin/performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'
+          branch: '${{ steps.branch.outputs.BRANCH_NAME }}'
+          push: 'origin origin/${{ steps.branch.outputs.BRANCH_NAME }}'
           
       - name: '[DEBUG] git status'
         run: git status
@@ -328,7 +335,7 @@ jobs:
           author: 'Github Build Bot <buildbot@fishtownanalytics.com>'
           base: refs/heads/main
           draft: true
-          title: 'Adding performance modeling for ${{needs.latest-runner.outputs.release_id}}'
-          branch: 'performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'
+          title: 'Adding performance modeling for ${{needs.latest-runner.outputs.release_id}} to main'
+          branch: '${{ steps.branch.outputs.BRANCH_NAME }}'
           labels: |
             Skip Changelog

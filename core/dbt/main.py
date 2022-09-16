@@ -36,6 +36,7 @@ import dbt.task.seed as seed_task
 import dbt.task.serve as serve_task
 import dbt.task.snapshot as snapshot_task
 import dbt.task.test as test_task
+import dbt.task.manage as manage_task
 from dbt.profiler import profiler
 from dbt.adapters.factory import reset_adapters, cleanup_connections
 
@@ -445,6 +446,21 @@ def _build_debug_subparser(subparsers, base_subparser):
     )
     _add_version_check(sub)
     sub.set_defaults(cls=debug_task.DebugTask, which="debug", rpc_method=None)
+    return sub
+
+
+def _build_manage_subparser(subparsers, base_subparser):
+    sub = subparsers.add_parser(
+        "manage",
+        parents=[base_subparser],
+        help="""
+        Drops relations that are present in the database and absent in the DBT models.
+
+        Not to be confused with the clean command which deletes folders rather than relations.
+        """,
+    )
+    _add_version_check(sub)
+    sub.set_defaults(cls=manage_task.ManageTask, which="manage", rpc_method="manage")
     return sub
 
 
@@ -1150,6 +1166,7 @@ def parse_args(args, cls=DBTArgumentParser):
     _build_debug_subparser(subs, base_subparser)
     _build_deps_subparser(subs, base_subparser)
     _build_list_subparser(subs, base_subparser)
+    _build_manage_subparser(subs, base_subparser)
 
     build_sub = _build_build_subparser(subs, base_subparser)
     snapshot_sub = _build_snapshot_subparser(subs, base_subparser)

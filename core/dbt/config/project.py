@@ -356,13 +356,13 @@ class PartialProject(RenderComponents):
         )
         test_paths: List[str] = value_or(cfg.test_paths, ["tests"])
         analysis_paths: List[str] = value_or(cfg.analysis_paths, ["analyses"])
-        snapshot_paths: List[SchemaManagementConfiguration] = value_or(cfg.snapshot_paths, ["snapshots"])
+        snapshot_paths: List[str] = value_or(cfg.snapshot_paths, ["snapshots"])
 
         all_source_paths: List[str] = _all_source_paths(
             model_paths, seed_paths, snapshot_paths, analysis_paths, macro_paths
         )
 
-        managed_schemas: List[str] = value_or(cfg.managed_schemas, [])
+        managed_schemas: List[SchemaManagementConfiguration] = value_or(cfg.managed_schemas, [])
         docs_paths: List[str] = value_or(cfg.docs_paths, all_source_paths)
         asset_paths: List[str] = value_or(cfg.asset_paths, [])
         target_path: str = flag_or(flags.TARGET_PATH, cfg.target_path, "target")

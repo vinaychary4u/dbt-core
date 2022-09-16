@@ -22,8 +22,6 @@ from dbt.contracts.graph.model_config import Hook
 from dbt.contracts.graph.parsed import ParsedHookNode
 from dbt.contracts.results import NodeStatus, RunResult, RunStatus, RunningStatus
 from dbt.exceptions import (
-    warn_or_error,
-    warn,
     CompilationException,
     InternalException,
     RuntimeException,
@@ -449,7 +447,6 @@ class RunTask(CompileTask):
         }
         with adapter.connection_named("master"):
             self.safe_run_hooks(adapter, RunHookType.End, extras)
-            self.manage_schema(adapter, results)
 
     def after_hooks(self, adapter, results, elapsed):
         self.print_results_line(results, elapsed)
@@ -470,52 +467,3 @@ class RunTask(CompileTask):
     def task_end_messages(self, results):
         if results:
             print_run_end_messages(results)
-
-    def manage_schema(self, adapter, results: List[RunResult]):
-        # Read config
-        manage_schemas_config = self.config.manage_schemas  # type: bool
-        managed_schemas_actions_config: Dict[Tuple[str, str], str] = {
-            (ms.database or "", ms.schema or ""): ms.action or "warn"
-            for ms in self.config.managed_schemas
-        }
-
-        if not manage_schemas_config:
-            # TODO debug not doing anything
-            warn("Schema's configured to be managed, but manage_schemas is false in the profile")
-            return
-
-        if len(managed_schemas_actions_config) == 0:
-            warn_or_error("Schema management enabled for connection but no schema's configured to manage")
-            return
-
-        # Never manage schema if we have a failed node
-        was_successfull_complete_run = not any(
-            r.status in (NodeStatus.Error, NodeStatus.Fail, NodeStatus.Skipped) for r in results
-        )
-        if not was_successfull_complete_run and manage_schemas_config:
-            warn("One or more models failed, skipping schema management")
-            return
-
-        models_in_results: Set[Tuple[str, str, str]] = set(
-            (r.node.database, r.node.schema, r.node.identifier)
-            for r in results
-            if (r.node.is_relational and not r.node.is_ephemeral_model)
-        )
-
-        for database, schema in managed_schemas_actions_config.keys():
-            available_models: Dict[Tuple[str, str, str], str] = {
-                (database, schema, relation.identifier): relation
-                for relation in adapter.list_relations(database, schema)
-            }
-            if len(available_models) == 0:
-                warn_or_error(f"No modules in managed schema '{schema}' for database '{database}'")
-            should_act_upon = available_models.keys() - models_in_results
-            for (target_database, target_schema, target_identifier) in should_act_upon:
-                target_action = managed_schemas_actions_config[(target_database, target_schema)]
-                if target_action == "warn":
-                    print("WARN ABOUT ", target_database, target_schema, target_identifier)
-                elif target_action == "drop":
-                    adapter.drop_relation(
-                        available_models[(target_database, target_schema, target_identifier)]
-                    )
-

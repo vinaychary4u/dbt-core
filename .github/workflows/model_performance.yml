@@ -258,6 +258,7 @@ jobs:
         uses: peter-evans/create-pull-request@v3
         with:
           author: 'Github Build Bot <buildbot@fishtownanalytics.com>'
+          base: refs/heads/${{ needs.latest-runner.outputs.release_branch }}
           draft: true
           title: 'Adding performance modeling for ${{needs.latest-runner.outputs.release_id}}'
           branch: 'performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'
@@ -284,6 +285,8 @@ jobs:
       # explicitly checkout main
       - name: Checkout
         uses: actions/checkout@v2
+        with:
+          ref: main
           
       - name: Create PR branch
         run: |
@@ -323,6 +326,7 @@ jobs:
         uses: peter-evans/create-pull-request@v3
         with:
           author: 'Github Build Bot <buildbot@fishtownanalytics.com>'
+          base: refs/heads/main
           draft: true
           title: 'Adding performance modeling for ${{needs.latest-runner.outputs.release_id}}'
           branch: 'performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'

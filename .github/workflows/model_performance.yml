@@ -259,10 +259,10 @@ jobs:
         with:
           author: 'Github Build Bot <buildbot@fishtownanalytics.com>'
           draft: true
-          base: ${{ needs.latest-runner.outputs.release_branch }}
           title: 'Adding performance modeling for ${{needs.latest-runner.outputs.release_id}}'
           branch: 'performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'
-
+          labels: |
+            Skip Changelog
 
   pr-main-branch:
     if: ${{ needs.latest-runner.outputs.open_prs == 'yes' }}
@@ -284,8 +284,6 @@ jobs:
       # explicitly checkout main
       - name: Checkout
         uses: actions/checkout@v2
-        with:
-          ref: main
           
       - name: Create PR branch
         run: |
@@ -326,6 +324,7 @@ jobs:
         with:
           author: 'Github Build Bot <buildbot@fishtownanalytics.com>'
           draft: true
-          base: main
           title: 'Adding performance modeling for ${{needs.latest-runner.outputs.release_id}}'
           branch: 'performance-bot/main_${{needs.latest-runner.outputs.release_id}}_${{GITHUB.RUN_ID}}'
+          labels: |
+            Skip Changelog

@@ -32,7 +32,7 @@ on:
         description: Open PRs to main and release branch? (branch name inferred from provided version) (yes/no)
         default: 'no'
         required: true
-  pull-request: # TODO: remove, just for testing purposes
+  pull_request: # TODO: remove, just for testing purposes
 
 env:
   RUNNER_CACHE_PATH: performance/runner/target/release/runner

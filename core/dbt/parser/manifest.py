@@ -73,7 +73,9 @@ from dbt.exceptions import (
     ref_target_not_found,
     get_target_not_found_or_disabled_msg,
     source_target_not_found,
-    get_source_not_found_or_disabled_msg,
+    metric_target_not_found,
+    exposure_target_not_found,
+    get_not_found_or_disabled_msg,
     warn_or_error,
 )
 from dbt.parser.base import Parser
@@ -349,7 +351,7 @@ class ManifestLoader:
                     project, project_parser_files[project.project_name], parser_types
                 )
 
-            # Now that we've loaded most of the nodes (except for schema tests and sources)
+            # Now that we've loaded most of the nodes (except for schema tests, sources, metrics)
             # load up the Lookup objects to resolve them by name, so the SourceFiles store
             # the unique_id instead of the name. Sources are loaded from yaml files, so
             # aren't in place yet
@@ -376,19 +378,21 @@ class ManifestLoader:
             patcher.construct_sources()
             self.manifest.sources = patcher.sources
             self._perf_info.patch_sources_elapsed = time.perf_counter() - start_patch
+
             # We need to rebuild disabled in order to include disabled sources
             self.manifest.rebuild_disabled_lookup()
 
             # copy the selectors from the root_project to the manifest
             self.manifest.selectors = self.root_project.manifest_selectors
 
-            # update the refs, sources, and docs
+            # update the refs, sources, docs and metrics depends_on.nodes
             # These check the created_at time on the nodes to
             # determine whether they need processing.
             start_process = time.perf_counter()
             self.process_sources(self.root_project.project_name)
             self.process_refs(self.root_project.project_name)
             self.process_docs(self.root_project)
+            self.process_metrics(self.root_project)
 
             # update tracking data
             self._perf_info.process_manifest_elapsed = time.perf_counter() - start_process
@@ -634,7 +638,9 @@ class ManifestLoader:
         if not flags.PARTIAL_PARSE:
             fire_event(PartialParsingNotEnabled())
             return None
-        path = os.path.join(self.root_project.target_path, PARTIAL_PARSE_FILE_NAME)
+        path = os.path.join(
+            self.root_project.project_root, self.root_project.target_path, PARTIAL_PARSE_FILE_NAME
+        )
 
         reparse_reason = None
 
@@ -833,6 +839,21 @@ class ManifestLoader:
                 continue
             _process_refs_for_metric(self.manifest, current_project, metric)
 
+    # Takes references in 'metrics' array of nodes and exposures, finds the target
+    # node, and updates 'depends_on.nodes' with the unique id
+    def process_metrics(self, config: RuntimeConfig):
+        current_project = config.project_name
+        for node in self.manifest.nodes.values():
+            if node.created_at < self.started_at:
+                continue
+            _process_metrics_for_node(self.manifest, current_project, node)
+        for metric in self.manifest.metrics.values():
+            # TODO: Can we do this if the metric is derived & depends on
+            # some other metric for its definition? Maybe....
+            if metric.created_at < self.started_at:
+                continue
+            _process_metrics_for_node(self.manifest, current_project, metric)
+
     # nodes: node and column descriptions
     # sources: source and table descriptions, column descriptions
     # macros: macro argument descriptions
@@ -927,13 +948,46 @@ def invalid_ref_fail_unless_test(node, target_model_name, target_model_package, 
 
 def invalid_source_fail_unless_test(node, target_name, target_table_name, disabled):
     if node.resource_type == NodeType.Test:
-        msg = get_source_not_found_or_disabled_msg(node, target_name, target_table_name, disabled)
+        msg = get_not_found_or_disabled_msg(
+            node=node,
+            target_name=f"{target_name}.{target_table_name}",
+            target_kind="source",
+            disabled=disabled,
+        )
         if disabled:
             fire_event(InvalidDisabledSourceInTestNode(msg=msg))
         else:
             warn_or_error(msg, log_fmt=warning_tag("{}"))
     else:
         source_target_not_found(node, target_name, target_table_name, disabled=disabled)
+
+
+def invalid_metric_fail_unless_test(node, target_metric_name, target_metric_package):
+
+    if node.resource_type == NodeType.Test:
+        msg = get_target_not_found_or_disabled_msg(node, target_metric_name, target_metric_package)
+        warn_or_error(msg, log_fmt=warning_tag("{}"))
+    else:
+        metric_target_not_found(
+            node,
+            target_metric_name,
+            target_metric_package,
+        )
+
+
+def invalid_exposure_fail_unless_test(node, target_exposure_name, target_exposure_package):
+
+    if node.resource_type == NodeType.Test:
+        msg = get_target_not_found_or_disabled_msg(
+            node, target_exposure_name, target_exposure_package
+        )
+        warn_or_error(msg, log_fmt=warning_tag("{}"))
+    else:
+        exposure_target_not_found(
+            node,
+            target_exposure_name,
+            target_exposure_package,
+        )
 
 
 def _check_resource_uniqueness(
@@ -1039,6 +1093,11 @@ def _process_docs_for_metrics(context: Dict[str, Any], metric: ParsedMetric) -> 
     metric.description = get_rendered(metric.description, context)
 
 
+# TODO: this isn't actually referenced anywhere?
+def _process_derived_metrics(context: Dict[str, Any], metric: ParsedMetric) -> None:
+    metric.description = get_rendered(metric.description, context)
+
+
 def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposure: ParsedExposure):
     """Given a manifest and exposure in that manifest, process its refs"""
     for ref in exposure.refs:
@@ -1065,6 +1124,7 @@ def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposur
         if target_model is None or isinstance(target_model, Disabled):
             # This may raise. Even if it doesn't, we don't want to add
             # this exposure to the graph b/c there is no destination exposure
+            exposure.config.enabled = False
             invalid_ref_fail_unless_test(
                 exposure,
                 target_model_name,
@@ -1105,7 +1165,8 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: P
 
         if target_model is None or isinstance(target_model, Disabled):
             # This may raise. Even if it doesn't, we don't want to add
-            # this exposure to the graph b/c there is no destination exposure
+            # this metric to the graph b/c there is no destination metric
+            metric.config.enabled = False
             invalid_ref_fail_unless_test(
                 metric,
                 target_model_name,
@@ -1119,6 +1180,48 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: P
 
         metric.depends_on.nodes.append(target_model_id)
         manifest.update_metric(metric)
+
+
+def _process_metrics_for_node(
+    manifest: Manifest, current_project: str, node: Union[ManifestNode, ParsedMetric]
+):
+    """Given a manifest and a node in that manifest, process its metrics"""
+    for metric in node.metrics:
+        target_metric: Optional[Union[Disabled, ParsedMetric]] = None
+        target_metric_name: str
+        target_metric_package: Optional[str] = None
+
+        if len(metric) == 1:
+            target_metric_name = metric[0]
+        elif len(metric) == 2:
+            target_metric_package, target_metric_name = metric
+        else:
+            raise dbt.exceptions.InternalException(
+                f"Metric references should always be 1 or 2 arguments - got {len(metric)}"
+            )
+
+        target_metric = manifest.resolve_metric(
+            target_metric_name,
+            target_metric_package,
+            current_project,
+            node.package_name,
+        )
+
+        if target_metric is None or isinstance(target_metric, Disabled):
+            # This may raise. Even if it doesn't, we don't want to add
+            # this node to the graph b/c there is no destination node
+            node.config.enabled = False
+            invalid_metric_fail_unless_test(
+                node,
+                target_metric_name,
+                target_metric_package,
+            )
+
+            continue
+
+        target_metric_id = target_metric.unique_id
+
+        node.depends_on.nodes.append(target_metric_id)
 
 
 def _process_refs_for_node(manifest: Manifest, current_project: str, node: ManifestNode):
@@ -1179,6 +1282,7 @@ def _process_sources_for_exposure(
             exposure.package_name,
         )
         if target_source is None or isinstance(target_source, Disabled):
+            exposure.config.enabled = False
             invalid_source_fail_unless_test(
                 exposure, source_name, table_name, disabled=(isinstance(target_source, Disabled))
             )
@@ -1198,6 +1302,7 @@ def _process_sources_for_metric(manifest: Manifest, current_project: str, metric
             metric.package_name,
         )
         if target_source is None or isinstance(target_source, Disabled):
+            metric.config.enabled = False
             invalid_source_fail_unless_test(
                 metric, source_name, table_name, disabled=(isinstance(target_source, Disabled))
             )

@@ -1,7 +1,7 @@
 import enum
 from dataclasses import dataclass, field
 from itertools import chain, islice
-from mashumaro import DataClassMessagePackMixin
+from mashumaro.mixins.msgpack import DataClassMessagePackMixin
 from multiprocessing.synchronize import Lock
 from typing import (
     Dict,
@@ -183,7 +183,40 @@ class RefableLookup(dbtClassMixin):
         return manifest.nodes[unique_id]
 
 
-# This handles both models/seeds/snapshots and sources
+class MetricLookup(dbtClassMixin):
+    def __init__(self, manifest: "Manifest"):
+        self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
+        self.populate(manifest)
+
+    def get_unique_id(self, search_name, package: Optional[PackageName]):
+        return find_unique_id_for_package(self.storage, search_name, package)
+
+    def find(self, search_name, package: Optional[PackageName], manifest: "Manifest"):
+        unique_id = self.get_unique_id(search_name, package)
+        if unique_id is not None:
+            return self.perform_lookup(unique_id, manifest)
+        return None
+
+    def add_metric(self, metric: ParsedMetric):
+        if metric.search_name not in self.storage:
+            self.storage[metric.search_name] = {}
+
+        self.storage[metric.search_name][metric.package_name] = metric.unique_id
+
+    def populate(self, manifest):
+        for metric in manifest.metrics.values():
+            if hasattr(metric, "name"):
+                self.add_metric(metric)
+
+    def perform_lookup(self, unique_id: UniqueID, manifest: "Manifest") -> ParsedMetric:
+        if unique_id not in manifest.metrics:
+            raise dbt.exceptions.InternalException(
+                f"Metric {unique_id} found in cache but not found in manifest"
+            )
+        return manifest.metrics[unique_id]
+
+
+# This handles both models/seeds/snapshots and sources/metrics/exposures
 class DisabledLookup(dbtClassMixin):
     def __init__(self, manifest: "Manifest"):
         self.storage: Dict[str, Dict[PackageName, List[Any]]] = {}
@@ -328,11 +361,6 @@ class Locality(enum.IntEnum):
     Root = 3
 
 
-class Specificity(enum.IntEnum):
-    Default = 1
-    Adapter = 2
-
-
 @dataclass
 class MacroCandidate:
     locality: Locality
@@ -355,12 +383,14 @@ class MacroCandidate:
 
 @dataclass
 class MaterializationCandidate(MacroCandidate):
-    specificity: Specificity
+    # specificity describes where in the inheritance chain this materialization candidate is
+    # a specificity of 0 means a materialization defined by the current adapter
+    # the highest the specificity describes a default materialization. the value itself depends on
+    # how many adapters there are in the inheritance chain
+    specificity: int
 
     @classmethod
-    def from_macro(
-        cls, candidate: MacroCandidate, specificity: Specificity
-    ) -> "MaterializationCandidate":
+    def from_macro(cls, candidate: MacroCandidate, specificity: int) -> "MaterializationCandidate":
         return cls(
             locality=candidate.locality,
             macro=candidate.macro,
@@ -384,9 +414,9 @@ class MaterializationCandidate(MacroCandidate):
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, MaterializationCandidate):
             return NotImplemented
-        if self.specificity < other.specificity:
-            return True
         if self.specificity > other.specificity:
+            return True
+        if self.specificity < other.specificity:
             return False
         if self.locality < other.locality:
             return True
@@ -432,6 +462,9 @@ D = TypeVar("D")
 @dataclass
 class Disabled(Generic[D]):
     target: D
+
+
+MaybeMetricNode = Optional[Union[ParsedMetric, Disabled[ParsedMetric]]]
 
 
 MaybeDocumentation = Optional[ParsedDocumentation]
@@ -583,7 +616,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     flat_graph: Dict[str, Any] = field(default_factory=dict)
     state_check: ManifestStateCheck = field(default_factory=ManifestStateCheck)
     source_patches: MutableMapping[SourceKey, SourcePatch] = field(default_factory=dict)
-    disabled: MutableMapping[str, List[CompileResultNode]] = field(default_factory=dict)
+    disabled: MutableMapping[str, List[GraphMemberNode]] = field(default_factory=dict)
     env_vars: MutableMapping[str, str] = field(default_factory=dict)
 
     _doc_lookup: Optional[DocLookup] = field(
@@ -593,6 +626,9 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
     )
     _ref_lookup: Optional[RefableLookup] = field(
+        default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
+    )
+    _metric_lookup: Optional[MetricLookup] = field(
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
     )
     _disabled_lookup: Optional[DisabledLookup] = field(
@@ -671,18 +707,24 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                 disabled_by_file_id[node.file_id] = node
         return disabled_by_file_id
 
+    def _get_parent_adapter_types(self, adapter_type: str) -> List[str]:
+        # This is duplicated logic from core/dbt/context/providers.py
+        # Ideally this would instead be incorporating actual dispatch logic
+        from dbt.adapters.factory import get_adapter_type_names
+
+        # order matters for dispatch:
+        #  1. current adapter
+        #  2. any parent adapters (dependencies)
+        #  3. 'default'
+        return get_adapter_type_names(adapter_type) + ["default"]
+
     def _materialization_candidates_for(
         self,
         project_name: str,
         materialization_name: str,
-        adapter_type: Optional[str],
+        adapter_type: str,
+        specificity: int,
     ) -> CandidateList:
-
-        if adapter_type is None:
-            specificity = Specificity.Default
-        else:
-            specificity = Specificity.Adapter
-
         full_name = dbt.utils.get_materialization_macro_name(
             materialization_name=materialization_name,
             adapter_type=adapter_type,
@@ -702,8 +744,9 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                     project_name=project_name,
                     materialization_name=materialization_name,
                     adapter_type=atype,
+                    specificity=specificity,  # where in the inheritance chain this candidate is
                 )
-                for atype in (adapter_type, None)
+                for specificity, atype in enumerate(self._get_parent_adapter_types(adapter_type))
             )
         )
         return candidates.last()
@@ -833,6 +876,12 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self._ref_lookup = RefableLookup(self)
         return self._ref_lookup
 
+    @property
+    def metric_lookup(self) -> MetricLookup:
+        if self._metric_lookup is None:
+            self._metric_lookup = MetricLookup(self)
+        return self._metric_lookup
+
     def rebuild_ref_lookup(self):
         self._ref_lookup = RefableLookup(self)
 
@@ -908,6 +957,31 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             return Disabled(disabled[0])
         return None
 
+    def resolve_metric(
+        self,
+        target_metric_name: str,
+        target_metric_package: Optional[str],
+        current_project: str,
+        node_package: str,
+    ) -> MaybeMetricNode:
+
+        metric: Optional[ParsedMetric] = None
+        disabled: Optional[List[ParsedMetric]] = None
+
+        candidates = _search_packages(current_project, node_package, target_metric_package)
+        for pkg in candidates:
+            metric = self.metric_lookup.find(target_metric_name, pkg, self)
+
+            if metric is not None and metric.config.enabled:
+                return metric
+
+            # it's possible that the node is disabled
+            if disabled is None:
+                disabled = self.disabled_lookup.find(f"{target_metric_name}", pkg)
+        if disabled:
+            return Disabled(disabled[0])
+        return None
+
     # Called by DocsRuntimeContext.doc
     def resolve_doc(
         self,
@@ -952,6 +1026,10 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             ):
                 merged.add(unique_id)
                 self.nodes[unique_id] = node.replace(deferred=True)
+
+        # Rebuild the flat_graph, which powers the 'graph' context variable,
+        # now that we've deferred some nodes
+        self.build_flat_graph()
 
         # log up to 5 items
         sample = list(islice(merged, 5))
@@ -1024,7 +1102,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         self.metrics[metric.unique_id] = metric
         source_file.metrics.append(metric.unique_id)
 
-    def add_disabled_nofile(self, node: CompileResultNode):
+    def add_disabled_nofile(self, node: GraphMemberNode):
         # There can be multiple disabled nodes for the same unique_id
         if node.unique_id in self.disabled:
             self.disabled[node.unique_id].append(node)
@@ -1072,6 +1150,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self._doc_lookup,
             self._source_lookup,
             self._ref_lookup,
+            self._metric_lookup,
             self._disabled_lookup,
             self._analysis_lookup,
         )
@@ -1091,7 +1170,7 @@ AnyManifest = Union[Manifest, MacroManifest]
 
 
 @dataclass
-@schema_version("manifest", 5)
+@schema_version("manifest", 7)
 class WritableManifest(ArtifactMixin):
     nodes: Mapping[UniqueID, ManifestNode] = field(
         metadata=dict(description=("The nodes defined in the dbt project and its dependencies"))
@@ -1137,7 +1216,7 @@ class WritableManifest(ArtifactMixin):
 
     @classmethod
     def compatible_previous_versions(self):
-        return [("manifest", 4)]
+        return [("manifest", 4), ("manifest", 5), ("manifest", 6)]
 
     def __post_serialize__(self, dct):
         for unique_id, node in dct["nodes"].items():

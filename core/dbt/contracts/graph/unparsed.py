@@ -1,15 +1,11 @@
 from dbt.node_types import NodeType
-from dbt.contracts.util import (
-    AdditionalPropertiesMixin,
-    Mergeable,
-    Replaceable,
-)
+from dbt.contracts.util import AdditionalPropertiesMixin, Mergeable, Replaceable
 
 # trigger the PathEncoder
 import dbt.helper_types  # noqa:F401
 from dbt.exceptions import CompilationException, ParsingException
 
-from dbt.dataclass_schema import dbtClassMixin, StrEnum, ExtensibleDbtClassMixin
+from dbt.dataclass_schema import dbtClassMixin, StrEnum, ExtensibleDbtClassMixin, ValidationError
 
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -30,26 +26,27 @@ class UnparsedBaseNode(dbtClassMixin, Replaceable):
 
 
 @dataclass
-class HasSQL:
-    raw_sql: str
+class HasCode(dbtClassMixin):
+    raw_code: str
+    language: str
 
     @property
     def empty(self):
-        return not self.raw_sql.strip()
+        return not self.raw_code.strip()
 
 
 @dataclass
-class UnparsedMacro(UnparsedBaseNode, HasSQL):
+class UnparsedMacro(UnparsedBaseNode, HasCode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Macro]})
 
 
 @dataclass
-class UnparsedGenericTest(UnparsedBaseNode, HasSQL):
+class UnparsedGenericTest(UnparsedBaseNode, HasCode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Macro]})
 
 
 @dataclass
-class UnparsedNode(UnparsedBaseNode, HasSQL):
+class UnparsedNode(UnparsedBaseNode, HasCode):
     name: str
     resource_type: NodeType = field(
         metadata={
@@ -80,6 +77,7 @@ class UnparsedRunHook(UnparsedNode):
 @dataclass
 class Docs(dbtClassMixin, Replaceable):
     show: bool = True
+    node_color: Optional[str] = None
 
 
 @dataclass
@@ -436,6 +434,7 @@ class UnparsedExposure(dbtClassMixin, Replaceable):
     tags: List[str] = field(default_factory=list)
     url: Optional[str] = None
     depends_on: List[str] = field(default_factory=list)
+    config: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -446,23 +445,55 @@ class MetricFilter(dbtClassMixin, Replaceable):
     value: str
 
 
+class MetricTimePeriod(StrEnum):
+    day = "day"
+    week = "week"
+    month = "month"
+    year = "year"
+
+    def plural(self) -> str:
+        return str(self) + "s"
+
+
+@dataclass
+class MetricTime(dbtClassMixin, Mergeable):
+    count: Optional[int] = None
+    period: Optional[MetricTimePeriod] = None
+
+    def __bool__(self):
+        return self.count is not None and self.period is not None
+
+
 @dataclass
 class UnparsedMetric(dbtClassMixin, Replaceable):
-    model: str
     name: str
     label: str
-    type: str
+    calculation_method: str
+    timestamp: str
     description: str = ""
-    sql: Optional[str] = None
-    timestamp: Optional[str] = None
+    expression: Union[str, int] = ""
     time_grains: List[str] = field(default_factory=list)
     dimensions: List[str] = field(default_factory=list)
+    window: Optional[MetricTime] = None
+    model: Optional[str] = None
     filters: List[MetricFilter] = field(default_factory=list)
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
+    config: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def validate(cls, data):
         super(UnparsedMetric, cls).validate(data)
         if "name" in data and " " in data["name"]:
             raise ParsingException(f"Metrics name '{data['name']}' cannot contain spaces")
+
+        if data.get("calculation_method") == "expression":
+            raise ValidationError(
+                "The metric calculation method expression has been deprecated and renamed to derived. Please update"
+            )
+
+        if data.get("model") is None and data.get("calculation_method") != "derived":
+            raise ValidationError("Non-derived metrics require a 'model' property")
+
+        if data.get("model") is not None and data.get("calculation_method") == "derived":
+            raise ValidationError("Derived metrics cannot have a 'model' property")

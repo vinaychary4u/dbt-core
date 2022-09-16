@@ -146,7 +146,7 @@
       {% set suffix = suffix ~ dtstring %}
     {% endif %}
     {% set suffix_length = suffix|length %}
-    {% set relation_max_name_length = 63 %}
+    {% set relation_max_name_length = base_relation.relation_max_name_length() %}
     {% if suffix_length > relation_max_name_length %}
         {% do exceptions.raise_compiler_error('Relation suffix is too long (' ~ suffix_length ~ ' characters). Maximum length is ' ~ relation_max_name_length ~ ' characters.') %}
     {% endif %}
@@ -201,4 +201,17 @@
     {% set escaped_comment = postgres_escape_comment(comment) %}
     comment on column {{ relation }}.{{ adapter.quote(column_name) if column_dict[column_name]['quote'] else column_name }} is {{ escaped_comment }};
   {% endfor %}
+{% endmacro %}
+
+{%- macro postgres__get_show_grant_sql(relation) -%}
+  select grantee, privilege_type
+  from {{ relation.information_schema('role_table_grants') }}
+      where grantor = current_role
+        and grantee != current_role
+        and table_schema = '{{ relation.schema }}'
+        and table_name = '{{ relation.identifier }}'
+{%- endmacro -%}
+
+{% macro postgres__copy_grants() %}
+    {{ return(False) }}
 {% endmacro %}

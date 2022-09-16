@@ -7,7 +7,7 @@ from dbt.contracts.graph.unparsed import (
     FreshnessThreshold, Quoting, UnparsedSourceDefinition,
     UnparsedSourceTableDefinition, UnparsedDocumentationFile, UnparsedColumn,
     UnparsedNodeUpdate, Docs, UnparsedExposure, MaturityType, ExposureOwner,
-    ExposureType, UnparsedMetric, MetricFilter
+    ExposureType, UnparsedMetric, MetricFilter, MetricTime, MetricTimePeriod
 )
 from dbt.contracts.results import FreshnessStatus
 from dbt.node_types import NodeType
@@ -22,7 +22,8 @@ class TestUnparsedMacro(ContractTestCase):
             'path': '/root/path.sql',
             'original_file_path': '/root/path.sql',
             'package_name': 'test',
-            'raw_sql': '{% macro foo() %}select 1 as id{% endmacro %}',
+            'language': 'sql',
+            'raw_code': '{% macro foo() %}select 1 as id{% endmacro %}',
             'root_path': '/root/',
             'resource_type': 'macro',
         }
@@ -30,7 +31,8 @@ class TestUnparsedMacro(ContractTestCase):
             path='/root/path.sql',
             original_file_path='/root/path.sql',
             package_name='test',
-            raw_sql='{% macro foo() %}select 1 as id{% endmacro %}',
+            language='sql',
+            raw_code='{% macro foo() %}select 1 as id{% endmacro %}',
             root_path='/root/',
             resource_type=NodeType.Macro,
         )
@@ -42,7 +44,8 @@ class TestUnparsedMacro(ContractTestCase):
             'path': '/root/path.sql',
             'original_file_path': '/root/path.sql',
             # 'package_name': 'test',
-            'raw_sql': '{% macro foo() %}select 1 as id{% endmacro %}',
+            'language': 'sql',
+            'raw_code': '{% macro foo() %}select 1 as id{% endmacro %}',
             'root_path': '/root/',
             'resource_type': 'macro',
         }
@@ -53,7 +56,8 @@ class TestUnparsedMacro(ContractTestCase):
             'path': '/root/path.sql',
             'original_file_path': '/root/path.sql',
             'package_name': 'test',
-            'raw_sql': '{% macro foo() %}select 1 as id{% endmacro %}',
+            'language': 'sql',
+            'raw_code': '{% macro foo() %}select 1 as id{% endmacro %}',
             'root_path': '/root/',
             'extra': 'extra',
             'resource_type': 'macro',
@@ -72,14 +76,16 @@ class TestUnparsedNode(ContractTestCase):
             'path': '/root/x/path.sql',
             'original_file_path': '/root/path.sql',
             'package_name': 'test',
-            'raw_sql': 'select * from {{ ref("thing") }}',
+            'language': 'sql',
+            'raw_code': 'select * from {{ ref("thing") }}',
         }
         node = self.ContractType(
             package_name='test',
             root_path='/root/',
             path='/root/x/path.sql',
             original_file_path='/root/path.sql',
-            raw_sql='select * from {{ ref("thing") }}',
+            language='sql',
+            raw_code='select * from {{ ref("thing") }}',
             name='foo',
             resource_type=NodeType.Model,
         )
@@ -98,14 +104,16 @@ class TestUnparsedNode(ContractTestCase):
             'path': '/root/x/path.sql',
             'original_file_path': '/root/path.sql',
             'package_name': 'test',
-            'raw_sql': '  \n',
+            'language': 'sql',
+            'raw_code': '  \n',
         }
         node = UnparsedNode(
             package_name='test',
             root_path='/root/',
             path='/root/x/path.sql',
             original_file_path='/root/path.sql',
-            raw_sql='  \n',
+            language='sql',
+            raw_code='  \n',
             name='foo',
             resource_type=NodeType.Model,
         )
@@ -123,7 +131,8 @@ class TestUnparsedNode(ContractTestCase):
             'path': '/root/x/path.sql',
             'original_file_path': '/root/path.sql',
             'package_name': 'test',
-            'raw_sql': 'select * from {{ ref("thing") }}',
+            'language': 'sql',
+            'raw_code': 'select * from {{ ref("thing") }}',
         }
         self.assert_fails_validation(node_dict)
 
@@ -139,7 +148,8 @@ class TestUnparsedRunHook(ContractTestCase):
             'path': '/root/dbt_project.yml',
             'original_file_path': '/root/dbt_project.yml',
             'package_name': 'test',
-            'raw_sql': 'GRANT select on dbt_postgres',
+            'language': 'sql',
+            'raw_code': 'GRANT select on dbt_postgres',
             'index': 4
         }
         node = self.ContractType(
@@ -147,7 +157,8 @@ class TestUnparsedRunHook(ContractTestCase):
             root_path='test/dbt_project.yml',
             path='/root/dbt_project.yml',
             original_file_path='/root/dbt_project.yml',
-            raw_sql='GRANT select on dbt_postgres',
+            language='sql',
+            raw_code='GRANT select on dbt_postgres',
             name='foo',
             resource_type=NodeType.Operation,
             index=4,
@@ -164,7 +175,8 @@ class TestUnparsedRunHook(ContractTestCase):
             'path': '/root/dbt_project.yml',
             'original_file_path': '/root/dbt_project.yml',
             'package_name': 'test',
-            'raw_sql': 'GRANT select on dbt_postgres',
+            'language': 'sql',
+            'raw_code': 'GRANT select on dbt_postgres',
             'index': 4
         }
         self.assert_fails_validation(node_dict)
@@ -594,6 +606,7 @@ class TestUnparsedExposure(ContractTestCase):
             'tags': ['my_department'],
             'url': 'https://example.com/dashboards/1',
             'description': 'A exposure',
+            'config': {},
             'depends_on': [
                 'ref("my_model")',
                 'source("raw", "source_table")',
@@ -608,6 +621,7 @@ class TestUnparsedExposure(ContractTestCase):
             maturity=MaturityType.Medium,
             url='https://example.com/dashboards/1',
             description='A exposure',
+            config={},
             meta={'tool': 'my_tool'},
             tags=['my_department'],
             depends_on=['ref("my_model")', 'source("raw", "source_table")'],
@@ -673,8 +687,9 @@ class TestUnparsedMetric(ContractTestCase):
             'label': 'New Customers',
             'model': 'ref("dim_customers")',
             'description': 'New customers',
-            'type': 'count',
-            'sql': 'user_id',
+            'calculation_method': 'count',
+            'expression': 'user_id',
+            'config': {},
             'timestamp': 'signup_date',
             'time_grains': ['day', 'week', 'month'],
             'dimensions': ['plan', 'country'],
@@ -685,7 +700,31 @@ class TestUnparsedMetric(ContractTestCase):
                     "operator": "=",
                 }
             ],
+            'window': {
+                    "count": 14,
+                    "period": "day"
+                }
+            ,
             'tags': [],
+            'meta': {
+                'is_okr': True
+            },
+        }
+
+    def get_ok_derived_dict(self):
+        return {
+            'name': 'arpc',
+            'label': 'revenue per customer',
+            'description': '',
+            'calculation_method': 'derived',
+            'expression': "{{ metric('revenue') }} / {{ metric('customers') }}",
+            'config': {},
+            'time_grains': ['day', 'week', 'month'],
+            'timestamp': 'signup_date',
+            'dimensions': [],
+            'filters': [],
+            'tags': [],
+            'window': {},
             'meta': {
                 'is_okr': True
             },
@@ -697,30 +736,57 @@ class TestUnparsedMetric(ContractTestCase):
             label='New Customers',
             model='ref("dim_customers")',
             description="New customers",
-            type='count',
-            sql="user_id",
+            calculation_method='count',
+            expression="user_id",
+            config={},
             timestamp="signup_date",
             time_grains=['day', 'week', 'month'],
             dimensions=['plan', 'country'],
             filters=[MetricFilter(
-               field="is_paying",
-               value='True',
-               operator="=",
+                field="is_paying",
+                value='True',
+                operator="=",
             )],
+            window=MetricTime(
+                count=14,
+                period=MetricTimePeriod.day
+            ),
             meta={'is_okr': True},
         )
         dct = self.get_ok_dict()
         self.assert_symmetric(metric, dct)
         pickle.loads(pickle.dumps(metric))
 
-    def test_bad_metric_no_type(self):
+    def test_ok_metric_no_model(self):
+        # Derived metrics do not have model properties
+        metric = self.ContractType(
+            name='arpc',
+            label='revenue per customer',
+            model=None,
+            description="",
+            calculation_method='derived',
+            expression="{{ metric('revenue') }} / {{ metric('customers') }}",
+            timestamp="signup_date",
+            config={},
+            time_grains=['day', 'week', 'month'],
+            window=MetricTime(),
+            dimensions=[],
+            meta={'is_okr': True},
+        )
+        dct = self.get_ok_derived_dict()
+        self.assert_symmetric(metric, dct)
+        pickle.loads(pickle.dumps(metric))
+
+    def test_bad_metric_no_calculation_method(self):
         tst = self.get_ok_dict()
-        del tst['type']
+        del tst['calculation_method']
         self.assert_fails_validation(tst)
 
     def test_bad_metric_no_model(self):
         tst = self.get_ok_dict()
+        # Metrics with calculation_type='derived' do not have model props
         tst['model'] = None
+        tst['calculation_method'] = 'sum'
         self.assert_fails_validation(tst)
 
     def test_bad_filter_missing_things(self):

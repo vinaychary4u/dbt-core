@@ -7,7 +7,8 @@ from dbt.dataclass_schema import (
     ValidationError,
     register_pattern,
 )
-from dbt.contracts.graph.unparsed import AdditionalPropertiesAllowed
+from dbt.contracts.graph.unparsed import AdditionalPropertiesAllowed, Docs
+from dbt.contracts.graph.utils import validate_color
 from dbt.exceptions import InternalException, CompilationException
 from dbt.contracts.util import Replaceable, list_str
 from dbt import hooks
@@ -285,7 +286,7 @@ class BaseConfig(AdditionalPropertiesAllowed, Replaceable):
     # 'meta' moved here from node
     mergebehavior = {
         "append": ["pre-hook", "pre_hook", "post-hook", "post_hook", "tags"],
-        "update": ["quoting", "column_types", "meta"],
+        "update": ["quoting", "column_types", "meta", "docs"],
         "dict_key_append": ["grants"],
     }
 
@@ -363,6 +364,16 @@ class BaseConfig(AdditionalPropertiesAllowed, Replaceable):
 
 
 @dataclass
+class MetricConfig(BaseConfig):
+    enabled: bool = True
+
+
+@dataclass
+class ExposureConfig(BaseConfig):
+    enabled: bool = True
+
+
+@dataclass
 class SourceConfig(BaseConfig):
     enabled: bool = True
     # to be implmented to complete CT-201
@@ -433,6 +444,7 @@ class NodeConfig(NodeAndTestConfig):
     # Note: if any new fields are added with MergeBehavior, also update the
     # 'mergebehavior' dictionary
     materialized: str = "view"
+    incremental_strategy: Optional[str] = None
     persist_docs: Dict[str, Any] = field(default_factory=dict)
     post_hook: List[Hook] = field(
         default_factory=list,
@@ -460,6 +472,24 @@ class NodeConfig(NodeAndTestConfig):
     grants: Dict[str, Any] = field(
         default_factory=dict, metadata=MergeBehavior.DictKeyAppend.meta()
     )
+    packages: List[str] = field(
+        default_factory=list,
+        metadata=MergeBehavior.Append.meta(),
+    )
+    docs: Docs = field(
+        default_factory=Docs,
+        metadata=MergeBehavior.Update.meta(),
+    )
+
+    # we validate that node_color has a suitable value to prevent dbt-docs from crashing
+    def __post_init__(self):
+        if self.docs.node_color:
+            node_color = self.docs.node_color
+            if not validate_color(node_color):
+                raise ValidationError(
+                    f"Invalid color name for docs.node_color: {node_color}. "
+                    "It is neither a valid HTML color name nor a valid HEX code."
+                )
 
     @classmethod
     def __pre_deserialize__(cls, data):
@@ -593,6 +623,8 @@ class SnapshotConfig(EmptySnapshotConfig):
 
 
 RESOURCE_TYPES: Dict[NodeType, Type[BaseConfig]] = {
+    NodeType.Metric: MetricConfig,
+    NodeType.Exposure: ExposureConfig,
     NodeType.Source: SourceConfig,
     NodeType.Seed: SeedConfig,
     NodeType.Test: TestConfig,

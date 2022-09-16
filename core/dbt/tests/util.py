@@ -69,11 +69,17 @@ def run_dbt(args: List[str] = None, expect_pass=True):
 
     print("\n\nInvoking dbt with {}".format(args))
     res, success = handle_and_check(args)
-    assert success == expect_pass, "dbt exit state did not match expected"
+
+    if expect_pass is not None:
+        assert success == expect_pass, "dbt exit state did not match expected"
+
     return res
 
 
-# Use this if you need to capture the command logs in a test
+# Use this if you need to capture the command logs in a test.
+# If you want the logs that are normally written to a file, you must
+# start with the "--debug" flag. The structured schema log CI test
+# will turn the logs into json, so you have to be prepared for that.
 def run_dbt_and_capture(args: List[str] = None, expect_pass=True):
     try:
         stringbuf = capture_stdout_logs()
@@ -82,6 +88,11 @@ def run_dbt_and_capture(args: List[str] = None, expect_pass=True):
 
     finally:
         stop_capture_stdout_logs()
+
+    # Json logs will have lots of escape characters which will
+    # make checks for strings in the logs fail, so remove those.
+    if '{"code":' in stdout:
+        stdout = stdout.replace("\\", "")
 
     return res, stdout
 
@@ -204,6 +215,7 @@ class TestProcessingException(Exception):
 def run_sql_with_adapter(adapter, sql, fetch=None):
     if sql.strip() == "":
         return
+
     # substitute schema and database in sql
     kwargs = {
         "schema": adapter.config.credentials.schema,

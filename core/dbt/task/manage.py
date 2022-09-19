@@ -1,6 +1,6 @@
 # coding=utf-8
-from typing import Dict, Set, Tuple, AbstractSet
-from .compile import CompileTask
+from typing import Dict, Set, Tuple
+from .base import ConfiguredTask
 from dbt.exceptions import (
     warn_or_error,
 )
@@ -11,11 +11,7 @@ from dbt.contracts.graph.parsed import (
 )
 
 
-class ManageTask(CompileTask):
-    def before_run(self, adapter, selected_uids: AbstractSet[str]):
-        required_schemas = self.get_model_schemas(adapter, selected_uids)
-        self.populate_adapter_cache(adapter, required_schemas)
-
+class ManageTask(ConfiguredTask):
     def run(self):
         manifest = ManifestLoader.get_full_manifest(self.config)
 

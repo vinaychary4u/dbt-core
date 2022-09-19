@@ -181,6 +181,23 @@ class RefableLookup(dbtClassMixin):
                 f"Node {unique_id} found in cache but not found in manifest"
             )
         return manifest.nodes[unique_id]
+    
+    
+class ConsumerLookup(RefableLookup):
+    def __init__(self, manifest: "Manifest"):
+        self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
+        self.populate(manifest)
+        
+    def populate(self, manifest):
+        for node in manifest.consumers.values():
+            self.add_node(node)
+    
+    def perform_lookup(self, unique_id: UniqueID, manifest) -> ManifestNode:
+        if unique_id not in manifest.consumers:
+            raise dbt.exceptions.InternalException(
+                f"Node {unique_id} found in cache but not found in manifest"
+            )
+        return manifest.consumers[unique_id]
 
 
 class MetricLookup(dbtClassMixin):
@@ -618,7 +635,8 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     source_patches: MutableMapping[SourceKey, SourcePatch] = field(default_factory=dict)
     disabled: MutableMapping[str, List[CompileResultNode]] = field(default_factory=dict)
     env_vars: MutableMapping[str, str] = field(default_factory=dict)
-
+    consumers: MutableMapping[str, ManifestNode] = field(default_factory=dict)
+    
     _doc_lookup: Optional[DocLookup] = field(
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
     )
@@ -626,6 +644,9 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
     )
     _ref_lookup: Optional[RefableLookup] = field(
+        default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
+    )
+    _consumer_lookup: Optional[ConsumerLookup] = field(
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
     )
     _metric_lookup: Optional[MetricLookup] = field(
@@ -846,6 +867,8 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             return self.exposures[unique_id]
         elif unique_id in self.metrics:
             return self.metrics[unique_id]
+        elif unique_id in self.consumers:
+            return self.consumers[unique_id]
         else:
             # something terrible has happened
             raise dbt.exceptions.InternalException(
@@ -875,6 +898,15 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         if self._ref_lookup is None:
             self._ref_lookup = RefableLookup(self)
         return self._ref_lookup
+    
+    @property
+    def consumer_lookup(self) -> ConsumerLookup:
+        if self._consumer_lookup is None:
+            self._consumer_lookup = ConsumerLookup(self)
+        return self._consumer_lookup
+    
+    def rebuild_consumer_lookup(self):
+        self._consumer_lookup = ConsumerLookup(self)
 
     @property
     def metric_lookup(self) -> MetricLookup:
@@ -915,7 +947,10 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
 
         candidates = _search_packages(current_project, node_package, target_model_package)
         for pkg in candidates:
-            node = self.ref_lookup.find(target_model_name, pkg, self)
+            node = (
+                self.ref_lookup.find(target_model_name, pkg, self)
+                or self.consumer_lookup.find(target_model_name, pkg, self)
+            )
 
             if node is not None and node.config.enabled:
                 return node
@@ -1138,9 +1173,11 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self.source_patches,
             self.disabled,
             self.env_vars,
+            self.consumers,
             self._doc_lookup,
             self._source_lookup,
             self._ref_lookup,
+            self._consumer_lookup,
             self._metric_lookup,
             self._disabled_lookup,
             self._analysis_lookup,

@@ -7,6 +7,7 @@ from dbt.dataclass_schema import (
     HyphenatedDbtClassMixin,
     ExtensibleDbtClassMixin,
     register_pattern,
+    StrEnum
 )
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Union, Any
@@ -160,11 +161,16 @@ BANNED_PROJECT_NAMES = {
 }
 
 
+class SchemaManagementAction(StrEnum):
+    DROP = "drop"
+    WARN = "warn"
+
+
 @dataclass
 class SchemaManagementConfiguration(HyphenatedDbtClassMixin, Replaceable):
     database: Optional[str] = None
     schema: Optional[str] = None
-    action: Optional[str] = None
+    action: Optional[SchemaManagementAction] = None
 
 
 @dataclass

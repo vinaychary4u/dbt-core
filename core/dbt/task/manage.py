@@ -1,6 +1,6 @@
 # coding=utf-8
-from typing import Dict, Set, Tuple
-from .base import ConfiguredTask
+from typing import Dict, Set, Tuple, AbstractSet
+from .compile import CompileTask
 from dbt.exceptions import (
     warn_or_error,
 )
@@ -9,9 +9,14 @@ from dbt.adapters.factory import get_adapter
 from dbt.contracts.graph.parsed import (
     ParsedModelNode,
 )
+from dbt.contracts.project import SchemaManagementAction
 
 
-class ManageTask(ConfiguredTask):
+class ManageTask(CompileTask):
+    def before_run(self, adapter, selected_uids: AbstractSet[str]):
+        required_schemas = self.get_model_schemas(adapter, selected_uids)
+        self.populate_adapter_cache(adapter, required_schemas)
+
     def run(self):
         manifest = ManifestLoader.get_full_manifest(self.config)
 
@@ -19,6 +24,7 @@ class ManageTask(ConfiguredTask):
             (ms.database or "", ms.schema or ""): ms.action or "warn"
             for ms in self.config.managed_schemas
         }
+        print(managed_schemas_actions_config)
 
         if len(managed_schemas_actions_config) == 0:
             warn_or_error(
@@ -41,7 +47,7 @@ class ManageTask(ConfiguredTask):
         )
 
         adapter = get_adapter(self.config)
-        with adapter.connection_named("master"):
+        with adapter.connection_named("manage_schemas"):
             for database, schema in managed_schemas_actions_config.keys():
                 available_models: Dict[Tuple[str, str, str], str] = {
                     (database, schema, relation.identifier): relation
@@ -56,9 +62,9 @@ class ManageTask(ConfiguredTask):
                     target_action = managed_schemas_actions_config[
                         (target_database, target_schema)
                     ]
-                    if target_action == "warn":
+                    if target_action == SchemaManagementAction.WARN:
                         print("WARN ABOUT ", target_database, target_schema, target_identifier)
-                    elif target_action == "drop":
+                    elif target_action == SchemaManagementAction.DROP:
                         adapter.drop_relation(
                             available_models[(target_database, target_schema, target_identifier)]
                         )

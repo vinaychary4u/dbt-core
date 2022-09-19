@@ -413,6 +413,8 @@ def _build_build_subparser(subparsers, base_subparser):
     return sub
 
 
+# TODO: Will this main.py file be completely refactored based on the latest roadmap update?
+# use this function as a template for the new contract command
 def _build_clean_subparser(subparsers, base_subparser):
     sub = subparsers.add_parser(
         "clean",

@@ -1,6 +1,6 @@
 # dbt_contracts.yml
 # upstream-only config for illustration
-contracts-upstream:
+consumer:
   core-only: # give the project a plain name to ref
     path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
     version: 0.2.0 # Versioning is at the project level, NOT the model level
@@ -18,7 +18,7 @@ contracts-upstream:
 
 # dbt_contracts.yml
 # core-only config for illustration
-contracts-downstream:
+producer:
   version: 0.2.0 # version at the top-level only, forced to update if config is different from dbt_contracts.json state file
   finance-only: # give the project a plain name to ref
     path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/

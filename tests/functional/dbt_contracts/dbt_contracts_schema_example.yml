@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: dim_customers
+    contracts:
+      producer: # this is implied, but should be explicit for clarity
+        finance-only:
+          version: 0.1.0
+          nodes_only: false # optional, default is false
+          requirements:
+            test_coverage: .80 # how many of the models are required to be tested
+            freshness_coverage: .80 # how many of the sources are required to be fresh
+            run_history: 5 # how many sucessful runs are required to be in the run history, look at number of successful run_results.json files in a location and compare to this number
+            success_only: true # only produce at successful runs else errors for consumers
+            max_upgrade_time:
+              days: 10 # how many days can a project be upgraded before it is considered stale
+          security:
+            api_public_key: 'asfawef3' # replace with env_var for security
+    description: Customer dimensions table
+    docs:
+      node_color: 'red'
+    columns:
+      - name: customer_key
+        description: Primary key on the customers table
+        tests:
+          - unique
+          - not_null
+      - name: region
+        description: region name
+        tests:
+          - accepted_values:
+              values: ['AFRICA','MIDDLE EAST','ASIA','EUROPE','AMERICA']
+              severity: warn
+      - name: name
+        description: customer id
+      - name: address
+        description: address of the customer
+      - name: nation
+        description: nation name
+      - name: phone_number
+        description: phone number of the customer
+      - name: account_balance
+        description: '{{ doc("account_balance") }}'
+      - name: market_segment
+        description: market segment of the customer
+        tests:
+          - unique
+          - not_null

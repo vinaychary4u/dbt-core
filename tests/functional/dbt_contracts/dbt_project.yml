@@ -62,8 +62,12 @@ models:
         +except: # share everything except the below
           - ref('stg_sensitive_code')
       requirements:
-        test_coverage: .80 # how many of the models are required to be tested
-        freshness_coverage: .80 # how many of the sources are required to be fresh
+        test_coverage: # how many of the models are required to be tested
+          enabled: true # optional, default is false
+          threshold: .80 # 80% of the models must be tested, optional, default is 1.0
+        freshness_coverage:  # how many of the sources are required to be fresh
+          enabled: true # optional, default is false
+          threshold: .80 # 80% of the models must be tested, optional, default is 1.0
         run_history: 5 # how many sucessful runs are required to be in the run history, look at number of successful run_results.json files in a location and compare to this number
         success_only: true # only produce at successful runs else errors for consumers
         max_upgrade_time:

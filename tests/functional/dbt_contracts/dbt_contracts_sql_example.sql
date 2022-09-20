@@ -12,8 +12,8 @@ contracts={
     "finance-only": {
       "version": "0.1.0",
       "requirements": {
-        "test_coverage": 0.8,
-        "freshness_coverage": 0.8,
+        "test_coverage": { "enabled": true },
+        "freshness_coverage": { "enabled": true },
         "run_history": 5,
         "success_only": true,
         "max_upgrade_time": { "days": 10 }

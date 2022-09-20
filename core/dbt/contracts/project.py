@@ -7,7 +7,7 @@ from dbt.dataclass_schema import (
     HyphenatedDbtClassMixin,
     ExtensibleDbtClassMixin,
     register_pattern,
-    StrEnum
+    StrEnum,
 )
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Union, Any

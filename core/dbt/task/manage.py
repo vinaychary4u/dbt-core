@@ -36,7 +36,9 @@ class ManageTask(CompileTask):
         }
 
         if len(managed_schemas_actions_config) == 0:
-            warn_or_error("Schema management enabled for connection but no schema's configured to manage")
+            warn_or_error(
+                "Schema management enabled for connection but no schema's configured to manage"
+            )
             return
 
         models_in_results: Set[Tuple[str, str, str]] = set(
@@ -57,7 +59,9 @@ class ManageTask(CompileTask):
             for (target_database, target_schema, target_identifier) in should_act_upon:
                 target_action = managed_schemas_actions_config[(target_database, target_schema)]
                 if target_action == "warn":
-                    warn_or_error(f"Found unused model {target_database}.{target_schema}.{target_identifier}")
+                    warn_or_error(
+                        f"Found unused model {target_database}.{target_schema}.{target_identifier}"
+                    )
                 elif target_action == "drop":
                     adapter.drop_relation(
                         available_models[(target_database, target_schema, target_identifier)]

@@ -96,9 +96,7 @@ class TestUnmanagedSchema(Base):
 class TestEmptyConfiguration(TestUnmanagedSchema):
     @pytest.fixture(scope="class")
     def project_config_update(self, unique_schema):
-        return {
-            "managed-schemas": []
-        }
+        return {"managed-schemas": []}
 
 
 class TestMissingConfiguration(TestUnmanagedSchema):

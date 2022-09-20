@@ -50,15 +50,18 @@ class ManageTask(CompileTask):
                 (database, schema, relation.identifier): relation
                 for relation in adapter.list_relations(database, schema)
             }
-            
+
             if len(available_models) == 0:
                 warn_or_error(f"No modules in managed schema '{schema}' for database '{database}'")
             should_act_upon = available_models.keys() - models_in_results
             for (target_database, target_schema, target_identifier) in should_act_upon:
                 target_action = managed_schemas_actions_config[(target_database, target_schema)]
                 if target_action == "warn":
-                    print("WARN ABOUT ", target_database, target_schema, target_identifier)
+                    warn_or_error(f"Found unused model {target_database}.{target_schema}.{target_identifier}")
                 elif target_action == "drop":
                     adapter.drop_relation(
                         available_models[(target_database, target_schema, target_identifier)]
                     )
+
+    def interpret_results(self, results):
+        return True

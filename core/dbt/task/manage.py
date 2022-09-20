@@ -22,7 +22,6 @@ class ManageTask(CompileTask):
         with adapter.connection_named("master"):
             required_schemas = self.get_model_schemas(adapter, selected_uids)
             self.populate_adapter_cache(adapter, required_schemas)
-            # TODO: defer to manifest?
 
             adapter.clear_transaction()
             self.manage_schema(adapter)

@@ -8,7 +8,7 @@ from typing import Iterable, Dict, Any, Union, List, Optional, Generic, TypeVar,
 
 from dbt.dataclass_schema import ValidationError, dbtClassMixin
 
-from dbt.adapters.factory import get_adapter, get_adapter_package_names
+from dbt.adapters.factory import get_adapter_package_names
 from dbt.clients.jinja import get_rendered, add_rendered_test_kwargs
 from dbt.clients.yaml_helper import load_yaml_text
 from dbt.parser.schema_renderer import SchemaYamlRenderer
@@ -473,7 +473,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
             column_name = column.name
             should_quote = column.quote or (column.quote is None and target_block.quote_columns)
             if should_quote:
-                column_name = get_adapter(self.root_project).quote(column_name)
+                column_name = self.root_project.get_or_create_adapter(self.root_project).quote(column_name)
             column_tags = column.tags
 
         block = GenericTestBlock.from_test_block(

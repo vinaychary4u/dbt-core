@@ -7,7 +7,6 @@ import pickle
 import sqlparse
 
 from dbt import flags
-from dbt.adapters.factory import get_adapter
 from dbt.clients import jinja
 from dbt.clients.system import make_directory
 from dbt.context.providers import generate_runtime_model_context
@@ -190,14 +189,14 @@ class Compiler:
         return context
 
     def add_ephemeral_prefix(self, name: str):
-        adapter = get_adapter(self.config)
+        adapter = self.config.get_or_create_adapter(self.config)
         relation_cls = adapter.Relation
         return relation_cls.add_ephemeral_prefix(name)
 
     def _get_relation_name(self, node: ParsedNode):
         relation_name = None
         if node.is_relational and not node.is_ephemeral_model:
-            adapter = get_adapter(self.config)
+            adapter = self.config.get_or_create_adapter(self.config)
             relation_cls = adapter.Relation
             relation_name = str(relation_cls.create_from(self.config, node))
         return relation_name

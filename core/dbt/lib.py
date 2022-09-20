@@ -20,20 +20,31 @@ def get_dbt_config(project_dir, args=None, single_threaded=False):
     profile = args.profile if hasattr(args, "profile") else None
     target = args.target if hasattr(args, "target") else None
 
-    # Construct a phony config
-    config = RuntimeConfig.from_args(
+    # TODO: do this without reading files
+    config = RuntimeConfig.from_parts(
         RuntimeArgs(project_dir, profiles_dir, single_threaded, profile, target)
     )
-    # Clear previously registered adapters--
-    # this fixes cacheing behavior on the dbt-server
+    
+    # we just want the side-effect here of caching the adapter on the RuntimeConfig
+    adapter = config.get_or_create_adapter(config)
+    
+    # TODO use new cli.flags.Flags here to de-globalize
     flags.set_from_args(args, config)
-    dbt.adapters.factory.reset_adapters()
-    # Load the relevant adapter
-    dbt.adapters.factory.register_adapter(config)
+    
     # Set invocation id
+    # TODO: make this not global. We could store this in Flags or RuntimeConfig instead
     dbt.events.functions.set_invocation_id()
 
     return config
+
+
+# this has side effects, but only for this instance of RuntimeConfig
+# zero global side effects
+def reload_adapter(config, new_credentials):
+    if new_credentials:
+        config.update_credentials(new_credentials)
+    adapter = config.get_or_create_adapter(config, force_reload=True)
+    return adapter
 
 
 def get_task_by_type(type):
@@ -82,7 +93,6 @@ def create_task(type, args, manifest, config):
 def _get_operation_node(manifest, project_path, sql):
     from dbt.parser.manifest import process_node
     from dbt.parser.sql import SqlBlockParser
-    import dbt.adapters.factory
 
     config = get_dbt_config(project_path)
     block_parser = SqlBlockParser(
@@ -91,7 +101,7 @@ def _get_operation_node(manifest, project_path, sql):
         root_project=config,
     )
 
-    adapter = dbt.adapters.factory.get_adapter(config)
+    adapter = config.get_or_create_adapter(config)
     # TODO : This needs a real name?
     sql_node = block_parser.parse_remote(sql, "name")
     process_node(config, manifest, sql_node)

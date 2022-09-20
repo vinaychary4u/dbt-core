@@ -8,7 +8,7 @@ import yaml
 
 import dbt.flags as flags
 from dbt.config.runtime import RuntimeConfig
-from dbt.adapters.factory import get_adapter, register_adapter, reset_adapters, get_adapter_by_type
+from dbt.adapters.factory import get_adapter_by_type
 from dbt.events.functions import setup_event_logger
 from dbt.tests.util import (
     write_file,
@@ -246,14 +246,12 @@ def adapter(unique_schema, project_root, profiles_root, profiles_yml, dbt_projec
     )
     flags.set_from_args(args, {})
     runtime_config = RuntimeConfig.from_args(args)
-    register_adapter(runtime_config)
-    adapter = get_adapter(runtime_config)
+    adapter = runtime_config.get_or_create_adapter(runtime_config)
     # We only need the base macros, not macros from dependencies, and don't want
     # to run 'dbt deps' here.
     adapter.load_macro_manifest(base_macros_only=True)
     yield adapter
     adapter.cleanup_connections()
-    reset_adapters()
 
 
 # Start at directory level.

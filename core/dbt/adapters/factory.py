@@ -171,7 +171,7 @@ def register_adapter(config: AdapterRequiredConfig) -> None:
     FACTORY.register_adapter(config)
 
 
-def get_adapter(config: AdapterRequiredConfig):
+def get_or_create_adapter(config: AdapterRequiredConfig):
     return FACTORY.lookup_adapter(config.credentials.type)
 
 
@@ -217,3 +217,16 @@ def get_adapter_package_names(name: Optional[str]) -> List[str]:
 
 def get_adapter_type_names(name: Optional[str]) -> List[str]:
     return FACTORY.get_adapter_type_names(name)
+
+# this doesn't muck with global adapters
+# it does use AdapterFactory.plugins (which is global)
+# to instantiate a new Adapter object, using the AdapterPlugin object
+# so accessing AdapterFactory.plugins requires a lock
+# but this method does not actually mutate AdapterFactory
+def create_adapter(config) -> Adapter:
+    adapter_name = config.credentials.type
+    Plugin = FACTORY.get_adapter_plugins(adapter_name)[0]
+    # TODO is this necessary?
+    import copy
+    adapter = copy.deepcopy(Plugin.adapter)
+    return adapter(config)

@@ -16,7 +16,6 @@ from .printer import (
 from dbt.clients.system import write_file
 from dbt.task.base import ConfiguredTask
 from dbt.adapters.base import BaseRelation
-from dbt.adapters.factory import get_adapter
 from dbt.logger import (
     DbtProcessState,
     TextOnly,
@@ -86,7 +85,7 @@ class ManifestTask(ConfiguredTask):
             raise InternalException("compile_manifest called before manifest was loaded")
 
         # we cannot get adapter in init since it will break rpc #5579
-        adapter = get_adapter(self.config)
+        adapter = self.config.get_or_create_adapter(self.config)
         compiler = adapter.get_compiler()
         self.graph = compiler.compile(self.manifest)
 
@@ -188,7 +187,7 @@ class GraphRunnableTask(ManifestTask):
         return os.path.join(self.config.target_path, RESULT_FILE_NAME)
 
     def get_runner(self, node):
-        adapter = get_adapter(self.config)
+        adapter = self.config.get_or_create_adapter(self.config)
         run_count: int = 0
         num_nodes: int = 0
 
@@ -350,7 +349,7 @@ class GraphRunnableTask(ManifestTask):
         pool.close()
         pool.terminate()
 
-        adapter = get_adapter(self.config)
+        adapter = self.adapter
 
         if not adapter.is_cancelable():
             fire_event(QueryCancelationUnsupported(type=adapter.type()))
@@ -427,7 +426,7 @@ class GraphRunnableTask(ManifestTask):
         pass
 
     def execute_with_hooks(self, selected_uids: AbstractSet[str]):
-        adapter = get_adapter(self.config)
+        adapter = self.config.get_or_create_adapter(self.config)
         try:
             self.before_hooks(adapter)
             started = time.time()

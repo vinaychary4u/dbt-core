@@ -6,7 +6,6 @@ import agate
 from .runnable import ManifestTask
 
 import dbt.exceptions
-from dbt.adapters.factory import get_adapter
 from dbt.config.utils import parse_cli_vars
 from dbt.contracts.results import RunOperationResultsArtifact
 from dbt.exceptions import InternalException
@@ -36,7 +35,7 @@ class RunOperationTask(ManifestTask):
             raise InternalException("manifest was None in compile_manifest")
 
     def _run_unsafe(self) -> agate.Table:
-        adapter = get_adapter(self.config)
+        adapter = self.config.get_or_create_adapter(self.config)
 
         package_name, macro_name = self._get_macro_parts()
         macro_kwargs = self._get_kwargs()

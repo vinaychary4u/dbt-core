@@ -7,7 +7,6 @@
 # Use a visualizer such as snakeviz to look at the output:
 # snakeviz dbt.cprof
 from dbt.task.base import ConfiguredTask
-from dbt.adapters.factory import get_adapter
 from dbt.parser.manifest import Manifest, ManifestLoader, _check_manifest
 from dbt.logger import DbtProcessState
 from dbt.clients.system import write_file
@@ -62,7 +61,7 @@ class ParseTask(ConfiguredTask):
     # ManifestLoader.load_all
 
     def get_full_manifest(self):
-        adapter = get_adapter(self.config)  # type: ignore
+        adapter = self.config.get_or_create_adapter(self.config)  # type: ignore
         root_config = self.config
         macro_hook = adapter.connections.set_query_header
         with PARSING_STATE:
@@ -84,7 +83,7 @@ class ParseTask(ConfiguredTask):
         fire_event(ManifestLoaded())
 
     def compile_manifest(self):
-        adapter = get_adapter(self.config)
+        adapter = self.config.get_or_create_adapter(self.config)
         compiler = adapter.get_compiler()
         self.graph = compiler.compile(self.manifest)
 

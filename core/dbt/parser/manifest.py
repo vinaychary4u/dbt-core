@@ -12,7 +12,6 @@ import dbt.tracking
 import dbt.flags as flags
 
 from dbt.adapters.factory import (
-    get_adapter,
     get_relation_class_by_name,
     get_adapter_package_names,
 )
@@ -202,9 +201,7 @@ class ManifestLoader:
         reset: bool = False,
     ) -> Manifest:
 
-        adapter = get_adapter(config)  # type: ignore
-        # reset is set in a TaskManager load_manifest call, since
-        # the config and adapter may be persistent.
+        adapter = config.get_or_create_adapter(config)  # type: ignore
         if reset:
             config.clear_dependencies()
             adapter.clear_macro_manifest()
@@ -520,7 +517,7 @@ class ManifestLoader:
     def macro_depends_on(self):
         macro_ctx = generate_macro_context(self.root_project)
         macro_namespace = TestMacroNamespace(self.macro_resolver, {}, None, MacroStack(), [])
-        adapter = get_adapter(self.root_project)
+        adapter = self.root_project.get_or_create_adapter(self.root_project)
         db_wrapper = ParseProvider().DatabaseWrapper(adapter, macro_namespace)
         for macro in self.manifest.macros.values():
             if macro.created_at < self.started_at:

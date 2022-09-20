@@ -175,10 +175,6 @@ def move_to_nearest_project_dir(args):
 class ConfiguredTask(BaseTask):
     ConfigType = RuntimeConfig
 
-    def __init__(self, args, config):
-        super().__init__(args, config)
-        register_adapter(self.config)
-
     @classmethod
     def from_args(cls, args):
         move_to_nearest_project_dir(args)

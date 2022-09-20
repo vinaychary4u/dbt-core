@@ -7,7 +7,6 @@ from dbt.dataclass_schema import ValidationError
 
 from .compile import CompileTask
 
-from dbt.adapters.factory import get_adapter
 from dbt.contracts.graph.compiled import CompileResultNode
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.results import (
@@ -234,7 +233,7 @@ class GenerateTask(CompileTask):
         if self.manifest is None:
             raise InternalException("self.manifest was None in run!")
 
-        adapter = get_adapter(self.config)
+        adapter = self.config.get_or_create_adapter(self.config)
         with adapter.connection_named("generate_catalog"):
             fire_event(BuildingCatalog())
             catalog_table, exceptions = adapter.get_catalog(self.manifest)

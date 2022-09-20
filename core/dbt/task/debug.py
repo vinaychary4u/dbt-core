@@ -9,7 +9,7 @@ from dbt.events.types import OpenCommand
 from dbt import flags
 import dbt.clients.system
 import dbt.exceptions
-from dbt.adapters.factory import get_adapter, register_adapter
+from dbt.adapters.factory import create_adapter
 from dbt.config import Project, Profile
 from dbt.config.renderer import DbtProjectYamlRenderer, ProfileRenderer
 from dbt.config.utils import parse_cli_vars
@@ -328,8 +328,7 @@ class DebugTask(BaseTask):
         """Return a string containing the error message, or None if there was
         no error.
         """
-        register_adapter(profile)
-        adapter = get_adapter(profile)
+        adapter = create_adapter(profile)
         try:
             with adapter.connection_named("debug"):
                 adapter.debug_query()

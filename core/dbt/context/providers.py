@@ -15,7 +15,7 @@ from typing import (
 from typing_extensions import Protocol
 
 from dbt.adapters.base.column import Column
-from dbt.adapters.factory import get_adapter, get_adapter_package_names, get_adapter_type_names
+from dbt.adapters.factory import get_adapter_package_names, get_adapter_type_names
 from dbt.clients import agate_helper
 from dbt.clients.jinja import get_rendered, MacroGenerator, MacroStack
 from dbt.config import RuntimeConfig, Project
@@ -694,7 +694,7 @@ class ProviderContext(ManifestContext):
         self.sql_results: Dict[str, AttrDict] = {}
         self.context_config: Optional[ContextConfig] = context_config
         self.provider: Provider = provider
-        self.adapter = get_adapter(self.config)
+        self.adapter = self.config.get_or_create_adapter(self.config)
         # The macro namespace is used in creating the DatabaseWrapper
         self.db_wrapper = self.provider.DatabaseWrapper(self.adapter, self.namespace)
 

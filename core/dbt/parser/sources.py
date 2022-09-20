@@ -1,7 +1,6 @@
 import itertools
 from pathlib import Path
 from typing import Iterable, Dict, Optional, Set, Any
-from dbt.adapters.factory import get_adapter
 from dbt.config import RuntimeConfig
 from dbt.context.context_config import (
     BaseContextConfigGenerator,
@@ -240,7 +239,7 @@ class SourcePatcher:
             column_name = column.name
             should_quote = column.quote or (column.quote is None and target.quote_columns)
             if should_quote:
-                column_name = get_adapter(self.root_project).quote(column_name)
+                column_name = self.root_project.get_or_create_adapter(self.root_project).quote(column_name)
 
         tags_sources = [target.source.tags, target.table.tags]
         if column is not None:
@@ -285,7 +284,7 @@ class SourcePatcher:
         )
 
     def _get_relation_name(self, node: ParsedSourceDefinition):
-        adapter = get_adapter(self.root_project)
+        adapter = get_or_create_adapter(self.root_project)
         relation_cls = adapter.Relation
         return str(relation_cls.create_from(self.root_project, node))
 

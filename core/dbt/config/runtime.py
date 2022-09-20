@@ -10,7 +10,7 @@ from .project import Project
 from .renderer import DbtProjectYamlRenderer, ProfileRenderer
 from .utils import parse_cli_vars
 from dbt import flags
-from dbt.adapters.factory import get_relation_class_by_name, get_include_paths
+from dbt.adapters.factory import get_relation_class_by_name, get_include_paths, create_adapter, Adapter
 from dbt.helper_types import FQNPath, PathSet, DictDefaultEmptyStr
 from dbt.config.profile import read_user_config
 from dbt.contracts.connection import AdapterRequiredConfig, Credentials
@@ -47,6 +47,7 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
     profile_name: str
     cli_vars: Dict[str, Any]
     dependencies: Optional[Mapping[str, "RuntimeConfig"]] = None
+    adapter: Optional[Adapter] = None
 
     def __post_init__(self):
         self.validate()
@@ -372,6 +373,20 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
             for path in root.iterdir():
                 if path.is_dir() and not path.name.startswith("__"):
                     yield path
+
+    @classmethod
+    def get_or_create_adapter(self, config, force_recreate=False) -> Adapter:
+        if self.adapter is None or force_recreate:
+            self.adapter = create_adapter(config)
+        return self.adapter
+
+
+    # mutates this object
+    @classmethod
+    def update_credentials(self, credential_updates: dict):
+        for k,v in credential_updates.items():
+            self.credentials[k] = v
+        config.get_or_create_adapter(config, force=True)
 
 
 class UnsetCredentials(Credentials):

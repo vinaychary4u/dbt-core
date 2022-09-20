@@ -18,10 +18,12 @@ test-paths: ["tests"]
 seed-paths: ["data"]
 macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
-contract-paths: ["contracts"] # TODO: for local json generation only?
 
-
-
+#TODO: add api key config here?
+# one project = one remote contract artifact location
+contract-paths:
+  local: "contracts"
+  remote: "s3://my-bucket/dbt-contracts"
 target-path: "custom_target_path"  # directory which will store compiled SQL files
 clean-targets:         # directories to be removed by `dbt clean`
     - "target"
@@ -65,7 +67,6 @@ models:
           days: 10 # how many days can a project be upgraded before it is considered stale
       security:
         api_public_key: 'asfawef3' # replace with env_var for security
-        artifacts_location: 's3://my-bucket/dbt-contracts' # replace with env_var for security, this can be a local path too AND different from upstream, dbt needs to read those files in memory to compare them
     consumer: # akin to a generic top level import like how people work with python
       # this presumes the upstream producer solely dictates contract terms
       # it is the responsibility of the producer to validate the contract is met
@@ -92,14 +93,44 @@ models:
     marts:
       core:
         contracts:
-          producer:
+          producer: # this is implied, but should be explicit for clarity
             finance-only:
-              full_share: # share everything, code, docs, node, data in lineage
-                models: # I have 5 models but I only expose data for 4
-                  - ref('fct_orders')
-                  - ref('dim_customers')
-                  - ref('dim_parts')
-                  - ref('dbt_metric')
+              version: 0.1.0
+              models: # I have 5 models but I only expose data for 1
+                - ref('example_analysis')
+              nodes_only:
+                +except: # share everything except the below
+                  - ref('stg_sensitive_code')
+              requirements:
+                test_coverage: .80 # how many of the models are required to be tested
+                freshness_coverage: .80 # how many of the sources are required to be fresh
+                run_history: 5 # how many sucessful runs are required to be in the run history, look at number of successful run_results.json files in a location and compare to this number
+                success_only: true # only produce at successful runs else errors for consumers
+                max_upgrade_time:
+                  days: 10 # how many days can a project be upgraded before it is considered stale
+              security:
+                api_public_key: 'asfawef3' # replace with env_var for security
+                artifacts_location: 's3://my-bucket/dbt-contracts' # replace with env_var for security, this can be a local path too AND different from upstream, dbt needs to read those files in memory to compare them
+              api_public_key: 'asfawef3' # replace with env_var for security
+            multi-project:
+              sales-only:
+                path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+              operations-only:
+                path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+              version: 0.3.0
+              models: # I have 5 models but I only expose data for 1
+                - ref('example_analysis')
+              nodes_only:
+                +except: # share everything except the below
+                  - ref('stg_sensitive_code')
+              requirements:
+                test_coverage: .80 # how many of the models are required to be tested
+                freshness_coverage: .80 # how many of the sources are required to be fresh
+                run_history: 5 # how many sucessful runs are required to be in the run history, look at number of successful run_results.json files in a location and compare to this number
+                success_only: true # only produce at successful runs else errors for consumers
+                max_upgrade_time:
+                  days: 10 # how many days can a project be upgraded before it is considered stale
+              security:
                 api_public_key: 'asfawef3' # replace with env_var for security
         materialized: table
         +docs:

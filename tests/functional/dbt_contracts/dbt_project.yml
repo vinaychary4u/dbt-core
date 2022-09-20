@@ -113,8 +113,7 @@ models:
                   days: 10 # how many days can a project be upgraded before it is considered stale
               security:
                 api_public_key: 'asfawef3' # replace with env_var for security
-                artifacts_location: 's3://my-bucket/dbt-contracts' # replace with env_var for security, this can be a local path too AND different from upstream, dbt needs to read those files in memory to compare them
-              api_public_key: 'asfawef3' # replace with env_var for security
+
             multi-project:
               sales-only:
                 path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/

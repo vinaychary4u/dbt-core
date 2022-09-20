@@ -50,7 +50,7 @@ class TestUnmanagedSchema(Base):
                 {
                     "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
                     "schema": "some_other_schema",
-                    "action": "drop",
+                    "prune-models": "drop",
                 }
             ]
         }
@@ -113,7 +113,7 @@ class TestDrop(Base):
                 {
                     "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
                     "schema": unique_schema,
-                    "action": "drop",
+                    "prune-models": "drop",
                 }
             ]
         }
@@ -149,7 +149,71 @@ class TestWarn(TestUnmanagedSchema):
                 {
                     "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
                     "schema": unique_schema,
-                    "action": "warn",
+                    "prune-models": "warn",
+                }
+            ]
+        }
+
+
+class TestSkip(Base):
+    @pytest.fixture(scope="class")
+    def project_config_update(self, unique_schema):
+        return {
+            "managed-schemas": [
+                {
+                    "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
+                    "schema": unique_schema,
+                    "prune-models": "skip",
+                }
+            ]
+        }
+
+    def test_should_not_raise_exception(
+        self,
+        project,
+    ):
+        run_dbt(["run"])
+        check_table_does_exist(project.adapter, "model_a")
+        check_table_does_exist(project.adapter, "model_b")
+
+        project.update_models(
+            {
+                "model_b.sql": model(self.materialized),
+            }
+        )
+
+        run_dbt(["--warn-error", "manage"])
+
+        check_table_does_exist(project.adapter, "model_a")
+        check_table_does_exist(project.adapter, "model_b")
+
+    def test_should_not_delete_anything(
+        self,
+        project,
+    ):
+        run_dbt(["run"])
+        check_table_does_exist(project.adapter, "model_a")
+        check_table_does_exist(project.adapter, "model_b")
+
+        project.update_models(
+            {
+                "model_b.sql": model(self.materialized),
+            }
+        )
+        run_dbt(["manage"])
+
+        check_table_does_exist(project.adapter, "model_a")
+        check_table_does_exist(project.adapter, "model_b")
+
+
+class TestDefaultAction(TestSkip):
+    @pytest.fixture(scope="class")
+    def project_config_update(self, unique_schema):
+        return {
+            "managed-schemas": [
+                {
+                    "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
+                    "schema": unique_schema,
                 }
             ]
         }

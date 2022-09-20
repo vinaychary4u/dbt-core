@@ -161,7 +161,8 @@ BANNED_PROJECT_NAMES = {
 }
 
 
-class SchemaManagementAction(StrEnum):
+class PruneModelsAction(StrEnum):
+    SKIP = "skip"
     DROP = "drop"
     WARN = "warn"
 
@@ -170,7 +171,7 @@ class SchemaManagementAction(StrEnum):
 class SchemaManagementConfiguration(HyphenatedDbtClassMixin, Replaceable):
     database: Optional[str] = None
     schema: Optional[str] = None
-    action: Optional[SchemaManagementAction] = None
+    prune_models: Optional[PruneModelsAction] = None
 
 
 @dataclass
@@ -258,7 +259,6 @@ class ProfileConfig(HyphenatedDbtClassMixin, Replaceable):
     threads: int
     # TODO: make this a dynamic union of some kind?
     credentials: Optional[Dict[str, Any]]
-    manage_schemas: Optional[bool] = field(metadata={"preserve_underscore": True})
 
 
 @dataclass

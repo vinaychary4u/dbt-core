@@ -10,6 +10,7 @@ from dbt.adapters.factory import get_adapter
 from dbt.contracts.graph.parsed import (
     ParsedModelNode,
 )
+from dbt.contracts.project import PruneModelsAction
 
 
 class ManageTask(CompileTask):
@@ -31,7 +32,7 @@ class ManageTask(CompileTask):
 
         # Read config
         managed_schemas_actions_config: Dict[Tuple[str, str], str] = {
-            (ms.database or "", ms.schema or ""): ms.action or "warn"
+            (ms.database or "", ms.schema or ""): ms.prune_models or PruneModelsAction.SKIP
             for ms in self.config.managed_schemas
         }
 
@@ -58,11 +59,11 @@ class ManageTask(CompileTask):
             should_act_upon = available_models.keys() - models_in_results
             for (target_database, target_schema, target_identifier) in should_act_upon:
                 target_action = managed_schemas_actions_config[(target_database, target_schema)]
-                if target_action == "warn":
+                if target_action == PruneModelsAction.WARN:
                     warn_or_error(
                         f"Found unused model {target_database}.{target_schema}.{target_identifier}"
                     )
-                elif target_action == "drop":
+                elif target_action == PruneModelsAction.DROP:
                     adapter.drop_relation(
                         available_models[(target_database, target_schema, target_identifier)]
                     )

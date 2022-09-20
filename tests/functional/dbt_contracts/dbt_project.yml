@@ -55,6 +55,9 @@ models:
       version: 0.1.0
       models: # I have 5 models but I only expose data for 1
         - ref('example_analysis')
+        - entity('orders')
+      metrics:
+        - metric('revenue')
       nodes_only:
         +except: # share everything except the below
           - ref('stg_sensitive_code')

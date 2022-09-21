@@ -44,7 +44,11 @@ import dbt.tracking
 
 from dbt.utils import ExitCodes, args_to_dict
 from dbt.config.profile import read_user_config
-from dbt.exceptions import InternalException, NotImplementedException, FailedToConnectException
+from dbt.exceptions import (
+    InternalException,
+    NotImplementedException,
+    FailedToConnectException,
+)
 
 
 class DBTVersion(argparse.Action):
@@ -61,7 +65,11 @@ class DBTVersion(argparse.Action):
         help="show program's version number and exit",
     ):
         super().__init__(
-            option_strings=option_strings, dest=dest, default=default, nargs=0, help=help
+            option_strings=option_strings,
+            dest=dest,
+            default=default,
+            nargs=0,
+            help=help,
         )
 
     def __call__(self, parser, namespace, values, option_string=None):
@@ -469,6 +477,17 @@ def _build_contracts_subparser(subparsers, base_subparser):
         Pull the most recent version of the projects to consume listed in dbt_contracts.yml
         """,
     )
+
+    # TODO: add arguments for consumer/producer
+    # sub.add_argument(
+    #     "--config-dir",
+    #     action="store_true",
+    #     help="""
+    #     If specified, DBT will show path information for this project
+    #     """,
+    # )
+    # _add_version_check(sub)
+
     sub.set_defaults(cls=contracts_task.DepsTask, which="contracts", rpc_method="contracts")
     return sub
 
@@ -900,7 +919,9 @@ def _build_run_operation_subparser(subparsers, base_subparser):
         """,
     )
     sub.set_defaults(
-        cls=run_operation_task.RunOperationTask, which="run-operation", rpc_method="run-operation"
+        cls=run_operation_task.RunOperationTask,
+        which="run-operation",
+        rpc_method="run-operation",
     )
     return sub
 

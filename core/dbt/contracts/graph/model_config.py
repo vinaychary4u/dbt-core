@@ -622,6 +622,24 @@ class SnapshotConfig(EmptySnapshotConfig):
         return self.from_dict(data)
 
 
+# TODO: add a contract config to store the yaml configs in python memory
+@dataclass
+class ContractConfig(NodeAndTestConfig):
+    # this is repeated because of a different default
+    schema: Optional[str] = field(
+        default="dbt_test__audit",
+        metadata=CompareBehavior.Exclude.meta(),
+    )
+    materialized: str = "test"
+    severity: Severity = Severity("ERROR")
+    store_failures: Optional[bool] = None
+    where: Optional[str] = None
+    limit: Optional[int] = None
+    fail_calc: str = "count(*)"
+    warn_if: str = "!= 0"
+    error_if: str = "!= 0"
+
+
 RESOURCE_TYPES: Dict[NodeType, Type[BaseConfig]] = {
     NodeType.Metric: MetricConfig,
     NodeType.Exposure: ExposureConfig,

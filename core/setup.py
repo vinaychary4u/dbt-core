@@ -56,7 +56,7 @@ if "DBT_WASM_BUILD" in os.environ and int(os.environ["DBT_WASM_BUILD"]) == 1:
     # binary dependency not supported in pyodide
     pass
 else:
-    _install_requires.insert(14, "dbt-extractor~=0.4.1") 
+    _install_requires.insert(14, "dbt-extractor~=0.4.1")
 
 setup(
     name=package_name,

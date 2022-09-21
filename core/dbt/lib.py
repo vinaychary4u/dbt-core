@@ -22,7 +22,9 @@ def get_dbt_config(project_dir, args=None, single_threaded=False):
 
     # Construct a phony config
     config = RuntimeConfig.from_args(
-        RuntimeArgs(project_dir, profiles_dir, single_threaded or flags.IS_PYODIDE, profile, target)
+        RuntimeArgs(
+            project_dir, profiles_dir, single_threaded or flags.IS_PYODIDE, profile, target
+        )
     )
     # Clear previously registered adapters--
     # this fixes cacheing behavior on the dbt-server

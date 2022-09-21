@@ -25,6 +25,7 @@ import dbt.task.clean as clean_task
 import dbt.task.compile as compile_task
 import dbt.task.debug as debug_task
 import dbt.task.deps as deps_task
+import dbt.task.contracts as contracts_task
 import dbt.task.freshness as freshness_task
 import dbt.task.generate as generate_task
 import dbt.task.init as init_task
@@ -457,6 +458,18 @@ def _build_deps_subparser(subparsers, base_subparser):
         """,
     )
     sub.set_defaults(cls=deps_task.DepsTask, which="deps", rpc_method="deps")
+    return sub
+
+
+def _build_contracts_subparser(subparsers, base_subparser):
+    sub = subparsers.add_parser(
+        "contracts",
+        parents=[base_subparser],
+        help="""
+        Pull the most recent version of the projects to consume listed in dbt_contracts.yml
+        """,
+    )
+    sub.set_defaults(cls=contracts_task.DepsTask, which="contracts", rpc_method="contracts")
     return sub
 
 
@@ -1147,6 +1160,7 @@ def parse_args(args, cls=DBTArgumentParser):
     _build_clean_subparser(subs, base_subparser)
     _build_debug_subparser(subs, base_subparser)
     _build_deps_subparser(subs, base_subparser)
+    _build_contracts_subparser(subs, base_subparser)
     _build_list_subparser(subs, base_subparser)
 
     build_sub = _build_build_subparser(subs, base_subparser)

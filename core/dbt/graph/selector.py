@@ -167,6 +167,8 @@ class NodeSelector(MethodManager):
         elif unique_id in self.manifest.metrics:
             metric = self.manifest.metrics[unique_id]
             return metric.config.enabled
+        elif unique_id in self.manifest.consumers:
+            return True
         node = self.manifest.nodes[unique_id]
         return not node.empty and node.config.enabled
 

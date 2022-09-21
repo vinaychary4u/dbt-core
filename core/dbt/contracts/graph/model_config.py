@@ -662,4 +662,5 @@ def get_config_for(resource_type: NodeType, base=False) -> Type[BaseConfig]:
         lookup = BASE_RESOURCE_TYPES
     else:
         lookup = RESOURCE_TYPES
+    # print(f"lookup config {lookup.get(resource_type, NodeConfig)}")
     return lookup.get(resource_type, NodeConfig)

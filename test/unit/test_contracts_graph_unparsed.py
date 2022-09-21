@@ -7,7 +7,7 @@ from dbt.contracts.graph.unparsed import (
     FreshnessThreshold, Quoting, UnparsedSourceDefinition,
     UnparsedSourceTableDefinition, UnparsedDocumentationFile, UnparsedColumn,
     UnparsedNodeUpdate, Docs, UnparsedExposure, MaturityType, ExposureOwner,
-    ExposureType, UnparsedMetric, MetricFilter
+    ExposureType, UnparsedMetric, MetricFilter, MetricTime, MetricTimePeriod
 )
 from dbt.contracts.results import FreshnessStatus
 from dbt.node_types import NodeType
@@ -606,6 +606,7 @@ class TestUnparsedExposure(ContractTestCase):
             'tags': ['my_department'],
             'url': 'https://example.com/dashboards/1',
             'description': 'A exposure',
+            'config': {},
             'depends_on': [
                 'ref("my_model")',
                 'source("raw", "source_table")',
@@ -620,6 +621,7 @@ class TestUnparsedExposure(ContractTestCase):
             maturity=MaturityType.Medium,
             url='https://example.com/dashboards/1',
             description='A exposure',
+            config={},
             meta={'tool': 'my_tool'},
             tags=['my_department'],
             depends_on=['ref("my_model")', 'source("raw", "source_table")'],
@@ -687,6 +689,7 @@ class TestUnparsedMetric(ContractTestCase):
             'description': 'New customers',
             'calculation_method': 'count',
             'expression': 'user_id',
+            'config': {},
             'timestamp': 'signup_date',
             'time_grains': ['day', 'week', 'month'],
             'dimensions': ['plan', 'country'],
@@ -697,7 +700,11 @@ class TestUnparsedMetric(ContractTestCase):
                     "operator": "=",
                 }
             ],
-            'window': '14 days',
+            'window': {
+                    "count": 14,
+                    "period": "day"
+                }
+            ,
             'tags': [],
             'meta': {
                 'is_okr': True
@@ -711,12 +718,13 @@ class TestUnparsedMetric(ContractTestCase):
             'description': '',
             'calculation_method': 'derived',
             'expression': "{{ metric('revenue') }} / {{ metric('customers') }}",
+            'config': {},
             'time_grains': ['day', 'week', 'month'],
             'timestamp': 'signup_date',
             'dimensions': [],
             'filters': [],
-            'window': '',
             'tags': [],
+            'window': {},
             'meta': {
                 'is_okr': True
             },
@@ -730,6 +738,7 @@ class TestUnparsedMetric(ContractTestCase):
             description="New customers",
             calculation_method='count',
             expression="user_id",
+            config={},
             timestamp="signup_date",
             time_grains=['day', 'week', 'month'],
             dimensions=['plan', 'country'],
@@ -738,7 +747,10 @@ class TestUnparsedMetric(ContractTestCase):
                 value='True',
                 operator="=",
             )],
-            window="14 days",
+            window=MetricTime(
+                count=14,
+                period=MetricTimePeriod.day
+            ),
             meta={'is_okr': True},
         )
         dct = self.get_ok_dict()
@@ -755,9 +767,10 @@ class TestUnparsedMetric(ContractTestCase):
             calculation_method='derived',
             expression="{{ metric('revenue') }} / {{ metric('customers') }}",
             timestamp="signup_date",
+            config={},
             time_grains=['day', 'week', 'month'],
+            window=MetricTime(),
             dimensions=[],
-            window='',
             meta={'is_okr': True},
         )
         dct = self.get_ok_derived_dict()

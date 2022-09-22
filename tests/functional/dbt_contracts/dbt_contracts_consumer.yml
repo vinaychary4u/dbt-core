@@ -2,9 +2,13 @@ consumer: # akin to a generic top level import like how people work with python
   # this presumes the upstream producer solely dictates contract terms
   # it is the responsibility of the producer to validate the contract is met
   # the consumer is responsible for validating the contract is met to more strigent standards if needed
-  core-only: # give the project a plain name to ref
-    version: 0.2.0 # Versioning is at the project level, NOT the model level
-    path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
-    security:
-      api_private_key: 'jioq2hfj28338' # replace with env_var for security TODO: how to store this securely? Do we read this in memory and match public and private api keys?
+  - name: 'core-only' # give the project a plain name to ref
+    git: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+    contract_version: 0.2.0 # Versioning is at the project level, NOT the model level
+    api_private_key: 'jioq2hfj28338' # replace with env_var for security TODO: how to store this securely? Do we read this in memory and match public and private api keys?
+      # artifacts_location: argument NOT required as it inherits from producer
+  - name: 'finance-only' # give the project a plain name to ref
+    git: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+    contract_version: 0.1.0 # Versioning is at the project level, NOT the model level
+    api_private_key: 'jioq2hfj28338' # replace with env_var for security TODO: how to store this securely? Do we read this in memory and match public and private api keys?
       # artifacts_location: argument NOT required as it inherits from producer

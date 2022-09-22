@@ -53,6 +53,8 @@ models:
   contracts:
     producer: # this top-level producer contract for ANY consumers to access
       version: 0.1.0
+      +grants:
+        select: ['user_a', 'user_b']
       models: # I have 5 models but I only expose data for 1
         - ref('example_analysis')
         - entity('orders')

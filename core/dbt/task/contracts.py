@@ -1,6 +1,8 @@
 # coding=utf-8
 # # TODO: use dbt deps and debug code as a template to print out helpful information for the dbt conrtracts command
 import os
+import shutil
+import json
 import dbt.utils
 import dbt.deprecations
 import dbt.exceptions
@@ -84,6 +86,22 @@ class DepsTask(BaseTask):
 
         # download the contracts from the contract_location and store them in the contracts_dir
         # in the short-term, we will copy the contracts from the local test directory to the contracts_dir
+        # this contracts.json will consolidate a subset of the manifest.json, catalog.json, run_results.json, sources.json files and then merge that with the consumer's manifest.json, catalog.json(run_results.json, sources.json files are for validating contract requirements only)
+        dummy_contracts_file_location = "../tests/functional/dbt_contracts/contracts.json"
+        for x in consumer:
+            contract_name = x.get("name")
+            contract_version_expected = x.get("contract_version")
+            contract_destination = f"{contracts_dir}/{contract_name}-contracts.json"
+            with open(dummy_contracts_file_location) as json_file:
+                data = json.load(json_file)
+                contract_version_actual = data.get("metadata").get("contract_version")
+            if contract_version_expected == contract_version_actual:
+                shutil.copyfile(dummy_contracts_file_location, contract_destination)
+                print(f"Successful contract consumed[{contract_name}]: {contract_destination}")
+            else:
+                print(
+                    f"Contract version mismatch, will not consume[{contract_name}]. Expected: {contract_version_expected}, Actual: {contract_version_actual}"
+                )
 
         # git clone may not be necessary because the contracts.json will contain all the info from the manifest.json and catalog.json
         # for x in consumer:

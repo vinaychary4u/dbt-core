@@ -190,12 +190,16 @@ jobs:
         run: ls -R performance/baselines/
 
       # `${{ github.workspace }}` is used to pass the absolute path
-      # TODO CHANGE NUMBER OF RUNS BEFORE MERGING
-      # TODO this isn't putting the baseline in the right directory. it's putting it one level up.
-      - name: Run Measurement
+      - name: Create directories
         run: |
           mkdir ${{ github.workspace }}/performance/tmp/
           mkdir -p performance/baselines/${{ needs.latest-runner.outputs.release_id }}/
+
+      # TODO CHANGE NUMBER OF RUNS BEFORE MERGING
+      # TODO this isn't putting the baseline in the right directory. it's putting it one level up.
+      # Run modeling with taking 20 samples
+      - name: Run Measurement
+        run: |
           performance/app model -v ${{ needs.latest-runner.outputs.release_id }} -b ${{ github.workspace }}/performance/baselines/ -p ${{ github.workspace }}/performance/projects/ -t ${{ github.workspace }}/performance/tmp/ -n 2
 
       - name: '[DEBUG] ls baseline directory after run'

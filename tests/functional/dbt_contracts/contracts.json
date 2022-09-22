@@ -168,7 +168,7 @@
       "unique_id": "model.tpch.my_second_model"
     }
   },
-  "nodes_results": [
+  "nodes_run_results": [
     {
       "status": "success",
       "timing": [

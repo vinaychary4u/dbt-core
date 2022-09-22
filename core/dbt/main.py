@@ -480,7 +480,16 @@ def _build_contracts_subparser(subparsers, base_subparser):
 
     # TODO: add arguments for consumer/producer
     # sub.add_argument(
-    #     "--config-dir",
+    #     "--preview",
+    #     action="store_true",
+    #     help="""
+    #     If specified, DBT will show path information for this project
+    #     """,
+    # )
+    # _add_version_check(sub)
+
+    # sub.add_argument(
+    #     "--publish",
     #     action="store_true",
     #     help="""
     #     If specified, DBT will show path information for this project

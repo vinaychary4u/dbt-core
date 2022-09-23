@@ -93,14 +93,38 @@ class DepsTask(BaseTask):
             contract_version_expected = x.get("contract_version")
             contract_destination = f"{contracts_dir}/{contract_name}-contracts.json"
             with open(dummy_contracts_file_location) as json_file:
-                data = json.load(json_file)
-                contract_version_actual = data.get("metadata").get("contract_version")
+                contract_data = json.load(json_file)
+                contract_version_actual = contract_data.get("metadata").get("contract_version")
             if contract_version_expected == contract_version_actual:
                 shutil.copyfile(dummy_contracts_file_location, contract_destination)
                 print(f"Successful contract consumed[{contract_name}]: {contract_destination}")
+                # TODO: output the consumed contracts.json to a `contracts/consumed` directory within the respective consumed project directory
+                # TODO: Read in the consumed `contracts.json` to produce a report card in a terminal output
+                # What's published vs. private nodes?
+                print(f"  Published Nodes: {contract_data.get('contracts').get('published')}")
+                print(f"  Private Nodes: {contract_data.get('contracts').get('private')}")
+                # What are the contract expectations vs. actuals?
+                print(
+                    f"  Test Coverage: {contract_data.get('contracts').get('requirements').get('test_coverage')}"
+                )
+                print(
+                    f"  Freshness Coverage: {contract_data.get('contracts').get('requirements').get('freshness_coverage')}"
+                )
+                print(
+                    f"  Max Upgrade Time Between Versions: {contract_data.get('contracts').get('requirements').get('max_upgrade_time')}"
+                )
+                # What permissions do I need to select published nodes?
+                print(
+                    f"  Published Node Permissions: {contract_data.get('contracts').get('permissions')}"
+                )
+                # How do I select them?
+                contract_name = contract_data.get("contracts").get("name")
+                print("  Published Node Selection:")
+                print(f"    select * from {{{{ ref('{contract_name}','my_first_model') }}}}")
+                print(f"    select * from {{{{ ref('{contract_name}','my_second_model') }}}}")
             else:
                 print(
-                    f"Contract version mismatch, will not consume[{contract_name}]. Expected: {contract_version_expected}, Actual: {contract_version_actual}"
+                    f"Contract version mismatch, will not consume[{contract_name}]. Expected: {contract_version_expected}, Actual: {contract_version_actual} \n"
                 )
 
         # git clone may not be necessary because the contracts.json will contain all the info from the manifest.json and catalog.json
@@ -108,9 +132,6 @@ class DepsTask(BaseTask):
         #     project_location = x.get("path")
         #     print(f"project_location: {project_location}")
         #     clone_and_checkout(repo=project_location, cwd=contracts_dir)
-
-        # TODO: output the consumed contracts.json to a `contracts/consumed` directory within the respective consumed project directory
-        # TODO: Read in the consumed `contracts.json` to produce a report card in a terminal output
 
         # if not packages:
         #     fire_event(DepsNoPackagesFound())

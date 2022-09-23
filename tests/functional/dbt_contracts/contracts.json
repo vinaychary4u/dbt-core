@@ -12,6 +12,7 @@
     "adapter_type": "snowflake"
   },
   "contracts": {
+    "name": "core-only",
     "published": [
       "upstream_producer.model.tpch.my_first_model",
       "seed.upstream_project.my_first_dbt_seed"
@@ -19,7 +20,13 @@
     "private": [
       "model.upstream_project.my_private_model",
       "seed.upstream_project.my_private_seed"
-    ]
+    ],
+    "requirements": {
+      "test_coverage": { "expected": 0.8, "actual": 0.85 },
+      "freshness_coverage": { "expected": 0.8, "actual": 0.85 },
+      "max_upgrade_time": { "days": 7 }
+    },
+    "permissions": ["select: ['user_a', 'user_b']"]
   },
   "nodes_manifest": {
     "upstream_producer.model.tpch.my_first_model": {

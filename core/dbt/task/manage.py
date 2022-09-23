@@ -29,7 +29,7 @@ class ManageTask(CompileTask):
 
         if len(self.config.managed_schemas) == 0:
             warn_or_error(
-                "Schema management enabled for connection but no schema's configured to manage"
+                "No schema's configured to manage"
             )
             return
 

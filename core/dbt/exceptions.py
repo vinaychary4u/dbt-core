@@ -21,6 +21,28 @@ def validator_error_message(exc):
     return "at path {}: {}".format(path, exc.message)
 
 
+def generic_format_node(node, include_path: bool, node_attr: str):
+    source_path = ''
+    if include_path:
+        source_path = " ({})".format(node.original_file_path)
+
+    node_identifier = getattr(node, node_attr)
+    return f"{node.resource_type.title()} '{node_identifier}'{source_path}"
+
+
+def format_node(node, include_path: bool, node_attr: str = "name"):
+    # Sql Operations are one-off queries. If we used generic formatting,
+    # the node string would include a nonsense unique id & path like:
+    #
+    #  sql operation.demo_data.name' (from remote system.sql)
+    #
+    # which is terribly hard to understand!
+    if node.resource_type == NodeType.SqlOperation:
+        return 'query'
+    else:
+        return generic_format_node(node, include_path, node_attr)
+
+
 class Exception(builtins.Exception):
     CODE = -32000
     MESSAGE = "Server Error"
@@ -77,7 +99,8 @@ class RuntimeException(RuntimeError, Exception):
             # out the path we know at least. This indicates an error during
             # block parsing.
             return "{}".format(node.path.original_file_path)
-        return "{} {} ({})".format(node.resource_type, node.name, node.original_file_path)
+
+        return format_node(node, include_path=True)
 
     def process_stack(self):
         lines = []
@@ -582,14 +605,9 @@ def _get_target_failure_msg(
     if target_model_package is not None:
         target_package_string = "in package '{}' ".format(target_model_package)
 
-    source_path_string = ""
-    if include_path:
-        source_path_string = " ({})".format(model.original_file_path)
-
-    return "{} '{}'{} depends on a {} named '{}' {}which {}".format(
-        model.resource_type.title(),
-        model.unique_id,
-        source_path_string,
+    model_string = format_node(model, include_path, node_attr='unique_id')
+    return "{} depends on a {} named '{}' {}which {}".format(
+        model_string,
         target_kind,
         target_name,
         target_package_string,

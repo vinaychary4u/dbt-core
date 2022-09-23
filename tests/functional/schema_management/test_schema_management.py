@@ -1,14 +1,15 @@
 import pytest
 import os
-from dbt.exceptions import CompilationException
+from dbt.exceptions import CompilationException, ValidationException
 from dbt.tests.util import run_dbt, check_table_does_exist, check_table_does_not_exist
 
 
-def model(materialized):
+def model(materialized, unique_schema=None):
     return f"""
     {{{{
       config(
-        materialized = "{materialized}"
+        materialized = "{materialized}",
+        schema = {f'"{unique_schema}"' if unique_schema is not None else "None"}
       )
     }}}}
     SELECT * FROM (
@@ -42,19 +43,7 @@ class Base:
         }
 
 
-class TestUnmanagedSchema(Base):
-    @pytest.fixture(scope="class")
-    def project_config_update(self, unique_schema):
-        return {
-            "managed-schemas": [
-                {
-                    "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
-                    "schema": "some_other_schema",
-                    "prune-models": "drop",
-                }
-            ]
-        }
-
+class TestMissingConfiguration(Base):
     def test_should_raise_exception(
         self,
         project,
@@ -93,16 +82,37 @@ class TestUnmanagedSchema(Base):
         check_table_does_exist(project.adapter, "model_b")
 
 
-class TestEmptyConfiguration(TestUnmanagedSchema):
+class TestUnmanagedSchema(TestMissingConfiguration):
+    @pytest.fixture(scope="class")
+    def project_config_update(self, unique_schema):
+        return {
+            "managed-schemas": [
+                {
+                    "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
+                    "schema": "some_other_schema",
+                    "prune-models": "drop",
+                }
+            ]
+        }
+
+
+class TestEmptyConfiguration(TestMissingConfiguration):
     @pytest.fixture(scope="class")
     def project_config_update(self, unique_schema):
         return {"managed-schemas": []}
 
 
-class TestMissingConfiguration(TestUnmanagedSchema):
+class TestWarn(TestMissingConfiguration):
     @pytest.fixture(scope="class")
     def project_config_update(self, unique_schema):
-        return {}
+        return {
+            "managed-schemas": [
+                {
+                    "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
+                    "prune-models": "warn",
+                }
+            ]
+        }
 
 
 class TestDrop(Base):
@@ -112,13 +122,12 @@ class TestDrop(Base):
             "managed-schemas": [
                 {
                     "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
-                    "schema": unique_schema,
                     "prune-models": "drop",
                 }
             ]
         }
 
-    def test_drop(
+    def test(
         self,
         project,
     ):
@@ -141,20 +150,6 @@ class TestDropView(TestDrop):
     materialized = "view"
 
 
-class TestWarn(TestUnmanagedSchema):
-    @pytest.fixture(scope="class")
-    def project_config_update(self, unique_schema):
-        return {
-            "managed-schemas": [
-                {
-                    "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
-                    "schema": unique_schema,
-                    "prune-models": "warn",
-                }
-            ]
-        }
-
-
 class TestSkip(Base):
     @pytest.fixture(scope="class")
     def project_config_update(self, unique_schema):
@@ -162,7 +157,6 @@ class TestSkip(Base):
             "managed-schemas": [
                 {
                     "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
-                    "schema": unique_schema,
                     "prune-models": "skip",
                 }
             ]
@@ -213,7 +207,90 @@ class TestDefaultAction(TestSkip):
             "managed-schemas": [
                 {
                     "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
-                    "schema": unique_schema,
                 }
             ]
         }
+
+
+class TestCustomSchema(Base):
+    custom_schema = "custom"
+
+    @pytest.fixture(scope="class")
+    def models(self):
+        return {
+            "model_a.sql": model(self.materialized, self.custom_schema),
+            "model_b.sql": model(self.materialized, self.custom_schema),
+        }
+
+    @pytest.fixture(scope="class")
+    def project_config_update(self, unique_schema):
+        return {
+            "managed-schemas": [
+                {
+                    "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
+                    "prune-models": "drop",
+                    "schema": self.custom_schema,
+                }
+            ]
+        }
+
+    def test(
+        self,
+        project,
+    ):
+        run_dbt(["run"])
+        check_table_does_exist(project.adapter, f"{self._generate_schema_name(project)}.model_a")
+        check_table_does_exist(project.adapter, f"{self._generate_schema_name(project)}.model_b")
+
+        project.update_models(
+            {
+                "model_a.sql": model(self.materialized),
+                "model_b.sql": model(self.materialized, self.custom_schema),
+            }
+        )
+        run_dbt(["manage"])
+
+        check_table_does_not_exist(
+            project.adapter, f"{self._generate_schema_name(project)}.model_a"
+        )
+        check_table_does_not_exist(project.adapter, "model_a")
+        check_table_does_exist(project.adapter, f"{self._generate_schema_name(project)}.model_b")
+
+    def _generate_schema_name(self, project):
+        return f"{project.test_schema}_{self.custom_schema}"
+
+
+class TestDuplicateConfiguration(Base):
+    @pytest.fixture(scope="class")
+    def project_config_update(self, unique_schema):
+        return {
+            "managed-schemas": [
+                {
+                    "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
+                    "prune-models": "drop",
+                },
+                {
+                    "database": os.getenv("POSTGRES_TEST_DATABASE", "dbt"),
+                    "prune-models": "warn",
+                },
+            ]
+        }
+
+    def test(
+        self,
+        project,
+    ):
+        run_dbt(["run"])
+        check_table_does_exist(project.adapter, "model_a")
+        check_table_does_exist(project.adapter, "model_b")
+
+        project.update_models(
+            {
+                "model_b.sql": model(self.materialized),
+            }
+        )
+        with pytest.raises(ValidationException):
+            run_dbt(["manage"])
+
+        check_table_does_exist(project.adapter, "model_a")
+        check_table_does_exist(project.adapter, "model_b")

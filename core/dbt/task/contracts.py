@@ -6,6 +6,7 @@ import json
 import dbt.utils
 import dbt.deprecations
 import dbt.exceptions
+from dbt.ui import green, red
 
 from dbt.config import UnsetProfileConfig
 
@@ -77,7 +78,7 @@ class DepsTask(BaseTask):
         contract_validation = {}
         for x in consumer:
             contract_validation.update({x.get("contract_location"): x.get("credentials")})
-            print(f'{x.get("name")}: contract credentials verified')
+            print(f'{x.get("name")}: contract credentials verified {green("[OK connection ok]")}')
 
         # TODO: output the consumed code to a `contracts/projects/consumed` directory
         contracts_dir = project_dir + "/dbt_contracts"
@@ -105,10 +106,10 @@ class DepsTask(BaseTask):
                 print(f"  Private Nodes: {contract_data.get('contracts').get('private')}")
                 # What are the contract expectations vs. actuals?
                 print(
-                    f"  Test Coverage: {contract_data.get('contracts').get('requirements').get('test_coverage')}"
+                    f"  Test Coverage: {contract_data.get('contracts').get('requirements').get('test_coverage')} {green('[OK and valid]')}"
                 )
                 print(
-                    f"  Freshness Coverage: {contract_data.get('contracts').get('requirements').get('freshness_coverage')}"
+                    f"  Freshness Coverage: {contract_data.get('contracts').get('requirements').get('freshness_coverage')} {green('[OK and valid]')}"
                 )
                 print(
                     f"  Max Upgrade Time Between Versions: {contract_data.get('contracts').get('requirements').get('max_upgrade_time')}"
@@ -124,7 +125,7 @@ class DepsTask(BaseTask):
                 print(f"    select * from {{{{ ref('{contract_name}','my_second_model') }}}}")
             else:
                 print(
-                    f"Contract version mismatch, will not consume[{contract_name}]. Expected: {contract_version_expected}, Actual: {contract_version_actual} \n"
+                    f"Contract version mismatch, will not consume[{contract_name}]. Expected: {contract_version_expected}, Actual: {contract_version_actual} {red('[Not Compatible]')} \n"
                 )
 
         # git clone may not be necessary because the contracts.json will contain all the info from the manifest.json and catalog.json

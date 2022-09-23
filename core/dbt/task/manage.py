@@ -28,9 +28,7 @@ class ManageTask(CompileTask):
         self._assert_schema_uniqueness()
 
         if len(self.config.managed_schemas) == 0:
-            warn_or_error(
-                "No schema's configured to manage"
-            )
+            warn_or_error("No schema's configured to manage")
             return
 
         models_in_codebase: Set[Tuple[str, str, str]] = set(

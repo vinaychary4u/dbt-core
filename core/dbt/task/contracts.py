@@ -61,6 +61,7 @@ class DepsTask(BaseTask):
         )
 
     def run(self):
+        print("xxxxxxxxxxxxxxxxxxxx")
         # system.make_directory(self.config.packages_install_path)
         # packages = self.config.packages.packages
         # TODO: Locate the dbt_contracts.yml file
@@ -73,6 +74,7 @@ class DepsTask(BaseTask):
             contracts_consumed_rendered = load_yaml_text(stream)
         print(f"contracts_consumed_rendered: {contracts_consumed_rendered}")
         consumer = contracts_consumed_rendered.get("consumer")
+        print("xxxxxxxxxxxxxxxxxxxx\n")
         # TODO: Verify the api private key works(print statement for now: fire_event)
         # Will have to create a menu of options such as gcs, s3, API key, etc. to authenticate
         contract_validation = {}

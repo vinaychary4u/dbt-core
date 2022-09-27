@@ -8,6 +8,13 @@ import dbt.exceptions
 from dbt.version import __version__ as dbt_version
 from dbt.logger import log_manager
 
+# Temporary for while we're converting logs to a different format
+def get_log_msg(log):
+    if "msg" in log:
+        return log["msg"]
+    if "info" in log:
+        if "msg" in log["info"]:
+            return log["info"]["msg"]
 
 class TestDefaultQueryComments(DBTIntegrationTest):
     def matches_comment(self, msg) -> bool:
@@ -74,7 +81,7 @@ class TestDefaultQueryComments(DBTIntegrationTest):
     def query_comment(self, model_name, log):
         # N.B: a temporary string replacement regex to strip the HH:MM:SS from the log line if present.
         # TODO: make this go away when structured logging is stable 
-        log_msg = re.sub("(?:[01]\d|2[0123]):(?:[012345]\d):(?:[012345]\d \| )", "", log['msg'])
+        log_msg = re.sub("(?:[01]\d|2[0123]):(?:[012345]\d):(?:[012345]\d \| )", "", get_log_msg(log))
         prefix = 'On {}: '.format(model_name)
         if log_msg.startswith(prefix):
             msg = log_msg[len(prefix):]
@@ -92,7 +99,7 @@ class TestDefaultQueryComments(DBTIntegrationTest):
             if msg is not None and self.matches_comment(msg):
                 seen = True
 
-        self.assertTrue(seen, 'Never saw a matching log message! Logs:\n{}'.format('\n'.join(l['msg'] for l in logs)))
+        self.assertTrue(seen, 'Never saw a matching log message! Logs:\n{}'.format('\n'.join(get_log_msg(logline) for logline in logs)))
 
     @use_profile('postgres')
     def test_postgres_comments(self):

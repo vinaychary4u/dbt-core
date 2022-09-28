@@ -392,7 +392,11 @@ class RelationsCache:
         for cached in self.relations.values():
             if cached.is_referenced_by(old_key):
                 fire_event(
-                    UpdateReference(old_key=old_key, new_key=new_key, cached_key=cached.key())
+                    UpdateReference(
+                        old_key=_make_key_msg(old_key),
+                        new_key=_make_key_msg(new_key),
+                        cached_key=_make_key_msg(cached.key()),
+                    )
                 )
                 cached.rename_key(old_key, new_key)
 

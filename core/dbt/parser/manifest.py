@@ -251,7 +251,6 @@ class ManifestLoader:
         
         # Get consumer contracts if they exist
         self.manifest.get_consumers(self.root_project.project_root)
-
         skip_parsing = False
         if self.saved_manifest is not None:
             self.partial_parser = PartialParsing(self.saved_manifest, self.manifest.files)

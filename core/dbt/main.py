@@ -25,6 +25,7 @@ import dbt.task.clean as clean_task
 import dbt.task.compile as compile_task
 import dbt.task.debug as debug_task
 import dbt.task.deps as deps_task
+import dbt.task.contracts as contracts_task
 import dbt.task.freshness as freshness_task
 import dbt.task.generate as generate_task
 import dbt.task.init as init_task
@@ -43,7 +44,11 @@ import dbt.tracking
 
 from dbt.utils import ExitCodes, args_to_dict
 from dbt.config.profile import read_user_config
-from dbt.exceptions import InternalException, NotImplementedException, FailedToConnectException
+from dbt.exceptions import (
+    InternalException,
+    NotImplementedException,
+    FailedToConnectException,
+)
 
 
 class DBTVersion(argparse.Action):
@@ -60,7 +65,11 @@ class DBTVersion(argparse.Action):
         help="show program's version number and exit",
     ):
         super().__init__(
-            option_strings=option_strings, dest=dest, default=default, nargs=0, help=help
+            option_strings=option_strings,
+            dest=dest,
+            default=default,
+            nargs=0,
+            help=help,
         )
 
     def __call__(self, parser, namespace, values, option_string=None):
@@ -411,6 +420,8 @@ def _build_build_subparser(subparsers, base_subparser):
     return sub
 
 
+# TODO: Will this main.py file be completely refactored based on the latest roadmap update?
+# use this function as a template for the new contract command
 def _build_clean_subparser(subparsers, base_subparser):
     sub = subparsers.add_parser(
         "clean",
@@ -455,6 +466,38 @@ def _build_deps_subparser(subparsers, base_subparser):
         """,
     )
     sub.set_defaults(cls=deps_task.DepsTask, which="deps", rpc_method="deps")
+    return sub
+
+
+def _build_contracts_subparser(subparsers, base_subparser):
+    sub = subparsers.add_parser(
+        "contracts",
+        parents=[base_subparser],
+        help="""
+        Pull the most recent version of the projects to consume listed in dbt_contracts.yml
+        """,
+    )
+
+    # TODO: add arguments for consumer/producer
+    # sub.add_argument(
+    #     "--preview",
+    #     action="store_true",
+    #     help="""
+    #     If specified, DBT will show path information for this project
+    #     """,
+    # )
+    # _add_version_check(sub)
+
+    # sub.add_argument(
+    #     "--publish",
+    #     action="store_true",
+    #     help="""
+    #     If specified, DBT will show path information for this project
+    #     """,
+    # )
+    # _add_version_check(sub)
+
+    sub.set_defaults(cls=contracts_task.DepsTask, which="contracts", rpc_method="contracts")
     return sub
 
 
@@ -886,7 +929,9 @@ def _build_run_operation_subparser(subparsers, base_subparser):
         """,
     )
     sub.set_defaults(
-        cls=run_operation_task.RunOperationTask, which="run-operation", rpc_method="run-operation"
+        cls=run_operation_task.RunOperationTask,
+        which="run-operation",
+        rpc_method="run-operation",
     )
     return sub
 
@@ -1146,6 +1191,7 @@ def parse_args(args, cls=DBTArgumentParser):
     _build_clean_subparser(subs, base_subparser)
     _build_debug_subparser(subs, base_subparser)
     _build_deps_subparser(subs, base_subparser)
+    _build_contracts_subparser(subs, base_subparser)
     _build_list_subparser(subs, base_subparser)
 
     build_sub = _build_build_subparser(subs, base_subparser)

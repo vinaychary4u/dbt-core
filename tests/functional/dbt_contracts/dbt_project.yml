@@ -1,0 +1,142 @@
+
+# Name your project! Project names should contain only lowercase characters
+# and underscores. A good package name should reflect your organization's
+# name or the intended use of these models
+name: 'tpch'
+version: '1.0.0'
+config-version: 2
+
+# This setting configures which "profile" dbt uses for this project.
+profile: 'tpch'
+
+# These configurations specify where dbt should look for different types of files.
+# The `source-paths` config, for example, states that models in this project can be
+# found in the "models/" directory. You probably won't need to change these!
+model-paths: ["models"]
+analysis-paths: ["analysis"]
+test-paths: ["tests"]
+seed-paths: ["data"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+#TODO: add api key config here?
+# one project = one remote contract artifact location
+contract-paths:
+  local: "contracts"
+  remote: "s3://my-bucket/dbt-contracts"
+target-path: "custom_target_path"  # directory which will store compiled SQL files
+clean-targets:         # directories to be removed by `dbt clean`
+    - "target"
+    - "dbt_modules"
+
+on-run-start:
+  - "alter warehouse transforming set warehouse_size=small;"
+  - '{{create_udfs()}}' # comment / uncomment this line to build UDFs called in the create_udfs macro
+
+on-run-end:
+  - "alter warehouse transforming set warehouse_size=xsmall;"
+  - "{{ grant_all_on_schemas(schemas, 'transformer') }}"
+
+vars:
+  load_type: 'I'
+  start_date: '1999-01-01'
+  test: 'false' # to trigger runs for unit testing - override in a CLI param in testing job
+  fct_order_items: 'mock_source__fct_order_items' # this is a map for unit testing
+  dbt_artifacts:
+    dbt_artifacts_schema: dbt_artifacts_sung # optional, default is 'dbt_artifacts'
+    dbt_artifacts_table: artifacts # optional, default is 'artifacts'
+
+# Configuring models
+# Full documentation: https://docs.getdbt.com/docs/configuring-models
+
+models:
+  contracts:
+    producer: # this top-level producer contract for ANY consumers to access
+      version: 0.1.0
+      +grants:
+        select: ['user_a', 'user_b']
+      models: # I have 5 models but I only expose data for 1
+        - ref('example_analysis')
+        - entity('orders')
+      metrics:
+        - metric('revenue')
+      nodes_only:
+        +except: # share everything except the below
+          - ref('stg_sensitive_code')
+      requirements:
+        test_coverage: # how many of the models are required to be tested
+          enabled: true # optional, default is false
+          threshold: .80 # 80% of the models must be tested, optional, default is 1.0
+        freshness_coverage:  # how many of the sources are required to be fresh
+          enabled: true # optional, default is false
+          threshold: .80 # 80% of the models must be tested, optional, default is 1.0
+        run_history: 5 # how many sucessful runs are required to be in the run history, look at number of successful run_results.json files in a location and compare to this number
+        success_only: true # only produce at successful runs else errors for consumers
+        max_upgrade_time:
+          days: 10 # how many days can a project be upgraded before it is considered stale
+      security:
+        api_public_key: 'asfawef3' # replace with env_var for security
+  dbt_artifacts:
+    +docs:
+      show: false
+    +schema: dbt_artifacts_sung
+    staging:
+      +schema: dbt_artifacts_sung
+  tpch:
+    staging:
+      +materialized: view
+      +docs:
+        # show: false
+        node_color: "#cd7f32"
+
+    marts:
+      core:
+        contracts:
+          producer: # this is implied, but should be explicit for clarity
+            finance-only:
+              version: 0.1.0
+              models: # I have 5 models but I only expose data for 1
+                - ref('example_analysis')
+              nodes_only:
+                +except: # share everything except the below
+                  - ref('stg_sensitive_code')
+              requirements:
+                test_coverage: .80 # how many of the models are required to be tested
+                freshness_coverage: .80 # how many of the sources are required to be fresh
+                run_history: 5 # how many sucessful runs are required to be in the run history, look at number of successful run_results.json files in a location and compare to this number
+                success_only: true # only produce at successful runs else errors for consumers
+                max_upgrade_time:
+                  days: 10 # how many days can a project be upgraded before it is considered stale
+              security:
+                api_public_key: 'asfawef3' # replace with env_var for security
+
+            multi-project:
+              sales-only:
+                path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+              operations-only:
+                path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+              version: 0.3.0
+              models: # I have 5 models but I only expose data for 1
+                - ref('example_analysis')
+              nodes_only:
+                +except: # share everything except the below
+                  - ref('stg_sensitive_code')
+              requirements:
+                test_coverage: .80 # how many of the models are required to be tested
+                freshness_coverage: .80 # how many of the sources are required to be fresh
+                run_history: 5 # how many sucessful runs are required to be in the run history, look at number of successful run_results.json files in a location and compare to this number
+                success_only: true # only produce at successful runs else errors for consumers
+                max_upgrade_time:
+                  days: 10 # how many days can a project be upgraded before it is considered stale
+              security:
+                api_public_key: 'asfawef3' # replace with env_var for security
+        materialized: table
+        +docs:
+          node_color: "blue"
+
+seeds:
+  tpch:
+    snowflake_contract_rates:
+      +column_types:
+        effective_date: DATE
+        rate: NUMBER

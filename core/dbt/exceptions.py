@@ -352,6 +352,11 @@ class DbtProjectError(DbtConfigError):
     pass
 
 
+# TODO: need a config error for contracts
+# class DbtContractsError(DbtConfigError):
+#     pass
+
+
 class DbtSelectorsError(DbtConfigError):
     pass
 

@@ -1,0 +1,16 @@
+consumer: # akin to a generic top level import like how people work with python
+  # this presumes the upstream producer solely dictates contract terms
+  # it is the responsibility of the producer to validate the contract is met
+  # the consumer is responsible for validating the contract is met to more strigent standards if needed
+  - name: 'core-only' # give the project a plain name to ref
+    # path: https://github.com/sungchun12/dbt_bigquery_example.git # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+    contract_version: 0.2.0 # Versioning is at the project level, NOT the model level
+    contract_location: 's3://core-only-bucket/dbt-contracts'
+    credentials: '{"aws_access_key_id": "YOUR_ACCESS_KEY_ID", "aws_secret_access_key":"YOUR_SECRET_ACCESS_KEY"}' # replace with env_var for security TODO: how to store this securely? Do we read this in memory and match public and private api keys?
+      # artifacts_location: argument NOT required as it inherits from producer
+  - name: 'finance-only' # give the project a plain name to ref
+    # path: https://github.com/sungchun12/snowflake_dbt_demo_project.git # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+    contract_version: 0.1.0 # Versioning is at the project level, NOT the model level
+    contract_location: 's3://finance-only-bucket/dbt-contracts'
+    credentials: '{"aws_access_key_id": "YOUR_ACCESS_KEY_ID", "aws_secret_access_key":"YOUR_SECRET_ACCESS_KEY"}'  # replace with env_var for security TODO: how to store this securely? Do we read this in memory and match public and private api keys?
+      # artifacts_location: argument NOT required as it inherits from producer

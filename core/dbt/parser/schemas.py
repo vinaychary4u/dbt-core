@@ -834,6 +834,9 @@ class NonSourceParser(YamlDocsReader, Generic[NonSourceTarget, Parsed]):
     def normalize_docs_attribute(self, data, path):
         return self.normalize_attribute(data, path, "docs")
 
+    def normalize_contracts_attribute(self, data, path):
+        return self.normalize_attribute(data, path, "contracts")
+
     def patch_node_config(self, node, patch):
         # Get the ContextConfig that's used in calculating the config
         # This must match the model resource_type that's being patched

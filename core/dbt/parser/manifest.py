@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from dataclasses import field
 from datetime import datetime
+import json
 import os
 import traceback
 from typing import Dict, Optional, Mapping, Callable, Any, List, Type, Union, Tuple
@@ -52,7 +53,7 @@ from dbt.context.providers import ParseProvider
 from dbt.contracts.files import FileHash, ParseFileType, SchemaSourceFile
 from dbt.parser.read_files import read_files, load_source_file
 from dbt.parser.partial import PartialParsing, special_override_macros
-from dbt.contracts.graph.compiled import ManifestNode
+from dbt.contracts.graph.compiled import ParsedModelNode, ManifestNode
 from dbt.contracts.graph.manifest import (
     Manifest,
     Disabled,
@@ -247,6 +248,9 @@ class ManifestLoader:
         orig_project_parser_files = project_parser_files
         self._perf_info.path_count = len(self.manifest.files)
         self._perf_info.read_files_elapsed = time.perf_counter() - start_read_files
+        
+        # Get consumer contracts if they exist
+        self.manifest.get_consumers(self.root_project.project_root)
 
         skip_parsing = False
         if self.saved_manifest is not None:
@@ -358,6 +362,7 @@ class ManifestLoader:
             self.manifest.rebuild_ref_lookup()
             self.manifest.rebuild_doc_lookup()
             self.manifest.rebuild_disabled_lookup()
+            self.manifest.rebuild_consumer_lookup()
 
             # Load yaml files
             parser_types = [SchemaParser]

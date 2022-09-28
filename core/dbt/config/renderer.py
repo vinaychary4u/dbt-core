@@ -46,6 +46,7 @@ class BaseRenderer:
 
     def render_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         try:
+            # print(deep_map_render(self.render_entry, data)) # dbt_contracts.yml should output a typed dictionary
             return deep_map_render(self.render_entry, data)
         except RecursionException:
             raise DbtProjectError(

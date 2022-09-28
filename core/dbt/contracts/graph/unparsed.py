@@ -89,6 +89,14 @@ class Docs(dbtClassMixin, Replaceable):
 
 
 @dataclass
+class Contracts(dbtClassMixin, Replaceable):
+    # TODO: need strict typing here for various configs
+    # TODO: make these optional?
+    producer: Dict[str, Any] = field(default_factory=dict)  # similar to meta
+    consumer: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class HasDocs(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable):
     name: str
     description: str = ""

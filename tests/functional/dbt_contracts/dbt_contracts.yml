@@ -1,0 +1,90 @@
+# dbt_contracts.yml
+# upstream-only config for illustration
+consumer:
+  core-only: # give the project a plain name to ref
+    path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+    version: 0.2.0 # Versioning is at the project level, NOT the model level
+    models:
+      - ref('fct_orders')
+      - ref('dim_customers')
+    requirements: # these can be LESS strict compared to the upstream contract, but NEVER more
+      - tests
+      - '>5 run history' # I don't trust data until it's been run a few times, this is tracked statefully within the artifacts_location with run_results.json file counts
+    api_private_key: 'jioq2hfj28338' # replace with env_var for security TODO: how to store this securely? Do we read this in memory and match public and private api keys?
+    artifacts_location: 's3://my-bucket/dbt-contracts' # replace with env_var for security, this can be a local path too
+
+# there's definitely a use case for a contracts config to contain BOTH upstream and downstream contracts
+# ex: finance-only project that depends on core-only and flows data downstream to marketing-only
+
+# dbt_contracts.yml
+# core-only config for illustration
+producer:
+  version: 0.2.0 # version at the top-level only, forced to update if config is different from dbt_contracts.json state file
+  finance-only: # give the project a plain name to ref
+    path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+    share_permissions:
+      full_share: # share everything, code, docs, node, data in lineage
+        models: # I have 5 models but I only expose data for 4
+          - ref('fct_orders')
+          - ref('dim_customers')
+          - ref('dim_parts')
+          - ref('dbt_metric')
+      nodes_only: # share node lineage but not docs, code, or data
+        models:
+          +except: # share everything except the below
+            - ref('stg_sensitive_code')
+    requirements:
+      - tests
+      - freshness
+      - '>5 run history' # I don't expect downstream users to trust data until it's been run a few times
+    max_upgrade_time: # enforce how long someone has to upgrade from a previous version to the latest
+      - date: 11/11/2022 # date to upgrade by, defaults to 12am UTC
+        version: 0.1.0 # version to upgrade from
+    api_public_key: 'asfawef3' # replace with env_var for security
+    artifacts_location: 's3://my-bucket/dbt-contracts' # replace with env_var for security, this can be a local path too AND different from upstream, dbt needs to read those files in memory to compare them
+
+  marketing-only: # give the project a plain name to ref
+    path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+    models: # I have 5 models but I only expose data for 1
+      - ref('dim_customers')
+    requirements:
+      - tests
+      - freshness
+      - '>5 run history' # I don't expect downstream users to trust data until it's been run a few times
+    max_upgrade_time: # enforce how long someone has to upgrade from a previous version to the latest
+      - days: 0 # No time to upgrade, I'm breaking the contract
+    api_public_key: 'asfawef3' # replace with env_var for security
+    artifacts_location: 's3://my-bucket/dbt-contracts' # replace with env_var for security, this can be a local path too AND different from upstream, dbt needs to read those files in memory to compare them
+
+  # TODO: how to enforce least privilege across the any config and stricter contracts above?
+  any: # any downstream project and ref this contract
+    path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+    models: # I have 5 models but I only expose data for 1
+      - ref('example_analysis')
+    requirements:
+      - tests
+    max_upgrade_time: # enforce how long someone has to upgrade from a previous version to the latest
+      - days: 10
+    api_public_key: 'asfawef3' # replace with env_var for security
+    artifacts_location: 's3://my-bucket/dbt-contracts' # replace with env_var for security, this can be a local path too AND different from upstream, dbt needs to read those files in memory to compare them
+
+  multi-project:  # unique config for multi-project contracts
+    contract_list: # define a list of projects to enforce in a single contract, these have their own configs to map to this list
+      - operations-only
+      - sales-only
+    path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+    models: # I have 5 models but I only expose data for 1
+      - ref('example_analysis')
+    requirements:
+      - tests
+    max_upgrade_time: # enforce how long someone has to upgrade from a previous version to the latest
+      - days: 10
+    api_public_key: 'asfawef3' # replace with env_var for security
+    artifacts_location: 's3://my-bucket/dbt-contracts' # replace with env_var for security, this can be a local path too AND different from upstream, dbt needs to read those files in memory to compare them
+
+  # if the project configs only contain a path, then it searches for the multi-project config
+  sales-only:
+    path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
+
+  operations-only:
+    path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/

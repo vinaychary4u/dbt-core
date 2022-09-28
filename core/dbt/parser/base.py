@@ -307,6 +307,11 @@ class ConfiguredParser(
             else:
                 parsed_node.docs = Docs(show=docs_show)
 
+        # If we have contracts in the config, merge with the node level, for backwards
+        # compatibility with earlier node-only config.
+        if "contracts" in config_dict and config_dict["contracts"]:
+            parsed_node.meta = config_dict["contracts"]
+
         # unrendered_config is used to compare the original database/schema/alias
         # values and to handle 'same_config' and 'same_contents' calls
         parsed_node.unrendered_config = config.build_config_dict(

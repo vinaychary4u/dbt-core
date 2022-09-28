@@ -156,6 +156,28 @@ def value_or(value: Optional[T], default: T) -> T:
         return value
 
 
+# TODO: replicate function for dbt_contracts.yml
+# def _raw_contracts_from(project_root: str) -> Dict[str, Any]:
+
+#     project_root = os.path.normpath(project_root)
+#     project_yaml_filepath = os.path.join(project_root, "dbt_contracts.yml")
+
+#     # get the project.yml contents
+#     if not path_exists(project_yaml_filepath):
+#         raise DbtProjectError(
+#             "no dbt_contracts.yml found at expected path {}".format(
+#                 project_yaml_filepath
+#             )
+#         )
+
+#     project_dict = _load_yaml(project_yaml_filepath)
+
+#     if not isinstance(project_dict, dict):
+#         raise DbtProjectError("dbt_contracts.yml does not parse to a dictionary")
+
+#     return project_dict
+
+
 def _raw_project_from(project_root: str) -> Dict[str, Any]:
 
     project_root = os.path.normpath(project_root)
@@ -195,7 +217,8 @@ def validate_version(dbt_version: List[VersionSpecifier], project_name: str):
     installed = get_installed_version()
     if not versions_compatible(*dbt_version):
         msg = IMPOSSIBLE_VERSION_ERROR.format(
-            package=project_name, version_spec=[x.to_version_string() for x in dbt_version]
+            package=project_name,
+            version_spec=[x.to_version_string() for x in dbt_version],
         )
         raise DbtProjectError(msg)
 
@@ -351,7 +374,8 @@ class PartialProject(RenderComponents):
         # `data_paths` is deprecated but still allowed. Copy it into
         # `seed_paths` to simlify logic throughout the rest of the system.
         seed_paths: List[str] = value_or(
-            cfg.seed_paths if "seed-paths" in rendered.project_dict else cfg.data_paths, ["seeds"]
+            cfg.seed_paths if "seed-paths" in rendered.project_dict else cfg.data_paths,
+            ["seeds"],
         )
         test_paths: List[str] = value_or(cfg.test_paths, ["tests"])
         analysis_paths: List[str] = value_or(cfg.analysis_paths, ["analyses"])

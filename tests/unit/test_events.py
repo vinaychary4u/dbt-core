@@ -112,9 +112,9 @@ class TestEventBuffer:
     def test_buffer_FIFOs(self):
         reset_event_history()
         event_funcs.EVENT_HISTORY.clear()
-        for n in range(1,(flags.EVENT_BUFFER_SIZE + 2)):
+        for n in range(1, (flags.EVENT_BUFFER_SIZE + 2)):
             event_funcs.fire_event(UnitTestInfo(msg=f"Test Event {n}"))
-        assert event_funcs.EVENT_HISTORY.count(UnitTestInfo(msg='Test Event 1')) == 0
+        assert event_funcs.EVENT_HISTORY.count(UnitTestInfo(msg="Test Event 1")) == 0
 
 
 def MockNode():

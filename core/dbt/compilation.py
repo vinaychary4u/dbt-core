@@ -370,11 +370,6 @@ class Compiler:
         compiled_node = _compiled_type_for(node).from_dict(data)
 
         if compiled_node.language == ModelLanguage.python:
-            # TODO could we also 'minify' this code at all? just aesthetic, not functional
-
-            # quoating seems like something very specific to sql so far
-            # for all python implementations we are seeing there's no quating.
-            # TODO try to find better way to do this, given that
             original_quoting = self.config.quoting
             self.config.quoting = {key: False for key in original_quoting.keys()}
             context = self._create_node_context(compiled_node, manifest, extra_context)
@@ -385,7 +380,19 @@ class Compiler:
                 node,
             )
             # we should NOT jinja render the python model's 'raw code'
-            compiled_node.compiled_code = f"{node.raw_code}\n\n{postfix}"
+
+            # if the user didn't specify an explicit `model(dbt, session)` function,
+            # we're going to treat the user code as a "script" and wrap it in that function now.
+            # TODO: this is the jankiest way of doing it, with zero AST magic
+            if node.meta.get("missing_model_function") is True:
+                raw_code_lines = node.raw_code.strip().split("\n")
+                raw_code_lines[-1] = f"return {raw_code_lines[-1]}"
+                raw_code_indented = "\n    ".join(raw_code_lines)
+                model_code = f"def model(dbt, session):\n    {raw_code_indented}"
+            else:
+                model_code = node.raw_code
+
+            compiled_node.compiled_code = f"{model_code}\n\n{postfix}"
             # restore quoting settings in the end since context is lazy evaluated
             self.config.quoting = original_quoting
 

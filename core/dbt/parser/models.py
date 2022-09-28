@@ -60,8 +60,8 @@ class PythonValidationVisitor(ast.NodeVisitor):
                 )
 
     def check_error(self, node):
-        if self.num_model_def != 1:
-            raise ParsingException("dbt only allow one model defined per python file", node=node)
+        if self.num_model_def > 1:
+            raise ParsingException("dbt only allows one model defined per python file", node=node)
         if len(self.dbt_errors) != 0:
             raise ParsingException("\n".join(self.dbt_errors), node=node)
 
@@ -113,7 +113,7 @@ class PythonParseVisitor(ast.NodeVisitor):
         return arg_literals, kwarg_literals
 
     def visit_Call(self, node: ast.Call) -> None:
-        # check weather the current call could be a dbt function call
+        # check whether the current call could be a dbt function call
         if isinstance(node.func, ast.Attribute) and node.func.attr in dbt_function_key_words:
             func_name = self._flatten_attr(node.func)
             # check weather the current call really is a dbt function call
@@ -203,6 +203,13 @@ class ModelParser(SimpleSQLParser[ParsedModelNode]):
         dbtValidator = PythonValidationVisitor()
         dbtValidator.visit(tree)
         dbtValidator.check_error(node)
+
+        # if the user didn't specify an explicit `model(dbt, session)` function,
+        # we're going to treat the user code as a "script" to be wrapped in that function at compile time.
+        # for now, we just need to recognize that fact, and save it to the node.
+        if dbtValidator.num_model_def == 0:
+            # TODO: this is silly, put this somewhere better (outside of user space)
+            node.meta["missing_model_function"] = True
 
         dbtParser = PythonParseVisitor(node)
         dbtParser.visit(tree)

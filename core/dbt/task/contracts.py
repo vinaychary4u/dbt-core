@@ -90,7 +90,7 @@ class DepsTask(BaseTask):
         # download the contracts from the contract_location and store them in the contracts_dir
         # in the short-term, we will copy the contracts from the local test directory to the contracts_dir
         # this contracts.json will consolidate a subset of the manifest.json, catalog.json, run_results.json, sources.json files and then merge that with the consumer's manifest.json, catalog.json(run_results.json, sources.json files are for validating contract requirements only)
-        dummy_contracts_file_location = "../../tests/functional/dbt_contracts/contracts.json"
+        dummy_contracts_file_location = "../tests/functional/dbt_contracts/contracts.json"
         for x in consumer:
             contract_name = x.get("name")
             contract_version_expected = x.get("contract_version")

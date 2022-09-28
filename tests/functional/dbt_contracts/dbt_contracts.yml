@@ -1,9 +1,9 @@
 # dbt_contracts.yml
 # upstream-only config for illustration
 consumer:
-  - name: upstream: # give the project a plain name to ref
+  core-only: # give the project a plain name to ref
     path: git repo OR local subfolder # example: "https://{{env_var('DBT_ENV_SECRET_GIT_CREDENTIAL')}}@github.com/dbt-labs/awesome_repo.git" OR ./models/core/
-    version: 0.1.1 # Versioning is at the project level, NOT the model level
+    version: 0.2.0 # Versioning is at the project level, NOT the model level
     models:
       - ref('fct_orders')
       - ref('dim_customers')

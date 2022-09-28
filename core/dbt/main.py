@@ -46,6 +46,7 @@ import dbt.tracking
 from dbt.utils import ExitCodes, args_to_dict
 from dbt.config.profile import read_user_config
 from dbt.exceptions import (
+    Exception as dbtException,
     InternalException,
     NotImplementedException,
     FailedToConnectException,

@@ -845,6 +845,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             macros=self.macros,
             docs=self.docs,
             exposures=self.exposures,
+            consumers=self.consumers,
             metrics=self.metrics,
             selectors=self.selectors,
             metadata=self.metadata,
@@ -1225,6 +1226,9 @@ class WritableManifest(ArtifactMixin):
         metadata=dict(
             description=("The exposures defined in the dbt project and its dependencies")
         )
+    )
+    consumers: Mapping[UniqueID, ManifestNode] = field(
+        metadata=dict(description=("The nodes defined in the dbt project and its dependencies"))
     )
     metrics: Mapping[UniqueID, ParsedMetric] = field(
         metadata=dict(description=("The metrics defined in the dbt project and its dependencies"))

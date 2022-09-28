@@ -1,8 +1,10 @@
+import json
 import enum
 from dataclasses import dataclass, field
 from itertools import chain, islice
 from mashumaro.mixins.msgpack import DataClassMessagePackMixin
 from multiprocessing.synchronize import Lock
+from pathlib import Path
 from typing import (
     Dict,
     List,
@@ -23,6 +25,7 @@ from typing import (
 from typing_extensions import Protocol
 from uuid import UUID
 
+from dbt.clients.yaml_helper import load_yaml_text
 from dbt.contracts.graph.compiled import (
     CompileResultNode,
     ManifestNode,
@@ -755,6 +758,48 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             MaterializationCandidate.from_macro(m, specificity)
             for m in self._find_macros_by_name(full_name, project_name)
         )
+        
+    def get_consumers(self, project_root: str):
+        from dbt.contracts.graph.compiled import ParsedModelNode
+        
+        contract_config_path = Path(project_root) / "dbt_contracts.yml"
+        
+        # Exit if our root project doesn't contain
+        if not contract_config_path.exists():
+            return
+        
+        with contract_config_path.open() as f:
+            contracts_dct = load_yaml_text(f)
+            
+        # Exit if our root project is only a producer
+        if not "consumer" in contracts_dct:
+            return
+        
+        for consumer in contracts_dct["consumer"]:
+            
+            # We'll use `get` method to retrieve data from dictionary, this should be a dataclass though
+            # to validate the schema, ensure required properties are there
+            consumer_name = consumer.get("name")
+            consumer_version = consumer.get("version")
+            consumer_file = f"{consumer_name}_{consumer_version}_contract.json"
+            
+            # I'm skipping the simulated step here where we're grabbing the file from external storage and bringing
+            # into our project
+            consumer_path = consumer.get("path")
+            consumer_file_path = Path(project_root) / consumer_path / consumer_file
+            with consumer_file_path.open() as f:
+                try:
+                    consumer_json = json.load(f)
+                except ValueError as e:
+                    print(f'Contract {consumer_file} does not exist!')
+                    raise(e)
+        
+            consumer_nodes = consumer_json["nodes"]
+            self.consumers.update(
+                **{k: ParsedModelNode.from_dict(v) for k, v in consumer_nodes.items()
+                   if v["resource_type"] == "model"}
+            )
+            
 
     def find_materialization_macro_by_name(
         self, project_name: str, materialization_name: str, adapter_type: str

@@ -249,14 +249,8 @@ class ManifestLoader:
         self._perf_info.path_count = len(self.manifest.files)
         self._perf_info.read_files_elapsed = time.perf_counter() - start_read_files
         
-        # Hacktown USA
-        with open('/Users/dpg/work/dbt-core/dbt_projects/upstream/target/manifest.json') as f:
-            consumer_manifest = json.load(f)
-        consumer_nodes = consumer_manifest['nodes']
-        self.manifest.consumers.update(
-            **{k: ParsedModelNode.from_dict(v) for k, v in consumer_nodes.items()
-            if v['resource_type'] == 'model'}
-        )
+        # Get consumer contracts if they exist
+        self.manifest.get_consumers(self.root_project.project_root)
 
         skip_parsing = False
         if self.saved_manifest is not None:

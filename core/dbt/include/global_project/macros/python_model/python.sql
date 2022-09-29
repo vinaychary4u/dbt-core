@@ -1,3 +1,26 @@
+{% macro build_dbt_relation_obj(model) %}
+
+class dbtRelation:
+    """
+      dbt.ref('model_a').rel   -> 'database.schema.model_a'
+      str(dbt.ref('model_a'))  -> same
+
+      dbt.ref('model_a').df    -> DataFrame pointing to 'database.schema.model_a'
+      dbt.ref('model_a')()     -> same
+
+      Could we make this return .df for just dbt.ref('model_a'),
+      with no add'l func call, or is that impossible with Python classes ???
+    """
+    def __init__(self, relation_name, dbt_load_df_function):
+        self.rel = relation_name
+        self.df  = dbt_load_df_function(relation_name)
+    def __str__(self):
+        return self.relation_name
+    def __call__(self):
+        return self.df
+
+{% endmacro %}
+
 {% macro build_ref_function(model) %}
 
     {%- set ref_dict = {} -%}
@@ -6,10 +29,10 @@
         {%- do ref_dict.update({_ref | join("."): resolved.quote(database=False, schema=False, identifier=False) | string}) -%}
     {%- endfor -%}
 
-def ref(*args,dbt_load_df_function):
+def ref(*args, dbt_load_df_function):
     refs = {{ ref_dict | tojson }}
     key = ".".join(args)
-    return dbt_load_df_function(refs[key])
+    return dbtRelation(refs[key], dbt_load_df_function)
 
 {% endmacro %}
 
@@ -24,7 +47,7 @@ def ref(*args,dbt_load_df_function):
 def source(*args, dbt_load_df_function):
     sources = {{ source_dict | tojson }}
     key = ".".join(args)
-    return dbt_load_df_function(sources[key])
+    return dbtRelation(sources[key], dbt_load_df_function)
 
 {% endmacro %}
 
@@ -47,6 +70,7 @@ config_dict = {{ config_dict }}
 # COMMAND ----------
 # this part is dbt logic for get ref work, do not modify
 
+{{ build_dbt_relation_obj(model ) }}
 {{ build_ref_function(model ) }}
 {{ build_source_function(model ) }}
 {{ build_config_dict(model) }}

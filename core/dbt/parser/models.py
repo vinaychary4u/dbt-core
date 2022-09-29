@@ -32,8 +32,8 @@ from dbt.dataclass_schema import ValidationError
 from dbt.exceptions import ParsingException, validator_error_message, UndefinedMacroException
 
 
-dbt_function_key_words = set(["ref", "source", "config", "get"])
-dbt_function_full_names = set(["dbt.ref", "dbt.source", "dbt.config", "dbt.config.get"])
+dbt_function_key_words = set(["config", "get"])
+dbt_function_full_names = set(["dbt.config", "dbt.config.get"])
 
 
 class PythonValidationVisitor(ast.NodeVisitor):
@@ -163,16 +163,20 @@ def merge_packages(original_packages_with_version, new_packages):
     return original_packages_with_version + list(set(additional_packages))
 
 
-def verify_python_model_code(node):
+def render_python_model_code(node):
     # TODO: add a test for this
     try:
         rendered_python = get_rendered(
             node.raw_code,
-            {},
+            {
+                "ref": lambda *arg: arg,
+                "source": lambda *arg: arg,
+            },
             node,
         )
-        if rendered_python != node.raw_code:
-            raise ParsingException("")
+        return rendered_python
+        # if rendered_python != node.raw_code:
+        #     raise ParsingException("")
     except (UndefinedMacroException, ParsingException):
         raise ParsingException("No jinja in python model code is allowed", node=node)
 
@@ -222,9 +226,17 @@ class ModelParser(SimpleSQLParser[ParsedModelNode]):
 
         if node.language == ModelLanguage.python:
             try:
-                verify_python_model_code(node)
+                # this part will take care of the get function
+                original_code = node.raw_code
+                python_code = render_python_model_code(node)
+                node.raw_code = python_code
                 context = self._context_for(node, config)
                 self.parse_python_model(node, config, context)
+                node.raw_code = original_code
+
+                # source, ref in jinja
+                get_rendered(node.raw_code, context, node, capture_macros=True)
+
                 self.update_parsed_node_config(node, config, context=context)
 
             except ValidationError as exc:

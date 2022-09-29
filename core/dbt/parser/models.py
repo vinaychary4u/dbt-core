@@ -178,7 +178,9 @@ def render_python_model_code(node):
         # if rendered_python != node.raw_code:
         #     raise ParsingException("")
     except (UndefinedMacroException, ParsingException):
-        raise ParsingException("No jinja in python model code is allowed", node=node)
+        raise ParsingException(
+            "No jinja other than 'source' and 'ref' in python model code is allowed", node=node
+        )
 
 
 class ModelParser(SimpleSQLParser[ParsedModelNode]):

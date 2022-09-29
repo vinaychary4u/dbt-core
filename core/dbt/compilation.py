@@ -384,8 +384,13 @@ class Compiler:
                 context,
                 node,
             )
-            # we should NOT jinja render the python model's 'raw code'
-            compiled_node.compiled_code = f"{node.raw_code}\n\n{postfix}"
+
+            compiled_code = jinja.get_rendered(
+                node.raw_code,
+                {"ref": context["ref"], "source": context["source"]},
+                node,
+            )
+            compiled_node.compiled_code = f"{compiled_code}\n\n{postfix}"
             # restore quoting settings in the end since context is lazy evaluated
             self.config.quoting = original_quoting
 

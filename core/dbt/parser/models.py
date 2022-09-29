@@ -169,8 +169,8 @@ def render_python_model_code(node):
         rendered_python = get_rendered(
             node.raw_code,
             {
-                "ref": lambda *arg: arg,
-                "source": lambda *arg: arg,
+                "ref": lambda *arg: None,
+                "source": lambda *arg: None,
             },
             node,
         )

@@ -549,19 +549,19 @@ def model(dbt, session):
     from torch import b
     import textblob.text
     import sklearn
-    df0 = pandas({{ref("a_model")}})
-    df1 = session.table({{ref("my_sql_model")}}).task.limit(2)
-    df2 = session.table({{ref("my_sql_model_1")}})
-    df3 = session.table({{ref("my_sql_model_2")}})
-    df4 = session.table({{source("test", 'table1')}}).limit(max = [max(session.table({{ref('something')}}))])
-    df5 = [sesion.table({{ref('test1')}})]
-    
-    a_dict = {'test2' : session.table({{ref('test2')}})}
-    df5 = anotherfunction({'test2' : session.table({{ref('test3')}})})
-    df6 = [somethingelse.ref(session.table({{ref('test4')}}))]
+    df0 = pandas("{{ref('a_model')}}")
+    df1 = session.table("{{ref('my_sql_model')}}").task.limit(2)
+    df2 = session.table('{{ref("my_sql_model_1")}}')
+    df3 = session.table('{{ref("my_sql_model_2")}}')
+    df4 = session.table('{{source("test", "table1")}}').limit(max = [max(session.table("{{ref('something')}}"))])
+    df5 = [session.table("{{ref('test1')}}")]
+
+    a_dict = {'test2' : session.table("{{ref('test2')}}")}
+    df5 = onefunction({'test2' : session.table("{{ref('test3')}}")})
+    df6 = [somethingelse.ref(session.table("{{ref('test4')}}"))]
 
     df = df.limit(2)
-    return df   
+    return df 
         """
         block = self.file_block_for(py_code, 'nested/py_model.py')
         self.parser.manifest.files[block.file.file_id] = block.file

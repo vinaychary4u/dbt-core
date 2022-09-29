@@ -47,8 +47,6 @@ config_dict = {{ config_dict }}
 # COMMAND ----------
 # this part is dbt logic for get ref work, do not modify
 
-{{ build_ref_function(model ) }}
-{{ build_source_function(model ) }}
 {{ build_config_dict(model) }}
 
 class config:
@@ -70,8 +68,6 @@ class this:
 
 class dbtObj:
     def __init__(self, load_df_function) -> None:
-        self.source = lambda *args: source(*args, dbt_load_df_function=load_df_function)
-        self.ref = lambda *args: ref(*args, dbt_load_df_function=load_df_function)
         self.config = config
         self.this = this()
         self.is_incremental = {{ is_incremental() }}

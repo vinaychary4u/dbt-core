@@ -2,6 +2,8 @@ from pathlib import Path, PurePath
 
 import click
 from dbt.cli.option_types import YAML
+from dbt.cli.resolvers import default_project_dir, default_profiles_dir
+
 
 # TODO:  The name (reflected in flags) is a correction!
 # The original name was `SEND_ANONYMOUS_USAGE_STATS` and used an env var called "DBT_SEND_ANONYMOUS_USAGE_STATS"
@@ -97,6 +99,7 @@ fail_fast = click.option(
 
 full_refresh = click.option(
     "--full-refresh",
+    "-f",
     envvar="DBT_FULL_REFRESH",
     help="If specified, dbt will drop incremental models and fully-recalculate the incremental table from the model definition.",
     is_flag=True,
@@ -217,18 +220,16 @@ profile = click.option(
 profiles_dir = click.option(
     "--profiles-dir",
     envvar="DBT_PROFILES_DIR",
-    help=f"Which directory to look in for the profiles.yml file. Default = {PurePath.joinpath(Path.home(), '.dbt')}",
-    default=PurePath.joinpath(Path.home(), ".dbt"),
-    type=click.Path(
-        exists=True,
-    ),
+    help="Which directory to look in for the profiles.yml file. If not set, dbt will look in the current working directory first, then HOME/.dbt/",
+    default=default_profiles_dir(),
+    type=click.Path(exists=True),
 )
 
 project_dir = click.option(
     "--project-dir",
     envvar=None,
     help="Which directory to look in for the dbt_project.yml file. Default is the current working directory and its parents.",
-    default=Path.cwd(),
+    default=default_project_dir(),
     type=click.Path(exists=True),
 )
 
@@ -243,7 +244,7 @@ record_timing_info = click.option(
     "-r",
     envvar=None,
     help="When this option is passed, dbt will output low-level timing stats to the specified file. Example: `--record-timing-info output.profile`",
-    is_flag=True,
+    type=click.Path(exists=False),
 )
 
 resource_type = click.option(

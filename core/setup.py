@@ -25,7 +25,7 @@ with open(os.path.join(this_directory, "README.md")) as f:
 
 
 package_name = "dbt-core"
-package_version = "1.3.0b2"
+package_version = "1.4.0a1"
 description = """With dbt, data analysts and engineers can build analytics \
 the way engineers build applications."""
 
@@ -62,6 +62,7 @@ setup(
         "dbt-extractor~=0.4.1",
         "typing-extensions>=3.7.4",
         "werkzeug>=1,<3",
+        "pathspec~=0.9.0",
         # the following are all to match snowflake-connector-python
         "requests<3.0.0",
         "idna>=2.5,<4",

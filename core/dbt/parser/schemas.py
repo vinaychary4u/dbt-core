@@ -508,6 +508,8 @@ class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
             # NonSourceParser.parse(), TestablePatchParser is a variety of
             # NodePatchParser
             if "models" in dct:
+                # the models are already in the manifest as nodes when we reach this code,
+                # even if they are disabled in the schema file
                 parser = TestablePatchParser(self, yaml_block, "models")
                 for test_block in parser.parse():
                     self.parse_tests(test_block)
@@ -775,9 +777,10 @@ class NonSourceParser(YamlDocsReader, Generic[NonSourceTarget, Parsed]):
                 refs: ParserRef = ParserRef.from_target(node)
             else:
                 refs = ParserRef()
-            # This adds the node_block to self.manifest
-            # as a ParsedNodePatch or ParsedMacroPatch
+
+            # There's no unique_id on the node yet so cannot add to disabled dict
             self.parse_patch(node_block, refs)
+
         # This will always be empty if the node a macro or analysis
         return test_blocks
 
@@ -881,15 +884,34 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
                 f"Unexpected yaml_key {patch.yaml_key} for patch in "
                 f"file {source_file.path.original_file_path}"
             )
+        # handle disabled nodes
         if unique_id is None:
             # Node might be disabled. Following call returns list of matching disabled nodes
             found_nodes = self.manifest.disabled_lookup.find(patch.name, patch.package_name)
             if found_nodes:
-                # There might be multiple disabled nodes for this model
+                if len(found_nodes) > 1 and patch.config.get("enabled"):
+                    # There are multiple disabled nodes for this model and the schema file wants to enable one.
+                    # We have no way to know which one to enable.
+                    resource_type = found_nodes[0].unique_id.split(".")[0]
+                    msg = (
+                        f"Found {len(found_nodes)} matching disabled nodes for "
+                        f"{resource_type} '{patch.name}'. Multiple nodes for the same "
+                        "unique id cannot be enabled in the schema file. They must be enabled "
+                        "in `dbt_project.yml` or in the sql files."
+                    )
+                    raise ParsingException(msg)
+
+                # all nodes in the disabled dict have the same unique_id so just grab the first one
+                # to append with the uniqe id
+                source_file.append_patch(patch.yaml_key, found_nodes[0].unique_id)
                 for node in found_nodes:
-                    # We're saving the patch_path because we need to schedule
-                    # re-application of the patch in partial parsing.
                     node.patch_path = source_file.file_id
+                    # re-calculate the node config with the patch config.  Always do this
+                    # for the case when no config is set to ensure the default of true gets captured
+                    if patch.config:
+                        self.patch_node_config(node, patch)
+
+                    node.patch(patch)
             else:
                 msg = (
                     f"Did not find matching node for patch with name '{patch.name}' "
@@ -905,11 +927,13 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
             if node.patch_path:
                 package_name, existing_file_path = node.patch_path.split("://")
                 raise_duplicate_patch_name(patch, existing_file_path)
-            source_file.append_patch(patch.yaml_key, unique_id)
-            # If this patch has config changes, re-calculate the node config
-            # with the patch config
+
+            source_file.append_patch(patch.yaml_key, node.unique_id)
+            # re-calculate the node config with the patch config.  Always do this
+            # for the case when no config is set to ensure the default of true gets captured
             if patch.config:
                 self.patch_node_config(node, patch)
+
             node.patch(patch)
 
 
@@ -1010,6 +1034,7 @@ class ExposureParser(YamlReader):
             meta=unparsed.meta,
             tags=unparsed.tags,
             description=unparsed.description,
+            label=unparsed.label,
             owner=unparsed.owner,
             maturity=unparsed.maturity,
             config=config,
@@ -1028,7 +1053,7 @@ class ExposureParser(YamlReader):
         if parsed.config.enabled:
             self.manifest.add_exposure(self.yaml.file, parsed)
         else:
-            self.manifest.add_disabled_nofile(parsed)
+            self.manifest.add_disabled(self.yaml.file, parsed)
 
     def _generate_exposure_config(
         self, target: UnparsedExposure, fqn: List[str], package_name: str, rendered: bool
@@ -1061,6 +1086,7 @@ class ExposureParser(YamlReader):
             except (ValidationError, JSONValidationException) as exc:
                 msg = error_context(self.yaml.path, self.key, data, exc)
                 raise ParsingException(msg) from exc
+
             self.parse_exposure(unparsed)
 
 
@@ -1142,7 +1168,7 @@ class MetricParser(YamlReader):
         if parsed.config.enabled:
             self.manifest.add_metric(self.yaml.file, parsed)
         else:
-            self.manifest.add_disabled_nofile(parsed)
+            self.manifest.add_disabled(self.yaml.file, parsed)
 
     def _generate_metric_config(
         self, target: UnparsedMetric, fqn: List[str], package_name: str, rendered: bool

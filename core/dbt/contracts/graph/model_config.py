@@ -371,6 +371,10 @@ class MetricConfig(BaseConfig):
 @dataclass
 class ExposureConfig(BaseConfig):
     enabled: bool = True
+    version: Optional[str] = None
+    required_tests: Optional[List[str]] = None
+    freshness: Optional[Dict] = field(default_factory=dict)
+    on_schema_change: Optional[str] = "fail"
 
 
 @dataclass

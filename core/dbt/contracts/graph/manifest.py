@@ -909,10 +909,17 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         current_project: str,
         node_package: str,
     ) -> MaybeNonSource:
+        """
+        Parameters:
+          target_model_name: The name of the model being ref'd (the node further to the left)
+          target_model_package: The name of the package being ref'd (e.g. an imported package).
+            If None then use the current package as default namespace
+          current_project: The project from which dbt is being invoked
+          node_package: the package namespace on the node doing the ref'ing
+        """
 
         node: Optional[ManifestNode] = None
         disabled: Optional[List[ManifestNode]] = None
-
         candidates = _search_packages(current_project, node_package, target_model_package)
         for pkg in candidates:
             node = self.ref_lookup.find(target_model_name, pkg, self)

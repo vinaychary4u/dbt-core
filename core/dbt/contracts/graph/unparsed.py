@@ -414,6 +414,7 @@ class ExposureType(StrEnum):
     Analysis = "analysis"
     ML = "ml"
     Application = "application"
+    Contract = "contract"
 
 
 class MaturityType(StrEnum):

@@ -373,7 +373,7 @@ class ExposureConfig(BaseConfig):
     enabled: bool = True
     version: Optional[str] = None
     required_tests: Optional[List[str]] = None
-    freshness: Optional[Dict] = field(default_factory=dict)
+    freshness: Optional[Dict] = field(default_factory=dict)  # TODO: get proper data types in here
     on_schema_change: Optional[str] = "fail"
 
 

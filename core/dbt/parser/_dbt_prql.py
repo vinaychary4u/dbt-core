@@ -9,7 +9,27 @@ import logging
 import re
 from collections import defaultdict
 
-import prql_python
+try:
+    import prql_python
+except ModuleNotFoundError:
+    # Always return the same SQL, mocking the prqlc output, so we can test this without
+    # configuring dependencies. (Obv fix as we expand the tests, way before we merge.)
+    class prql_python:  # type: ignore
+        @staticmethod
+        def to_sql(prql):
+            compiled_sql = """
+SELECT
+"{{ source('salesforce', 'in_process') }}".*,
+"{{ ref('foo', 'bar') }}".*,
+id
+FROM
+{{ source('salesforce', 'in_process') }}
+JOIN {{ ref('foo', 'bar') }} USING(id)
+WHERE
+salary > 100
+            """.strip()
+            return compiled_sql
+
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 
-try:
-    import dbt_prql  # type: ignore
-except ImportError:
-    dbt_prql = None
+# try:
+#     import dbt_prql  # type: ignore
+# except ImportError:
+#     dbt_prql = None
 
 # dict of ref_type (e.g. source, ref) -> (dict of (package, table) -> literal)
 # references_type = dict[str, dict[tuple[str, str], str]]

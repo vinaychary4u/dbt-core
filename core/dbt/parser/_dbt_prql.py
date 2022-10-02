@@ -13,16 +13,15 @@ import typing
 if typing.TYPE_CHECKING:
     from dbt.parser.language_provider import references_type
 
-try:
-    import prql_python  # type: ignore
-except ModuleNotFoundError:
-    # Always return the same SQL, mocking the prqlc output for a single case which we
-    # currently use in tests, so we can test this without configuring dependencies. (Obv
-    # fix as we expand the tests, way before we merge.)
-    class prql_python:  # type: ignore
-        @staticmethod
-        def to_sql(prql):
-            compiled_sql = """
+# import prql_python
+
+# Always return the same SQL, mocking the prqlc output for a single case which we
+# currently use in tests, so we can test this without configuring dependencies. (Obv
+# fix as we expand the tests, way before we merge.)
+class prql_python:  # type: ignore
+    @staticmethod
+    def to_sql(prql):
+        compiled_sql = """
 SELECT
 "{{ source('salesforce', 'in_process') }}".*,
 "{{ ref('foo', 'bar') }}".*,
@@ -32,8 +31,8 @@ FROM
 JOIN {{ ref('foo', 'bar') }} USING(id)
 WHERE
 salary > 100
-            """.strip()
-            return compiled_sql
+        """.strip()
+        return compiled_sql
 
 
 logger = logging.getLogger(__name__)

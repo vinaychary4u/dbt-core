@@ -727,14 +727,14 @@ def model(dbt, session):
         node = list(self.parser.manifest.nodes.values())[0]
         compiled_sql = """
 SELECT
-  "{{ source('salesforce', 'in_process') }}".*,
-  "{{ ref('foo', 'bar') }}".*,
-  id
+"{{ source('salesforce', 'in_process') }}".*,
+"{{ ref('foo', 'bar') }}".*,
+id
 FROM
-  {{ source('salesforce', 'in_process') }}
-  JOIN {{ ref('foo', 'bar') }} USING(id)
+{{ source('salesforce', 'in_process') }}
+JOIN {{ ref('foo', 'bar') }} USING(id)
 WHERE
-  salary > 100
+salary > 100
         """.strip()
         expected = ParsedModelNode(
             alias='prql_model',

@@ -363,6 +363,11 @@ class ParsedSqlNode(ParsedNode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.SqlOperation]})
 
 
+@dataclass
+class ParsedPrqlNode(ParsedNode):
+    resource_type: NodeType = field(metadata={"restrict": [NodeType.PrqlOperation]})
+
+
 def same_seeds(first: ParsedNode, second: ParsedNode) -> bool:
     # for seeds, we check the hashes. If the hashes are different types,
     # no match. If the hashes are both the same 'path', log a warning and

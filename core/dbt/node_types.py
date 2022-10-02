@@ -13,6 +13,7 @@ class NodeType(StrEnum):
     # TODO: rm?
     RPCCall = "rpc"
     SqlOperation = "sql operation"
+    PrqlOperation = "prql operation"
     Documentation = "docs block"
     Source = "source"
     Macro = "macro"
@@ -31,6 +32,7 @@ class NodeType(StrEnum):
             cls.Documentation,
             cls.RPCCall,
             cls.SqlOperation,
+            cls.PrqlOperation,
         ]
 
     @classmethod
@@ -68,3 +70,4 @@ class RunHookType(StrEnum):
 class ModelLanguage(StrEnum):
     python = "python"
     sql = "sql"
+    prql = "prql"

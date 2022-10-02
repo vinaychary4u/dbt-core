@@ -192,6 +192,8 @@ class ConfiguredParser(
             name = block.name
         if block.path.relative_path.endswith(".py"):
             language = ModelLanguage.python
+        elif block.path.relative_path.endswith(".prql"):
+            language = ModelLanguage.prql
         else:
             # this is not ideal but we have a lot of tests to adjust if don't do it
             language = ModelLanguage.sql
@@ -225,6 +227,7 @@ class ConfiguredParser(
                 path=path,
                 original_file_path=block.path.original_file_path,
                 raw_code=block.contents,
+                # language=language,
             )
             raise ParsingException(msg, node=node)
 
@@ -412,6 +415,22 @@ class SQLParser(
 ):
     def parse_file(self, file_block: FileBlock) -> None:
         self.parse_node(file_block)
+
+
+# TOOD: Currently `ModelParser` inherits from `SimpleSQLParser`, which inherits from
+# SQLParser. So possibly `ModelParser` should instead be `SQLModelParser`, and in
+# `ManifestLoader.load`, we should resolve which to use? (I think that's how it works;
+# though then why all the inheritance and generics if every model is parsed with `ModelParser`?)
+# class PRQLParser(
+#     ConfiguredParser[FileBlock, IntermediateNode, FinalNode], Generic[IntermediateNode, FinalNode]
+# ):
+# The full mro is:
+#  dbt.parser.models.ModelParser,
+#  dbt.parser.base.SimpleSQLParser,
+#  dbt.parser.base.SQLParser,
+#  dbt.parser.base.ConfiguredParser,
+#  dbt.parser.base.Parser,
+#  dbt.parser.base.BaseParser,
 
 
 class SimpleSQLParser(SQLParser[FinalNode, FinalNode]):

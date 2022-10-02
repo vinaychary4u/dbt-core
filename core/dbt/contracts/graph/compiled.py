@@ -10,6 +10,7 @@ from dbt.contracts.graph.parsed import (
     ParsedResource,
     ParsedRPCNode,
     ParsedSqlNode,
+    ParsedPrqlNode,
     ParsedGenericTestNode,
     ParsedSeedNode,
     ParsedSnapshotNode,
@@ -93,6 +94,11 @@ class CompiledSqlNode(CompiledNode):
 
 
 @dataclass
+class CompiledPrqlNode(CompiledNode):
+    resource_type: NodeType = field(metadata={"restrict": [NodeType.PrqlOperation]})
+
+
+@dataclass
 class CompiledSeedNode(CompiledNode):
     # keep this in sync with ParsedSeedNode!
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Seed]})
@@ -146,6 +152,7 @@ PARSED_TYPES: Dict[Type[CompiledNode], Type[ParsedResource]] = {
     CompiledHookNode: ParsedHookNode,
     CompiledRPCNode: ParsedRPCNode,
     CompiledSqlNode: ParsedSqlNode,
+    CompiledPrqlNode: ParsedPrqlNode,
     CompiledSeedNode: ParsedSeedNode,
     CompiledSnapshotNode: ParsedSnapshotNode,
     CompiledSingularTestNode: ParsedSingularTestNode,

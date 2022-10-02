@@ -10,6 +10,7 @@ node_type_pluralizations = {
     NodeType.Seed: "seeds",
     NodeType.RPCCall: "rpcs",
     NodeType.SqlOperation: "sql operations",
+    NodeType.PrqlOperation: "prql operations",
     NodeType.Documentation: "docs blocks",
     NodeType.Source: "sources",
     NodeType.Macro: "macros",

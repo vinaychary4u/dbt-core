@@ -10,10 +10,11 @@ import re
 from collections import defaultdict
 
 try:
-    import prql_python
+    import prql_python  # type: ignore
 except ModuleNotFoundError:
-    # Always return the same SQL, mocking the prqlc output, so we can test this without
-    # configuring dependencies. (Obv fix as we expand the tests, way before we merge.)
+    # Always return the same SQL, mocking the prqlc output for a single case which we
+    # currently use in tests, so we can test this without configuring dependencies. (Obv
+    # fix as we expand the tests, way before we merge.)
     class prql_python:  # type: ignore
         @staticmethod
         def to_sql(prql):

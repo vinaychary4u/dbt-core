@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 try:
-    import dbt_prql
+    import dbt_prql  # type: ignore
 except ImportError:
     dbt_prql = None
 

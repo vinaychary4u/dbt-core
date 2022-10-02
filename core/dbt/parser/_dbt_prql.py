@@ -8,6 +8,10 @@ from __future__ import annotations
 import logging
 import re
 from collections import defaultdict
+import typing
+
+if typing.TYPE_CHECKING:
+    from dbt.parser.language_provider import references_type
 
 try:
     import prql_python  # type: ignore
@@ -36,9 +40,6 @@ logger = logging.getLogger(__name__)
 
 word_regex = r"[\w\.\-_]+"
 references_regex = rf"\bdbt `?(\w+)\.({word_regex})\.({word_regex})`?"
-
-# dict of ref_type (e.g. source, ref) -> (dict of (package, table) -> literal)
-references_type = dict[str, dict[tuple[str, str], str]]
 
 
 def compile(prql: str, references: references_type):

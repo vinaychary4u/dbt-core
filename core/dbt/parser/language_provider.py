@@ -7,7 +7,13 @@ except ImportError:
     dbt_prql = None
 
 # dict of ref_type (e.g. source, ref) -> (dict of (package, table) -> literal)
-references_type = dict[str, dict[tuple[str, str], str]]
+# references_type = dict[str, dict[tuple[str, str], str]]
+
+# I can't get the above to work on CI; I had thought that it was fine with
+# from __future__ import annotations, but it seems not. So, we'll just use Dict.
+from typing import Dict, Tuple
+
+references_type = Dict[str, Dict[Tuple[str, str], str]]
 
 
 class LanguageProvider:

@@ -13,16 +13,37 @@ import typing
 if typing.TYPE_CHECKING:
     from dbt.parser.language_provider import references_type
 
+
 # import prql_python
-
-
-# Always return the same SQL, mocking the prqlc output for a single case which we
-# currently use in tests, so we can test this without configuring dependencies. (Obv
-# fix as we expand the tests, way before we merge.)
+# This mocks the prqlc output for two cases which we currently use in tests, so we can
+# test this without configuring dependencies. (Obv fix as we expand the tests, way
+# before we merge.)
 class prql_python:  # type: ignore
     @staticmethod
-    def to_sql(prql):
-        compiled_sql = """
+    def to_sql(prql) -> str:
+
+        query_1 = "from employees"
+
+        query_1_compiled = """
+SELECT
+  employees.*
+FROM
+  employees
+        """.strip()
+
+        query_2 = """
+from (dbt source.salesforce.in_process)
+join (dbt ref.foo.bar) [id]
+filter salary > 100
+        """.strip()
+
+        query_2_refs_replaced = """
+from (`{{ source('salesforce', 'in_process') }}`)
+join (`{{ ref('foo', 'bar') }}`) [id]
+filter salary > 100
+        """.strip()
+
+        query_2_compiled = """
 SELECT
 "{{ source('salesforce', 'in_process') }}".*,
 "{{ ref('foo', 'bar') }}".*,
@@ -33,7 +54,16 @@ JOIN {{ ref('foo', 'bar') }} USING(id)
 WHERE
 salary > 100
         """.strip()
-        return compiled_sql
+
+        lookup = dict(
+            {
+                query_1: query_1_compiled,
+                query_2: query_2_compiled,
+                query_2_refs_replaced: query_2_compiled,
+            }
+        )
+
+        return lookup[prql]
 
 
 logger = logging.getLogger(__name__)

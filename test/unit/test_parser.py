@@ -716,10 +716,10 @@ def model(dbt, session):
 
     def test_parse_prql_file(self):
         prql_code = """
-        from (dbt source.salesforce.in_process)
-        join (dbt ref.foo.bar) [id]
-        filter salary > 100
-        """
+from (dbt source.salesforce.in_process)
+join (dbt ref.foo.bar) [id]
+filter salary > 100
+        """.strip()
         block = self.file_block_for(prql_code, 'nested/prql_model.prql')
         self.parser.manifest.files[block.file.file_id] = block.file
         self.parser.parse_file(block)

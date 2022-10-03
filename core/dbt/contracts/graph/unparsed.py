@@ -541,6 +541,7 @@ class EntityRelationship(dbtClassMixin, Mergeable):
 class UnparsedEntity(dbtClassMixin, Replaceable):
     name: str
     root_model: str
+    description: str = ""
     relationships: List[EntityRelationship] = field(default_factory=list)
 
     @classmethod

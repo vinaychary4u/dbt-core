@@ -629,6 +629,7 @@ class SnapshotConfig(EmptySnapshotConfig):
 
 RESOURCE_TYPES: Dict[NodeType, Type[BaseConfig]] = {
     NodeType.Metric: MetricConfig,
+    NodeType.Entity: EntityConfig,
     NodeType.Exposure: ExposureConfig,
     NodeType.Source: SourceConfig,
     NodeType.Seed: SeedConfig,

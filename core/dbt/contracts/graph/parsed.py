@@ -38,8 +38,7 @@ from dbt.contracts.graph.unparsed import (
     MaturityType,
     MetricFilter,
     MetricTime,
-    # UnparsedEntity,
-    # EntityRelationship,
+    EntityRelationship,
 )
 from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
 from dbt.exceptions import warn_or_error
@@ -56,7 +55,7 @@ from .model_config import (
     ExposureConfig,
     EmptySnapshotConfig,
     SnapshotConfig,
-    # EntityConfig,
+    EntityConfig,
 )
 
 
@@ -912,6 +911,51 @@ class ParsedMetric(UnparsedBaseNode, HasUniqueID, HasFqn):
         )
 
 
+@dataclass
+class ParsedEntity(UnparsedBaseNode, HasUniqueID, HasFqn):
+    name: str
+    root_model: str
+    relationships: List[EntityRelationship] = field(default_factory=list)
+
+    resource_type: NodeType = NodeType.Entity
+    meta: Dict[str, Any] = field(default_factory=dict)
+    tags: List[str] = field(default_factory=list)
+    config: EntityConfig = field(default_factory=EntityConfig)
+    unrendered_config: Dict[str, Any] = field(default_factory=dict)
+    sources: List[List[str]] = field(default_factory=list)
+    depends_on: DependsOn = field(default_factory=DependsOn)
+    refs: List[List[str]] = field(default_factory=list)
+    created_at: float = field(default_factory=lambda: time.time())
+
+    @property
+    def depends_on_nodes(self):
+        return self.depends_on.nodes
+
+    @property
+    def search_name(self):
+        return self.name
+
+    def same_root_model(self, old: "ParsedEntity") -> bool:
+        return self.root_model == old.root_model
+
+    def same_relationships(self, old: "ParsedEntity") -> bool:
+        return self.relationships == old.relationships
+
+    def same_config(self, old: "ParsedEntity") -> bool:
+        return self.config.same_contents(
+            self.unrendered_config,
+            old.unrendered_config,
+        )
+
+    def same_contents(self, old: Optional["ParsedEntity"]) -> bool:
+        # existing when it didn't before is a change!
+        # metadata/tags changes are not "changes"
+        if old is None:
+            return True
+
+        return self.same_root_model(old) and self.same_relationships(old) and True
+
+
 ManifestNodes = Union[
     ParsedAnalysisNode,
     ParsedSingularTestNode,
@@ -931,5 +975,6 @@ ParsedResource = Union[
     ParsedNode,
     ParsedExposure,
     ParsedMetric,
+    ParsedEntity,
     ParsedSourceDefinition,
 ]

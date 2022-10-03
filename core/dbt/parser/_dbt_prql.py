@@ -15,6 +15,7 @@ if typing.TYPE_CHECKING:
 
 # import prql_python
 
+
 # Always return the same SQL, mocking the prqlc output for a single case which we
 # currently use in tests, so we can test this without configuring dependencies. (Obv
 # fix as we expand the tests, way before we merge.)

@@ -38,6 +38,8 @@ from dbt.contracts.graph.unparsed import (
     MaturityType,
     MetricFilter,
     MetricTime,
+    # UnparsedEntity,
+    # EntityRelationship,
 )
 from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
 from dbt.exceptions import warn_or_error
@@ -54,6 +56,7 @@ from .model_config import (
     ExposureConfig,
     EmptySnapshotConfig,
     SnapshotConfig,
+    # EntityConfig,
 )
 
 

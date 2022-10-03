@@ -369,6 +369,11 @@ class MetricConfig(BaseConfig):
 
 
 @dataclass
+class EntityConfig(BaseConfig):
+    enabled: bool = True
+
+
+@dataclass
 class ExposureConfig(BaseConfig):
     enabled: bool = True
 

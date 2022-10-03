@@ -157,7 +157,7 @@ class ConfiguredParser(
                 config[key] = [hooks.get_hook_dict(h) for h in config[key]]
 
     def _create_error_node(
-        self, name: str, path: str, original_file_path: str, raw_code: str, language: str = "sql"
+        self, name: str, path: str, original_file_path: str, raw_code: str, language: str
     ) -> UnparsedNode:
         """If we hit an error before we've actually parsed a node, provide some
         level of useful information by attaching this to the exception.
@@ -227,7 +227,7 @@ class ConfiguredParser(
                 path=path,
                 original_file_path=block.path.original_file_path,
                 raw_code=block.contents,
-                # language=language,
+                language=language,
             )
             raise ParsingException(msg, node=node)
 

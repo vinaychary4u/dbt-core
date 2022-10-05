@@ -867,6 +867,7 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
             docs=block.target.docs,
             config=block.target.config,
             is_entity=block.target.is_entity,
+            realtionships=block.target.relationships,
         )
         assert isinstance(self.yaml.file, SchemaSourceFile)
         source_file: SchemaSourceFile = self.yaml.file

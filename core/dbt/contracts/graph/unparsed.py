@@ -54,6 +54,12 @@ class UnparsedGenericTest(UnparsedBaseNode, HasCode):
 
 
 @dataclass
+class UnparsedEntity(UnparsedBaseNode):
+    name: str
+    resource_type: NodeType = field(metadata={"restrict": [NodeType.Entity]})
+
+
+@dataclass
 class UnparsedNode(UnparsedBaseNode, HasCode):
     name: str
     resource_type: NodeType = field(
@@ -89,11 +95,41 @@ class Docs(dbtClassMixin, Replaceable):
 
 
 @dataclass
+class EntityJoinType(StrEnum):
+    left_outer = "left_outer"
+    inner = "inner"
+
+
+@dataclass
+class EntityRelationshipType(StrEnum):
+    one_to_many = "one_to_many"
+    one_to_one = "one_to_one"
+    many_to_one = "many_to_one"
+
+    def reverse(self) -> str:
+        if self == "many_to_one":
+            return "one_to_many"
+        elif self == "one_to_many":
+            return "many_to_one"
+        else:
+            return self
+
+
+@dataclass
+class EntityRelationship(dbtClassMixin, Mergeable):
+    to: str
+    join_key: str
+    relationship_type: EntityRelationshipType = field(default_factory=EntityRelationshipType)
+    join_type: Optional[EntityJoinType] = field(default_factory=EntityJoinType)
+
+
+@dataclass
 class HasDocs(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable):
     name: str
     description: str = ""
     meta: Dict[str, Any] = field(default_factory=dict)
     is_entity: Optional[bool] = False
+    relationships: List[EntityRelationship] = field(default_factory=list)
     data_type: Optional[str] = None
     docs: Docs = field(default_factory=Docs)
     _extra: Dict[str, Any] = field(default_factory=dict)
@@ -151,6 +187,11 @@ class UnparsedAnalysisUpdate(HasConfig, HasColumnDocs, HasDocs, HasYamlMetadata)
 @dataclass
 class UnparsedNodeUpdate(HasConfig, HasColumnTests, HasTests, HasYamlMetadata):
     quote_columns: Optional[bool] = None
+
+
+@dataclass
+class UnparsedEntityUpdate(HasConfig, HasColumnTests, HasDocs, HasYamlMetadata):
+    pass
 
 
 @dataclass
@@ -526,29 +567,3 @@ class UnparsedMetric(dbtClassMixin, Replaceable):
 
         if data.get("model") is not None and data.get("calculation_method") == "derived":
             raise ValidationError("Derived metrics cannot have a 'model' property")
-
-
-@dataclass
-class EntityRelationship(dbtClassMixin, Mergeable):
-    to_model: str
-    from_model: str
-    join_key: str
-    join_type: str
-    relationship_type: str
-    fields: Optional[List[str]] = None
-
-
-@dataclass
-class UnparsedEntity(dbtClassMixin, Replaceable):
-    name: str
-    root_model: str
-    description: str = ""
-    relationships: List[EntityRelationship] = field(default_factory=list)
-
-    @classmethod
-    def validate(cls, data):
-        super(UnparsedEntity, cls).validate(data)
-        if "name" in data:
-            # name can only contain alphanumeric chars and underscores
-            if not (re.match(r"[\w-]+$", data["name"])):
-                deprecations.warn("entity-name", entity=data["name"])

@@ -38,6 +38,7 @@ from dbt.contracts.graph.unparsed import (
     MaturityType,
     MetricFilter,
     MetricTime,
+    UnparsedEntity,
     EntityRelationship,
 )
 from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
@@ -180,6 +181,16 @@ class ParsedNodeMandatory(UnparsedNode, HasUniqueID, HasFqn, HasRelationMetadata
     def identifier(self):
         return self.alias
 
+@dataclass
+class ParsedEntityMandatory(UnparsedEntity, HasUniqueID, HasFqn, Replaceable):
+    alias: str
+    checksum: FileHash
+    config: EntityConfig = field(default_factory=EntityConfig)
+
+    @property
+    def identifier(self):
+        return self.alias
+
 
 @dataclass
 class NodeInfoMixin:
@@ -231,6 +242,73 @@ class ParsedNodeDefaults(NodeInfoMixin, ParsedNodeMandatory):
 
         write_file(full_path, payload)
         return full_path
+
+
+class ParsedEntityMixins(dbtClassMixin):
+    resource_type: NodeType
+    depends_on: DependsOn
+    config: EntityConfig
+
+    @property
+    def is_refable(self):
+        return self.resource_type in NodeType.refable()
+
+    # will this node map to an object in the database?
+
+    @property
+    def depends_on_nodes(self):
+        return self.depends_on.nodes
+
+    def patch(self, patch: "ParsedEntityPatch"):
+        """Given a ParsedEntityPatch, add the new information to the node."""
+        # explicitly pick out the parts to update so we don't inadvertently
+        # step on the model name or anything
+        # Note: config should already be updated
+        self.patch_path: Optional[str] = patch.file_id
+        # update created_at so process_docs will run in partial parsing
+        self.created_at = time.time()
+        self.description = patch.description
+        self.columns = patch.columns
+        self.is_entity = patch.is_entity
+        self.relationships = patch.relationships
+
+    def get_materialization(self):
+        return self.config.materialized
+
+
+@dataclass
+class EntityInfoMixin:
+    @property
+    def entity_info(self):
+        entity_info = {
+            "entity_path": getattr(self, "path", None),
+            "entity_name": getattr(self, "name", None),
+            "unique_id": getattr(self, "unique_id", None),
+            "resource_type": str(getattr(self, "resource_type", "")),
+        }
+        return entity_info
+
+
+@dataclass
+class ParsedEntityDefaults(EntityInfoMixin, ParsedEntityMandatory):
+    tags: List[str] = field(default_factory=list)
+    refs: List[List[str]] = field(default_factory=list)
+    sources: List[List[str]] = field(default_factory=list)
+    metrics: List[List[str]] = field(default_factory=list)
+    depends_on: DependsOn = field(default_factory=DependsOn)
+    description: str = field(default="")
+    columns: Dict[str, ColumnInfo] = field(default_factory=dict)
+    meta: Dict[str, Any] = field(default_factory=dict)
+    docs: Docs = field(default_factory=Docs)
+    patch_path: Optional[str] = None
+    compiled_path: Optional[str] = None
+    build_path: Optional[str] = None
+    deferred: bool = False
+    is_entity: Optional[bool] = True
+    relationships: Optional[List[EntityRelationship]] = None
+    unrendered_config: Dict[str, Any] = field(default_factory=dict)
+    created_at: float = field(default_factory=lambda: time.time())
+    config_call_dict: Dict[str, Any] = field(default_factory=dict)
 
 
 T = TypeVar("T", bound="ParsedNode")
@@ -504,6 +582,11 @@ class ParsedPatch(HasYamlMetadata, Replaceable):
 class ParsedNodePatch(ParsedPatch):
     columns: Dict[str, ColumnInfo]
     is_entity: Optional[bool]
+
+
+@dataclass
+class ParsedEntityPatch(ParsedNodePatch):
+    relationships: Optional[List[EntityRelationship]]
 
 
 @dataclass
@@ -917,17 +1000,13 @@ class ParsedMetric(UnparsedBaseNode, HasUniqueID, HasFqn):
 
 
 @dataclass
-class ParsedEntity(UnparsedBaseNode, HasUniqueID, HasFqn):
+class ParsedEntity(UnparsedEntity, ParsedEntityMixins, ParsedEntityDefaults, SerializableType):
     name: str
-    root_model: str
-    relationships: List[EntityRelationship] = field(default_factory=list)
-
     resource_type: NodeType = NodeType.Entity
-    meta: Dict[str, Any] = field(default_factory=dict)
+    relationships: List[EntityRelationship] = field(default_factory=list)
     tags: List[str] = field(default_factory=list)
     config: EntityConfig = field(default_factory=EntityConfig)
     unrendered_config: Dict[str, Any] = field(default_factory=dict)
-    sources: List[List[str]] = field(default_factory=list)
     depends_on: DependsOn = field(default_factory=DependsOn)
     refs: List[List[str]] = field(default_factory=list)
     created_at: float = field(default_factory=lambda: time.time())
@@ -939,9 +1018,6 @@ class ParsedEntity(UnparsedBaseNode, HasUniqueID, HasFqn):
     @property
     def search_name(self):
         return self.name
-
-    def same_root_model(self, old: "ParsedEntity") -> bool:
-        return self.root_model == old.root_model
 
     def same_relationships(self, old: "ParsedEntity") -> bool:
         return self.relationships == old.relationships
@@ -958,7 +1034,7 @@ class ParsedEntity(UnparsedBaseNode, HasUniqueID, HasFqn):
         if old is None:
             return True
 
-        return self.same_root_model(old) and self.same_relationships(old) and True
+        return self.same_relationships(old) and True
 
 
 ManifestNodes = Union[

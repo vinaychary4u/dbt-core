@@ -526,3 +526,29 @@ class UnparsedMetric(dbtClassMixin, Replaceable):
 
         if data.get("model") is not None and data.get("calculation_method") == "derived":
             raise ValidationError("Derived metrics cannot have a 'model' property")
+
+
+@dataclass
+class EntityRelationship(dbtClassMixin, Mergeable):
+    to_model: str
+    from_model: str
+    join_key: str
+    join_type: str
+    relationship_type: str
+    fields: Optional[List[str]] = None
+
+
+@dataclass
+class UnparsedEntity(dbtClassMixin, Replaceable):
+    name: str
+    root_model: str
+    description: str = ""
+    relationships: List[EntityRelationship] = field(default_factory=list)
+
+    @classmethod
+    def validate(cls, data):
+        super(UnparsedEntity, cls).validate(data)
+        if "name" in data:
+            # name can only contain alphanumeric chars and underscores
+            if not (re.match(r"[\w-]+$", data["name"])):
+                deprecations.warn("entity-name", entity=data["name"])

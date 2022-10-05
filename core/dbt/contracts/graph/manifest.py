@@ -36,6 +36,7 @@ from dbt.contracts.graph.parsed import (
     ParsedGenericTestNode,
     ParsedExposure,
     ParsedMetric,
+    ParsedEntity,
     HasUniqueID,
     UnpatchedSourceDefinition,
     ManifestNodes,
@@ -215,6 +216,39 @@ class MetricLookup(dbtClassMixin):
                 f"Metric {unique_id} found in cache but not found in manifest"
             )
         return manifest.metrics[unique_id]
+
+
+class EntityLookup(dbtClassMixin):
+    def __init__(self, manifest: "Manifest"):
+        self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
+        self.populate(manifest)
+
+    def get_unique_id(self, search_name, package: Optional[PackageName]):
+        return find_unique_id_for_package(self.storage, search_name, package)
+
+    def find(self, search_name, package: Optional[PackageName], manifest: "Manifest"):
+        unique_id = self.get_unique_id(search_name, package)
+        if unique_id is not None:
+            return self.perform_lookup(unique_id, manifest)
+        return None
+
+    def add_entity(self, entity: ParsedEntity):
+        if entity.search_name not in self.storage:
+            self.storage[entity.search_name] = {}
+
+        self.storage[entity.search_name][entity.package_name] = entity.unique_id
+
+    def populate(self, manifest):
+        for entity in manifest.entities.values():
+            if hasattr(entity, "name"):
+                self.add_entity(entity)
+
+    def perform_lookup(self, unique_id: UniqueID, manifest: "Manifest") -> ParsedEntity:
+        if unique_id not in manifest.entities:
+            raise dbt.exceptions.InternalException(
+                f"Metric {unique_id} found in cache but not found in manifest"
+            )
+        return manifest.entities[unique_id]
 
 
 # This handles both models/seeds/snapshots and sources/metrics/exposures
@@ -466,6 +500,7 @@ class Disabled(Generic[D]):
 
 
 MaybeMetricNode = Optional[Union[ParsedMetric, Disabled[ParsedMetric]]]
+MaybeEntityNode = Optional[Union[ParsedEntity, Disabled[ParsedEntity]]]
 
 
 MaybeDocumentation = Optional[ParsedDocumentation]
@@ -611,6 +646,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     docs: MutableMapping[str, ParsedDocumentation] = field(default_factory=dict)
     exposures: MutableMapping[str, ParsedExposure] = field(default_factory=dict)
     metrics: MutableMapping[str, ParsedMetric] = field(default_factory=dict)
+    entities: MutableMapping[str, ParsedEntity] = field(default_factory=dict)
     selectors: MutableMapping[str, Any] = field(default_factory=dict)
     files: MutableMapping[str, AnySourceFile] = field(default_factory=dict)
     metadata: ManifestMetadata = field(default_factory=ManifestMetadata)
@@ -630,6 +666,9 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
     )
     _metric_lookup: Optional[MetricLookup] = field(
+        default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
+    )
+    _entity_lookup: Optional[EntityLookup] = field(
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
     )
     _disabled_lookup: Optional[DisabledLookup] = field(
@@ -682,6 +721,9 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     def update_metric(self, new_metric: ParsedMetric):
         _update_into(self.metrics, new_metric)
 
+    def update_entity(self, new_entity: ParsedEntity):
+        _update_into(self.entities, new_entity)
+
     def update_node(self, new_node: ManifestNode):
         _update_into(self.nodes, new_node)
 
@@ -699,6 +741,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             "metrics": {k: v.to_dict(omit_none=False) for k, v in self.metrics.items()},
             "nodes": {k: v.to_dict(omit_none=False) for k, v in self.nodes.items()},
             "sources": {k: v.to_dict(omit_none=False) for k, v in self.sources.items()},
+            "entities": {k: v.to_dict(omit_none=False) for k, v in self.entities.items()},
         }
 
     def build_disabled_by_file_id(self):
@@ -759,6 +802,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self.nodes.values(),
             self.sources.values(),
             self.metrics.values(),
+            self.entities.values(),
         )
         for resource in all_resources:
             resource_type_plural = resource.resource_type.pluralize()
@@ -787,6 +831,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             docs={k: _deepcopy(v) for k, v in self.docs.items()},
             exposures={k: _deepcopy(v) for k, v in self.exposures.items()},
             metrics={k: _deepcopy(v) for k, v in self.metrics.items()},
+            entities={k: _deepcopy(v) for k, v in self.entities.items()},
             selectors={k: _deepcopy(v) for k, v in self.selectors.items()},
             metadata=self.metadata,
             disabled={k: _deepcopy(v) for k, v in self.disabled.items()},
@@ -801,6 +846,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                 self.sources.values(),
                 self.exposures.values(),
                 self.metrics.values(),
+                self.entities.values(),
             )
         )
         forward_edges, backward_edges = build_node_edges(edge_members)
@@ -826,6 +872,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             docs=self.docs,
             exposures=self.exposures,
             metrics=self.metrics,
+            entities=self.entities,
             selectors=self.selectors,
             metadata=self.metadata,
             disabled=self.disabled,
@@ -847,6 +894,8 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             return self.exposures[unique_id]
         elif unique_id in self.metrics:
             return self.metrics[unique_id]
+        elif unique_id in self.entities:
+            return self.entities[unique_id]
         else:
             # something terrible has happened
             raise dbt.exceptions.InternalException(
@@ -882,6 +931,12 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         if self._metric_lookup is None:
             self._metric_lookup = MetricLookup(self)
         return self._metric_lookup
+
+    @property
+    def entity_lookup(self) -> EntityLookup:
+        if self._entity_lookup is None:
+            self._entity_lookup = EntityLookup(self)
+        return self._entity_lookup
 
     def rebuild_ref_lookup(self):
         self._ref_lookup = RefableLookup(self)
@@ -979,6 +1034,31 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             # it's possible that the node is disabled
             if disabled is None:
                 disabled = self.disabled_lookup.find(f"{target_metric_name}", pkg)
+        if disabled:
+            return Disabled(disabled[0])
+        return None
+
+    def resolve_entity(
+        self,
+        target_entity_name: str,
+        target_entity_package: Optional[str],
+        current_project: str,
+        node_package: str,
+    ) -> MaybeEntityNode:
+
+        entity: Optional[ParsedEntity] = None
+        disabled: Optional[List[ParsedEntity]] = None
+
+        candidates = _search_packages(current_project, node_package, target_entity_package)
+        for pkg in candidates:
+            entity = self.entity_lookup.find(target_entity_name, pkg, self)
+
+            if entity is not None and entity.config.enabled:
+                return entity
+
+            # it's possible that the node is disabled
+            if disabled is None:
+                disabled = self.disabled_lookup.find(f"{target_entity_name}", pkg)
         if disabled:
             return Disabled(disabled[0])
         return None
@@ -1108,6 +1188,11 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         self.metrics[metric.unique_id] = metric
         source_file.metrics.append(metric.unique_id)
 
+    def add_entity(self, source_file: SchemaSourceFile, entity: ParsedEntity):
+        _check_duplicates(entity, self.entities)
+        self.entities[entity.unique_id] = entity
+        source_file.entities.append(entity.unique_id)
+
     def add_disabled_nofile(self, node: GraphMemberNode):
         # There can be multiple disabled nodes for the same unique_id
         if node.unique_id in self.disabled:
@@ -1123,6 +1208,8 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                 source_file.add_test(node.unique_id, test_from)
             if isinstance(node, ParsedMetric):
                 source_file.metrics.append(node.unique_id)
+            if isinstance(node, ParsedEntity):
+                source_file.entities.append(node.unique_id)
             if isinstance(node, ParsedExposure):
                 source_file.exposures.append(node.unique_id)
         else:
@@ -1150,6 +1237,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self.docs,
             self.exposures,
             self.metrics,
+            self.entities,
             self.selectors,
             self.files,
             self.metadata,
@@ -1202,6 +1290,9 @@ class WritableManifest(ArtifactMixin):
     )
     metrics: Mapping[UniqueID, ParsedMetric] = field(
         metadata=dict(description=("The metrics defined in the dbt project and its dependencies"))
+    )
+    entities: Mapping[UniqueID, ParsedEntity] = field(
+        metadata=dict(description=("The entities defined in the dbt project and its dependencies"))
     )
     selectors: Mapping[UniqueID, Any] = field(
         metadata=dict(description=("The selectors defined in selectors.yml"))

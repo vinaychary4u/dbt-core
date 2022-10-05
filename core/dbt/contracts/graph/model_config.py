@@ -369,6 +369,11 @@ class MetricConfig(BaseConfig):
 
 
 @dataclass
+class EntityConfig(BaseConfig):
+    enabled: bool = True
+
+
+@dataclass
 class ExposureConfig(BaseConfig):
     enabled: bool = True
 
@@ -624,6 +629,7 @@ class SnapshotConfig(EmptySnapshotConfig):
 
 RESOURCE_TYPES: Dict[NodeType, Type[BaseConfig]] = {
     NodeType.Metric: MetricConfig,
+    NodeType.Entity: EntityConfig,
     NodeType.Exposure: ExposureConfig,
     NodeType.Source: SourceConfig,
     NodeType.Seed: SeedConfig,

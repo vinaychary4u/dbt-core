@@ -38,6 +38,7 @@ from dbt.contracts.graph.unparsed import (
     MaturityType,
     MetricFilter,
     MetricTime,
+    EntityRelationship,
 )
 from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
 from dbt.exceptions import warn_or_error
@@ -64,7 +65,7 @@ class ColumnInfo(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable
     meta: Dict[str, Any] = field(default_factory=dict)
     data_type: Optional[str] = None
     quote: Optional[bool] = None
-    is_entity_dimension: Optional[bool] = False
+    is_dimension: Optional[bool] = False
     is_primary_key: Optional[bool] = False
     tags: List[str] = field(default_factory=list)
     _extra: Dict[str, Any] = field(default_factory=dict)
@@ -162,7 +163,8 @@ class ParsedNodeMixins(dbtClassMixin):
         self.created_at = time.time()
         self.description = patch.description
         self.columns = patch.columns
-        self.is_entity = patch.is_entity
+        self.is_public = patch.is_public
+        self.relationships = patch.relationships
 
     def get_materialization(self):
         return self.config.materialized
@@ -213,7 +215,8 @@ class ParsedNodeDefaults(NodeInfoMixin, ParsedNodeMandatory):
     compiled_path: Optional[str] = None
     build_path: Optional[str] = None
     deferred: bool = False
-    is_entity: Optional[bool] = False
+    is_public: Optional[bool] = False
+    relationships: List[EntityRelationship] = field(default_factory=list)
     unrendered_config: Dict[str, Any] = field(default_factory=dict)
     created_at: float = field(default_factory=lambda: time.time())
     config_call_dict: Dict[str, Any] = field(default_factory=dict)
@@ -501,7 +504,8 @@ class ParsedPatch(HasYamlMetadata, Replaceable):
 @dataclass
 class ParsedNodePatch(ParsedPatch):
     columns: Dict[str, ColumnInfo]
-    is_entity: Optional[bool]
+    is_public: Optional[bool]
+    relationships: List[EntityRelationship]
 
 
 @dataclass

@@ -89,12 +89,27 @@ class Docs(dbtClassMixin, Replaceable):
 
 
 @dataclass
+class EntityRelationshipType(StrEnum):
+    many_to_one = "many_to_one"
+    one_to_many = "one_to_many"
+    one_to_one = "one_to_one"
+
+
+@dataclass
+class EntityRelationship(dbtClassMixin, Replaceable):
+    to: str
+    join_key: str
+    relationship_type: EntityRelationshipType
+
+
+@dataclass
 class HasDocs(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable):
     name: str
     description: str = ""
     meta: Dict[str, Any] = field(default_factory=dict)
-    is_entity: Optional[bool] = False
+    is_public: Optional[bool] = False
     data_type: Optional[str] = None
+    relationships: List[EntityRelationship] = field(default_factory=list)
     docs: Docs = field(default_factory=Docs)
     _extra: Dict[str, Any] = field(default_factory=dict)
 

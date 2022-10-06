@@ -130,6 +130,8 @@ class HasTests(HasDocs):
 class UnparsedColumn(HasTests):
     quote: Optional[bool] = None
     tags: List[str] = field(default_factory=list)
+    is_dimension: Optional[bool] = False
+    is_primary_key: Optional[bool] = False
 
 
 @dataclass

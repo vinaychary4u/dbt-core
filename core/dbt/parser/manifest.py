@@ -1208,6 +1208,17 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: P
         target_model_id = target_model.unique_id
 
         metric.depends_on.nodes.append(target_model_id)
+
+
+        ## this should not go here
+        ## this checks the node columns, and adds any dimensions 
+        ## declared in that model yml to the metric dimension list
+        dimensions = [col.name for col in target_model.columns.values() if col.is_dimension]
+        for dim in dimensions:
+            if dim not in metric.dimensions:
+                metric.dimensions.append(dim)
+
+
         manifest.update_metric(metric)
 
 

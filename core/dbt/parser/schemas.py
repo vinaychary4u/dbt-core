@@ -150,6 +150,8 @@ class ParserRef:
             tags=tags,
             quote=quote,
             _extra=column.extra,
+            is_dimension=column.is_dimension,
+            is_primary_key=column.is_primary_key,
         )
 
     @classmethod

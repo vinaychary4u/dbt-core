@@ -181,6 +181,7 @@ class ParsedNodeMandatory(UnparsedNode, HasUniqueID, HasFqn, HasRelationMetadata
     def identifier(self):
         return self.alias
 
+
 @dataclass
 class ParsedEntityMandatory(UnparsedEntity, HasUniqueID, HasFqn, Replaceable):
     alias: str

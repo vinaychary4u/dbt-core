@@ -1,0 +1,76 @@
+
+# Name your project! Project names should contain only lowercase characters
+# and underscores. A good package name should reflect your organization's
+# name or the intended use of these models
+name: 'tpch'
+version: '1.0.0'
+config-version: 2
+
+# This setting configures which "profile" dbt uses for this project.
+profile: 'tpch'
+
+# These configurations specify where dbt should look for different types of files.
+# The `source-paths` config, for example, states that models in this project can be
+# found in the "models/" directory. You probably won't need to change these!
+model-paths: ["models"]
+analysis-paths: ["analysis"]
+test-paths: ["tests"]
+seed-paths: ["data"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"  # directory which will store compiled SQL files
+clean-targets:         # directories to be removed by `dbt clean`
+    - "target"
+    - "dbt_modules"
+
+on-run-start:
+  - "alter warehouse transforming set warehouse_size=small;"
+  - '{{create_udfs()}}' # comment / uncomment this line to build UDFs called in the create_udfs macro
+
+on-run-end:
+  - "{% if target.name == 'prod' %}{{ dbt_artifacts.upload_results(results) }}{% endif %}"
+  - "alter warehouse transforming set warehouse_size=xsmall;"
+  - "{{ grant_all_on_schemas(schemas, 'transformer') }}"
+
+vars:
+  sharded_database: 'sharded_database'
+  sharded_schema: 'sharded_database'
+  sharded_table_name: 'sharded_table_name'
+  sharded_table_ref: "{{ var('sharded_database') }}.{{ var('sharded_schema') }}.{{ var('sharded_table_name') }}"
+  # dbt_metrics_calendar_model: ref('metric_calendar_custom')
+  load_type: 'I'
+  start_date: '1999-01-01'
+  test: 'false' # to trigger runs for unit testing - override in a CLI param in testing job
+  fct_order_items: 'mock_source__fct_order_items' # this is a map for unit testing
+  dbt_artifacts_schema: dbt_artifacts_sung # optional, default is 'dbt_artifacts'
+
+
+# Configuring models
+# Full documentation: https://docs.getdbt.com/docs/configuring-models
+
+
+models:
+  dbt_artifacts:
+    +docs:
+      show: false
+    +schema: dbt_artifacts_sung
+    staging:
+      +schema: dbt_artifacts_sung
+  tpch:
+    staging:
+      database: '{{ env_var("DBT_DYNAMIC_DATABASE","analytics") }}'
+      +materialized: view
+      +docs:
+        node_color: "#FB6962"
+
+    marts:
+      intermediate:
+        +docs:
+          node_color: "#3AAAE0"
+      core:
+        +tags: "owner:sung"
+        materialized: table
+        +docs:
+          node_color: "#F6AE3E"
+        +ref_permissions: "private" # defaults it all to private

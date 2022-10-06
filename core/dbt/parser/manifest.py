@@ -1209,15 +1209,35 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: P
 
         metric.depends_on.nodes.append(target_model_id)
 
+        # this should not go here
+        # this checks the node columns, and adds any dimensions
+        # declared in that model yml to the metric dimension list
+        import pdb
 
-        ## this should not go here
-        ## this checks the node columns, and adds any dimensions 
-        ## declared in that model yml to the metric dimension list
-        dimensions = [col.name for col in target_model.columns.values() if col.is_dimension]
-        for dim in dimensions:
+        pdb.set_trace()
+        primary_dimensions = [
+            col.name for col in target_model.columns.values() if col.is_dimension
+        ]
+        for dim in primary_dimensions:
+            if dim not in metric.dimensions:
+                metric.dimensions.append(dim)
+        secondary_dimensions = []
+        for relationship in target_model.relationships:
+            to_model_name = relationship.to
+            to_model = manifest.resolve_ref(
+                to_model_name,
+                target_model_package,
+                current_project,
+                metric.package_name,
+            )
+            new_dims = [col.name for col in to_model.columns.values() if col.is_dimension]
+            secondary_dimensions.extend(new_dims)
+
+        for dim in secondary_dimensions:
             if dim not in metric.dimensions:
                 metric.dimensions.append(dim)
 
+        # joined_models = target_model.relationships
 
         manifest.update_metric(metric)
 

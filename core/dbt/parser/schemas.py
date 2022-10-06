@@ -140,8 +140,12 @@ class ParserRef:
         quote: Optional[bool]
         if isinstance(column, UnparsedColumn):
             quote = column.quote
+            is_dimension = column.is_dimension
+            is_primary_key = column.is_primary_key
         else:
             quote = None
+            is_dimension = False
+            is_primary_key = False
         self.column_info[column.name] = ColumnInfo(
             name=column.name,
             description=description,
@@ -150,8 +154,8 @@ class ParserRef:
             tags=tags,
             quote=quote,
             _extra=column.extra,
-            is_dimension=column.is_dimension,
-            is_primary_key=column.is_primary_key,
+            is_dimension=is_dimension,
+            is_primary_key=is_primary_key,
         )
 
     @classmethod

@@ -1151,7 +1151,7 @@ message PrintSeedResultLine {
 }
 
 // Q018
-message PrintHookEndErrorLine {
+message PrintFreshnessErrorLine {
     EventInfo info = 1;
     NodeInfo node_info = 2;
     int32 index = 3;
@@ -1162,7 +1162,7 @@ message PrintHookEndErrorLine {
 }
 
 // Q019
-message PrintHookEndErrorStaleLine {
+message PrintFreshnessErrorStaleLine {
     EventInfo info = 1;
     NodeInfo node_info = 2;
     int32 index = 3;
@@ -1173,7 +1173,7 @@ message PrintHookEndErrorStaleLine {
 }
 
 // Q020
-message PrintHookEndWarnLine {
+message PrintFreshnessWarnLine {
     EventInfo info = 1;
     NodeInfo node_info = 2;
     int32 index = 3;
@@ -1184,7 +1184,7 @@ message PrintHookEndWarnLine {
 }
 
 // Q021
-message PrintHookEndPassLine {
+message PrintFreshnessPassLine {
     EventInfo info = 1;
     NodeInfo node_info = 2;
     int32 index = 3;

@@ -1504,7 +1504,7 @@ class PrintSeedResultLine(betterproto.Message):
 
 
 @dataclass
-class PrintHookEndErrorLine(betterproto.Message):
+class PrintFreshnessErrorLine(betterproto.Message):
     """Q018"""
 
     info: "EventInfo" = betterproto.message_field(1)
@@ -1517,7 +1517,7 @@ class PrintHookEndErrorLine(betterproto.Message):
 
 
 @dataclass
-class PrintHookEndErrorStaleLine(betterproto.Message):
+class PrintFreshnessErrorStaleLine(betterproto.Message):
     """Q019"""
 
     info: "EventInfo" = betterproto.message_field(1)
@@ -1530,7 +1530,7 @@ class PrintHookEndErrorStaleLine(betterproto.Message):
 
 
 @dataclass
-class PrintHookEndWarnLine(betterproto.Message):
+class PrintFreshnessWarnLine(betterproto.Message):
     """Q020"""
 
     info: "EventInfo" = betterproto.message_field(1)
@@ -1543,7 +1543,7 @@ class PrintHookEndWarnLine(betterproto.Message):
 
 
 @dataclass
-class PrintHookEndPassLine(betterproto.Message):
+class PrintFreshnessPassLine(betterproto.Message):
     """Q021"""
 
     info: "EventInfo" = betterproto.message_field(1)

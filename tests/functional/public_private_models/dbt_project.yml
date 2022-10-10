@@ -57,6 +57,7 @@ models:
     +schema: dbt_artifacts_sung
     staging:
       +schema: dbt_artifacts_sung
+      +ref_permissions: private
   tpch:
     staging:
       database: '{{ env_var("DBT_DYNAMIC_DATABASE","analytics") }}'

@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: dim_customers
-    ref_permissions: public # overrides dbt_project.yml settings
+    ref_permissions: private # overrides dbt_project.yml settings
     description: Customer dimensions table
     columns:
       - name: customer_key

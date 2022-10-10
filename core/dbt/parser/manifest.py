@@ -1244,9 +1244,10 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: P
 
         manifest.update_metric(metric)
 
+
 def _process_exposures_for_metric(manifest: Manifest, current_project: str, metric: ParsedMetric):
     """Given a manifest and a metric in that manifest, process its exposure relationships"""
-    
+
     target_exposure: Optional[Union[Disabled, GraphMemberNode]] = None
     target_exposure_name: str
     target_exposure_package: Optional[str] = None
@@ -1260,18 +1261,15 @@ def _process_exposures_for_metric(manifest: Manifest, current_project: str, metr
         metric.package_name,
     )
 
-    import pdb; pdb.set_trace()
+    import pdb
+
+    pdb.set_trace()
 
     if target_exposure is None or isinstance(target_exposure, Disabled):
         # This may raise. Even if it doesn't, we don't want to add
         # this metric to the graph b/c there is no destination metric
         metric.config.enabled = False
-        invalid_exposure_fail_unless_test(
-            metric,
-            target_exposure_name,
-            target_exposure_package
-        )
-
+        invalid_exposure_fail_unless_test(metric, target_exposure_name, target_exposure_package)
 
     target_exposure_id = target_exposure.unique_id
 

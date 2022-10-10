@@ -472,13 +472,12 @@ class UnparsedExposure(dbtClassMixin, Replaceable):
             # name can only contain alphanumeric chars and underscores
             if not (re.match(r"[\w-]+$", data["name"])):
                 deprecations.warn("exposure-name", exposure=data["name"])
-        
+
         if "relationships" in data:
-            if data["type"] != 'entity':
+            if data["type"] != "entity":
                 raise ParsingException(
                     f"The exposure '{data['name']}' is invalid.  It cannot specify relationships if 'type' is not an entity exposure"
                 )
-                
 
 
 @dataclass

@@ -145,6 +145,7 @@ class SourceLookup(dbtClassMixin):
             )
         return manifest.sources[unique_id]
 
+
 class ExposureLookup(dbtClassMixin):
     def __init__(self, manifest: "Manifest"):
         self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
@@ -989,8 +990,10 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
 
             if exposure is not None and exposure.config.enabled:
                 return exposure
-            
-            import pdb; pdb.set_trace()
+
+            import pdb
+
+            pdb.set_trace()
 
             # it's possible that the node is disabled
             if disabled is None:

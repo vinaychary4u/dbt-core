@@ -413,12 +413,15 @@ class Compiler:
         linker.add_node(node.unique_id)
 
         for dependency in node.depends_on_nodes:
+            import pdb; pdb.set_trace()
             if dependency in manifest.nodes:
                 linker.dependency(node.unique_id, (manifest.nodes[dependency].unique_id))
             elif dependency in manifest.sources:
                 linker.dependency(node.unique_id, (manifest.sources[dependency].unique_id))
             elif dependency in manifest.metrics:
                 linker.dependency(node.unique_id, (manifest.metrics[dependency].unique_id))
+            elif dependency in manifest.exposures:
+                linker.dependency(node.unique_id, (manifest.exposures[dependency].unique_id))
             else:
                 dependency_not_found(node, dependency)
 

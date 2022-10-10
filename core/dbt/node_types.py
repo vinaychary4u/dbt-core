@@ -39,6 +39,7 @@ class NodeType(StrEnum):
             cls.Model,
             cls.Seed,
             cls.Snapshot,
+            cls.Exposure,
         ]
 
     @classmethod

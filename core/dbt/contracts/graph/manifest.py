@@ -145,6 +145,37 @@ class SourceLookup(dbtClassMixin):
             )
         return manifest.sources[unique_id]
 
+class ExposureLookup(dbtClassMixin):
+    def __init__(self, manifest: "Manifest"):
+        self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
+        self.populate(manifest)
+
+    def get_unique_id(self, search_name, package: Optional[PackageName]):
+        return find_unique_id_for_package(self.storage, search_name, package)
+
+    def find(self, search_name, package: Optional[PackageName], manifest: "Manifest"):
+        unique_id = self.get_unique_id(search_name, package)
+        if unique_id is not None:
+            return self.perform_lookup(unique_id, manifest)
+        return None
+
+    def add_exposure(self, exposure: ParsedExposure):
+        if exposure.search_name not in self.storage:
+            self.storage[exposure.search_name] = {}
+
+        self.storage[exposure.search_name][exposure.package_name] = exposure.unique_id
+
+    def populate(self, manifest):
+        for exposure in manifest.exposures.values():
+            self.add_exposure(exposure)
+
+    def perform_lookup(self, unique_id: UniqueID, manifest: "Manifest") -> ParsedExposure:
+        if unique_id not in manifest.exposures:
+            raise dbt.exceptions.InternalException(
+                f"Exposure {unique_id} found in cache but not found in manifest"
+            )
+        return manifest.exposures[unique_id]
+
 
 class RefableLookup(dbtClassMixin):
     # model, seed, snapshot
@@ -466,6 +497,7 @@ class Disabled(Generic[D]):
 
 
 MaybeMetricNode = Optional[Union[ParsedMetric, Disabled[ParsedMetric]]]
+MaybeExposure = Optional[Union[ParsedExposure, Disabled[ParsedExposure]]]
 
 
 MaybeDocumentation = Optional[ParsedDocumentation]
@@ -627,6 +659,9 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
     )
     _ref_lookup: Optional[RefableLookup] = field(
+        default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
+    )
+    _exposure_lookup: Optional[ExposureLookup] = field(
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
     )
     _metric_lookup: Optional[MetricLookup] = field(
@@ -885,6 +920,12 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self._metric_lookup = MetricLookup(self)
         return self._metric_lookup
 
+    @property
+    def exposure_lookup(self) -> ExposureLookup:
+        if self._exposure_lookup is None:
+            self._exposure_lookup = ExposureLookup(self)
+        return self._exposure_lookup
+
     def rebuild_ref_lookup(self):
         self._ref_lookup = RefableLookup(self)
 
@@ -926,6 +967,34 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             # it's possible that the node is disabled
             if disabled is None:
                 disabled = self.disabled_lookup.find(target_model_name, pkg)
+
+        if disabled:
+            return Disabled(disabled[0])
+        return None
+
+    def resolve_exposure(
+        self,
+        target_exposure_name: str,
+        target_exposure_package: Optional[str],
+        current_project: str,
+        node_package: str,
+    ) -> MaybeExposure:
+
+        exposure: Optional[GraphMemberNode] = None
+        disabled: Optional[List[GraphMemberNode]] = None
+
+        candidates = _search_packages(current_project, node_package, target_exposure_package)
+        for pkg in candidates:
+            exposure = self.exposure_lookup.find(target_exposure_name, pkg, self)
+
+            if exposure is not None and exposure.config.enabled:
+                return exposure
+            
+            import pdb; pdb.set_trace()
+
+            # it's possible that the node is disabled
+            if disabled is None:
+                disabled = self.disabled_lookup.find(target_exposure_name, pkg)
 
         if disabled:
             return Disabled(disabled[0])
@@ -1163,6 +1232,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self._doc_lookup,
             self._source_lookup,
             self._ref_lookup,
+            self._exposure_lookup,
             self._metric_lookup,
             self._disabled_lookup,
             self._analysis_lookup,

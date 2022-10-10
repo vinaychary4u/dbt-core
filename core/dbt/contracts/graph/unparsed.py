@@ -97,7 +97,8 @@ class EntityRelationshipType(StrEnum):
 
 @dataclass
 class EntityRelationship(dbtClassMixin, Replaceable):
-    to: str
+    from_model: str
+    to_model: str
     join_key: str
     relationship_type: EntityRelationshipType
 
@@ -109,7 +110,6 @@ class HasDocs(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable):
     meta: Dict[str, Any] = field(default_factory=dict)
     is_public: Optional[bool] = False
     data_type: Optional[str] = None
-    relationships: List[EntityRelationship] = field(default_factory=list)
     docs: Docs = field(default_factory=Docs)
     _extra: Dict[str, Any] = field(default_factory=dict)
 
@@ -435,6 +435,7 @@ class ExposureType(StrEnum):
     Analysis = "analysis"
     ML = "ml"
     Application = "application"
+    Entity = "entity"
 
 
 class MaturityType(StrEnum):
@@ -462,6 +463,7 @@ class UnparsedExposure(dbtClassMixin, Replaceable):
     url: Optional[str] = None
     depends_on: List[str] = field(default_factory=list)
     config: Dict[str, Any] = field(default_factory=dict)
+    relationships: List[EntityRelationship] = field(default_factory=list)
 
     @classmethod
     def validate(cls, data):
@@ -470,6 +472,13 @@ class UnparsedExposure(dbtClassMixin, Replaceable):
             # name can only contain alphanumeric chars and underscores
             if not (re.match(r"[\w-]+$", data["name"])):
                 deprecations.warn("exposure-name", exposure=data["name"])
+        
+        if "relationships" in data:
+            if data["type"] != 'entity':
+                raise ParsingException(
+                    f"The exposure '{data['name']}' is invalid.  It cannot specify relationships if 'type' is not an entity exposure"
+                )
+                
 
 
 @dataclass
@@ -511,6 +520,7 @@ class UnparsedMetric(dbtClassMixin, Replaceable):
     dimensions: List[str] = field(default_factory=list)
     window: Optional[MetricTime] = None
     model: Optional[str] = None
+    exposure: Optional[str] = None
     filters: List[MetricFilter] = field(default_factory=list)
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)

@@ -98,6 +98,7 @@ class MacroDependsOn(dbtClassMixin, Replaceable):
 @dataclass
 class DependsOn(MacroDependsOn):
     nodes: List[str] = field(default_factory=list)
+    exposures: List[str] = field(default_factory=list)
 
     def add_node(self, value: str):
         if value not in self.nodes:
@@ -165,7 +166,7 @@ class ParsedNodeMixins(dbtClassMixin):
         self.description = patch.description
         self.columns = patch.columns
         self.is_public = patch.is_public
-        self.relationships = patch.relationships
+        # self.relationships = patch.relationships
 
     def get_materialization(self):
         return self.config.materialized
@@ -217,7 +218,7 @@ class ParsedNodeDefaults(NodeInfoMixin, ParsedNodeMandatory):
     build_path: Optional[str] = None
     deferred: bool = False
     is_public: Optional[bool] = False
-    relationships: List[EntityRelationship] = field(default_factory=list)
+    # relationships: List[EntityRelationship] = field(default_factory=list)
     unrendered_config: Dict[str, Any] = field(default_factory=dict)
     created_at: float = field(default_factory=lambda: time.time())
     config_call_dict: Dict[str, Any] = field(default_factory=dict)
@@ -506,7 +507,7 @@ class ParsedPatch(HasYamlMetadata, Replaceable):
 class ParsedNodePatch(ParsedPatch):
     columns: Dict[str, ColumnInfo]
     is_public: Optional[bool]
-    relationships: List[EntityRelationship]
+    # relationships: List[EntityRelationship]
 
 
 @dataclass
@@ -766,6 +767,7 @@ class ParsedExposure(UnparsedBaseNode, HasUniqueID, HasFqn):
     refs: List[List[str]] = field(default_factory=list)
     sources: List[List[str]] = field(default_factory=list)
     created_at: float = field(default_factory=lambda: time.time())
+    relationships: List[EntityRelationship] = field(default_factory=list)
 
     @property
     def depends_on_nodes(self):
@@ -796,6 +798,9 @@ class ParsedExposure(UnparsedBaseNode, HasUniqueID, HasFqn):
     def same_url(self, old: "ParsedExposure") -> bool:
         return self.url == old.url
 
+    def same_relationships(self, old: "ParsedExposure") -> bool:
+        return self.relationships == old.relationships
+
     def same_config(self, old: "ParsedExposure") -> bool:
         return self.config.same_contents(
             self.unrendered_config,
@@ -817,6 +822,7 @@ class ParsedExposure(UnparsedBaseNode, HasUniqueID, HasFqn):
             and self.same_description(old)
             and self.same_label(old)
             and self.same_depends_on(old)
+            and self.same_relationships(old)
             and self.same_config(old)
             and True
         )
@@ -841,6 +847,7 @@ class ParsedMetric(UnparsedBaseNode, HasUniqueID, HasFqn):
     dimensions: List[str]
     window: Optional[MetricTime] = None
     model: Optional[str] = None
+    exposure: Optional[str] = None
     model_unique_id: Optional[str] = None
     resource_type: NodeType = NodeType.Metric
     meta: Dict[str, Any] = field(default_factory=dict)

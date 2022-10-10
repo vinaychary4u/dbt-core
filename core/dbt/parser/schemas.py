@@ -873,7 +873,7 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
             docs=block.target.docs,
             config=block.target.config,
             is_public=block.target.is_public,
-            relationships=block.target.relationships,
+            # relationships=block.target.relationships,
         )
         assert isinstance(self.yaml.file, SchemaSourceFile)
         source_file: SchemaSourceFile = self.yaml.file
@@ -1047,6 +1047,7 @@ class ExposureParser(YamlReader):
             maturity=unparsed.maturity,
             config=config,
             unrendered_config=unrendered_config,
+            relationships=unparsed.relationships,
         )
         ctx = generate_parse_exposure(
             parsed,
@@ -1153,6 +1154,7 @@ class MetricParser(YamlReader):
             tags=unparsed.tags,
             config=config,
             unrendered_config=unrendered_config,
+            exposure=unparsed.exposure,
         )
 
         ctx = generate_parse_metrics(

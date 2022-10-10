@@ -53,7 +53,7 @@ from dbt.context.providers import ParseProvider
 from dbt.contracts.files import FileHash, ParseFileType, SchemaSourceFile
 from dbt.parser.read_files import read_files, load_source_file
 from dbt.parser.partial import PartialParsing, special_override_macros
-from dbt.contracts.graph.compiled import ManifestNode
+from dbt.contracts.graph.compiled import ManifestNode, GraphMemberNode
 from dbt.contracts.graph.manifest import (
     Manifest,
     Disabled,
@@ -857,6 +857,12 @@ class ManifestLoader:
             if metric.created_at < self.started_at:
                 continue
             _process_metrics_for_node(self.manifest, current_project, metric)
+        for metric in self.manifest.metrics.values():
+            # TODO: Can we do this if the metric is derived & depends on
+            # some other metric for its definition? Maybe....
+            if metric.created_at < self.started_at:
+                continue
+            _process_exposures_for_metric(self.manifest, current_project, metric)
 
     # nodes: node and column descriptions
     # sources: source and table descriptions, column descriptions
@@ -1210,36 +1216,68 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: P
         metric.depends_on.nodes.append(target_model_id)
 
         # this should not go here
-        # this checks the node columns, and adds any dimensions
+        # this checks the node columns, and adds any dimension
         # declared in that model yml to the metric dimension list
-        import pdb
+        # primary_dimensions = [
+        #     col.name for col in target_model.columns.values() if col.is_dimension
+        # ]
+        # for dim in primary_dimensions:
+        #     if dim not in metric.dimensions:
+        #         metric.dimensions.append(dim)
+        # secondary_dimensions = []
+        # for relationship in target_model.relationships:
+        #     to_model_name = relationship.to
+        #     to_model = manifest.resolve_ref(
+        #         to_model_name,
+        #         target_model_package,
+        #         current_project,
+        #         metric.package_name,
+        #     )
+        #     new_dims = [col.name for col in to_model.columns.values() if col.is_dimension]
+        #     secondary_dimensions.extend(new_dims)
 
-        pdb.set_trace()
-        primary_dimensions = [
-            col.name for col in target_model.columns.values() if col.is_dimension
-        ]
-        for dim in primary_dimensions:
-            if dim not in metric.dimensions:
-                metric.dimensions.append(dim)
-        secondary_dimensions = []
-        for relationship in target_model.relationships:
-            to_model_name = relationship.to
-            to_model = manifest.resolve_ref(
-                to_model_name,
-                target_model_package,
-                current_project,
-                metric.package_name,
-            )
-            new_dims = [col.name for col in to_model.columns.values() if col.is_dimension]
-            secondary_dimensions.extend(new_dims)
-
-        for dim in secondary_dimensions:
-            if dim not in metric.dimensions:
-                metric.dimensions.append(dim)
+        # for dim in secondary_dimensions:
+        #     if dim not in metric.dimensions:
+        #         metric.dimensions.append(dim)
 
         # joined_models = target_model.relationships
 
         manifest.update_metric(metric)
+
+def _process_exposures_for_metric(manifest: Manifest, current_project: str, metric: ParsedMetric):
+    """Given a manifest and a metric in that manifest, process its exposure relationships"""
+    
+    target_exposure: Optional[Union[Disabled, GraphMemberNode]] = None
+    target_exposure_name: str
+    target_exposure_package: Optional[str] = None
+
+    target_exposure_name = metric.exposure
+
+    target_exposure = manifest.resolve_exposure(
+        target_exposure_name,
+        target_exposure_package,
+        current_project,
+        metric.package_name,
+    )
+
+    import pdb; pdb.set_trace()
+
+    if target_exposure is None or isinstance(target_exposure, Disabled):
+        # This may raise. Even if it doesn't, we don't want to add
+        # this metric to the graph b/c there is no destination metric
+        metric.config.enabled = False
+        invalid_exposure_fail_unless_test(
+            metric,
+            target_exposure_name,
+            target_exposure_package
+        )
+
+
+    target_exposure_id = target_exposure.unique_id
+
+    metric.depends_on.exposures.append(target_exposure_id)
+
+    manifest.update_metric(metric)
 
 
 def _process_metrics_for_node(

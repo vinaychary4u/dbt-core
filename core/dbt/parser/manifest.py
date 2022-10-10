@@ -1042,6 +1042,11 @@ def _check_resource_uniqueness(
         if existing_alias is not None:
             dbt.exceptions.raise_ambiguous_alias(existing_alias, node, full_node_name)
 
+        # TODO: check for private ref_permissions and raise an error if private
+        # private_alias = alias_resources.get(full_node_name)
+        # if existing_alias is not None:
+        #     dbt.exceptions.raise_private_alias(existing_alias, node, full_node_name)
+
         names_resources[name] = node
         alias_resources[full_node_name] = node
 

@@ -944,6 +944,25 @@ def raise_ambiguous_alias(node_1, node_2, duped_name=None):
     )
 
 
+# TODO: raise a private alias error
+# def raise_private_alias(node_1, node_2, duped_name=None):
+#     if duped_name is None:
+#         duped_name = f"{node_1.database}.{node_1.schema}.{node_1.alias}"
+
+#     raise_compiler_error(
+#         'dbt found private resources with the database representation "{}".\ndbt '
+#         "cannot create private subfolder models. "
+#         "To fix this,\nchange the ref_permissions configuration of these resources:"
+#         "\n- {} ({})\n- {} ({})".format(
+#             duped_name,
+#             node_1.unique_id,
+#             node_1.original_file_path,
+#             node_2.unique_id,
+#             node_2.original_file_path,
+#         )
+#     )
+
+
 def raise_ambiguous_catalog_match(unique_id, match_1, match_2):
     def get_match_string(match):
         return "{}.{}".format(

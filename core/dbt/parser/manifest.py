@@ -1051,6 +1051,39 @@ def _check_resource_uniqueness(
         alias_resources[full_node_name] = node
 
 
+def _check_resource_ref_permissions(
+    manifest: Manifest,
+    config: RuntimeConfig,
+) -> None:
+    # names_resources: Dict[str, ManifestNode] = {}
+    # alias_resources: Dict[str, ManifestNode] = {}
+
+    # loop through all nodes and check if they have a private ref_permission
+    # example:
+    # private_nodes = {}
+    # private_nodes = {'ANALYTICS.dbt_sung.stg_tpch_orders': 'models/staging/tpch', 'ANALYTICS.dbt_sung.stg_tpch_part_suppliers': 'models/staging/tpch', 'ANALYTICS.dbt_sung.stg_tpch_suppliers': 'models/staging/tpch', 'ANALYTICS.dbt_sung.stg_tpch_regions': 'models/staging/tpch', 'ANALYTICS.dbt_sung.stg_tpch_nations': 'models/staging/tpch', 'ANALYTICS.dbt_sung.stg_tpch_line_items': 'models/staging/tpch', 'ANALYTICS.dbt_sung.stg_tpch_parts': 'models/staging/tpch', 'ANALYTICS.dbt_sung.dim_customers': 'models/marts/core'}
+    private_nodes = {}
+    # summary of all private subfolder paths
+    private_subfolder_paths = set()
+    for resource, node in manifest.nodes.items():
+        if not node.is_relational:
+            continue
+
+        # the full node name is really defined by the adapter's relation
+        relation_cls = get_relation_class_by_name(config.credentials.type)
+        relation = relation_cls.create_from(config=config, node=node)
+        full_node_name = str(relation)
+
+        ref_permissions = node.config._extra.get("ref_permissions")
+        if ref_permissions == "private":
+            parsed_subfolder, file_name = os.path.split(node.original_file_path)
+            private_subfolder_paths.add(parsed_subfolder)
+            private_node = {full_node_name: parsed_subfolder}
+            private_nodes.update(private_node)
+    print(f"private_subfolder_paths = {private_subfolder_paths}")
+    print(f"private_nodes: {private_nodes}")
+
+
 def _warn_for_unused_resource_config_paths(manifest: Manifest, config: RuntimeConfig) -> None:
     resource_fqns: Mapping[str, PathSet] = manifest.get_resource_fqns()
     disabled_fqns: PathSet = frozenset(
@@ -1062,6 +1095,7 @@ def _warn_for_unused_resource_config_paths(manifest: Manifest, config: RuntimeCo
 def _check_manifest(manifest: Manifest, config: RuntimeConfig) -> None:
     _check_resource_uniqueness(manifest, config)
     _warn_for_unused_resource_config_paths(manifest, config)
+    _check_resource_ref_permissions(manifest, config)
 
 
 def _get_node_column(node, column_name):

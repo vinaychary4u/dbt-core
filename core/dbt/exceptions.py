@@ -944,8 +944,15 @@ def raise_ambiguous_alias(node_1, node_2, duped_name=None):
     )
 
 
+# Compilation Error
+#   dbt found two resources with the database representation "ANALYTICS.dbt_sung.my_first_model".
+#   dbt cannot create two resources with identical database representations. To fix this,
+#   change the configuration of one of these resources:
+#   - model.tpch.my_first_model (models/demo_examples/my_first_model.sql)
+#   - model.tpch.my_second_model (models/demo_examples/my_second_model.sql)
+
 # TODO: raise a private alias error
-# def raise_private_alias(node_1, node_2, duped_name=None):
+# def raise_private_resource(node_list):
 #     if duped_name is None:
 #         duped_name = f"{node_1.database}.{node_1.schema}.{node_1.alias}"
 
@@ -955,10 +962,8 @@ def raise_ambiguous_alias(node_1, node_2, duped_name=None):
 #         "To fix this,\nchange the ref_permissions configuration of these resources:"
 #         "\n- {} ({})\n- {} ({})".format(
 #             duped_name,
-#             node_1.unique_id,
-#             node_1.original_file_path,
-#             node_2.unique_id,
-#             node_2.original_file_path,
+#             node_list.unique_id,
+#             node_list.original_file_path,
 #         )
 #     )
 

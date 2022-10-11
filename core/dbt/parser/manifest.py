@@ -218,8 +218,28 @@ class ManifestLoader:
 
             manifest = loader.load()
 
-            _check_manifest(manifest, config)
+            private_nodes = _check_manifest(manifest, config)
+            private_nodes_keys = private_nodes.keys()
+            print(f"private_nodes_keys: {private_nodes_keys}")
+
             manifest.build_flat_graph()
+
+            # for each node in the manifest, remove the node from depends_on if it's in the private nodes dictionary above
+            for node in manifest.nodes.values():
+                print("-------------")
+                print(node.unique_id)
+                # get the node.dependencies before
+                print("BEFORE REMOVING PRIVATE NODES")
+                print(node.depends_on.nodes)
+
+                # remove the private nodes from the node.dependencies
+                node.depends_on.nodes = [
+                    x for x in node.depends_on.nodes if x not in private_nodes_keys
+                ]
+                # get the node.dependencies after removing the private nodes
+                print("AFTER REMOVING PRIVATE NODES")
+                print(node.depends_on.nodes)
+                print("-------------")
 
             # This needs to happen after loading from a partial parse,
             # so that the adapter has the query headers from the macro_hook.
@@ -1054,7 +1074,7 @@ def _check_resource_uniqueness(
 def _check_resource_ref_permissions(
     manifest: Manifest,
     config: RuntimeConfig,
-) -> None:
+) -> dict:
     # names_resources: Dict[str, ManifestNode] = {}
     # alias_resources: Dict[str, ManifestNode] = {}
 
@@ -1070,18 +1090,17 @@ def _check_resource_ref_permissions(
             continue
 
         # the full node name is really defined by the adapter's relation
-        relation_cls = get_relation_class_by_name(config.credentials.type)
-        relation = relation_cls.create_from(config=config, node=node)
-        full_node_name = str(relation)
+        # relation_cls = get_relation_class_by_name(config.credentials.type)
 
         ref_permissions = node.config._extra.get("ref_permissions")
         if ref_permissions == "private":
             parsed_subfolder, file_name = os.path.split(node.original_file_path)
             private_subfolder_paths.add(parsed_subfolder)
-            private_node = {full_node_name: parsed_subfolder}
+            private_node = {node.unique_id: parsed_subfolder}
             private_nodes.update(private_node)
     print(f"private_subfolder_paths = {private_subfolder_paths}")
     print(f"private_nodes: {private_nodes}")
+    return private_nodes
 
 
 def _warn_for_unused_resource_config_paths(manifest: Manifest, config: RuntimeConfig) -> None:
@@ -1092,10 +1111,11 @@ def _warn_for_unused_resource_config_paths(manifest: Manifest, config: RuntimeCo
     config.warn_for_unused_resource_config_paths(resource_fqns, disabled_fqns)
 
 
-def _check_manifest(manifest: Manifest, config: RuntimeConfig) -> None:
+def _check_manifest(manifest: Manifest, config: RuntimeConfig) -> dict:
     _check_resource_uniqueness(manifest, config)
     _warn_for_unused_resource_config_paths(manifest, config)
-    _check_resource_ref_permissions(manifest, config)
+    private_nodes = _check_resource_ref_permissions(manifest, config)
+    return private_nodes
 
 
 def _get_node_column(node, column_name):

@@ -227,9 +227,9 @@ class ManifestLoader:
             # for each node in the manifest, remove the node from depends_on if it's in the private nodes dictionary above
             for node in manifest.nodes.values():
                 print("-------------")
-                print(node.unique_id)
+                print(f"node.unique_id: {node.unique_id}")
                 # get the node.dependencies before
-                print("BEFORE REMOVING PRIVATE NODES")
+                print("depends_on.nodes: BEFORE REMOVING PRIVATE NODES")
                 print(node.depends_on.nodes)
 
                 # remove the private nodes from the node.dependencies
@@ -237,7 +237,7 @@ class ManifestLoader:
                     x for x in node.depends_on.nodes if x not in private_nodes_keys
                 ]
                 # get the node.dependencies after removing the private nodes
-                print("AFTER REMOVING PRIVATE NODES")
+                print("depends_on.nodes: AFTER REMOVING PRIVATE NODES")
                 print(node.depends_on.nodes)
                 print("-------------")
 

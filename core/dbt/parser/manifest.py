@@ -1232,6 +1232,7 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: P
             )
             new_dims = [col.name for col in to_model.columns.values() if col.is_dimension]
             secondary_dimensions.extend(new_dims)
+            metric.depends_on.nodes.append(to_model.unique_id)
 
         for dim in secondary_dimensions:
             if dim not in metric.dimensions:

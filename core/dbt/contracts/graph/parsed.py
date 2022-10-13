@@ -837,7 +837,7 @@ class ParsedMetric(UnparsedBaseNode, HasUniqueID, HasFqn):
     expression: str
     filters: List[MetricFilter]
     time_grains: List[str]
-    dimensions: List[str]
+    dimensions: Dict[str, Any] = field(default_factory=dict)
     window: Optional[MetricTime] = None
     model: Optional[str] = None
     model_unique_id: Optional[str] = None

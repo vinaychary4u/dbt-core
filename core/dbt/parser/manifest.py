@@ -1187,8 +1187,8 @@ def _process_dimensions_and_relationships_for_metric(
             raise dbt.exceptions.InternalException(
                 f"Dimension columns must declare a `data_type` attribute. {dim.name} is missing this configuration."
             )
-        if dim.name not in metric.dimensions:
-            metric.dimensions.append(dim.name)
+        if dim.name not in metric.dimensions[target_model.name]:
+            metric.dimensions[target_model.name].append(dim.name)
 
     for relationship in target_model.relationships:
         to_model_name = relationship.to
@@ -1205,13 +1205,14 @@ def _process_dimensions_and_relationships_for_metric(
         metric.depends_on.nodes.append(to_model.unique_id)
 
         new_dims = [col for col in to_model.columns.values() if col.is_dimension]
+        if new_dims:
+            metric.dimensions[to_model.name] = []
         for col in new_dims:
             if not col.data_type:
                 raise dbt.exceptions.InternalException(
                     f"Dimension columns must declare a `data_type` attribute. {col.name} is missing this configuration."
                 )
-            if col.name not in metric.dimensions:
-                metric.dimensions.append(col.name)
+            metric.dimensions[to_model.name].append(col.name)
 
 
 def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: ParsedMetric):

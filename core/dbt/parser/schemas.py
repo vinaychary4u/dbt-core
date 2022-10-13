@@ -1175,14 +1175,6 @@ class MetricParser(YamlReader):
             node=parsed,
         )
 
-        for node in parsed.depends_on.nodes:
-            if self.manifest.nodes[node]:
-                declared_dimensions = [
-                    col.name for col in self.manifest.nodes[node]["columns"] if col.is_dimension
-                ]
-                for dim in declared_dimensions:
-                    parsed.dimensions.append(dim)
-
         # if the metric is disabled we do not want it included in the manifest, only in the disabled dict
         if parsed.config.enabled:
             self.manifest.add_metric(self.yaml.file, parsed)

@@ -132,6 +132,7 @@ class UnparsedColumn(HasTests):
     tags: List[str] = field(default_factory=list)
     is_dimension: Optional[bool] = False
     is_primary_key: Optional[bool] = False
+    data_type: Optional[str] = None
 
 
 @dataclass

@@ -602,7 +602,6 @@ class PartialParsing:
         else:
             saved_schema_file.pp_dict = {}
         self.handle_schema_file_changes(saved_schema_file, saved_yaml_dict, new_yaml_dict)
-
         # copy from new schema_file to saved_schema_file to preserve references
         # that weren't removed
         saved_schema_file.contents = new_schema_file.contents
@@ -854,6 +853,16 @@ class PartialParsing:
                         self.add_to_pp_files(source_file)
             # remove from patches
             schema_file.node_patches.remove(elem_unique_id)
+
+        # for models, reparse children metrics if applicable:
+        if dict_key == "models":
+            for unique_id in schema_file.node_patches:
+                children = [
+                    child
+                    for child in self.saved_manifest.child_map[unique_id]
+                    if child.split(".")[0] == "metric"
+                ]
+                self.schedule_nodes_for_parsing(children)
 
         # for models, seeds, snapshots (not analyses)
         if dict_key in ["models", "seeds", "snapshots"]:

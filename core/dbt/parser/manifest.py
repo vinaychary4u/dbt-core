@@ -1167,6 +1167,53 @@ def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposur
         manifest.update_exposure(exposure)
 
 
+def _process_dimensions_and_relationships_for_metric(
+    manifest: Manifest,
+    target_model: ManifestNode,
+    metric: ParsedMetric,
+    target_model_package: Optional[str],
+    current_project: Optional[str],
+):
+
+    if target_model.relationships and not target_model.is_public:
+        raise dbt.exceptions.InternalException(
+            f"Model relationships must be declared between public models - {metric.unique_id} depends on {target_model.unique_id}, which is not a public model."
+        )
+
+    primary_model_dimensions = [col for col in target_model.columns.values() if col.is_dimension]
+
+    for dim in primary_model_dimensions:
+        if not dim.data_type:
+            raise dbt.exceptions.InternalException(
+                f"Dimension columns must declare a `data_type` attribute. {dim.name} is missing this configuration."
+            )
+        if dim.name not in metric.dimensions:
+            metric.dimensions.append(dim.name)
+
+    for relationship in target_model.relationships:
+        to_model_name = relationship.to
+        to_model = manifest.resolve_ref(
+            to_model_name,
+            target_model_package,
+            current_project,
+            metric.package_name,
+        )
+        if not to_model.is_public:
+            raise dbt.exceptions.InternalException(
+                f"Model relationships must be declared between public models - {metric.unique_id} depends on {to_model.unique_id}, which is not a public model."
+            )
+        metric.depends_on.nodes.append(to_model.unique_id)
+
+        new_dims = [col for col in to_model.columns.values() if col.is_dimension]
+        for col in new_dims:
+            if not col.data_type:
+                raise dbt.exceptions.InternalException(
+                    f"Dimension columns must declare a `data_type` attribute. {col.name} is missing this configuration."
+                )
+            if col.name not in metric.dimensions:
+                metric.dimensions.append(col.name)
+
+
 def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: ParsedMetric):
     """Given a manifest and a metric in that manifest, process its refs"""
     for ref in metric.refs:
@@ -1207,34 +1254,13 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: P
 
         metric.depends_on.nodes.append(target_model_id)
 
+        _process_dimensions_and_relationships_for_metric(
+            manifest, target_model, metric, target_model_package, current_project
+        )
+
         # this should not go here
         # this checks the node columns, and adds any dimensions
         # declared in that model yml to the metric dimension list
-        import pdb
-
-        pdb.set_trace()
-        primary_dimensions = [
-            col.name for col in target_model.columns.values() if col.is_dimension
-        ]
-        for dim in primary_dimensions:
-            if dim not in metric.dimensions:
-                metric.dimensions.append(dim)
-        secondary_dimensions = []
-        for relationship in target_model.relationships:
-            to_model_name = relationship.to
-            to_model = manifest.resolve_ref(
-                to_model_name,
-                target_model_package,
-                current_project,
-                metric.package_name,
-            )
-            new_dims = [col.name for col in to_model.columns.values() if col.is_dimension]
-            secondary_dimensions.extend(new_dims)
-            metric.depends_on.nodes.append(to_model.unique_id)
-
-        for dim in secondary_dimensions:
-            if dim not in metric.dimensions:
-                metric.dimensions.append(dim)
 
         # joined_models = target_model.relationships
 

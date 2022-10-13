@@ -2256,9 +2256,7 @@ class StatsLine(InfoLevel, pt.StatsLine):
         return "Z023"
 
     def message(self) -> str:
-        stats_line = "Done. PASS={pass} WARN={warn} ERROR={error} SKIP={skip} TOTAL={total}"
-        return stats_line.format(**self.stats)
-
+        return "Done. " + " ".join([ k + " " + str(v) for (k,v) in self.stats.items()])
 
 @dataclass
 class RunResultError(ErrorLevel, pt.RunResultError):

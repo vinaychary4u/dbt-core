@@ -841,6 +841,7 @@ class ParsedMetric(UnparsedBaseNode, HasUniqueID, HasFqn):
     window: Optional[MetricTime] = None
     model: Optional[str] = None
     model_unique_id: Optional[str] = None
+    allow_joins: Optional[bool] = True
     resource_type: NodeType = NodeType.Metric
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)

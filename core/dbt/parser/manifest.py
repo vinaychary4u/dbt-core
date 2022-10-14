@@ -1174,45 +1174,47 @@ def _process_dimensions_and_relationships_for_metric(
     target_model_package: Optional[str],
     current_project: Optional[str],
 ):
-
-    if target_model.relationships and not target_model.is_public:
-        raise dbt.exceptions.InternalException(
-            f"Model relationships must be declared between public models - {metric.unique_id} depends on {target_model.unique_id}, which is not a public model."
-        )
-
-    primary_model_dimensions = [col for col in target_model.columns.values() if col.is_dimension]
-
-    for dim in primary_model_dimensions:
-        if not dim.data_type:
+    if metric.allow_joins:
+        if target_model.relationships and not target_model.is_public:
             raise dbt.exceptions.InternalException(
-                f"Dimension columns must declare a `data_type` attribute. {dim.name} is missing this configuration."
+                f"Model relationships must be declared between public models - {metric.unique_id} depends on {target_model.unique_id}, which is not a public model."
             )
-        if dim.name not in metric.dimensions[target_model.name]:
-            metric.dimensions[target_model.name].append(dim.name)
 
-    for relationship in target_model.relationships:
-        to_model_name = relationship.to
-        to_model = manifest.resolve_ref(
-            to_model_name,
-            target_model_package,
-            current_project,
-            metric.package_name,
-        )
-        if not to_model.is_public:
-            raise dbt.exceptions.InternalException(
-                f"Model relationships must be declared between public models - {metric.unique_id} depends on {to_model.unique_id}, which is not a public model."
-            )
-        metric.depends_on.nodes.append(to_model.unique_id)
+        primary_model_dimensions = [
+            col for col in target_model.columns.values() if col.is_dimension
+        ]
 
-        new_dims = [col for col in to_model.columns.values() if col.is_dimension]
-        if new_dims:
-            metric.dimensions[to_model.name] = []
-        for col in new_dims:
-            if not col.data_type:
+        for dim in primary_model_dimensions:
+            if not dim.data_type:
                 raise dbt.exceptions.InternalException(
-                    f"Dimension columns must declare a `data_type` attribute. {col.name} is missing this configuration."
+                    f"Dimension columns must declare a `data_type` attribute. {dim.name} is missing this configuration."
                 )
-            metric.dimensions[to_model.name].append(col.name)
+            if dim.name not in metric.dimensions[target_model.name]:
+                metric.dimensions[target_model.name].append(dim.name)
+
+        for relationship in target_model.relationships:
+            to_model_name = relationship.to
+            to_model = manifest.resolve_ref(
+                to_model_name,
+                target_model_package,
+                current_project,
+                metric.package_name,
+            )
+            if not to_model.is_public:
+                raise dbt.exceptions.InternalException(
+                    f"Model relationships must be declared between public models - {metric.unique_id} depends on {to_model.unique_id}, which is not a public model."
+                )
+            metric.depends_on.nodes.append(to_model.unique_id)
+
+            new_dims = [col for col in to_model.columns.values() if col.is_dimension]
+            if new_dims:
+                metric.dimensions[to_model.name] = []
+            for col in new_dims:
+                if not col.data_type:
+                    raise dbt.exceptions.InternalException(
+                        f"Dimension columns must declare a `data_type` attribute. {col.name} is missing this configuration."
+                    )
+                metric.dimensions[to_model.name].append(col.name)
 
 
 def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: ParsedMetric):

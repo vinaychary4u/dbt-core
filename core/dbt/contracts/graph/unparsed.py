@@ -512,6 +512,7 @@ class UnparsedMetric(dbtClassMixin, Replaceable):
     dimensions: Dict[str, Any] = field(default_factory=dict)
     window: Optional[MetricTime] = None
     model: Optional[str] = None
+    allow_joins: Optional[bool] = True
     filters: List[MetricFilter] = field(default_factory=list)
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)

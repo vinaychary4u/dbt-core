@@ -1149,6 +1149,7 @@ class MetricParser(YamlReader):
             expression=str(unparsed.expression),
             timestamp=unparsed.timestamp,
             dimensions=unparsed.dimensions,
+            allow_joins=unparsed.allow_joins,
             window=unparsed.window,
             time_grains=unparsed.time_grains,
             filters=unparsed.filters,

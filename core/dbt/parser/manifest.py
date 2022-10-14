@@ -390,6 +390,7 @@ class ManifestLoader:
             # These check the created_at time on the nodes to
             # determine whether they need processing.
             start_process = time.perf_counter()
+            # self.process_inverse_relationships(self.root_project.project_name)
             self.process_sources(self.root_project.project_name)
             self.process_refs(self.root_project.project_name)
             self.process_docs(self.root_project)
@@ -953,6 +954,12 @@ class ManifestLoader:
 
         self.manifest.rebuild_ref_lookup()
 
+    def process_inverse_relationships(self, current_project: str):
+        for node in self.manifest.nodes.values():
+            if node.created_at < self.started_at:
+                continue
+            _process_inverse_relationships_for_node(self.manifest, current_project, node)
+
 
 def invalid_ref_fail_unless_test(node, target_model_name, target_model_package, disabled):
 
@@ -1336,6 +1343,10 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
             node.package_name,
         )
 
+        import pdb
+
+        pdb.set_trace()
+
         if target_model is None or isinstance(target_model, Disabled):
             # This may raise. Even if it doesn't, we don't want to add
             # this node to the graph b/c there is no destination node
@@ -1357,6 +1368,26 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
         # making a new one)
         # Q: could we stop doing this?
         manifest.update_node(node)
+
+
+def _process_inverse_relationships_for_node(
+    manifest: Manifest, current_project: str, node: ManifestNode
+):
+    """Given a manifest and a node in that manifest, process the inverse relationships for the related nodes"""
+    target_model_package: Optional[str] = None
+    if node.resource_type == "model" and len(node.relationships) > 0:
+        for relationship in node.relationships:
+            to_model = manifest.resolve_ref(
+                relationship.to, target_model_package, current_project, node.package_name
+            )
+            inverse_relationship = {
+                "to": node.name,
+                "join_key": relationship.join_key,
+                "relationship_type": relationship.relationship_type.inverse(),
+            }
+            to_model.relationships.append(inverse_relationship)
+            # import pdb; pdb.set_trace()
+            manifest.update_node(to_model)
 
 
 def _process_sources_for_exposure(

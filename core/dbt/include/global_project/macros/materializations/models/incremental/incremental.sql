@@ -11,6 +11,7 @@
 
   -- configs
   {%- set unique_key = config.get('unique_key') -%}
+  {%- set incremental_key  = config.get('incremental_key') -%}
   {%- set full_refresh_mode = (should_full_refresh()  or existing_relation.is_view) -%}
   {%- set on_schema_change = incremental_validate_on_schema_change(config.get('on_schema_change'), default='ignore') -%}
 
@@ -34,11 +35,23 @@
 
   {% if existing_relation is none %}
       {% set build_sql = get_create_table_as_sql(False, target_relation, sql) %}
+
   {% elif full_refresh_mode %}
       {% set build_sql = get_create_table_as_sql(False, intermediate_relation, sql) %}
       {% set need_swap = true %}
+
   {% else %}
-    {% do run_query(get_create_table_as_sql(True, temp_relation, sql)) %}
+    {% set build_sql %}
+      {{sql}} 
+
+      {#-- If an incremental key was provided, append the incremental filtering logic to the model sql --#}
+      {% if incremental_key is not none %}
+        -- this filter will only be applied on an incremental run
+        WHERE {{ incremental_key }} >= (SELECT MAX(THIS.{{ incremental_key }}) FROM {{ this }} THIS)
+      {% endif %}
+    {% endset %}
+
+    {% do run_query(get_create_table_as_sql(True, temp_relation, build_sql)) %}
     {% do adapter.expand_target_column_types(
              from_relation=temp_relation,
              to_relation=target_relation) %}

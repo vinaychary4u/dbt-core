@@ -123,7 +123,7 @@ log_format = click.option(
     "--log-format",
     envvar="DBT_LOG_FORMAT",
     help="Specify the log format, overriding the command's default.",
-    type=click.Choice(["text", "json", "default"], case_sensitive=False),
+    type=click.Choice(["text", "json", "protobuf", "default"], case_sensitive=False),
     default="default",
 )
 

@@ -18,7 +18,7 @@ from logging.handlers import RotatingFileHandler
 import os
 import uuid
 import threading
-from typing import List, Optional, Union, Callable, Dict
+from typing import List, Optional, Union, Callable, Dict, Any
 from collections import deque
 
 LOG_VERSION = 3
@@ -39,6 +39,7 @@ STDOUT_LOG.addHandler(stdout_handler)
 
 format_color = True
 format_json = False
+using_protobuf = False
 invocation_id: Optional[str] = None
 metadata_vars: Optional[Dict[str, str]] = None
 
@@ -52,15 +53,13 @@ def setup_event_logger(log_path, level_override=None):
     # havent been applied yet
     format_color = True if flags.USE_COLORS else False
     # TODO this default should live somewhere better
-    log_dest = os.path.join(log_path, "dbt.log")
     level = level_override or (logging.DEBUG if flags.DEBUG else logging.INFO)
 
     # overwrite the STDOUT_LOG logger with the configured one
     STDOUT_LOG = logging.getLogger("configured_std_out")
     STDOUT_LOG.setLevel(level)
 
-    FORMAT = "%(message)s"
-    stdout_passthrough_formatter = logging.Formatter(fmt=FORMAT)
+    stdout_passthrough_formatter = logging.Formatter(fmt="%(message)s")
 
     stdout_handler = logging.StreamHandler(sys.stdout)
     stdout_handler.setFormatter(stdout_passthrough_formatter)
@@ -73,19 +72,49 @@ def setup_event_logger(log_path, level_override=None):
     ]
     STDOUT_LOG.addHandler(stdout_handler)
 
+    global using_protobuf
+    using_protobuf = isinstance(flags.LOG_FORMAT, str) and flags.LOG_FORMAT.lower() == "protobuf"
+    log_filename = os.path.join(log_path, "dbt.binlog" if using_protobuf else "dbt.log")
+
+    file_logger = logging.getLogger("configured_file")
+    file_logger.setLevel(logging.DEBUG)  # always debug regardless of user input
+    if using_protobuf:
+        configure_protobuf_binary_logger(file_logger, log_filename)
+    else:
+        configure_text_file_logger(file_logger, log_filename)
+
     # overwrite the FILE_LOG logger with the configured one
-    FILE_LOG = logging.getLogger("configured_file")
-    FILE_LOG.setLevel(logging.DEBUG)  # always debug regardless of user input
+    FILE_LOG = file_logger
 
-    file_passthrough_formatter = logging.Formatter(fmt=FORMAT)
 
+def configure_text_file_logger(logger: logging.Logger, log_filename: str) -> None:
+    file_passthrough_formatter = logging.Formatter(fmt="%(message)s")
     file_handler = RotatingFileHandler(
-        filename=log_dest, encoding="utf8", maxBytes=10 * 1024 * 1024, backupCount=5  # 10 mb
+        filename=log_filename, encoding="utf8", maxBytes=10 * 1024 * 1024, backupCount=5  # 10 mb
     )
     file_handler.setFormatter(file_passthrough_formatter)
     file_handler.setLevel(logging.DEBUG)  # always debug regardless of user input
-    FILE_LOG.handlers.clear()
-    FILE_LOG.addHandler(file_handler)
+    logger.handlers.clear()
+    logger.addHandler(file_handler)
+
+
+class ProtobufFormatter(logging.Formatter):
+    def format(self, record):
+        return create_protobuf_log_block(record.msg)
+
+
+def configure_protobuf_binary_logger(logger: logging.Logger, log_filename: str) -> None:
+    handler = RotatingFileHandler(
+        filename=log_filename,
+        mode="ab",  # append in binary mode
+        backupCount=5,
+    )
+    handler.terminator = b""  # type: ignore
+    # Setting maxByts *after* the above constructor works around a python
+    # logging inconsistency for binary logs.
+    handler.maxBytes = 10 * 1024 * 1024  # type: ignore
+    handler.setFormatter(ProtobufFormatter())
+    logger.addHandler(handler)
 
 
 # used for integration tests
@@ -198,9 +227,31 @@ def create_log_line(e: BaseEvent, file_output=False) -> Optional[str]:
         return create_info_text_log_line(e)  # console output
 
 
+def create_protobuf_log_block(e: betterproto.Message) -> bytes:
+    event_name = type(e).__name__
+    event_name_bytes = bytes(event_name, "utf-8")
+    event_proto_bytes = bytes(e)
+
+    # The encoded byte block for an entry in the binary event log consists of
+    # the following four byte sequences, concatenated:
+    #
+    # 1. A 16-bit integer, unsigned, little-endian
+    # 2. The event type name, a UTF-8 string with byte-length given by (1)
+    # 3. A 32-bit integer, unsigned, little-endian
+    # 4. A protobuf message of type given by (2) and byte-length given by (3)
+    block_bytes: bytes = (
+        len(event_name_bytes).to_bytes(2, "little", signed=False)
+        + event_name_bytes
+        + len(event_proto_bytes).to_bytes(4, "little", signed=False)
+        + event_proto_bytes
+    )
+    # TODO: Create and apply a scrub_secrets() equivalent for protobuf binary log messages
+    return block_bytes
+
+
 # allows for reuse of this obnoxious if else tree.
 # do not use for exceptions, it doesn't pass along exc_info, stack_info, or extra
-def send_to_logger(l: Union[Logger, logbook.Logger], level_tag: str, log_line: str):
+def send_to_logger(l: Union[Logger, logbook.Logger], level_tag: str, log_line: Any):
     if not log_line:
         return
     if level_tag == "test":
@@ -229,7 +280,7 @@ def fire_event_if(conditional: bool, lazy_e: Callable[[], BaseEvent]) -> None:
 
 # top-level method for accessing the new eventing system
 # this is where all the side effects happen branched by event type
-# (i.e. - mutating the event history, printing to stdout, logging
+# (i.e. - appending to event history, printing to stdout, logging
 # to files, etc.)
 def fire_event(e: BaseEvent) -> None:
     # skip logs when `--log-cache-events` is not passed
@@ -249,10 +300,13 @@ def fire_event(e: BaseEvent) -> None:
 
     # always logs debug level regardless of user input
     if not isinstance(e, NoFile):
-        log_line = create_log_line(e, file_output=True)
-        # doesn't send exceptions to exception logger
-        if log_line:
-            send_to_logger(FILE_LOG, level_tag=e.level_tag(), log_line=log_line)
+        if using_protobuf:
+            send_to_logger(FILE_LOG, level_tag=e.level_tag(), log_line=e)
+        else:
+            log_line = create_log_line(e, file_output=True)
+            # doesn't send exceptions to exception logger
+            if log_line:
+                send_to_logger(FILE_LOG, level_tag=e.level_tag(), log_line=log_line)
 
     if not isinstance(e, NoStdOut):
         # explicitly checking the debug flag here so that potentially expensive-to-construct

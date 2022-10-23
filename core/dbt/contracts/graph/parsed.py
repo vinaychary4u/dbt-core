@@ -353,6 +353,24 @@ class ParsedHookNode(ParsedNode):
 class ParsedModelNode(ParsedNode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Model]})
 
+    def to_msg(self):
+        from dbt.contracts.graph.proto_nodes import ModelNode
+
+        node = ModelNode(
+            name=self.name,
+            resource_type=str(self.resource_type),
+            unique_id=self.unique_id,
+            package_name=self.package_name,
+            alias=self.alias,
+            # depends_on=...
+            database=self.database,
+            schema=self.schema,
+            language=self.language,
+            tags=self.tags,
+            description=self.description,
+        )
+        return node
+
 
 # TODO: rm?
 @dataclass

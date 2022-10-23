@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package proto_nodes;
+
+message DependsOn {
+    repeated string macros = 1;
+    repeated string nodes = 2;
+}
+
+message ModelNode {
+    string resource_type = 1;
+    string unique_id = 2;
+    string name = 3;
+    string package_name = 4;
+    string alias = 5;
+    DependsOn depends_on = 6;
+    string database = 7;
+    string schema = 8;
+    string language = 9;
+    string original_file_path = 10;
+    repeated string tags = 11;
+    string description = 12;
+}

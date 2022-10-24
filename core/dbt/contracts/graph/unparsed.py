@@ -94,7 +94,7 @@ class EntityRelationshipType(StrEnum):
     one_to_many = "one_to_many"
     one_to_one = "one_to_one"
 
-    def inverse(self):
+    def inverse(self) -> str:
         if self == "many_to_one":
             return "one_to_many"
         elif self == "one_to_many":

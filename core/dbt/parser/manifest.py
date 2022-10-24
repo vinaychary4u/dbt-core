@@ -69,6 +69,7 @@ from dbt.contracts.graph.parsed import (
     ParsedExposure,
     ParsedMetric,
 )
+from dbt.contracts.graph.unparsed import EntityRelationshipType, EntityRelationship
 from dbt.contracts.util import Writable
 from dbt.exceptions import (
     ref_target_not_found,
@@ -390,9 +391,9 @@ class ManifestLoader:
             # These check the created_at time on the nodes to
             # determine whether they need processing.
             start_process = time.perf_counter()
-            # self.process_inverse_relationships(self.root_project.project_name)
             self.process_sources(self.root_project.project_name)
             self.process_refs(self.root_project.project_name)
+            # self.process_inverse_relationships(self.root_project.project_name)
             self.process_docs(self.root_project)
             self.process_metrics(self.root_project)
 
@@ -833,6 +834,7 @@ class ManifestLoader:
             if node.created_at < self.started_at:
                 continue
             _process_refs_for_node(self.manifest, current_project, node)
+            _process_inverse_relationships_for_node(self.manifest, current_project, node)
         for exposure in self.manifest.exposures.values():
             if exposure.created_at < self.started_at:
                 continue
@@ -954,11 +956,11 @@ class ManifestLoader:
 
         self.manifest.rebuild_ref_lookup()
 
-    def process_inverse_relationships(self, current_project: str):
-        for node in self.manifest.nodes.values():
-            if node.created_at < self.started_at:
-                continue
-            _process_inverse_relationships_for_node(self.manifest, current_project, node)
+    # def process_inverse_relationships(self, current_project: str):
+    #     for node in self.manifest.nodes.values():
+    #         if node.created_at < self.started_at:
+    #             continue
+    #         _process_inverse_relationships_for_node(self.manifest, current_project, node)
 
 
 def invalid_ref_fail_unless_test(node, target_model_name, target_model_package, disabled):
@@ -1343,10 +1345,6 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
             node.package_name,
         )
 
-        import pdb
-
-        pdb.set_trace()
-
         if target_model is None or isinstance(target_model, Disabled):
             # This may raise. Even if it doesn't, we don't want to add
             # this node to the graph b/c there is no destination node
@@ -1380,13 +1378,12 @@ def _process_inverse_relationships_for_node(
             to_model = manifest.resolve_ref(
                 relationship.to, target_model_package, current_project, node.package_name
             )
-            inverse_relationship = {
-                "to": node.name,
-                "join_key": relationship.join_key,
-                "relationship_type": relationship.relationship_type.inverse(),
-            }
+            inverse_relationship = EntityRelationship(
+                to=node.name,
+                join_key=relationship.join_key,
+                relationship_type=EntityRelationshipType(relationship.relationship_type.inverse()),
+            )
             to_model.relationships.append(inverse_relationship)
-            # import pdb; pdb.set_trace()
             manifest.update_node(to_model)
 
 

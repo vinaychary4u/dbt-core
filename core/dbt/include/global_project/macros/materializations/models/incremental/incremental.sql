@@ -1,6 +1,7 @@
 
 {% materialization incremental, default -%}
 
+  {%- set language = model['language'] -%}
   -- relations
   {%- set existing_relation = load_cached_relation(this) -%}
   {%- set target_relation = this.incorporate(type='table') -%}
@@ -33,12 +34,21 @@
   {% set to_drop = [] %}
 
   {% if existing_relation is none %}
-      {% set build_sql = get_create_table_as_sql(False, target_relation, sql) %}
+    {%- call statement('main', language=language) -%}
+      {{ create_table_as(False, target_relation, compiled_code, language) }}
+    {%- endcall -%}
   {% elif full_refresh_mode %}
-      {% set build_sql = get_create_table_as_sql(False, intermediate_relation, sql) %}
-      {% set need_swap = true %}
+    {%- call statement('main', language=language) -%}
+      {{ create_table_as(False, intermediate_relation, compiled_code, language) }}
+    {%- endcall -%}
+    {% do adapter.rename_relation(target_relation, backup_relation) %}
+    {% do adapter.rename_relation(intermediate_relation, target_relation) %}
+    {% do to_drop.append(backup_relation) %}
+
   {% else %}
-    {% do run_query(get_create_table_as_sql(True, temp_relation, sql)) %}
+    {%- call statement('create_tmp_relation', language=language) -%}
+      {{ create_table_as(True, tmp_relation, compiled_code, language) }}
+    {%- endcall -%}
     {% do adapter.expand_target_column_types(
              from_relation=temp_relation,
              to_relation=target_relation) %}
@@ -53,18 +63,11 @@
     {% set incremental_predicates = config.get('incremental_predicates', none) %}
     {% set strategy_sql_macro_func = adapter.get_incremental_strategy_macro(context, incremental_strategy) %}
     {% set strategy_arg_dict = ({'target_relation': target_relation, 'temp_relation': temp_relation, 'unique_key': unique_key, 'dest_columns': dest_columns, 'predicates': incremental_predicates }) %}
-    {% set build_sql = strategy_sql_macro_func(strategy_arg_dict) %}
 
-  {% endif %}
+    {%- call statement('main') -%}
+      {{ strategy_sql_macro_func(strategy_arg_dict) }}
+    {%- endcall -%}
 
-  {% call statement("main") %}
-      {{ build_sql }}
-  {% endcall %}
-
-  {% if need_swap %}
-      {% do adapter.rename_relation(target_relation, backup_relation) %}
-      {% do adapter.rename_relation(intermediate_relation, target_relation) %}
-      {% do to_drop.append(backup_relation) %}
   {% endif %}
 
   {% set should_revoke = should_revoke(existing_relation, full_refresh_mode) %}

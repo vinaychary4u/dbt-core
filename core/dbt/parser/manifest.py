@@ -96,6 +96,7 @@ from dbt.version import __version__
 from dbt.dataclass_schema import StrEnum, dbtClassMixin
 
 PARTIAL_PARSE_FILE_NAME = "partial_parse.msgpack"
+PARSED_MANIFEST_FILE_NAME = "parsed_manifest.json"
 PARSING_STATE = DbtProcessState("parsing")
 
 
@@ -405,6 +406,11 @@ class ManifestLoader:
 
             # write out the fully parsed manifest
             self.write_manifest_for_partial_parse()
+            # write out parsed_manifest.json
+            parsed_manifest_path = os.path.join(
+                self.root_project.target_path, PARSED_MANIFEST_FILE_NAME
+            )
+            self.manifest.write(parsed_manifest_path)
 
         return self.manifest
 

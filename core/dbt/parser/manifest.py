@@ -1188,18 +1188,25 @@ def _process_dimensions_and_relationships_for_metric(
             raise dbt.exceptions.InternalException(
                 f"Model relationships must be declared between public models - {metric.unique_id} depends on {target_model.unique_id}, which is not a public model."
             )
-
+        # get the dimensions as defined by the model yml
         primary_model_dimensions = [
             col for col in target_model.columns.values() if col.is_dimension
         ]
 
+         # validate declared dims
         for dim in primary_model_dimensions:
             if not dim.data_type:
                 raise dbt.exceptions.InternalException(
                     f"Dimension columns must declare a `data_type` attribute. {dim.name} is missing this configuration."
                 )
-            if dim.name not in metric.dimensions[target_model.name]:
-                metric.dimensions[target_model.name].append(dim.name)
+
+        # check if dimensions declared, if not, supply dimensions from model file
+        if not metric.dimensions:
+            metric.dimensions[target_model.name] = [col.name for col in primary_model_dimensions]
+        else:
+            for dim in primary_model_dimensions:
+                if dim.name not in metric.dimensions[target_model.name]:
+                    metric.dimensions[target_model.name].append(dim.name)
 
         for relationship in target_model.relationships:
             to_model_name = relationship.to

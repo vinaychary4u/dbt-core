@@ -1,5 +1,7 @@
-from freezegun import freeze_time
+from datetime import datetime
+from pytz import timezone
 from test.integration.base import DBTIntegrationTest, use_profile
+
 
 
 class TestTimezones(DBTIntegrationTest):
@@ -41,12 +43,18 @@ class TestTimezones(DBTIntegrationTest):
             from {schema}.timezones
         """.format(schema=self.unique_schema())
 
-    @freeze_time("2017-01-01 03:00:00", tz_offset=0)
     @use_profile('postgres')
     def test_postgres_run_started_at(self):
+        # run with time checks
+        start_time = datetime.now(timezone("UTC"))
         results = self.run_dbt(['run'])
+        stop_time = datetime.now(timezone("UTC"))
+
+        # sanity check
         self.assertEqual(len(results), 1)
         result = self.run_sql(self.query, fetch='all')[0]
-        est, utc = result
-        self.assertEqual(utc, '2017-01-01 03:00:00+00:00')
-        self.assertEqual(est, '2016-12-31 22:00:00-05:00')
+        est, utc = map(datetime.fromisoformat, result)
+        self.assertTrue(start_time < est < stop_time)
+        self.assertTrue(start_time < utc < stop_time)
+        self.assertEqual(str(est), str(utc.astimezone(timezone("America/New_York"))))
+        self.assertEqual(str(utc), str(utc.astimezone(timezone("UTC"))))

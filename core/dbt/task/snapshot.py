@@ -6,6 +6,7 @@ from dbt.events.types import PrintSnapshotErrorResultLine, PrintSnapshotResultLi
 from dbt.graph import ResourceTypeSelector
 from dbt.node_types import NodeType
 from dbt.contracts.results import NodeStatus
+from dbt.utils import dict_to_str_dict
 
 
 class SnapshotRunner(ModelRunner):
@@ -20,7 +21,7 @@ class SnapshotRunner(ModelRunner):
                 PrintSnapshotErrorResultLine(
                     status=result.status,
                     description=self.get_node_representation(),
-                    cfg=cfg,
+                    cfg=dict_to_str_dict(cfg),
                     index=self.node_index,
                     total=self.num_nodes,
                     execution_time=result.execution_time,
@@ -32,7 +33,7 @@ class SnapshotRunner(ModelRunner):
                 PrintSnapshotResultLine(
                     status=result.message,
                     description=self.get_node_representation(),
-                    cfg=cfg,
+                    cfg=dict_to_str_dict(cfg),
                     index=self.node_index,
                     total=self.num_nodes,
                     execution_time=result.execution_time,

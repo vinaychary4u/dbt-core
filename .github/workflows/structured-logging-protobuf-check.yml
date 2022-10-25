@@ -1,0 +1,60 @@
+# This Action runs dbt integration tests with the binary protobuf log format
+# set, and at DEBUG level, so that assertions are made at runtime which verify
+# that the binary objects used to encode events can be created and decoded, 
+# and that their values match after the round trip.
+
+name: Protobuf Logging Check
+on:
+  push:
+    branches:
+      - "main"
+      - "*.latest"
+      - "releases/*"
+  pull_request:
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  # run the performance measurements on the current or default branch
+  test-schema:
+    name: Test Log Schema
+    runs-on: ubuntu-latest
+    env:
+      # tells integration tests to output into json format
+      DBT_LOG_FORMAT: "protobuf"
+      DBT_DEBUG: "True"
+      # Additional test users
+      DBT_TEST_USER_1: dbt_test_user_1
+      DBT_TEST_USER_2: dbt_test_user_2
+      DBT_TEST_USER_3: dbt_test_user_3
+
+    steps:
+      - name: checkout dev
+        uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v2.2.2
+        with:
+          python-version: "3.8"
+
+      - name: Install python dependencies
+        run: |
+          pip install --user --upgrade pip
+          pip --version
+          pip install tox
+          tox --version
+
+      - name: Set up postgres
+        uses: ./.github/actions/setup-postgres-linux
+
+      - name: ls
+        run: ls
+
+      # Run all integration tests to verify that all of the message types
+      # generated don't just pass on a 'normal' run, but also one with
+      # protobuf logging enabled, and related debug assertions in place
+      - name: Run integration tests
+        run: tox -e integration -- -nauto

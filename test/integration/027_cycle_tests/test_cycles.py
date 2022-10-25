@@ -1,4 +1,3 @@
-from freezegun import freeze_time
 from test.integration.base import DBTIntegrationTest, use_profile
 
 

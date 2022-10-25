@@ -161,7 +161,7 @@ class _CachedRelation:
         value = self.referenced_by.pop(old_key)
         self.referenced_by[new_key] = value
 
-    def dump_graph_entry(self):
+    def dump_graph_entry(self) -> List[str]:
         """Return a key/value pair representing this key and its referents.
 
         return List[str]: The dot-separated form of all referent keys.
@@ -234,7 +234,7 @@ class RelationsCache:
         db, schema = schema_id
         return (lowercase(db), schema.lower()) in self.schemas
 
-    def dump_graph(self):
+    def dump_graph(self) -> Dict[str, List[str]]:
         """Dump a key-only representation of the schema to a dictionary. Every
         known relation is a key with a value of a list of keys it is referenced
         by.

@@ -1,7 +1,10 @@
 import betterproto
+import dataclasses
 from colorama import Style
 from dbt.events.base_types import NoStdOut, BaseEvent, NoFile, Cache
+import dbt.events.types
 from dbt.events.types import EventBufferFull, MainReportVersion, EmptyLine
+import dbt.events.test_types
 import dbt.flags as flags
 from dbt.constants import SECRET_ENV_PREFIX, METADATA_ENV_PREFIX
 
@@ -20,6 +23,8 @@ import uuid
 import threading
 from typing import List, Optional, Union, Callable, Dict, Any
 from collections import deque
+
+real_datetime = datetime
 
 LOG_VERSION = 3
 EVENT_HISTORY = None
@@ -283,6 +288,13 @@ def fire_event_if(conditional: bool, lazy_e: Callable[[], BaseEvent]) -> None:
 # (i.e. - appending to event history, printing to stdout, logging
 # to files, etc.)
 def fire_event(e: BaseEvent) -> None:
+
+    # Do a runtime debug assertion to validate that protobuf serialization of
+    # the event works as expected, but only if logging to protobuf and in DEBUG
+    global using_protobuf
+    if using_protobuf and flags.DEBUG:
+        assert_event_survives_proto_round_trip(e)
+
     # skip logs when `--log-cache-events` is not passed
     if isinstance(e, Cache) and not flags.LOG_CACHE_EVENTS:
         return
@@ -379,3 +391,107 @@ def add_to_event_history(event):
 def reset_event_history():
     global EVENT_HISTORY
     EVENT_HISTORY = deque(maxlen=flags.EVENT_BUFFER_SIZE)
+
+
+def assert_event_survives_proto_round_trip(e: BaseEvent):
+
+    # Don't run assertion on test types
+    try:
+        getattr(dbt.events.test_types, type(e).__name__)
+        return
+    except AttributeError:
+        pass
+
+    # TODO: Rework adapter events, meanwhile bypass
+    if isinstance(e, dbt.events.types.AdapterEventDebug):
+        return
+
+    # TODO: More elegant avoidance of MagicMock
+    for field in dataclasses.fields(e):
+        if type(getattr(e, field.name)).__name__ == "MagicMock":
+            return
+
+    # TODO: Diagnose problems with graph encoding in these events
+    if type(e).__name__ in [
+        "DumpBeforeAddGraph",
+        "DumpAfterAddGraph",
+        "DumpBeforeRenameSchema",
+        "DumpAfterRenameSchema",
+    ]:
+        return  # TODO
+
+    try:
+        block = create_protobuf_log_block(e)  # type: ignore
+    except Exception:
+        raise Exception("CREATE BLOCK ERROR: " + repr(e))
+
+    try:
+        e_prime = parse_protobuf_log_block(block)
+    except Exception:
+        raise Exception("PARSE BLOCK ERROR: " + repr(e))
+
+    if not _proto_eq(e, e_prime):
+        raise Exception("Event did not survive protocol buffer encode/decode round-trip.")
+
+
+def parse_protobuf_log_block(block_bytes: bytes) -> Optional[BaseEvent]:
+    # decodes byte blocks as encoded by create_progobuf_log_block()
+    buffer = io.BytesIO(block_bytes)
+    event_name_bytes_len = int.from_bytes(buffer.read(2), "little", signed=False)  # read uint16
+    event_name = buffer.read(event_name_bytes_len).decode("utf-8")  # read utf-8 str
+    event_proto_bytes_len = int.from_bytes(buffer.read(4), "little", signed=False)  # read uint32
+    event_proto_bytes = buffer.read(event_proto_bytes_len)  # read bytes
+
+    try:
+        cls = getattr(dbt.events.types, event_name)
+    except AttributeError:
+        cls = getattr(dbt.events.test_types, event_name)
+
+    parsed = cls().parse(event_proto_bytes)
+
+    return parsed
+
+
+def _proto_eq(e1, e2) -> bool:
+    if not dataclasses.is_dataclass(e1):
+        if isinstance(e2, dbt.events.types.ListOfStrings):
+            return True
+        elif e1 == e2:
+            return True
+        else:
+            return False
+
+    for field in dataclasses.fields(e1):
+        try:
+            v1 = getattr(e1, field.name)
+            v2 = getattr(e2, field.name)
+        except AttributeError:
+            return False
+
+        if type(v1).__name__ == "MagicMock":
+            continue  # tolerate test mocking
+
+        if field.type == str:
+            if v1 != v2 and not (v1 is None or v1 == "" and v2 is None or v2 == ""):
+                return False
+        elif field.type == float:
+            if (v1 - v2) > 0.000001:
+                return False
+        elif field.type == datetime:
+            pass  # TODO: Compare round-tripped dates
+        elif hasattr(v1, "__dataclass_fields__"):
+            if not _proto_eq(v1, v2):
+                return False
+        elif isinstance(v1, list):
+            if len(v1) != len(v2) or any(not _proto_eq(e[0], e[1]) for e in zip(v1, v2)):
+                if not type(e1).__name__ == "ListRelations" and field.name == "relations":
+                    return False
+        elif isinstance(v1, dict):
+            if len(v1) != len(v2) or any(
+                k not in v2 or not _proto_eq(v1[k], v2[k]) for k in v1.keys()
+            ):
+                return False
+        elif v1 != v2:
+            return False
+
+    return True

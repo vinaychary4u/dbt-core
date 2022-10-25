@@ -117,10 +117,10 @@ class TestContextBuiltins:
 
     def test_builtin_dbt_metadata_envs_function(self, project, monkeypatch):
         envs = {
-            "DBT_ENV_CUSTOM_ENV_RUN_ID": 1234,
-            "DBT_ENV_CUSTOM_ENV_JOB_ID": 5678,
-            "DBT_ENV_RUN_ID": 91011,
-            "RANDOM_ENV": 121314,
+            "DBT_ENV_CUSTOM_ENV_RUN_ID": "1234",
+            "DBT_ENV_CUSTOM_ENV_JOB_ID": "5678",
+            "DBT_ENV_RUN_ID": "91011",
+            "RANDOM_ENV": "121314",
         }
         monkeypatch.setattr(os, "environ", envs)
 
@@ -133,7 +133,7 @@ class TestContextBuiltins:
 
         assert result
 
-        expected = "dbt_metadata_envs_result:{'RUN_ID': 1234, 'JOB_ID': 5678}"
+        expected = "dbt_metadata_envs_result:{'RUN_ID': '1234', 'JOB_ID': '5678'}"
         assert expected in str(result)
 
 

@@ -37,7 +37,6 @@ from dbt.contracts.graph.compiled import CompiledModelNode
 from dbt.events.functions import reset_metadata_vars
 
 from dbt.node_types import NodeType
-import freezegun
 
 from .utils import MockMacro, MockDocumentation, MockSource, MockNode, MockMaterialization, MockGenerateMacro, inject_plugin
 
@@ -309,12 +308,12 @@ class ManifestTest(unittest.TestCase):
         del os.environ['DBT_ENV_CUSTOM_ENV_key']
         reset_metadata_vars()
 
-    @freezegun.freeze_time('2018-02-14T09:15:13Z')
     def test__no_nodes(self):
+        now = datetime.utcnow()
         manifest = Manifest(
             nodes={}, sources={}, macros={}, docs={}, disabled={}, files={},
             exposures={}, metrics={}, selectors={},
-            metadata=ManifestMetadata(generated_at=datetime.utcnow()),
+            metadata=ManifestMetadata(generated_at=now),
         )
 
         invocation_id = dbt.events.functions.invocation_id
@@ -330,7 +329,7 @@ class ManifestTest(unittest.TestCase):
                 'parent_map': {},
                 'child_map': {},
                 'metadata': {
-                    'generated_at': '2018-02-14T09:15:13Z',
+                    'generated_at': now.isoformat() + 'Z',
                     'dbt_schema_version': 'https://schemas.getdbt.com/dbt/manifest/v7.json',
                     'dbt_version': dbt.version.__version__,
                     'env': {ENV_KEY_NAME: 'value'},
@@ -341,16 +340,16 @@ class ManifestTest(unittest.TestCase):
             }
         )
 
-    @freezegun.freeze_time('2018-02-14T09:15:13Z')
     def test__nested_nodes(self):
         nodes = copy.copy(self.nested_nodes)
+        now = datetime.utcnow()
         manifest = Manifest(
             nodes=nodes, sources={}, macros={}, docs={}, disabled={}, files={},
             exposures={}, metrics={}, selectors={},
-            metadata=ManifestMetadata(generated_at=datetime.utcnow()),
+            metadata=ManifestMetadata(generated_at=now),
         )
         serialized = manifest.writable_manifest().to_dict(omit_none=True)
-        self.assertEqual(serialized['metadata']['generated_at'], '2018-02-14T09:15:13Z')
+        self.assertEqual(serialized['metadata']['generated_at'], now.isoformat() + 'Z')
         self.assertEqual(serialized['docs'], {})
         self.assertEqual(serialized['disabled'], {})
         parent_map = serialized['parent_map']
@@ -454,15 +453,15 @@ class ManifestTest(unittest.TestCase):
         )
 
     @mock.patch.object(tracking, 'active_user')
-    @freezegun.freeze_time('2018-02-14T09:15:13Z')
     def test_no_nodes_with_metadata(self, mock_user):
         mock_user.id = 'cfc9500f-dc7f-4c83-9ea7-2c581c1b38cf'
         dbt.events.functions.invocation_id = '01234567-0123-0123-0123-0123456789ab'
         dbt.flags.SEND_ANONYMOUS_USAGE_STATS = False
+        now = datetime.utcnow()
         metadata = ManifestMetadata(
             project_id='098f6bcd4621d373cade4e832627b4f6',
             adapter_type='postgres',
-            generated_at=datetime.utcnow(),
+            generated_at=now,
         )
         manifest = Manifest(nodes={}, sources={}, macros={}, docs={},
                             disabled={}, selectors={},
@@ -481,7 +480,7 @@ class ManifestTest(unittest.TestCase):
                 'child_map': {},
                 'docs': {},
                 'metadata': {
-                    'generated_at': '2018-02-14T09:15:13Z',
+                    'generated_at': now.isoformat() + 'Z',
                     'dbt_schema_version': 'https://schemas.getdbt.com/dbt/manifest/v7.json',
                     'dbt_version': dbt.version.__version__,
                     'project_id': '098f6bcd4621d373cade4e832627b4f6',
@@ -745,9 +744,9 @@ class MixedManifestTest(unittest.TestCase):
     def tearDown(self):
         del os.environ['DBT_ENV_CUSTOM_ENV_key']
 
-    @freezegun.freeze_time('2018-02-14T09:15:13Z')
     def test__no_nodes(self):
-        metadata = ManifestMetadata(generated_at=datetime.utcnow(), invocation_id='01234567-0123-0123-0123-0123456789ab')
+        now = datetime.utcnow()
+        metadata = ManifestMetadata(generated_at=now, invocation_id='01234567-0123-0123-0123-0123456789ab')
         manifest = Manifest(nodes={}, sources={}, macros={}, docs={}, selectors={},
                             disabled={}, metadata=metadata, files={}, exposures={})
         self.assertEqual(
@@ -762,7 +761,7 @@ class MixedManifestTest(unittest.TestCase):
                 'parent_map': {},
                 'child_map': {},
                 'metadata': {
-                    'generated_at': '2018-02-14T09:15:13Z',
+                    'generated_at': now.isoformat() + 'Z',
                     'dbt_schema_version': 'https://schemas.getdbt.com/dbt/manifest/v7.json',
                     'dbt_version': dbt.version.__version__,
                     'invocation_id': '01234567-0123-0123-0123-0123456789ab',
@@ -773,15 +772,15 @@ class MixedManifestTest(unittest.TestCase):
             }
         )
 
-    @freezegun.freeze_time('2018-02-14T09:15:13Z')
     def test__nested_nodes(self):
         nodes = copy.copy(self.nested_nodes)
+        now = datetime.utcnow()
         manifest = Manifest(nodes=nodes, sources={}, macros={}, docs={},
                             disabled={}, selectors={},
-                            metadata=ManifestMetadata(generated_at=datetime.utcnow()),
+                            metadata=ManifestMetadata(generated_at=now),
                             files={}, exposures={})
         serialized = manifest.writable_manifest().to_dict(omit_none=True)
-        self.assertEqual(serialized['metadata']['generated_at'], '2018-02-14T09:15:13Z')
+        self.assertEqual(serialized['metadata']['generated_at'], now.isoformat() + 'Z')
         self.assertEqual(serialized['disabled'], {})
         parent_map = serialized['parent_map']
         child_map = serialized['child_map']

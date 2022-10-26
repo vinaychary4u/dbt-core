@@ -1105,6 +1105,22 @@ class MetricParser(YamlReader):
         self.schema_parser = schema_parser
         self.yaml = yaml
 
+    def process_dimension_lists(
+        self, unparsed_dimension_block: List[str] or Dict[str, any], unparsed_model: str
+    ):
+        if isinstance(unparsed_dimension_block, list):
+            # i think this has a real method to resolve refs, but for now hacking this together as POC
+            model_name = (
+                unparsed_model.replace("ref", "")
+                .replace("'", "")
+                .replace('"', "")
+                .replace("(", "")
+                .replace(")", "")
+            )
+            return dict({model_name: unparsed_dimension_block})
+        else:
+            return unparsed_dimension_block
+
     def parse_metric(self, unparsed: UnparsedMetric):
         package_name = self.project.project_name
         unique_id = f"{NodeType.Metric}.{package_name}.{unparsed.name}"
@@ -1134,6 +1150,10 @@ class MetricParser(YamlReader):
                 f"Calculated a {type(config)} for a metric, but expected a MetricConfig"
             )
 
+        import pdb
+
+        pdb.set_trace()
+
         parsed = ParsedMetric(
             package_name=package_name,
             root_path=self.project.project_root,
@@ -1148,7 +1168,7 @@ class MetricParser(YamlReader):
             calculation_method=unparsed.calculation_method,
             expression=str(unparsed.expression),
             timestamp=unparsed.timestamp,
-            dimensions=unparsed.dimensions,
+            dimensions=self.process_dimension_lists(unparsed.dimensions, unparsed.model),
             allow_joins=unparsed.allow_joins,
             window=unparsed.window,
             time_grains=unparsed.time_grains,

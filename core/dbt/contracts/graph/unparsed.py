@@ -517,7 +517,7 @@ class UnparsedMetric(dbtClassMixin, Replaceable):
     expression: str
     description: str = ""
     time_grains: List[str] = field(default_factory=list)
-    dimensions: Dict[str, Any] = field(default_factory=dict)
+    dimensions: Union[Dict[str, Any], List[str]] = field(default_factory=dict)
     window: Optional[MetricTime] = None
     model: Optional[str] = None
     allow_joins: Optional[bool] = True

@@ -1150,10 +1150,6 @@ class MetricParser(YamlReader):
                 f"Calculated a {type(config)} for a metric, but expected a MetricConfig"
             )
 
-        import pdb
-
-        pdb.set_trace()
-
         parsed = ParsedMetric(
             package_name=package_name,
             root_path=self.project.project_root,

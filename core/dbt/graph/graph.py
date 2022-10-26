@@ -1,5 +1,4 @@
 from typing import Set, Iterable, Iterator, Optional, NewType
-from itertools import product
 import networkx as nx  # type: ignore
 
 from dbt.exceptions import InternalException
@@ -74,26 +73,29 @@ class Graph:
         new_graph = self.graph.copy()
         include_nodes = set(selected)
 
-        for node in self:
-            if node not in include_nodes:
-                source_nodes = [x for x, _ in new_graph.in_edges(node)]
-                target_nodes = [x for _, x in new_graph.out_edges(node)]
+        # for node in self:
+        #     if node not in include_nodes:
+        #         source_nodes = [x for x, _ in new_graph.in_edges(node)]
+        #         target_nodes = [x for _, x in new_graph.out_edges(node)]
 
-                new_edges = product(source_nodes, target_nodes)
-                non_cyclic_new_edges = [
-                    (source, target) for source, target in new_edges if source != target
-                ]  # removes cyclic refs
+        #         new_edges = product(source_nodes, target_nodes)
+        #         non_cyclic_new_edges = [
+        #             (source, target) for source, target in new_edges if source != target
+        #         ]  # removes cyclic refs
 
-                new_graph.add_edges_from(non_cyclic_new_edges)
-                new_graph.remove_node(node)
+        #         new_graph.add_edges_from(non_cyclic_new_edges)
+        #         new_graph.remove_node(node)
+
+        fetch_subgraph = new_graph.subgraph(selected)
+        new_subgraph = nx.DiGraph(fetch_subgraph)
 
         for node in include_nodes:
-            if node not in new_graph:
+            if node not in new_subgraph:
                 raise ValueError(
                     "Couldn't find model '{}' -- does it exist or is " "it disabled?".format(node)
                 )
 
-        return Graph(new_graph)
+        return Graph(new_subgraph)
 
     def subgraph(self, nodes: Iterable[UniqueId]) -> "Graph":
         return Graph(self.graph.subgraph(nodes))

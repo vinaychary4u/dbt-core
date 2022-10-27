@@ -1,8 +1,8 @@
-from typing import Set, Iterable, Iterator, Optional, NewType
+from typing import Set, Iterable, Iterator, Optional, NewType, Union
 from itertools import product
 import networkx as nx  # type: ignore
 
-from dbt.exceptions import InternalException
+from dbt.exceptions import InternalException, NotImplementedException
 from .graph import Graph
 
 UniqueId = NewType("UniqueId", str)
@@ -12,10 +12,13 @@ class NetworkXGraph(Graph):
     """A wrapper around the networkx graph that understands SelectionCriteria
     and how they interact with the graph.
     """
-
-    def __init__(self, graph):
-        self.graph = graph
-        self._nx_graph = nx.graph
+    graph: nx.DiGraph
+    def __init__(self, graph: Union[Graph, nx.DiGraph]):
+        if isinstance(graph, nx.DiGraph):
+            self.graph = graph
+        else:
+            # Need to implement
+            raise NotImplementedException("Doh!")
 
     def nodes(self) -> Set[UniqueId]:
         return set(self.graph.nodes())
@@ -24,7 +27,7 @@ class NetworkXGraph(Graph):
         return self.graph.edges()
 
     def __iter__(self) -> Iterator[UniqueId]:
-        return iter(self.graph.nodes())
+        return iter(self.nodes())
 
     def ancestors(self, node: UniqueId, max_depth: Optional[int] = None) -> Set[UniqueId]:
         """Returns all nodes having a path to `node` in `graph`"""
@@ -35,8 +38,8 @@ class NetworkXGraph(Graph):
             for _, child in nx.bfs_edges(self.graph, node, reverse=True, depth_limit=max_depth)
         }
 
-    def in_degree():
-        self.gr
+    def in_degree(self):
+        self.graph.in_degree()
 
     def descendants(self, node: UniqueId, max_depth: Optional[int] = None) -> Set[UniqueId]:
         """Returns all nodes reachable from `node` in `graph`"""
@@ -76,3 +79,6 @@ class NetworkXGraph(Graph):
 
     def subgraph(self, nodes: Iterable[UniqueId]) -> "Graph":
         return NetworkXGraph(self.graph.subgraph(nodes))
+
+    def remove_node(self, node_id: UniqueId) -> None:
+        return self.graph.remove_node(node_id)

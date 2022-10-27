@@ -6,7 +6,7 @@ from typing import Dict, Set, List, Generator, Optional
 
 from .queue import GraphQueue
 
-from .graph import UniqueId
+from .graph import Graph, UniqueId
 from dbt.contracts.graph.parsed import ParsedSourceDefinition, ParsedExposure, ParsedMetric
 from dbt.contracts.graph.compiled import GraphMemberNode
 from dbt.contracts.graph.manifest import Manifest
@@ -22,7 +22,7 @@ class NetworkXGraphQueue(GraphQueue):
     the same time, as there is an unlocked race!
     """
 
-    def __init__(self, graph: GraphQueue, manifest: Manifest, selected: Set[UniqueId]):
+    def __init__(self, graph: Graph, manifest: Manifest, selected: Set[UniqueId]):
         self.graph = graph
         self.manifest = manifest
         self._selected = selected
@@ -57,7 +57,7 @@ class NetworkXGraphQueue(GraphQueue):
 
     @staticmethod
     def _grouped_topological_sort(
-        graph: nx.DiGraph,
+        graph: Graph,
     ) -> Generator[List[str], None, None]:
         """Topological sort of given graph that groups ties.
 
@@ -84,7 +84,7 @@ class NetworkXGraphQueue(GraphQueue):
                         new_zero_indegree.append(child)
             zero_indegree = new_zero_indegree
 
-    def _get_scores(self, graph: nx.DiGraph) -> Dict[str, int]:
+    def _get_scores(self, graph: Graph) -> Dict[str, int]:
         """Scoring nodes for processing order.
 
         Scores are calculated by the graph depth level. Lowest score (0) should be processed first.
@@ -124,24 +124,6 @@ class NetworkXGraphQueue(GraphQueue):
         with self.lock:
             self._mark_in_progress(node_id)
         return self.manifest.expect(node_id)
-
-    def __len__(self) -> int:
-        """The length of the queue is the number of tasks left for the queue to
-        give out, regardless of where they are. Incomplete tasks are not part
-        of the length.
-
-        This takes the lock.
-        """
-        with self.lock:
-            return len(self.graph) - len(self.in_progress)
-
-    def empty(self) -> bool:
-        """The graph queue is 'empty' if it all remaining nodes in the graph
-        are in progress.
-
-        This takes the lock.
-        """
-        return len(self) == 0
 
     def _already_known(self, node: UniqueId) -> bool:
         """Decide if a node is already known (either handed out as a task, or
@@ -187,17 +169,3 @@ class NetworkXGraphQueue(GraphQueue):
         self.queued.remove(node_id)
         self.in_progress.add(node_id)
 
-    def join(self) -> None:
-        """Join the queue. Blocks until all tasks are marked as done.
-
-        Make sure not to call this before the queue reports that it is empty.
-        """
-        self.inner.join()
-
-    def wait_until_something_was_done(self) -> int:
-        """Block until a task is done, then return the number of unfinished
-        tasks.
-        """
-        with self.lock:
-            self.some_task_done.wait()
-            return self.inner.unfinished_tasks

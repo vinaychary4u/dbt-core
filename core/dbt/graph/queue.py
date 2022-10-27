@@ -91,9 +91,6 @@ class GraphQueue(ABC):
         :returns bool: If the node is in progress/queued.
         """
         return node in self.in_progress or node in self.queued
-            if not self._already_known(node) and in_degree == 0:
-                self.inner.put((self._scores[node], node))
-                self.queued.add(node)
 
     @abstractmethod
     def _find_new_additions():
@@ -107,13 +104,9 @@ class GraphQueue(ABC):
 
         :param str node_id: The node ID to mark as complete.
         """
-        with self.lock:
-            self.in_progress.remove(node_id)
-            self.graph.remove_node(node_id)
-            self._find_new_additions()
-            self.inner.task_done()
-            self.some_task_done.notify_all()
+        pass
 
+    @abstractmethod
     def mark_in_progress(self, node_id: UniqueId) -> None:
         """Mark the node as 'in progress'.
 
@@ -121,8 +114,7 @@ class GraphQueue(ABC):
 
         :param str node_id: The node ID to mark as in progress.
         """
-        self.queued.remove(node_id)
-        self.in_progress.add(node_id)
+        pass
 
     def join(self) -> None:
         """Join the queue. Blocks until all tasks are marked as done.

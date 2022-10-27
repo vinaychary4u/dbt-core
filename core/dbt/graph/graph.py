@@ -1,4 +1,4 @@
-from typing import Set, Iterable, Iterator, Optional, NewType
+from typing import List, Set, Iterable, Iterator, Optional, NewType
 from abc import ABC, abstractmethod
 from itertools import product
 
@@ -23,7 +23,7 @@ class Graph(ABC):
         return iter(self.graph.nodes())
 
     @abstractmethod
-    def in_degree():
+    def in_degree() -> List:
         pass
 
     @abstractmethod
@@ -76,3 +76,7 @@ class Graph(ABC):
 
     def get_dependent_nodes(self, node: UniqueId):
         return self.descendants(node)
+
+    @abstractmethod
+    def remove_node(self, node_id: UniqueId) -> None:
+        pass

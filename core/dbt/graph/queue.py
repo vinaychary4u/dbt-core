@@ -1,15 +1,12 @@
 from abc import ABC, abstractmethod
-import networkx as nx  # type: ignore
 import threading
 
 from queue import PriorityQueue
-from typing import Dict, Set, List, Generator, Optional
+from typing import Set, Optional
 
 from .graph import Graph, UniqueId
-from dbt.contracts.graph.parsed import ParsedSourceDefinition, ParsedExposure, ParsedMetric
 from dbt.contracts.graph.compiled import GraphMemberNode
 from dbt.contracts.graph.manifest import Manifest
-from dbt.node_types import NodeType
 
 
 class GraphQueue(ABC):
@@ -22,7 +19,6 @@ class GraphQueue(ABC):
     """
 
     def __init__(self, graph: Graph, manifest: Manifest, selected: Set[UniqueId]):
-        self.graph: Graph = graph
         self.manifest = manifest
         self._selected = selected
         # store the queue as a priority queue.
@@ -34,34 +30,41 @@ class GraphQueue(ABC):
         self.queued: Set[UniqueId] = set()
         # this lock controls most things
         self.lock = threading.Lock()
-        # store the 'score' of each node as a number. Lower is higher priority.
-        self._scores = self._get_scores(self.graph)
         # populate the initial queue
-        self._find_new_additions()
+        self.find_new_additions()
         # awaits after task end
         self.some_task_done = threading.Condition(self.lock)
 
-    @abstractmethod
-    def get_selected_nodes(self) -> Set[UniqueId]:
-        pass
+    def _mark_in_progress(self, node_id: UniqueId) -> None:
+        """Mark the node as 'in progress'.
+        Callers must hold the lock.
+        :param str node_id: The node ID to mark as in progress.
+        """
+        self.queued.remove(node_id)
+        self.in_progress.add(node_id)
 
-    @abstractmethod
+    def join(self) -> None:
+        """Join the queue. Blocks until all tasks are marked as done.
+        Make sure not to call this before the queue reports that it is empty.
+        """
+        self.inner.join()
+
+    def get_selected_nodes(self) -> Set[UniqueId]:
+        return self._selected.copy()
+
     def get(self, block: bool = True, timeout: Optional[float] = None) -> GraphMemberNode:
         """Get a node off the inner priority queue. By default, this blocks.
-
         This takes the lock, but only for part of it.
-
         :param block: If True, block until the inner queue has data
         :param timeout: If set, block for timeout seconds waiting for data.
         :return: The node as present in the manifest.
-
         See `queue.PriorityQueue` for more information on `get()` behavior and
         exceptions.
         """
-
-    @abstractmethod
-    def _get_scores(graph: Graph):
-        pass
+        _, node_id = self.inner.get(block=block, timeout=timeout)
+        with self.lock:
+            self._mark_in_progress(node_id)
+        return self.manifest.expect(node_id)
 
     def __len__(self) -> int:
         """The length of the queue is the number of tasks left for the queue to
@@ -71,7 +74,7 @@ class GraphQueue(ABC):
         This takes the lock.
         """
         with self.lock:
-            return len(self.graph.nodes()) - len(self.in_progress)
+            return self.get_node_num() - len(self.in_progress)
 
     def empty(self) -> bool:
         """The graph queue is 'empty' if it all remaining nodes in the graph
@@ -92,36 +95,17 @@ class GraphQueue(ABC):
         """
         return node in self.in_progress or node in self.queued
 
-    @abstractmethod
-    def _find_new_additions():
-        pass
-
-    @abstractmethod
     def mark_done(self, node_id: UniqueId) -> None:
         """Given a node's unique ID, mark it as done.
-
         This method takes the lock.
-
         :param str node_id: The node ID to mark as complete.
         """
-        pass
-
-    @abstractmethod
-    def mark_in_progress(self, node_id: UniqueId) -> None:
-        """Mark the node as 'in progress'.
-
-        Callers must hold the lock.
-
-        :param str node_id: The node ID to mark as in progress.
-        """
-        pass
-
-    def join(self) -> None:
-        """Join the queue. Blocks until all tasks are marked as done.
-
-        Make sure not to call this before the queue reports that it is empty.
-        """
-        self.inner.join()
+        with self.lock:
+            self.in_progress.remove(node_id)
+            self.remove_node_from_graph(node_id)
+            self.find_new_additions()
+            self.inner.task_done()
+            self.some_task_done.notify_all()
 
     def wait_until_something_was_done(self) -> int:
         """Block until a task is done, then return the number of unfinished
@@ -130,3 +114,15 @@ class GraphQueue(ABC):
         with self.lock:
             self.some_task_done.wait()
             return self.inner.unfinished_tasks
+
+    @abstractmethod
+    def find_new_additions(self):
+        pass
+
+    @abstractmethod
+    def remove_node_from_graph(self, node_id):
+        pass
+
+    @abstractmethod
+    def get_node_num(self):
+        pass

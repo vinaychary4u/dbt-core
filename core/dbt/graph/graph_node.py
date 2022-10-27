@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 
 
@@ -7,3 +6,4 @@ class GraphNode:
     name: str
     in_degree: int
     status: str
+    last_updated: str

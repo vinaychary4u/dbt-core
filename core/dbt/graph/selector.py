@@ -1,7 +1,10 @@
 from typing import Set, List, Optional, Tuple
+import os
 
 from .graph import Graph, UniqueId
 from .queue import GraphQueue
+from .networkx_queue import NetworkxGraphQueue
+from .redis_queue import RedisGraphQueue
 from .selector_methods import MethodManager
 from .selector_spec import SelectionCriteria, SelectionSpec, IndirectSelection
 
@@ -275,7 +278,10 @@ class NodeSelector(MethodManager):
         selected_resources.set_selected_resources(selected_nodes)
         new_graph = self.full_graph.get_subset_graph(selected_nodes)
         # should we give a way here for consumers to mutate the graph?
-        return GraphQueue(new_graph.graph, self.manifest, selected_nodes)
+        if os.getenv("dbt_backend") == "redis":
+            return RedisGraphQueue(new_graph.graph, self.manifest, selected_nodes)
+        else:
+            return NetworkxGraphQueue(new_graph.graph, self.manifest, selected_nodes)
 
 
 class ResourceTypeSelector(NodeSelector):

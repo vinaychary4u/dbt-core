@@ -50,10 +50,7 @@ def _match_to_int(match: Dict[str, str], key: str) -> Optional[int]:
 
 
 SelectionSpec = Union[
-    "SelectionCriteria",
-    "SelectionIntersection",
-    "SelectionDifference",
-    "SelectionUnion",
+    "SelectionCriteria", "SelectionIntersection", "SelectionDifference", "SelectionUnion"
 ]
 
 

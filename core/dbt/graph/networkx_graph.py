@@ -12,7 +12,9 @@ class NetworkXGraph(Graph):
     """A wrapper around the networkx graph that understands SelectionCriteria
     and how they interact with the graph.
     """
+
     graph: nx.DiGraph
+
     def __init__(self, graph: Union[Graph, nx.DiGraph]):
         if isinstance(graph, nx.DiGraph):
             self.graph = graph
@@ -75,10 +77,10 @@ class NetworkXGraph(Graph):
                     "Couldn't find model '{}' -- does it exist or is it disabled?".format(node)
                 )
 
-        return NetworkXGraph(new_graph)
+        return Graph(new_graph)
 
     def subgraph(self, nodes: Iterable[UniqueId]) -> "Graph":
-        return NetworkXGraph(self.graph.subgraph(nodes))
+        return Graph(self.graph.subgraph(nodes))
 
     def remove_node(self, node_id: UniqueId) -> None:
         return self.graph.remove_node(node_id)

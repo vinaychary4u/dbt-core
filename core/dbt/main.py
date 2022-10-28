@@ -29,6 +29,7 @@ import dbt.task.deps as deps_task
 import dbt.task.freshness as freshness_task
 import dbt.task.generate as generate_task
 import dbt.task.init as init_task
+import dbt.task.lineage as lineage_task
 import dbt.task.list as list_task
 import dbt.task.parse as parse_task
 import dbt.task.run as run_task
@@ -308,6 +309,31 @@ def _build_base_subparser():
 
     base_subparser.set_defaults(defer=None, state=None)
     return base_subparser
+
+
+def _build_lineage_subparser(subparsers, base_subparser):
+    sub = subparsers.add_parser(
+        "lineage",
+        parents=[base_subparser],
+        help="""
+        Lineage of resources in your project
+        """,
+    )
+    sub.set_defaults(cls=lineage_task.LineageTask, which="lineage", rpc_method=None)
+    sub.add_argument(
+        "-s",
+        "--select",
+        dest="select",
+        nargs="+",
+        help="""
+            Specify the nodes to process.
+        """,
+        metavar="SELECTOR",
+        required=False,
+    )
+    _add_common_selector_arguments(sub)
+
+    return sub
 
 
 def _build_docs_subparser(subparsers, base_subparser):
@@ -1155,6 +1181,7 @@ def parse_args(args, cls=DBTArgumentParser):
     _build_debug_subparser(subs, base_subparser)
     _build_deps_subparser(subs, base_subparser)
     _build_list_subparser(subs, base_subparser)
+    _build_lineage_subparser(subs, base_subparser)
 
     build_sub = _build_build_subparser(subs, base_subparser)
     snapshot_sub = _build_snapshot_subparser(subs, base_subparser)

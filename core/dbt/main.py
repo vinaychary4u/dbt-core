@@ -301,7 +301,7 @@ def _build_base_subparser():
     base_subparser.add_argument(
         "--prev-run-id",
         type=str,
-        default='',
+        default="",
         help="""
         resume from previous run id
         """,
@@ -1194,9 +1194,9 @@ def parse_args(args, cls=DBTArgumentParser):
 
     parsed = p.parse_args(args)
     if parsed.prev_run_id:
-        os.environ['PREVIOUS_RUN_ID']= parsed.prev_run_id
+        os.environ["PREVIOUS_RUN_ID"] = parsed.prev_run_id
     else:
-        os.environ['PREVIOUS_RUN_ID']= ''
+        os.environ["PREVIOUS_RUN_ID"] = ""
 
     # profiles_dir is set before subcommands and after, so normalize
     if hasattr(parsed, "sub_profiles_dir"):

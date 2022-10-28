@@ -1225,10 +1225,14 @@ def _process_dimensions_and_relationships_for_metric(
                     current_project,
                     metric.package_name,
                 )
-                if not to_model.is_public:
-                    raise dbt.exceptions.InternalException(
-                        f"Model relationships must be declared between public models - {metric.unique_id} depends on {to_model.unique_id}, which is not a public model."
-                    )
+                ## I am removing this section because this validation occurs for the metric object
+                ## but we want to confirm this at the model object. If a relationship exists on 
+                ## a model that has no metrics, we still want to confirm this behavior
+
+                # if not to_model.is_public:
+                #     raise dbt.exceptions.InternalException(
+                #         f"Model relationships must be declared between public models - {metric.unique_id} depends on {to_model.unique_id}, which is not a public model."
+                #     )
                 metric.depends_on.nodes.append(to_model.unique_id)
 
                 new_dims = [col for col in to_model.columns.values() if col.is_dimension]
@@ -1389,19 +1393,56 @@ def _process_inverse_relationships_for_node(
 ):
     """Given a manifest and a node in that manifest, process the inverse relationships for the related nodes"""
     target_model_package: Optional[str] = None
-    if node.resource_type == "model" and len(node.relationships) > 0:
+    
+    """Limit this parsing to public models that have relationships"""
+    if node.resource_type == "model" and len(node.relationships) > 0 and node.is_public == True:
         for relationship in node.relationships:
             to_model = manifest.resolve_ref(
                 relationship.to, target_model_package, current_project, node.package_name
             )
+
+            """Create a list of models that have relationships pointed at them that
+            have not been set to is_public. Use this list to raise CompilationException"""
+            non_public_models = []
+            if to_model.is_public == False:
+                non_public_models.append(to_model.name)
+
+            """Using the to_model, create an inverse relationship in the model"""
             inverse_relationship = EntityRelationship(
                 to=node.name,
                 join_key=relationship.join_key,
                 relationship_type=EntityRelationshipType(relationship.relationship_type.inverse()),
             )
-            to_model.relationships.append(inverse_relationship)
-            manifest.update_node(to_model)
+            
+            # TODO: Clean up this very messy code. See if way we can check 
+            # relationship.to against to_model.relationships without it breaking 
+            # because the latter is a EntityRelationship
+            """Checks if the relationship already exists and only creates if not"""
+            if len(to_model.relationships) > 0:
+                for to_model_relationship in to_model.relationships:
+                    """Relationship exists, carry on as normal"""
+                    # TODO: Clean up how the entity relationship class matches. Strings feel bad
+                    if inverse_relationship == to_model_relationship and str(inverse_relationship.relationship_type) == str(to_model_relationship.relationship_type):
+                        continue
 
+                    elif inverse_relationship.to == to_model_relationship.to and (inverse_relationship.join_key != to_model_relationship.join_key or str(inverse_relationship.relationship_type) != str(to_model_relationship.relationship_type)):
+                        raise dbt.exceptions.CompilationException(
+                            f"""The relationship between {relationship.to} and {inverse_relationship.to} does not match. Please ensure that the join_key(s) and relationship_types match"""
+                        )
+
+                    else: 
+                        to_model.relationships.append(inverse_relationship)
+                        manifest.update_node(to_model)
+            
+            else: 
+                to_model.relationships.append(inverse_relationship)
+                manifest.update_node(to_model)
+
+        """Looping through public models that have relationships established to raise compilation error"""
+        if len(non_public_models) > 0: 
+            raise dbt.exceptions.CompilationException(
+                f"""The model(s) {', '.join(non_public_models)} have relationships established but are not public models. Please set the `is_public` property to true for these model(s)."""
+            )
 
 def _process_sources_for_exposure(
     manifest: Manifest, current_project: str, exposure: ParsedExposure

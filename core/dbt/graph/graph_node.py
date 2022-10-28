@@ -6,4 +6,5 @@ class GraphNode:
     name: str
     in_degree: int
     status: str
-    last_updated: str
+    update_date: int
+    start_date: int

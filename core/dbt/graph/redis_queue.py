@@ -1,8 +1,11 @@
+from dataclasses import asdict
+from datetime import datetime
 import networkx as nx  # type: ignore
 
 from typing import Set
 import redis
 import time
+from .graph_node import GraphNode
 from redisgraph import Node, Edge, Graph
 
 from .graph import UniqueId
@@ -22,13 +25,17 @@ class RedisGraphQueue(GraphQueue):
         self.redis_graph = Graph(self.name, self.r)
         nodes = {}
         for node_name, in_degree in graph.in_degree():
+            start_time = int(datetime.now().timestamp())
+            properties = GraphNode(
+                name=node_name,
+                in_degree=in_degree,
+                status="created",
+                update_date=start_time,
+                start_date=start_time
+            )
             curr_node = Node(
                 label="node",
-                properties={
-                    "name": node_name,
-                    "status": "created",
-                    "in_degree": in_degree,
-                },
+                properties=asdict(properties),
             )
             self.redis_graph.add_node(curr_node)
             nodes[node_name] = curr_node
@@ -68,7 +75,8 @@ class RedisGraphQueue(GraphQueue):
             )
             self.redis_graph.query(query)
         # mark current node
-        query = f"""MATCH (p:node {{name: '{node_id}'}}) SET p.status = 'done'"""
+        current_time = int(datetime.now().timestamp())
+        query = f"""MATCH (p:node {{name: '{node_id}'}}) SET p.status = 'done', p.update_date = {current_time}"""
         self.redis_graph.query(query)
 
     def get_node_num(self):

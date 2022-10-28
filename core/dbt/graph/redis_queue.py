@@ -1,6 +1,7 @@
 from dataclasses import asdict
 from datetime import datetime
 import networkx as nx  # type: ignore
+import os
 
 from typing import Set
 import redis
@@ -20,30 +21,42 @@ class RedisGraphQueue(GraphQueue):
     def __init__(self, graph: nx.DiGraph, manifest: Manifest, selected: Set[UniqueId]) -> None:
         # create entry on run_results,
         # create new graph in redis from graph
+
+        previous_run_id = os.getenv("PREVIOUS_RUN_ID")
         self.r = redis.Redis(host="localhost", port=6379)
-        self.name = int(time.time())
-        self.redis_graph = Graph(self.name, self.r)
-        nodes = {}
-        for node_name, in_degree in graph.in_degree():
-            start_time = int(datetime.now().timestamp())
-            properties = GraphNode(
-                name=node_name,
-                in_degree=in_degree,
-                status="created",
-                update_date=start_time,
-                start_date=start_time
-            )
-            curr_node = Node(
-                label="node",
-                properties=asdict(properties),
-            )
-            self.redis_graph.add_node(curr_node)
-            nodes[node_name] = curr_node
-        for child_name, father_name in graph.edges():
-            edge = Edge(nodes[child_name], "is_child_of", nodes[father_name])
-            self.redis_graph.add_edge(edge)
-        self.redis_graph.commit()
-        self.node_count = len(nodes)
+        if previous_run_id:
+            self.name = int(previous_run_id)
+            self.redis_graph = Graph(self.name, self.r)
+            # mark current node
+            query = """MATCH (p:node {status: 'queued'}) SET p.status = 'created'"""
+            self.redis_graph.query(query)
+            query = """MATCH (p:node {status: 'created'}) RETURN p.name"""
+            result = self.redis_graph.query(query)
+            self.node_count = len(result.result_set)
+        else:
+            self.name = int(time.time())
+            self.redis_graph = Graph(self.name, self.r)
+            nodes = {}
+            for node_name, in_degree in graph.in_degree():
+                start_time = int(datetime.now().timestamp())
+                properties = GraphNode(
+                    name=node_name,
+                    in_degree=in_degree,
+                    status="created",
+                    update_date=start_time,
+                    start_date=start_time
+                )
+                curr_node = Node(
+                    label="node",
+                    properties=asdict(properties),
+                )
+                self.redis_graph.add_node(curr_node)
+                nodes[node_name] = curr_node
+            for child_name, father_name in graph.edges():
+                edge = Edge(nodes[child_name], "is_child_of", nodes[father_name])
+                self.redis_graph.add_edge(edge)
+            self.redis_graph.commit()
+            self.node_count = len(graph.nodes)
         super().__init__(graph, manifest, selected)
 
     def find_new_additions(self) -> None:

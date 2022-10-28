@@ -298,6 +298,14 @@ def _build_base_subparser():
         string, eg. '{my_variable: my_value}'
         """,
     )
+    base_subparser.add_argument(
+        "--prev-run-id",
+        type=str,
+        default='',
+        help="""
+        resume from previous run id
+        """,
+    )
 
     # if set, log all cache events. This is extremely verbose!
     base_subparser.add_argument(
@@ -1185,6 +1193,10 @@ def parse_args(args, cls=DBTArgumentParser):
         sys.exit(1)
 
     parsed = p.parse_args(args)
+    if parsed.prev_run_id:
+        os.environ['PREVIOUS_RUN_ID']= parsed.prev_run_id
+    else:
+        os.environ['PREVIOUS_RUN_ID']= ''
 
     # profiles_dir is set before subcommands and after, so normalize
     if hasattr(parsed, "sub_profiles_dir"):

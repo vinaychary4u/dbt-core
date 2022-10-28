@@ -278,7 +278,7 @@ class NodeSelector(MethodManager):
         selected_resources.set_selected_resources(selected_nodes)
         new_graph = self.full_graph.get_subset_graph(selected_nodes)
         # should we give a way here for consumers to mutate the graph?
-        if os.getenv("dbt_backend") == "redis":
+        if os.getenv("DBT_BACKEND") == "REDIS":
             return RedisGraphQueue(new_graph.graph, self.manifest, selected_nodes)
         else:
             return NetworkxGraphQueue(new_graph.graph, self.manifest, selected_nodes)

@@ -176,8 +176,8 @@ class GraphRunnableTask(ManifestTask):
                 raise InternalException(
                     f"Node selection returned {uid}, expected a node or a source"
                 )
-
-        self.num_nodes = len([n for n in self._flattened_nodes if not n.is_ephemeral_model])
+        self.num_nodes = self.job_queue.get_node_num()
+        # self.num_nodes = len([n for n in self._flattened_nodes if not n.is_ephemeral_model])
 
     def raise_on_first_error(self):
         return False
@@ -290,6 +290,9 @@ class GraphRunnableTask(ManifestTask):
             if self.job_queue is None:
                 raise InternalException("Got to run_queue callback with no job queue set")
             self.job_queue.mark_done(result.node.unique_id)
+            import time
+
+            time.sleep(3)
 
         while not self.job_queue.empty():
             node = self.job_queue.get()

@@ -106,9 +106,9 @@ class EntityRelationshipType(StrEnum):
 @dataclass
 class EntityRelationship(dbtClassMixin, Replaceable):
     to: str
-    join_key: str
+    join_keys: Union[str,List[str]]
     relationship_type: EntityRelationshipType
-
+    
 
 @dataclass
 class HasDocs(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable):

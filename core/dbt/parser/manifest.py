@@ -1396,7 +1396,14 @@ def _process_inverse_relationships_for_node(
     
     """Limit this parsing to public models that have relationships"""
     if node.resource_type == "model" and len(node.relationships) > 0 and node.is_public == True:
+
         for relationship in node.relationships:
+
+            """Here we overwrite the base value of the join_keys if it is a string and replace
+            it with a list value for the manifest"""
+            if type(relationship.join_keys) == str:
+                relationship.join_keys = [relationship.join_keys]
+
             to_model = manifest.resolve_ref(
                 relationship.to, target_model_package, current_project, node.package_name
             )
@@ -1410,7 +1417,7 @@ def _process_inverse_relationships_for_node(
             """Using the to_model, create an inverse relationship in the model"""
             inverse_relationship = EntityRelationship(
                 to=node.name,
-                join_key=relationship.join_key,
+                join_keys=relationship.join_keys,
                 relationship_type=EntityRelationshipType(relationship.relationship_type.inverse()),
             )
             
@@ -1425,7 +1432,7 @@ def _process_inverse_relationships_for_node(
                     if inverse_relationship == to_model_relationship and str(inverse_relationship.relationship_type) == str(to_model_relationship.relationship_type):
                         continue
 
-                    elif inverse_relationship.to == to_model_relationship.to and (inverse_relationship.join_key != to_model_relationship.join_key or str(inverse_relationship.relationship_type) != str(to_model_relationship.relationship_type)):
+                    elif inverse_relationship.to == to_model_relationship.to and (inverse_relationship.join_keys != to_model_relationship.join_keys or str(inverse_relationship.relationship_type) != str(to_model_relationship.relationship_type)):
                         raise dbt.exceptions.CompilationException(
                             f"""The relationship between {relationship.to} and {inverse_relationship.to} does not match. Please ensure that the join_key(s) and relationship_types match"""
                         )

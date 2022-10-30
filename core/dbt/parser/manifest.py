@@ -834,7 +834,7 @@ class ManifestLoader:
             if node.created_at < self.started_at:
                 continue
             _process_refs_for_node(self.manifest, current_project, node)
-            _process_inverse_relationships_for_node(self.manifest, current_project, node)
+            _process_semantic_information_for_node(self.manifest, current_project, node)
         for exposure in self.manifest.exposures.values():
             if exposure.created_at < self.started_at:
                 continue
@@ -955,12 +955,6 @@ class ManifestLoader:
                     self.manifest.add_node_nofile(node)
 
         self.manifest.rebuild_ref_lookup()
-
-    # def process_inverse_relationships(self, current_project: str):
-    #     for node in self.manifest.nodes.values():
-    #         if node.created_at < self.started_at:
-    #             continue
-    #         _process_inverse_relationships_for_node(self.manifest, current_project, node)
 
 
 def invalid_ref_fail_unless_test(node, target_model_name, target_model_package, disabled):
@@ -1388,7 +1382,7 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
         manifest.update_node(node)
 
 
-def _process_inverse_relationships_for_node(
+def _process_semantic_information_for_node(
     manifest: Manifest, current_project: str, node: ManifestNode
 ):
     """Given a manifest and a node in that manifest, process the inverse relationships for the related nodes"""

@@ -217,6 +217,7 @@ class ParsedNodeDefaults(NodeInfoMixin, ParsedNodeMandatory):
     deferred: bool = False
     is_public: Optional[bool] = False
     relationships: List[EntityRelationship] = field(default_factory=list)
+    primary_keys: List[str] = field(default_factory=list)
     unrendered_config: Dict[str, Any] = field(default_factory=dict)
     created_at: float = field(default_factory=lambda: time.time())
     config_call_dict: Dict[str, Any] = field(default_factory=dict)
@@ -251,7 +252,7 @@ class ParsedNode(ParsedNodeDefaults, ParsedNodeMixins, SerializableType):
     @classmethod
     def _deserialize(cls, dct: Dict[str, int]):
         # The serialized ParsedNodes do not differ from each other
-        # in fields that would allow 'from_dict' to distinguis
+        # in fields that would allow 'from_dict' to distinguish
         # between them.
         resource_type = dct["resource_type"]
         if resource_type == "model":

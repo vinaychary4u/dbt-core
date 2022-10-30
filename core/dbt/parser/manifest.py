@@ -1388,10 +1388,28 @@ def _process_semantic_information_for_node(
     """Given a manifest and a node in that manifest, process the inverse relationships for the related nodes"""
     target_model_package: Optional[str] = None
     
-    """Limit this parsing to public models that have relationships"""
-    if node.resource_type == "model" and len(node.relationships) > 0 and node.is_public == True:
+    """Limit this parsing to public models/seeds that have relationships"""
+    if node.resource_type in ("model","seed") and node.is_public == True:
 
-        for relationship in node.relationships:
+        """Creating a list that will be populated with models missing the in_public
+        flag that are being referenced with relationships"""
+        non_public_models = []
+
+        """Setting the primary_keys field in the node to be a combination of all 
+        columns that have is_primary_key set to true"""
+        primary_key_columns = [
+            column for column in node.columns.values() if column.is_primary_key
+        ]
+        """Appending the values if they don't exist just in case someone manually 
+        tries to set the primary key at the model level"""
+        for column in primary_key_columns:
+            if column.name not in node.primary_keys:
+                node.primary_keys.append(column.name)
+
+        """Use a generator expression to create the set of public models/seeds
+        that have relationships, which we'll use to iterate on"""
+        nodes_with_relationships = (relationship for relationship in node.relationships if len(node.relationships) > 0)
+        for relationship in nodes_with_relationships:
 
             """Here we overwrite the base value of the join_keys if it is a string and replace
             it with a list value for the manifest"""
@@ -1404,7 +1422,6 @@ def _process_semantic_information_for_node(
 
             """Create a list of models that have relationships pointed at them that
             have not been set to is_public. Use this list to raise CompilationException"""
-            non_public_models = []
             if to_model.is_public == False:
                 non_public_models.append(to_model.name)
 

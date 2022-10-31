@@ -1385,34 +1385,34 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
 def _process_semantic_information_for_node(
     manifest: Manifest, current_project: str, node: ManifestNode
 ):
-    """Given a manifest and a node in that manifest, process the inverse relationships for the related nodes"""
+    """ Given a manifest and a node in that manifest, process all of the semantic 
+    information for the related nodes"""
     target_model_package: Optional[str] = None
     
-    """Limit this parsing to public models/seeds that have relationships"""
+    # Limit this parsing to public models/seeds that have relationships
     if node.resource_type in ("model","seed") and node.is_public == True:
 
-        """Creating a list that will be populated with models missing the in_public
-        flag that are being referenced with relationships"""
+        # Creating a list that will be populated with models missing the in_public
+        # flag that are being referenced with relationships
         non_public_models = []
 
-        """Setting the primary_keys field in the node to be a combination of all 
-        columns that have is_primary_key set to true"""
+        # Setting the primary_keys field in the node to be a combination of all 
+        # columns that have is_primary_key set to true
         primary_key_columns = [
             column for column in node.columns.values() if column.is_primary_key
         ]
-        """Appending the values if they don't exist just in case someone manually 
-        tries to set the primary key at the model level"""
+        # Appending the values of all primary key columns into a primary_key list
+        # at the model level
         for column in primary_key_columns:
-            if column.name not in node.primary_keys:
-                node.primary_keys.append(column.name)
+            node.primary_keys.append(column.name)
 
-        """Use a generator expression to create the set of public models/seeds
-        that have relationships, which we'll use to iterate on"""
+        # Use a generator expression to create the set of public models/seeds
+        # that have relationships, which we'll use to iterate on
         nodes_with_relationships = (relationship for relationship in node.relationships if len(node.relationships) > 0)
         for relationship in nodes_with_relationships:
 
-            """Here we overwrite the base value of the join_keys if it is a string and replace
-            it with a list value for the manifest"""
+            # Here we overwrite the base value of the join_keys if it is a string and replace
+            # it with a list value for the manifest"""
             if type(relationship.join_keys) == str:
                 relationship.join_keys = [relationship.join_keys]
 
@@ -1420,12 +1420,12 @@ def _process_semantic_information_for_node(
                 relationship.to, target_model_package, current_project, node.package_name
             )
 
-            """Create a list of models that have relationships pointed at them that
-            have not been set to is_public. Use this list to raise CompilationException"""
+            # Create a list of models that have relationships pointed at them that
+            # have not been set to is_public. Use this list to raise CompilationException
             if to_model.is_public == False:
                 non_public_models.append(to_model.name)
 
-            """Using the to_model, create an inverse relationship in the model"""
+            # Using the to_model, create an inverse relationship in the model
             inverse_relationship = EntityRelationship(
                 to=node.name,
                 join_keys=relationship.join_keys,
@@ -1435,19 +1435,23 @@ def _process_semantic_information_for_node(
             # TODO: Clean up this very messy code. See if way we can check 
             # relationship.to against to_model.relationships without it breaking 
             # because the latter is a EntityRelationship
-            """Checks if the relationship already exists and only creates if not"""
+            
+            #Checks if the relationship already exists and only creates if not
             if len(to_model.relationships) > 0:
                 for to_model_relationship in to_model.relationships:
-                    """Relationship exists, carry on as normal"""
+
                     # TODO: Clean up how the entity relationship class matches. Strings feel bad
+                    #Relationship exists, carry on as normal
                     if inverse_relationship == to_model_relationship and str(inverse_relationship.relationship_type) == str(to_model_relationship.relationship_type):
                         continue
 
+                    # If the relationship name exists but other properties don't raise an error
                     elif inverse_relationship.to == to_model_relationship.to and (inverse_relationship.join_keys != to_model_relationship.join_keys or str(inverse_relationship.relationship_type) != str(to_model_relationship.relationship_type)):
                         raise dbt.exceptions.CompilationException(
                             f"""The relationship between {relationship.to} and {inverse_relationship.to} does not match. Please ensure that the join_key(s) and relationship_types match"""
                         )
 
+                    # If none of the above conditions are triggered, write the new relationship!
                     else: 
                         to_model.relationships.append(inverse_relationship)
                         manifest.update_node(to_model)
@@ -1456,7 +1460,7 @@ def _process_semantic_information_for_node(
                 to_model.relationships.append(inverse_relationship)
                 manifest.update_node(to_model)
 
-        """Looping through public models that have relationships established to raise compilation error"""
+        #Looping through public models that have relationships established to raise compilation error
         if len(non_public_models) > 0: 
             raise dbt.exceptions.CompilationException(
                 f"""The model(s) {', '.join(non_public_models)} have relationships established but are not public models. Please set the `is_public` property to true for these model(s)."""

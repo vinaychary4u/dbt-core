@@ -1219,14 +1219,7 @@ def _process_dimensions_and_relationships_for_metric(
                     current_project,
                     metric.package_name,
                 )
-                ## I am removing this section because this validation occurs for the metric object
-                ## but we want to confirm this at the model object. If a relationship exists on 
-                ## a model that has no metrics, we still want to confirm this behavior
-
-                # if not to_model.is_public:
-                #     raise dbt.exceptions.InternalException(
-                #         f"Model relationships must be declared between public models - {metric.unique_id} depends on {to_model.unique_id}, which is not a public model."
-                #     )
+ 
                 metric.depends_on.nodes.append(to_model.unique_id)
 
                 new_dims = [col for col in to_model.columns.values() if col.is_dimension]
@@ -1386,11 +1379,21 @@ def _process_semantic_information_for_node(
     manifest: Manifest, current_project: str, node: ManifestNode
 ):
     """ Given a manifest and a node in that manifest, process all of the semantic 
-    information for the related nodes"""
+    information for the related nodes. This occurs in multiple steps:
+      1. If the node is a seed or model and is_public is true, continue with compilation. Otherwise ignore.
+      2. Loop through all of the models listed in relationships and check if they also
+      have is_public set to true. If not, append to a list and then raise that list in a CompilationException.
+      3. Loop through the columns where is_primary_key is set to true and then create a 
+      composite list at the model level of those columns
+      4. Create the inverse_relationship of each relationship and validate it against the other model.
+      If it doesn't exist, add it. If a relationship exists with the same name, confirm that the properties match.
+      If the properties don't match, raise a CompilationException.
+      
+    """
     target_model_package: Optional[str] = None
     
     # Limit this parsing to public models/seeds that have relationships
-    if node.resource_type in ("model","seed") and node.is_public == True:
+    if node.resource_type == "model" and node.is_public == True:
 
         # Creating a list that will be populated with models missing the in_public
         # flag that are being referenced with relationships

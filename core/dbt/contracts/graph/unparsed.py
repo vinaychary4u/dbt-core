@@ -106,9 +106,9 @@ class EntityRelationshipType(StrEnum):
 @dataclass
 class EntityRelationship(dbtClassMixin, Replaceable):
     to: str
-    join_keys: Union[str,List[str]]
+    join_keys: Union[str, List[str]]
     relationship_type: EntityRelationshipType
-    
+
 
 @dataclass
 class HasDocs(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable):
@@ -140,6 +140,7 @@ class UnparsedColumn(HasTests):
     tags: List[str] = field(default_factory=list)
     is_dimension: Optional[bool] = False
     is_primary_key: Optional[bool] = False
+    time_grains: Optional[List[str]] = field(default_factory=list)
     data_type: Optional[str] = None
 
 
@@ -516,7 +517,7 @@ class UnparsedMetric(dbtClassMixin, Replaceable):
     timestamp: str
     expression: str
     description: str = ""
-    time_grains: List[str] = field(default_factory=list)
+    time_grains: Optional[List[str]] = field(default_factory=list)
     dimensions: Union[Dict[str, Any], List[str]] = field(default_factory=dict)
     window: Optional[MetricTime] = None
     model: Optional[str] = None

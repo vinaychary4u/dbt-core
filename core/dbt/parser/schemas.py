@@ -142,10 +142,12 @@ class ParserRef:
             quote = column.quote
             is_dimension = column.is_dimension
             is_primary_key = column.is_primary_key
+            time_grains = column.time_grains
         else:
             quote = None
             is_dimension = False
             is_primary_key = False
+            time_grains = None
         self.column_info[column.name] = ColumnInfo(
             name=column.name,
             description=description,
@@ -156,6 +158,7 @@ class ParserRef:
             _extra=column.extra,
             is_dimension=is_dimension,
             is_primary_key=is_primary_key,
+            time_grains=time_grains,
         )
 
     @classmethod

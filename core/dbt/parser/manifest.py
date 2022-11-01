@@ -1170,7 +1170,7 @@ def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposur
         manifest.update_exposure(exposure)
 
 
-def _process_dimensions_and_relationships_for_metric(
+def _process_semantic_information_for_metric(
     manifest: Manifest,
     target_model: ManifestNode,
     metric: ParsedMetric,
@@ -1188,6 +1188,7 @@ def _process_dimensions_and_relationships_for_metric(
         primary_model_dimensions = [
             col for col in target_model.columns.values() if col.is_dimension
         ]
+        timestamp_col = target_model.columns[metric.timestamp]
 
         # validate declared dims from primary model
         for dim in primary_model_dimensions:
@@ -1219,7 +1220,7 @@ def _process_dimensions_and_relationships_for_metric(
                     current_project,
                     metric.package_name,
                 )
- 
+
                 metric.depends_on.nodes.append(to_model.unique_id)
 
                 new_dims = [col for col in to_model.columns.values() if col.is_dimension]
@@ -1231,6 +1232,24 @@ def _process_dimensions_and_relationships_for_metric(
                             f"Dimension columns must declare a `data_type` attribute. {col.name} is missing this configuration."
                         )
                     metric.dimensions[to_model.name].append(col.name)
+
+        if (
+            not metric.time_grains
+            and not timestamp_col.time_grains
+            and "default_time_grains" not in metric.config._extra.keys()
+        ):
+            raise dbt.exceptions.CompilationException(
+                f"""The metric `{metric.name}` does not have time_grains configured. Please add a list of timegrains to the metric specification, the timestamp columns, or as a metric config."""
+            )
+        # metric spec takes first precedence
+        elif metric.time_grains:
+            pass
+        # then timegrains from the column config
+        elif timestamp_col.time_grains:
+            metric.time_grains = timestamp_col.time_grains
+        # then metric configs
+        else:
+            metric.time_grains = metric.config._extra["default_time_grains"]
 
 
 def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: ParsedMetric):
@@ -1273,7 +1292,7 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: P
 
         metric.depends_on.nodes.append(target_model_id)
 
-        _process_dimensions_and_relationships_for_metric(
+        _process_semantic_information_for_metric(
             manifest, target_model, metric, target_model_package, current_project
         )
 
@@ -1378,32 +1397,30 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
 def _process_semantic_information_for_node(
     manifest: Manifest, current_project: str, node: ManifestNode
 ):
-    """ Given a manifest and a node in that manifest, process all of the semantic 
+    """Given a manifest and a node in that manifest, process all of the semantic
     information for the related nodes. This occurs in multiple steps:
       1. If the node is a seed or model and is_public is true, continue with compilation. Otherwise ignore.
       2. Loop through all of the models listed in relationships and check if they also
       have is_public set to true. If not, append to a list and then raise that list in a CompilationException.
-      3. Loop through the columns where is_primary_key is set to true and then create a 
+      3. Loop through the columns where is_primary_key is set to true and then create a
       composite list at the model level of those columns
       4. Create the inverse_relationship of each relationship and validate it against the other model.
       If it doesn't exist, add it. If a relationship exists with the same name, confirm that the properties match.
       If the properties don't match, raise a CompilationException.
-      
+
     """
     target_model_package: Optional[str] = None
-    
+
     # Limit this parsing to public models/seeds that have relationships
-    if node.resource_type == "model" and node.is_public == True:
+    if node.resource_type == "model" and node.is_public:
 
         # Creating a list that will be populated with models missing the in_public
         # flag that are being referenced with relationships
         non_public_models = []
 
-        # Setting the primary_keys field in the node to be a combination of all 
+        # Setting the primary_keys field in the node to be a combination of all
         # columns that have is_primary_key set to true
-        primary_key_columns = [
-            column for column in node.columns.values() if column.is_primary_key
-        ]
+        primary_key_columns = [column for column in node.columns.values() if column.is_primary_key]
         # Appending the values of all primary key columns into a primary_key list
         # at the model level
         for column in primary_key_columns:
@@ -1411,7 +1428,9 @@ def _process_semantic_information_for_node(
 
         # Use a generator expression to create the set of public models/seeds
         # that have relationships, which we'll use to iterate on
-        nodes_with_relationships = (relationship for relationship in node.relationships if len(node.relationships) > 0)
+        nodes_with_relationships = (
+            relationship for relationship in node.relationships if len(node.relationships) > 0
+        )
         for relationship in nodes_with_relationships:
 
             # Here we overwrite the base value of the join_keys if it is a string and replace
@@ -1425,7 +1444,7 @@ def _process_semantic_information_for_node(
 
             # Create a list of models that have relationships pointed at them that
             # have not been set to is_public. Use this list to raise CompilationException
-            if to_model.is_public == False:
+            if not to_model.is_public:
                 non_public_models.append(to_model.name)
 
             # Using the to_model, create an inverse relationship in the model
@@ -1434,40 +1453,47 @@ def _process_semantic_information_for_node(
                 join_keys=relationship.join_keys,
                 relationship_type=EntityRelationshipType(relationship.relationship_type.inverse()),
             )
-            
-            # TODO: Clean up this very messy code. See if way we can check 
-            # relationship.to against to_model.relationships without it breaking 
+
+            # TODO: Clean up this very messy code. See if way we can check
+            # relationship.to against to_model.relationships without it breaking
             # because the latter is a EntityRelationship
-            
-            #Checks if the relationship already exists and only creates if not
+
+            # Checks if the relationship already exists and only creates if not
             if len(to_model.relationships) > 0:
                 for to_model_relationship in to_model.relationships:
 
                     # TODO: Clean up how the entity relationship class matches. Strings feel bad
-                    #Relationship exists, carry on as normal
-                    if inverse_relationship == to_model_relationship and str(inverse_relationship.relationship_type) == str(to_model_relationship.relationship_type):
+                    # Relationship exists, carry on as normal
+                    if inverse_relationship == to_model_relationship and str(
+                        inverse_relationship.relationship_type
+                    ) == str(to_model_relationship.relationship_type):
                         continue
 
                     # If the relationship name exists but other properties don't raise an error
-                    elif inverse_relationship.to == to_model_relationship.to and (inverse_relationship.join_keys != to_model_relationship.join_keys or str(inverse_relationship.relationship_type) != str(to_model_relationship.relationship_type)):
+                    elif inverse_relationship.to == to_model_relationship.to and (
+                        inverse_relationship.join_keys != to_model_relationship.join_keys
+                        or str(inverse_relationship.relationship_type)
+                        != str(to_model_relationship.relationship_type)
+                    ):
                         raise dbt.exceptions.CompilationException(
                             f"""The relationship between {relationship.to} and {inverse_relationship.to} does not match. Please ensure that the join_key(s) and relationship_types match"""
                         )
 
                     # If none of the above conditions are triggered, write the new relationship!
-                    else: 
+                    else:
                         to_model.relationships.append(inverse_relationship)
                         manifest.update_node(to_model)
-            
-            else: 
+
+            else:
                 to_model.relationships.append(inverse_relationship)
                 manifest.update_node(to_model)
 
-        #Looping through public models that have relationships established to raise compilation error
-        if len(non_public_models) > 0: 
+        # Looping through public models that have relationships established to raise compilation error
+        if len(non_public_models) > 0:
             raise dbt.exceptions.CompilationException(
                 f"""The model(s) {', '.join(non_public_models)} have relationships established but are not public models. Please set the `is_public` property to true for these model(s)."""
             )
+
 
 def _process_sources_for_exposure(
     manifest: Manifest, current_project: str, exposure: ParsedExposure

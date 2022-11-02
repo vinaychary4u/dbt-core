@@ -33,6 +33,7 @@ from dbt.contracts.graph.parsed import (
     ParsedMacro,
     ParsedDocumentation,
     ParsedSourceDefinition,
+    ParsedGenericTestNode,
     ParsedExposure,
     ParsedMetric,
     HasUniqueID,
@@ -216,7 +217,7 @@ class MetricLookup(dbtClassMixin):
         return manifest.metrics[unique_id]
 
 
-# This handles both models/seeds/snapshots and sources
+# This handles both models/seeds/snapshots and sources/metrics/exposures
 class DisabledLookup(dbtClassMixin):
     def __init__(self, manifest: "Manifest"):
         self.storage: Dict[str, Dict[PackageName, List[Any]]] = {}
@@ -464,7 +465,7 @@ class Disabled(Generic[D]):
     target: D
 
 
-MaybeMetricNode = Optional[ParsedMetric]
+MaybeMetricNode = Optional[Union[ParsedMetric, Disabled[ParsedMetric]]]
 
 
 MaybeDocumentation = Optional[ParsedDocumentation]
@@ -498,7 +499,7 @@ def _update_into(dest: MutableMapping[str, T], new_item: T):
     existing = dest[unique_id]
     if new_item.original_file_path != existing.original_file_path:
         raise dbt.exceptions.RuntimeException(
-            f"cannot update a {new_item.resource_type} to have a new file " f"path!"
+            f"cannot update a {new_item.resource_type} to have a new file path!"
         )
     dest[unique_id] = new_item
 
@@ -616,7 +617,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     flat_graph: Dict[str, Any] = field(default_factory=dict)
     state_check: ManifestStateCheck = field(default_factory=ManifestStateCheck)
     source_patches: MutableMapping[SourceKey, SourcePatch] = field(default_factory=dict)
-    disabled: MutableMapping[str, List[CompileResultNode]] = field(default_factory=dict)
+    disabled: MutableMapping[str, List[GraphMemberNode]] = field(default_factory=dict)
     env_vars: MutableMapping[str, str] = field(default_factory=dict)
 
     _doc_lookup: Optional[DocLookup] = field(
@@ -779,7 +780,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         return frozenset(x.database for x in chain(self.nodes.values(), self.sources.values()))
 
     def deepcopy(self):
-        return Manifest(
+        copy = Manifest(
             nodes={k: _deepcopy(v) for k, v in self.nodes.items()},
             sources={k: _deepcopy(v) for k, v in self.sources.items()},
             macros={k: _deepcopy(v) for k, v in self.macros.items()},
@@ -792,6 +793,8 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             files={k: _deepcopy(v) for k, v in self.files.items()},
             state_check=_deepcopy(self.state_check),
         )
+        copy.build_flat_graph()
+        return copy
 
     def build_parent_and_child_maps(self):
         edge_members = list(
@@ -964,13 +967,22 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         current_project: str,
         node_package: str,
     ) -> MaybeMetricNode:
+
         metric: Optional[ParsedMetric] = None
+        disabled: Optional[List[ParsedMetric]] = None
 
         candidates = _search_packages(current_project, node_package, target_metric_package)
         for pkg in candidates:
             metric = self.metric_lookup.find(target_metric_name, pkg, self)
-            if metric is not None:
+
+            if metric is not None and metric.config.enabled:
                 return metric
+
+            # it's possible that the node is disabled
+            if disabled is None:
+                disabled = self.disabled_lookup.find(f"{target_metric_name}", pkg)
+        if disabled:
+            return Disabled(disabled[0])
         return None
 
     # Called by DocsRuntimeContext.doc
@@ -1018,9 +1030,13 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                 merged.add(unique_id)
                 self.nodes[unique_id] = node.replace(deferred=True)
 
+        # Rebuild the flat_graph, which powers the 'graph' context variable,
+        # now that we've deferred some nodes
+        self.build_flat_graph()
+
         # log up to 5 items
         sample = list(islice(merged, 5))
-        fire_event(MergedFromState(nbr_merged=len(merged), sample=sample))
+        fire_event(MergedFromState(num_merged=len(merged), sample=sample))
 
     # Methods that were formerly in ParseResult
 
@@ -1074,8 +1090,13 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     def add_node(self, source_file: AnySourceFile, node: ManifestNodes, test_from=None):
         self.add_node_nofile(node)
         if isinstance(source_file, SchemaSourceFile):
-            assert test_from
-            source_file.add_test(node.unique_id, test_from)
+            if isinstance(node, ParsedGenericTestNode):
+                assert test_from
+                source_file.add_test(node.unique_id, test_from)
+            if isinstance(node, ParsedMetric):
+                source_file.metrics.append(node.unique_id)
+            if isinstance(node, ParsedExposure):
+                source_file.exposures.append(node.unique_id)
         else:
             source_file.nodes.append(node.unique_id)
 
@@ -1089,7 +1110,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         self.metrics[metric.unique_id] = metric
         source_file.metrics.append(metric.unique_id)
 
-    def add_disabled_nofile(self, node: CompileResultNode):
+    def add_disabled_nofile(self, node: GraphMemberNode):
         # There can be multiple disabled nodes for the same unique_id
         if node.unique_id in self.disabled:
             self.disabled[node.unique_id].append(node)
@@ -1099,8 +1120,13 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     def add_disabled(self, source_file: AnySourceFile, node: CompileResultNode, test_from=None):
         self.add_disabled_nofile(node)
         if isinstance(source_file, SchemaSourceFile):
-            assert test_from
-            source_file.add_test(node.unique_id, test_from)
+            if isinstance(node, ParsedGenericTestNode):
+                assert test_from
+                source_file.add_test(node.unique_id, test_from)
+            if isinstance(node, ParsedMetric):
+                source_file.metrics.append(node.unique_id)
+            if isinstance(node, ParsedExposure):
+                source_file.exposures.append(node.unique_id)
         else:
             source_file.nodes.append(node.unique_id)
 

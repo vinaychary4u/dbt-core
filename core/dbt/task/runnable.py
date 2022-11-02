@@ -26,7 +26,7 @@ from dbt.logger import (
     ModelMetadata,
     NodeCount,
 )
-from dbt.events.functions import fire_event
+from dbt.events.functions import fire_event, warn_or_error
 from dbt.events.types import (
     EmptyLine,
     PrintCancelLine,
@@ -35,6 +35,8 @@ from dbt.events.types import (
     NodeFinished,
     QueryCancelationUnsupported,
     ConcurrencyLine,
+    EndRunResult,
+    NothingToDo,
 )
 from dbt.contracts.graph.compiled import CompileResultNode
 from dbt.contracts.graph.manifest import Manifest
@@ -46,7 +48,6 @@ from dbt.exceptions import (
     NotImplementedException,
     RuntimeException,
     FailFastException,
-    warn_or_error,
 )
 
 from dbt.graph import GraphQueue, NodeSelector, SelectionSpec, parse_difference, Graph
@@ -56,7 +57,6 @@ import dbt.tracking
 import dbt.exceptions
 from dbt import flags
 import dbt.utils
-from dbt.ui import warning_tag
 
 RESULT_FILE_NAME = "run_results.json"
 MANIFEST_FILE_NAME = "manifest.json"
@@ -173,7 +173,7 @@ class GraphRunnableTask(ManifestTask):
                 self._flattened_nodes.append(self.manifest.sources[uid])
             else:
                 raise InternalException(
-                    f"Node selection returned {uid}, expected a node or a " f"source"
+                    f"Node selection returned {uid}, expected a node or a source"
                 )
 
         self.num_nodes = len([n for n in self._flattened_nodes if not n.is_ephemeral_model])
@@ -232,7 +232,7 @@ class GraphRunnableTask(ManifestTask):
                         NodeFinished(
                             node_info=runner.node.node_info,
                             unique_id=runner.node.unique_id,
-                            run_result=result.to_dict(),
+                            run_result=result.to_msg(),
                         )
                     )
             # `_event_status` dict is only used for logging.  Make sure
@@ -458,8 +458,7 @@ class GraphRunnableTask(ManifestTask):
         if len(self._flattened_nodes) == 0:
             with TextOnly():
                 fire_event(EmptyLine())
-            msg = "Nothing to do. Try checking your model " "configs and model specification args"
-            warn_or_error(msg, log_fmt=warning_tag("{}"))
+            warn_or_error(NothingToDo())
             result = self.get_result(
                 results=[],
                 generated_at=datetime.utcnow(),
@@ -471,6 +470,18 @@ class GraphRunnableTask(ManifestTask):
             selected_uids = frozenset(n.unique_id for n in self._flattened_nodes)
             result = self.execute_with_hooks(selected_uids)
 
+        # We have other result types here too, including FreshnessResult
+        if isinstance(result, RunExecutionResult):
+            result_msgs = [result.to_msg() for result in result.results]
+            fire_event(
+                EndRunResult(
+                    results=result_msgs,
+                    generated_at=result.generated_at,
+                    elapsed_time=result.elapsed_time,
+                    success=GraphRunnableTask.interpret_results(result.results),
+                )
+            )
+
         if flags.WRITE_JSON:
             self.write_manifest()
             self.write_result(result)
@@ -478,7 +489,8 @@ class GraphRunnableTask(ManifestTask):
         self.task_end_messages(result.results)
         return result
 
-    def interpret_results(self, results):
+    @classmethod
+    def interpret_results(cls, results):
         if results is None:
             return False
 

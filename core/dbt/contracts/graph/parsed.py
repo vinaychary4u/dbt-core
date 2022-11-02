@@ -18,7 +18,7 @@ from typing import (
 from dbt.dataclass_schema import dbtClassMixin, ExtensibleDbtClassMixin
 
 from dbt.clients.system import write_file
-from dbt.contracts.files import FileHash, MAXIMUM_SEED_SIZE_NAME
+from dbt.contracts.files import FileHash
 from dbt.contracts.graph.unparsed import (
     UnparsedNode,
     UnparsedDocumentation,
@@ -37,11 +37,19 @@ from dbt.contracts.graph.unparsed import (
     ExposureType,
     MaturityType,
     MetricFilter,
+    MetricTime,
 )
 from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
-from dbt.exceptions import warn_or_error
+from dbt.events.proto_types import NodeInfo
+from dbt.events.functions import warn_or_error
+from dbt.events.types import (
+    SeedIncreased,
+    SeedExceedsLimitSamePath,
+    SeedExceedsLimitAndPathChanged,
+    SeedExceedsLimitChecksumChanged,
+)
 from dbt import flags
-from dbt.node_types import NodeType
+from dbt.node_types import ModelLanguage, NodeType
 
 
 from .model_config import (
@@ -49,6 +57,8 @@ from .model_config import (
     SeedConfig,
     TestConfig,
     SourceConfig,
+    MetricConfig,
+    ExposureConfig,
     EmptySnapshotConfig,
     SnapshotConfig,
 )
@@ -189,7 +199,8 @@ class NodeInfoMixin:
             "node_started_at": self._event_status.get("started_at"),
             "node_finished_at": self._event_status.get("finished_at"),
         }
-        return node_info
+        node_info_msg = NodeInfo(**node_info)
+        return node_info_msg
 
 
 @dataclass
@@ -370,30 +381,28 @@ def same_seeds(first: ParsedNode, second: ParsedNode) -> bool:
     if first.checksum.name == "path":
         msg: str
         if second.checksum.name != "path":
-            msg = (
-                f"Found a seed ({first.package_name}.{first.name}) "
-                f">{MAXIMUM_SEED_SIZE_NAME} in size. The previous file was "
-                f"<={MAXIMUM_SEED_SIZE_NAME}, so it has changed"
+            warn_or_error(
+                SeedIncreased(package_name=first.package_name, name=first.name), node=first
             )
         elif result:
-            msg = (
-                f"Found a seed ({first.package_name}.{first.name}) "
-                f">{MAXIMUM_SEED_SIZE_NAME} in size at the same path, dbt "
-                f"cannot tell if it has changed: assuming they are the same"
+            warn_or_error(
+                SeedExceedsLimitSamePath(package_name=first.package_name, name=first.name),
+                node=first,
             )
         elif not result:
-            msg = (
-                f"Found a seed ({first.package_name}.{first.name}) "
-                f">{MAXIMUM_SEED_SIZE_NAME} in size. The previous file was in "
-                f"a different location, assuming it has changed"
+            warn_or_error(
+                SeedExceedsLimitAndPathChanged(package_name=first.package_name, name=first.name),
+                node=first,
             )
         else:
-            msg = (
-                f"Found a seed ({first.package_name}.{first.name}) "
-                f">{MAXIMUM_SEED_SIZE_NAME} in size. The previous file had a "
-                f"checksum type of {second.checksum.name}, so it has changed"
+            warn_or_error(
+                SeedExceedsLimitChecksumChanged(
+                    package_name=first.package_name,
+                    name=first.name,
+                    checksum_name=second.checksum.name,
+                ),
+                node=first,
             )
-        warn_or_error(msg, node=first)
 
     return result
 
@@ -516,6 +525,7 @@ class ParsedMacro(UnparsedBaseNode, HasUniqueID):
     patch_path: Optional[str] = None
     arguments: List[MacroArgument] = field(default_factory=list)
     created_at: float = field(default_factory=lambda: time.time())
+    supported_languages: Optional[List[ModelLanguage]] = None
 
     def patch(self, patch: ParsedMacroPatch):
         self.patch_path: Optional[str] = patch.file_id
@@ -741,9 +751,12 @@ class ParsedExposure(UnparsedBaseNode, HasUniqueID, HasFqn):
     owner: ExposureOwner
     resource_type: NodeType = NodeType.Exposure
     description: str = ""
+    label: Optional[str] = None
     maturity: Optional[MaturityType] = None
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
+    config: ExposureConfig = field(default_factory=ExposureConfig)
+    unrendered_config: Dict[str, Any] = field(default_factory=dict)
     url: Optional[str] = None
     depends_on: DependsOn = field(default_factory=DependsOn)
     refs: List[List[str]] = field(default_factory=list)
@@ -764,6 +777,9 @@ class ParsedExposure(UnparsedBaseNode, HasUniqueID, HasFqn):
     def same_description(self, old: "ParsedExposure") -> bool:
         return self.description == old.description
 
+    def same_label(self, old: "ParsedExposure") -> bool:
+        return self.label == old.label
+
     def same_maturity(self, old: "ParsedExposure") -> bool:
         return self.maturity == old.maturity
 
@@ -775,6 +791,12 @@ class ParsedExposure(UnparsedBaseNode, HasUniqueID, HasFqn):
 
     def same_url(self, old: "ParsedExposure") -> bool:
         return self.url == old.url
+
+    def same_config(self, old: "ParsedExposure") -> bool:
+        return self.config.same_contents(
+            self.unrendered_config,
+            old.unrendered_config,
+        )
 
     def same_contents(self, old: Optional["ParsedExposure"]) -> bool:
         # existing when it didn't before is a change!
@@ -789,7 +811,9 @@ class ParsedExposure(UnparsedBaseNode, HasUniqueID, HasFqn):
             and self.same_maturity(old)
             and self.same_url(old)
             and self.same_description(old)
+            and self.same_label(old)
             and self.same_depends_on(old)
+            and self.same_config(old)
             and True
         )
 
@@ -805,17 +829,20 @@ class ParsedMetric(UnparsedBaseNode, HasUniqueID, HasFqn):
     name: str
     description: str
     label: str
-    type: str
-    sql: str
-    timestamp: Optional[str]
+    calculation_method: str
+    timestamp: str
+    expression: str
     filters: List[MetricFilter]
     time_grains: List[str]
     dimensions: List[str]
+    window: Optional[MetricTime] = None
     model: Optional[str] = None
     model_unique_id: Optional[str] = None
     resource_type: NodeType = NodeType.Metric
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
+    config: MetricConfig = field(default_factory=MetricConfig)
+    unrendered_config: Dict[str, Any] = field(default_factory=dict)
     sources: List[List[str]] = field(default_factory=list)
     depends_on: DependsOn = field(default_factory=DependsOn)
     refs: List[List[str]] = field(default_factory=list)
@@ -833,6 +860,9 @@ class ParsedMetric(UnparsedBaseNode, HasUniqueID, HasFqn):
     def same_model(self, old: "ParsedMetric") -> bool:
         return self.model == old.model
 
+    def same_window(self, old: "ParsedMetric") -> bool:
+        return self.window == old.window
+
     def same_dimensions(self, old: "ParsedMetric") -> bool:
         return self.dimensions == old.dimensions
 
@@ -845,17 +875,23 @@ class ParsedMetric(UnparsedBaseNode, HasUniqueID, HasFqn):
     def same_label(self, old: "ParsedMetric") -> bool:
         return self.label == old.label
 
-    def same_type(self, old: "ParsedMetric") -> bool:
-        return self.type == old.type
+    def same_calculation_method(self, old: "ParsedMetric") -> bool:
+        return self.calculation_method == old.calculation_method
 
-    def same_sql(self, old: "ParsedMetric") -> bool:
-        return self.sql == old.sql
+    def same_expression(self, old: "ParsedMetric") -> bool:
+        return self.expression == old.expression
 
     def same_timestamp(self, old: "ParsedMetric") -> bool:
         return self.timestamp == old.timestamp
 
     def same_time_grains(self, old: "ParsedMetric") -> bool:
         return self.time_grains == old.time_grains
+
+    def same_config(self, old: "ParsedMetric") -> bool:
+        return self.config.same_contents(
+            self.unrendered_config,
+            old.unrendered_config,
+        )
 
     def same_contents(self, old: Optional["ParsedMetric"]) -> bool:
         # existing when it didn't before is a change!
@@ -865,14 +901,16 @@ class ParsedMetric(UnparsedBaseNode, HasUniqueID, HasFqn):
 
         return (
             self.same_model(old)
+            and self.same_window(old)
             and self.same_dimensions(old)
             and self.same_filters(old)
             and self.same_description(old)
             and self.same_label(old)
-            and self.same_type(old)
-            and self.same_sql(old)
+            and self.same_calculation_method(old)
+            and self.same_expression(old)
             and self.same_timestamp(old)
             and self.same_time_grains(old)
+            and self.same_config(old)
             and True
         )
 

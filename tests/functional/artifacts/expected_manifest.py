@@ -205,9 +205,13 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
         schema="test", docs={"node_color": None, "show": False}
     )
 
-    unrendered_model_config = get_unrendered_model_config(materialized="view")
+    unrendered_model_config = get_unrendered_model_config(
+        materialized="view", docs={"show": False}
+    )
 
-    unrendered_second_config = get_unrendered_model_config(schema="test", materialized="view")
+    unrendered_second_config = get_unrendered_model_config(
+        schema="test", materialized="view", docs={"show": False}
+    )
 
     seed_config = get_rendered_seed_config()
     unrendered_seed_config = get_unrendered_seed_config()
@@ -740,6 +744,10 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                     "nodes": ["model.test.model", "model.test.second_model"],
                 },
                 "description": "A description of the complex exposure\n",
+                "label": None,
+                "config": {
+                    "enabled": True,
+                },
                 "fqn": ["test", "notebook_exposure"],
                 "maturity": "medium",
                 "meta": {"tool": "my_tool", "languages": ["python"]},
@@ -756,6 +764,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                 "type": "notebook",
                 "unique_id": "exposure.test.notebook_exposure",
                 "url": "http://example.com/notebook/1",
+                "unrendered_config": {},
             },
             "exposure.test.simple_exposure": {
                 "created_at": ANY,
@@ -764,6 +773,10 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                     "nodes": ["source.test.my_source.my_table", "model.test.model"],
                 },
                 "description": "",
+                "label": None,
+                "config": {
+                    "enabled": True,
+                },
                 "fqn": ["test", "simple_exposure"],
                 "name": "simple_exposure",
                 "original_file_path": os.path.join("models", "schema.yml"),
@@ -783,6 +796,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                 "maturity": None,
                 "meta": {},
                 "tags": [],
+                "unrendered_config": {},
             },
         },
         "metrics": {},
@@ -1178,6 +1192,10 @@ def expected_references_manifest(project):
                 "created_at": ANY,
                 "depends_on": {"macros": [], "nodes": ["model.test.view_summary"]},
                 "description": "A description of the complex exposure",
+                "label": None,
+                "config": {
+                    "enabled": True,
+                },
                 "fqn": ["test", "notebook_exposure"],
                 "maturity": "medium",
                 "meta": {"tool": "my_tool", "languages": ["python"]},
@@ -1194,6 +1212,7 @@ def expected_references_manifest(project):
                 "type": "notebook",
                 "unique_id": "exposure.test.notebook_exposure",
                 "url": "http://example.com/notebook/1",
+                "unrendered_config": {},
             },
         },
         "metrics": {},
@@ -1256,7 +1275,7 @@ def expected_references_manifest(project):
             },
             "test.view_summary": {
                 "block_contents": (
-                    "A view of the summary of the ephemeral copy of the " "seed data"
+                    "A view of the summary of the ephemeral copy of the seed data"
                 ),
                 "name": "view_summary",
                 "original_file_path": docs_path,
@@ -1331,6 +1350,7 @@ def expected_references_manifest(project):
                 "unique_id": "macro.test.test_nothing",
                 "tags": [],
                 "root_path": project.project_root,
+                "supported_languages": None,
                 "arguments": [
                     {
                         "name": "model",

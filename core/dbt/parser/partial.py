@@ -245,6 +245,22 @@ class PartialParsing:
                 if "overrides" in source:
                     self.remove_source_override_target(source)
 
+    def delete_disabled(self, unique_id, file_id):
+        # This node/metric/exposure is disabled. Find it and remove it from disabled dictionary.
+        for dis_index, dis_node in enumerate(self.saved_manifest.disabled[unique_id]):
+            if dis_node.file_id == file_id:
+                node = dis_node
+                index = dis_index
+                break
+        # Remove node from disabled
+        del self.saved_manifest.disabled[unique_id][index]
+        # if all nodes were removed for the unique id, delete the unique_id
+        # from the disabled dict
+        if not self.saved_manifest.disabled[unique_id]:
+            self.saved_manifest.disabled.pop(unique_id)
+
+        return node
+
     # Deletes for all non-schema files
     def delete_from_saved(self, file_id):
         # Look at all things touched by file, remove those
@@ -299,7 +315,7 @@ class PartialParsing:
         else:
             # It's not clear when this would actually happen.
             # Logging in case there are other associated errors.
-            fire_event(PartialParsingNodeMissingInSourceFile(source_file=old_source_file))
+            fire_event(PartialParsingNodeMissingInSourceFile(file_id=old_source_file.file_id))
 
         # replace source_file in saved and add to parsing list
         file_id = new_source_file.file_id
@@ -319,15 +335,7 @@ class PartialParsing:
             and unique_id in self.saved_manifest.disabled
         ):
             # This node is disabled. Find the node and remove it from disabled dictionary.
-            for dis_index, dis_node in enumerate(self.saved_manifest.disabled[unique_id]):
-                if dis_node.file_id == source_file.file_id:
-                    node = dis_node
-                    break
-            if dis_node:
-                # Remove node from disabled and unique_id from disabled dict if necessary
-                del self.saved_manifest.disabled[unique_id][dis_index]
-                if not self.saved_manifest.disabled[unique_id]:
-                    self.saved_manifest.disabled.pop(unique_id)
+            node = self.delete_disabled(unique_id, source_file.file_id)
         else:
             # Has already been deleted by another action
             return
@@ -826,17 +834,24 @@ class PartialParsing:
         # remove elem node and remove unique_id from node_patches
         if elem_unique_id:
             # might have been already removed
-            if elem_unique_id in self.saved_manifest.nodes:
-                node = self.saved_manifest.nodes.pop(elem_unique_id)
-                self.deleted_manifest.nodes[elem_unique_id] = node
+            if (
+                elem_unique_id in self.saved_manifest.nodes
+                or elem_unique_id in self.saved_manifest.disabled
+            ):
+                if elem_unique_id in self.saved_manifest.nodes:
+                    nodes = [self.saved_manifest.nodes.pop(elem_unique_id)]
+                else:
+                    # The value of disabled items is a list of nodes
+                    nodes = self.saved_manifest.disabled.pop(elem_unique_id)
                 # need to add the node source_file to pp_files
-                file_id = node.file_id
-                # need to copy new file to saved files in order to get content
-                if file_id in self.new_files:
-                    self.saved_files[file_id] = deepcopy(self.new_files[file_id])
-                if self.saved_files[file_id]:
-                    source_file = self.saved_files[file_id]
-                    self.add_to_pp_files(source_file)
+                for node in nodes:
+                    file_id = node.file_id
+                    # need to copy new file to saved files in order to get content
+                    if file_id in self.new_files:
+                        self.saved_files[file_id] = deepcopy(self.new_files[file_id])
+                    if self.saved_files[file_id]:
+                        source_file = self.saved_files[file_id]
+                        self.add_to_pp_files(source_file)
             # remove from patches
             schema_file.node_patches.remove(elem_unique_id)
 
@@ -885,34 +900,40 @@ class PartialParsing:
                 self.add_to_pp_files(self.saved_files[macro_file_id])
 
     # exposures are created only from schema files, so just delete
-    # the exposure.
+    # the exposure or the disabled exposure.
     def delete_schema_exposure(self, schema_file, exposure_dict):
         exposure_name = exposure_dict["name"]
         exposures = schema_file.exposures.copy()
         for unique_id in exposures:
-            exposure = self.saved_manifest.exposures[unique_id]
             if unique_id in self.saved_manifest.exposures:
+                exposure = self.saved_manifest.exposures[unique_id]
                 if exposure.name == exposure_name:
                     self.deleted_manifest.exposures[unique_id] = self.saved_manifest.exposures.pop(
                         unique_id
                     )
                     schema_file.exposures.remove(unique_id)
                     fire_event(PartialParsingDeletedExposure(unique_id=unique_id))
+            elif unique_id in self.saved_manifest.disabled:
+                self.delete_disabled(unique_id, schema_file.file_id)
 
-    # metric are created only from schema files, so just delete
-    # the metric.
+    # metrics are created only from schema files, but also can be referred to by other nodes
     def delete_schema_metric(self, schema_file, metric_dict):
         metric_name = metric_dict["name"]
         metrics = schema_file.metrics.copy()
         for unique_id in metrics:
-            metric = self.saved_manifest.metrics[unique_id]
             if unique_id in self.saved_manifest.metrics:
+                metric = self.saved_manifest.metrics[unique_id]
                 if metric.name == metric_name:
+                    # Need to find everything that referenced this metric and schedule for parsing
+                    if unique_id in self.saved_manifest.child_map:
+                        self.schedule_nodes_for_parsing(self.saved_manifest.child_map[unique_id])
                     self.deleted_manifest.metrics[unique_id] = self.saved_manifest.metrics.pop(
                         unique_id
                     )
                     schema_file.metrics.remove(unique_id)
-                    fire_event(PartialParsingDeletedMetric(id=unique_id))
+                    fire_event(PartialParsingDeletedMetric(unique_id=unique_id))
+            elif unique_id in self.saved_manifest.disabled:
+                self.delete_disabled(unique_id, schema_file.file_id)
 
     def get_schema_element(self, elem_list, elem_name):
         for element in elem_list:

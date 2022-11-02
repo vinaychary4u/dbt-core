@@ -41,6 +41,7 @@ from dbt.contracts.graph.parsed import (
     ParsedSourceDefinition,
 )
 from dbt.contracts.graph.metrics import MetricReference, ResolvedMetricReference
+from dbt.events.functions import get_metadata_vars
 from dbt.exceptions import (
     CompilationException,
     ParsingException,
@@ -52,10 +53,8 @@ from dbt.exceptions import (
     raise_compiler_error,
     ref_invalid_args,
     metric_invalid_args,
-    ref_target_not_found,
-    metric_target_not_found,
+    target_not_found,
     ref_bad_context,
-    source_target_not_found,
     wrapped_exports,
     raise_parsing_error,
     disallow_secret_env_var,
@@ -63,7 +62,7 @@ from dbt.exceptions import (
 from dbt.config import IsFQNResource
 from dbt.node_types import NodeType, ModelLanguage
 
-from dbt.utils import merge, AttrDict, MultiDict
+from dbt.utils import merge, AttrDict, MultiDict, args_to_dict
 
 from dbt import selected_resources
 
@@ -182,7 +181,7 @@ class BaseDatabaseWrapper:
                     return macro
 
         searched = ", ".join(repr(a) for a in attempts)
-        msg = f"In dispatch: No macro named '{macro_name}' found\n" f"    Searched for: {searched}"
+        msg = f"In dispatch: No macro named '{macro_name}' found\n    Searched for: {searched}"
         raise CompilationException(msg)
 
 
@@ -220,12 +219,12 @@ class BaseRefResolver(BaseResolver):
     def validate_args(self, name: str, package: Optional[str]):
         if not isinstance(name, str):
             raise CompilationException(
-                f"The name argument to ref() must be a string, got " f"{type(name)}"
+                f"The name argument to ref() must be a string, got {type(name)}"
             )
 
         if package is not None and not isinstance(package, str):
             raise CompilationException(
-                f"The package argument to ref() must be a string or None, got " f"{type(package)}"
+                f"The package argument to ref() must be a string or None, got {type(package)}"
             )
 
     def __call__(self, *args: str) -> RelationProxy:
@@ -476,10 +475,11 @@ class RuntimeRefResolver(BaseRefResolver):
         )
 
         if target_model is None or isinstance(target_model, Disabled):
-            ref_target_not_found(
-                self.model,
-                target_name,
-                target_package,
+            target_not_found(
+                node=self.model,
+                target_name=target_name,
+                target_kind="node",
+                target_package=target_package,
                 disabled=isinstance(target_model, Disabled),
             )
         self.validate(target_model, target_name, target_package)
@@ -541,10 +541,11 @@ class RuntimeSourceResolver(BaseSourceResolver):
         )
 
         if target_source is None or isinstance(target_source, Disabled):
-            source_target_not_found(
-                self.model,
-                source_name,
-                table_name,
+            target_not_found(
+                node=self.model,
+                target_name=f"{source_name}.{table_name}",
+                target_kind="source",
+                disabled=(isinstance(target_source, Disabled)),
             )
         return self.Relation.create_from_source(target_source)
 
@@ -567,11 +568,11 @@ class RuntimeMetricResolver(BaseMetricResolver):
         )
 
         if target_metric is None or isinstance(target_metric, Disabled):
-            # TODO : Use a different exception!!
-            metric_target_not_found(
-                self.model,
-                target_name,
-                target_package,
+            target_not_found(
+                node=self.model,
+                target_name=target_name,
+                target_kind="metric",
+                target_package=target_package,
             )
 
         return ResolvedMetricReference(target_metric, self.manifest, self.Relation)
@@ -709,6 +710,14 @@ class ProviderContext(ManifestContext):
             internal_packages,
             self.model,
         )
+
+    @contextproperty
+    def dbt_metadata_envs(self) -> Dict[str, str]:
+        return get_metadata_vars()
+
+    @contextproperty
+    def invocation_args_dict(self):
+        return args_to_dict(self.config.args)
 
     @contextproperty
     def _sql_results(self) -> Dict[str, AttrDict]:
@@ -1239,6 +1248,19 @@ class ProviderContext(ManifestContext):
         doesn't support `--select`.
         """
         return selected_resources.SELECTED_RESOURCES
+
+    @contextmember
+    def submit_python_job(self, parsed_model: Dict, compiled_code: str) -> AdapterResponse:
+        # Check macro_stack and that the unique id is for a materialization macro
+        if not (
+            self.context_macro_stack.depth == 2
+            and self.context_macro_stack.call_stack[1] == "macro.dbt.statement"
+            and "materialization" in self.context_macro_stack.call_stack[0]
+        ):
+            raise RuntimeException(
+                f"submit_python_job is not intended to be called here, at model {parsed_model['alias']}, with macro call_stack {self.context_macro_stack.call_stack}."
+            )
+        return self.adapter.submit_python_job(parsed_model, compiled_code)
 
 
 class MacroContext(ProviderContext):

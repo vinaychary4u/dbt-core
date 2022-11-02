@@ -1,6 +1,6 @@
 import itertools
 from pathlib import Path
-from typing import Iterable, Dict, Optional, Set, Any
+from typing import Iterable, Dict, Optional, Set, Any, List
 from dbt.adapters.factory import get_adapter
 from dbt.config import RuntimeConfig
 from dbt.context.context_config import (
@@ -24,11 +24,12 @@ from dbt.contracts.graph.unparsed import (
     UnparsedColumn,
     Time,
 )
-from dbt.exceptions import warn_or_error, InternalException
+from dbt.events.functions import warn_or_error
+from dbt.events.types import UnusedTables
+from dbt.exceptions import InternalException
 from dbt.node_types import NodeType
 
 from dbt.parser.schemas import SchemaParser, ParserRef
-from dbt import ui
 
 
 # An UnparsedSourceDefinition is taken directly from the yaml
@@ -63,7 +64,7 @@ class SourcePatcher:
                 self.sources[unpatched.unique_id] = unpatched
                 continue
             # returns None if there is no patch
-            patch = self.get_patch_for(unpatched)  # type: ignore[unreachable] # CT-564 / GH 5169
+            patch = self.get_patch_for(unpatched)
 
             # returns unpatched if there is no patch
             patched = self.patch_source(unpatched, patch)
@@ -141,6 +142,8 @@ class SourcePatcher:
             rendered=True,
         )
 
+        config = config.finalize_and_validate()
+
         unrendered_config = self._generate_source_config(
             target=target,
             rendered=False,
@@ -148,7 +151,7 @@ class SourcePatcher:
 
         if not isinstance(config, SourceConfig):
             raise InternalException(
-                f"Calculated a {type(config)} for a source, but expected " f"a SourceConfig"
+                f"Calculated a {type(config)} for a source, but expected a SourceConfig"
             )
 
         default_database = self.root_project.credentials.database
@@ -213,8 +216,8 @@ class SourcePatcher:
         self,
         unpatched: UnpatchedSourceDefinition,
     ) -> Optional[SourcePatch]:
-        if isinstance(unpatched, ParsedSourceDefinition):  # type: ignore[unreachable] # CT-564 / GH 5169
-            return None  # type: ignore[unreachable] # CT-564 / GH 5169
+        if isinstance(unpatched, ParsedSourceDefinition):
+            return None
         key = (unpatched.package_name, unpatched.source.name)
         patch: Optional[SourcePatch] = self.manifest.source_patches.get(key)
         if patch is None:
@@ -305,28 +308,27 @@ class SourcePatcher:
                     unused_tables[key] = unused
 
         if unused_tables:
-            msg = self.get_unused_msg(unused_tables)
-            warn_or_error(msg, log_fmt=ui.warning_tag("{}"))
+            unused_tables_formatted = self.get_unused_msg(unused_tables)
+            warn_or_error(UnusedTables(unused_tables=unused_tables_formatted))
 
         self.manifest.source_patches = {}
 
     def get_unused_msg(
         self,
         unused_tables: Dict[SourceKey, Optional[Set[str]]],
-    ) -> str:
-        msg = [
-            "During parsing, dbt encountered source overrides that had no " "target:",
-        ]
+    ) -> List:
+        unused_tables_formatted = []
         for key, table_names in unused_tables.items():
             patch = self.manifest.source_patches[key]
             patch_name = f"{patch.overrides}.{patch.name}"
             if table_names is None:
-                msg.append(f"  - Source {patch_name} (in {patch.path})")
+                unused_tables_formatted.append(f"  - Source {patch_name} (in {patch.path})")
             else:
                 for table_name in sorted(table_names):
-                    msg.append(f"  - Source table {patch_name}.{table_name} " f"(in {patch.path})")
-        msg.append("")
-        return "\n".join(msg)
+                    unused_tables_formatted.append(
+                        f"  - Source table {patch_name}.{table_name} " f"(in {patch.path})"
+                    )
+        return unused_tables_formatted
 
 
 def merge_freshness_time_thresholds(

@@ -2,11 +2,9 @@ import builtins
 import functools
 from typing import NoReturn, Optional, Mapping, Any
 
-from dbt.events.functions import fire_event, scrub_secrets, env_secrets
-from dbt.events.types import GeneralWarningMsg, GeneralWarningException
+from dbt.events.helpers import env_secrets, scrub_secrets
+from dbt.events.types import GeneralMacroWarning
 from dbt.node_types import NodeType
-from dbt import flags
-from dbt.ui import line_wrap_message, warning_tag
 
 import dbt.dataclass_schema
 
@@ -570,26 +568,30 @@ def doc_target_not_found(
     raise_compiler_error(msg, model)
 
 
-def _get_target_failure_msg(
-    model,
+def get_not_found_or_disabled_msg(
+    original_file_path,
+    unique_id,
+    resource_type_title,
     target_name: str,
-    target_model_package: Optional[str],
-    include_path: bool,
-    reason: str,
     target_kind: str,
+    target_package: Optional[str] = None,
+    disabled: Optional[bool] = None,
 ) -> str:
+    if disabled is None:
+        reason = "was not found or is disabled"
+    elif disabled is True:
+        reason = "is disabled"
+    else:
+        reason = "was not found"
+
     target_package_string = ""
-    if target_model_package is not None:
-        target_package_string = "in package '{}' ".format(target_model_package)
+    if target_package is not None:
+        target_package_string = "in package '{}' ".format(target_package)
 
-    source_path_string = ""
-    if include_path:
-        source_path_string = " ({})".format(model.original_file_path)
-
-    return "{} '{}'{} depends on a {} named '{}' {}which {}".format(
-        model.resource_type.title(),
-        model.unique_id,
-        source_path_string,
+    return "{} '{}' ({}) depends on a {} named '{}' {}which {}".format(
+        resource_type_title,
+        unique_id,
+        original_file_path,
         target_kind,
         target_name,
         target_package_string,
@@ -597,80 +599,24 @@ def _get_target_failure_msg(
     )
 
 
-def get_target_not_found_or_disabled_msg(
-    model,
-    target_model_name: str,
-    target_model_package: Optional[str],
-    disabled: Optional[bool] = None,
-) -> str:
-    if disabled is None:
-        reason = "was not found or is disabled"
-    elif disabled is True:
-        reason = "is disabled"
-    else:
-        reason = "was not found"
-    return _get_target_failure_msg(
-        model,
-        target_model_name,
-        target_model_package,
-        include_path=True,
-        reason=reason,
-        target_kind="node",
-    )
-
-
-def ref_target_not_found(
-    model,
-    target_model_name: str,
-    target_model_package: Optional[str],
+def target_not_found(
+    node,
+    target_name: str,
+    target_kind: str,
+    target_package: Optional[str] = None,
     disabled: Optional[bool] = None,
 ) -> NoReturn:
-    msg = get_target_not_found_or_disabled_msg(
-        model, target_model_name, target_model_package, disabled
-    )
-    raise_compiler_error(msg, model)
-
-
-def get_source_not_found_or_disabled_msg(
-    model,
-    target_name: str,
-    target_table_name: str,
-    disabled: Optional[bool] = None,
-) -> str:
-    full_name = f"{target_name}.{target_table_name}"
-    if disabled is None:
-        reason = "was not found or is disabled"
-    elif disabled is True:
-        reason = "is disabled"
-    else:
-        reason = "was not found"
-    return _get_target_failure_msg(
-        model, full_name, None, include_path=True, reason=reason, target_kind="source"
+    msg = get_not_found_or_disabled_msg(
+        original_file_path=node.original_file_path,
+        unique_id=node.unique_id,
+        resource_type_title=node.resource_type.title(),
+        target_name=target_name,
+        target_kind=target_kind,
+        target_package=target_package,
+        disabled=disabled,
     )
 
-
-def source_target_not_found(
-    model, target_name: str, target_table_name: str, disabled: Optional[bool] = None
-) -> NoReturn:
-    msg = get_source_not_found_or_disabled_msg(model, target_name, target_table_name, disabled)
-    raise_compiler_error(msg, model)
-
-
-def get_metric_not_found_msg(
-    model,
-    target_name: str,
-    target_package: Optional[str],
-) -> str:
-    reason = "was not found"
-    return _get_target_failure_msg(
-        model, target_name, target_package, include_path=True, reason=reason, target_kind="metric"
-    )
-
-
-def metric_target_not_found(metric, target_name: str, target_package: Optional[str]) -> NoReturn:
-    msg = get_metric_not_found_msg(metric, target_name, target_package)
-
-    raise_compiler_error(msg, metric)
+    raise_compiler_error(msg, node)
 
 
 def dependency_not_found(model, target_model_name):
@@ -776,13 +722,25 @@ def package_not_found(package_name):
     raise_dependency_error("Package {} was not found in the package index".format(package_name))
 
 
-def package_version_not_found(package_name, version_range, available_versions):
+def package_version_not_found(
+    package_name, version_range, available_versions, should_version_check
+):
     base_msg = (
-        "Could not find a matching version for package {}\n"
+        "Could not find a matching compatible version for package {}\n"
         "  Requested range: {}\n"
-        "  Available versions: {}"
+        "  Compatible versions: {}\n"
     )
-    raise_dependency_error(base_msg.format(package_name, version_range, available_versions))
+    addendum = (
+        (
+            "\n"
+            "  Not shown: package versions incompatible with installed version of dbt-core\n"
+            "  To include them, run 'dbt --no-version-check deps'"
+        )
+        if should_version_check
+        else ""
+    )
+    msg = base_msg.format(package_name, version_range, available_versions) + addendum
+    raise_dependency_error(msg)
 
 
 def invalid_materialization_argument(name, argument):
@@ -959,9 +917,7 @@ def raise_patch_targets_not_found(patches):
 
 def _fix_dupe_msg(path_1: str, path_2: str, name: str, type_name: str) -> str:
     if path_1 == path_2:
-        return (
-            f"remove one of the {type_name} entries for {name} in this file:\n" f" - {path_1!s}\n"
-        )
+        return f"remove one of the {type_name} entries for {name} in this file:\n - {path_1!s}\n"
     else:
         return (
             f"remove the {type_name} entry for {name} in one of these files:\n"
@@ -1026,19 +982,6 @@ def raise_unrecognized_credentials_type(typename, supported_types):
     )
 
 
-def warn_invalid_patch(patch, resource_type):
-    msg = line_wrap_message(
-        f"""\
-        '{patch.name}' is a {resource_type} node, but it is
-        specified in the {patch.yaml_key} section of
-        {patch.original_file_path}.
-        To fix this error, place the `{patch.name}`
-        specification under the {resource_type.pluralize()} key instead.
-        """
-    )
-    warn_or_error(msg, log_fmt=warning_tag("{}"))
-
-
 def raise_not_implemented(msg):
     raise NotImplementedException("ERROR: {}".format(msg))
 
@@ -1052,24 +995,8 @@ def raise_duplicate_alias(
     raise AliasException(f'Got duplicate keys: ({key_names}) all map to "{canonical_key}"')
 
 
-def warn_or_error(msg, node=None, log_fmt=None):
-    if flags.WARN_ERROR:
-        raise_compiler_error(scrub_secrets(msg, env_secrets()), node)
-    else:
-        fire_event(GeneralWarningMsg(msg=msg, log_fmt=log_fmt))
-
-
-def warn_or_raise(exc, log_fmt=None):
-    if flags.WARN_ERROR:
-        raise exc
-    else:
-        fire_event(GeneralWarningException(exc=exc, log_fmt=log_fmt))
-
-
 def warn(msg, node=None):
-    # there's no reason to expose log_fmt to macros - it's only useful for
-    # handling colors
-    warn_or_error(msg, node=node)
+    dbt.events.functions.warn_or_error(GeneralMacroWarning(msg=msg), node=node)
     return ""
 
 

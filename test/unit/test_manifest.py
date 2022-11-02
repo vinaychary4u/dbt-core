@@ -29,11 +29,13 @@ from dbt.contracts.graph.unparsed import (
     ExposureType,
     ExposureOwner,
     MaturityType,
-    MetricFilter
+    MetricFilter,
+    MetricTime
 )
 
 from dbt.contracts.graph.compiled import CompiledModelNode
-from dbt.events.functions import get_invocation_id
+from dbt.events.functions import reset_metadata_vars
+
 from dbt.node_types import NodeType
 import freezegun
 
@@ -59,6 +61,8 @@ ENV_KEY_NAME = 'KEY' if os.name == 'nt' else 'key'
 
 class ManifestTest(unittest.TestCase):
     def setUp(self):
+        reset_metadata_vars()
+
         # TODO: why is this needed for tests in this module to pass?
         tracking.active_user = None
 
@@ -103,8 +107,8 @@ class ManifestTest(unittest.TestCase):
                 label='New Customers',
                 model='ref("multi")',
                 description="New customers",
-                type='count',
-                sql="user_id",
+                calculation_method='count',
+                expression="user_id",
                 timestamp="signup_date",
                 time_grains=['day', 'week', 'month'],
                 dimensions=['plan', 'country'],
@@ -115,6 +119,7 @@ class ManifestTest(unittest.TestCase):
                 )],
                 meta={'is_okr': True},
                 tags=['okrs'],
+                window=MetricTime(),
                 resource_type=NodeType.Metric,
                 depends_on=DependsOn(nodes=['model.root.multi']),
                 refs=[['multi']],
@@ -302,6 +307,7 @@ class ManifestTest(unittest.TestCase):
 
     def tearDown(self):
         del os.environ['DBT_ENV_CUSTOM_ENV_key']
+        reset_metadata_vars()
 
     @freezegun.freeze_time('2018-02-14T09:15:13Z')
     def test__no_nodes(self):
@@ -545,6 +551,34 @@ class ManifestTest(unittest.TestCase):
         resource_fqns = manifest.get_resource_fqns()
         self.assertEqual(resource_fqns, expect)
 
+    def test__deepcopy_copies_flat_graph(self):
+        test_node = ParsedModelNode(
+                name='events',
+                database='dbt',
+                schema='analytics',
+                alias='events',
+                resource_type=NodeType.Model,
+                unique_id='model.snowplow.events',
+                fqn=['snowplow', 'events'],
+                package_name='snowplow',
+                refs=[],
+                sources=[],
+                metrics=[],
+                depends_on=DependsOn(),
+                config=self.model_config,
+                tags=[],
+                path='events.sql',
+                original_file_path='events.sql',
+                root_path='',
+                meta={},
+                language='sql',
+                raw_code='does not matter',
+                checksum=FileHash.empty())
+
+        original = make_manifest(nodes=[test_node])
+        original.build_flat_graph()
+        copy = original.deepcopy()
+        self.assertEqual(original.flat_graph, copy.flat_graph)
 
 class MixedManifestTest(unittest.TestCase):
     def setUp(self):

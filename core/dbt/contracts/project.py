@@ -12,9 +12,7 @@ from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Union, Any
 from mashumaro.types import SerializableType
 
-PIN_PACKAGE_URL = (
-    "https://docs.getdbt.com/docs/package-management#section-specifying-package-versions"  # noqa
-)
+
 DEFAULT_SEND_ANONYMOUS_USAGE_STATS = True
 
 
@@ -90,6 +88,23 @@ PackageSpec = Union[LocalPackage, GitPackage, RegistryPackage]
 @dataclass
 class PackageConfig(dbtClassMixin, Replaceable):
     packages: List[PackageSpec]
+
+    @classmethod
+    def validate(cls, data):
+        for package in data.get("packages", data):
+            if isinstance(package, dict) and package.get("package"):
+                if not package["version"]:
+                    raise ValidationError(
+                        f"{package['package']} is missing the version. When installing from the Hub "
+                        "package index, version is a required property"
+                    )
+
+                if "/" not in package["package"]:
+                    raise ValidationError(
+                        f"{package['package']} was not found in the package index. Packages on the index "
+                        "require a namespace, e.g dbt-labs/dbt_utils"
+                    )
+        super().validate(data)
 
 
 @dataclass
@@ -192,6 +207,8 @@ class Project(HyphenatedDbtClassMixin, Replaceable):
     analyses: Dict[str, Any] = field(default_factory=dict)
     sources: Dict[str, Any] = field(default_factory=dict)
     tests: Dict[str, Any] = field(default_factory=dict)
+    metrics: Dict[str, Any] = field(default_factory=dict)
+    exposures: Dict[str, Any] = field(default_factory=dict)
     vars: Optional[Dict[str, Any]] = field(
         default=None,
         metadata=dict(
@@ -234,6 +251,7 @@ class UserConfig(ExtensibleDbtClassMixin, Replaceable, UserConfigContract):
     static_parser: Optional[bool] = None
     indirect_selection: Optional[str] = None
     cache_selected_only: Optional[bool] = None
+    event_buffer_size: Optional[int] = None
 
 
 @dataclass

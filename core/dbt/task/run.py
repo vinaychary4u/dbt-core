@@ -25,11 +25,12 @@ from dbt.exceptions import (
     CompilationException,
     InternalException,
     RuntimeException,
+    ValidationException,
     missing_materialization,
 )
 from dbt.events.functions import fire_event, get_invocation_id
 from dbt.events.types import (
-    DatabaseErrorRunning,
+    DatabaseErrorRunningHook,
     EmptyLine,
     HooksRunning,
     HookFinished,
@@ -266,9 +267,20 @@ class ModelRunner(CompileRunner):
             )
         context_config = context["config"]
 
+        mat_has_supported_langs = hasattr(materialization_macro, "supported_languages")
+        model_lang_supported = model.language in materialization_macro.supported_languages
+        if mat_has_supported_langs and not model_lang_supported:
+            str_langs = [str(lang) for lang in materialization_macro.supported_languages]
+            raise ValidationException(
+                f'Materialization "{materialization_macro.name}" only supports languages {str_langs}; '
+                f'got "{model.language}"'
+            )
+
         hook_ctx = self.adapter.pre_model_hook(context_config)
         try:
-            result = MacroGenerator(materialization_macro, context)()
+            result = MacroGenerator(
+                materialization_macro, context, stack=context["context_macro_stack"]
+            )()
         finally:
             self.adapter.post_model_hook(context_config, hook_ctx)
 
@@ -389,7 +401,7 @@ class RunTask(CompileTask):
         try:
             self.run_hooks(adapter, hook_type, extra_context)
         except RuntimeException:
-            fire_event(DatabaseErrorRunning(hook_type=hook_type.value))
+            fire_event(DatabaseErrorRunningHook(hook_type=hook_type.value))
             raise
 
     def print_results_line(self, results, execution_time):

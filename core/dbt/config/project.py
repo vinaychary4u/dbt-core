@@ -248,7 +248,7 @@ class PartialProject(RenderComponents):
     project_name: Optional[str] = field(
         metadata=dict(
             description=(
-                "The name of the project. This should always be set and will not " "be rendered"
+                "The name of the project. This should always be set and will not be rendered"
             )
         )
     )
@@ -380,6 +380,8 @@ class PartialProject(RenderComponents):
         snapshots: Dict[str, Any]
         sources: Dict[str, Any]
         tests: Dict[str, Any]
+        metrics: Dict[str, Any]
+        exposures: Dict[str, Any]
         vars_value: VarProvider
 
         dispatch = cfg.dispatch
@@ -388,6 +390,8 @@ class PartialProject(RenderComponents):
         snapshots = cfg.snapshots
         sources = cfg.sources
         tests = cfg.tests
+        metrics = cfg.metrics
+        exposures = cfg.exposures
         if cfg.vars is None:
             vars_dict: Dict[str, Any] = {}
         else:
@@ -441,6 +445,8 @@ class PartialProject(RenderComponents):
             query_comment=query_comment,
             sources=sources,
             tests=tests,
+            metrics=metrics,
+            exposures=exposures,
             vars=vars_value,
             config_version=cfg.config_version,
             unrendered=unrendered,
@@ -543,6 +549,8 @@ class Project:
     snapshots: Dict[str, Any]
     sources: Dict[str, Any]
     tests: Dict[str, Any]
+    metrics: Dict[str, Any]
+    exposures: Dict[str, Any]
     vars: VarProvider
     dbt_version: List[VersionSpecifier]
     packages: Dict[str, Any]
@@ -615,6 +623,8 @@ class Project:
                 "snapshots": self.snapshots,
                 "sources": self.sources,
                 "tests": self.tests,
+                "metrics": self.metrics,
+                "exposures": self.exposures,
                 "vars": self.vars.to_dict(),
                 "require-dbt-version": [v.to_version_string() for v in self.dbt_version],
                 "config-version": self.config_version,
@@ -658,7 +668,7 @@ class Project:
     def get_selector(self, name: str) -> Union[SelectionSpec, bool]:
         if name not in self.selectors:
             raise RuntimeException(
-                f"Could not find selector named {name}, expected one of " f"{list(self.selectors)}"
+                f"Could not find selector named {name}, expected one of {list(self.selectors)}"
             )
         return self.selectors[name]["definition"]
 

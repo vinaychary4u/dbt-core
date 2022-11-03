@@ -7,11 +7,11 @@ from pathlib import Path
 models__merge_incremental_predicates_sql = """
 {{ config(
     materialized = 'incremental',
-    incremental_strategy = 'merge'
+    incremental_strategy = 'merge',
     unique_key = 'id',
     incremental_predicates = [
         "dbt_internal_dest.id != 2"
-    ],
+    ]
 ) }}
 
 {% if not is_incremental() %}

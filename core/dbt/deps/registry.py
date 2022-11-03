@@ -11,11 +11,13 @@ from dbt.contracts.project import (
     RegistryPackage,
 )
 from dbt.deps.base import PinnedPackage, UnpinnedPackage, get_downloads_path
-from dbt.exceptions import (
-    package_version_not_found,
-    VersionsNotCompatibleException,
-    DependencyException,
-    package_not_found,
+from dbt.deps.exceptions import (
+    DependencyVersionException,
+)
+from dbt.exceptions import VersionsNotCompatibleException
+from .exceptions import (
+    PackageVersionNotFound,
+    PackageNotFound,
 )
 from dbt.utils import _connection_exception_retry as connection_exception_retry
 
@@ -99,7 +101,7 @@ class RegistryUnpinnedPackage(RegistryPackageMixin, UnpinnedPackage[RegistryPinn
     def _check_in_index(self):
         index = registry.index_cached()
         if self.package not in index:
-            package_not_found(self.package)
+            raise PackageNotFound(self.package)
 
     @classmethod
     def from_contract(cls, contract: RegistryPackage) -> "RegistryUnpinnedPackage":
@@ -124,8 +126,7 @@ class RegistryUnpinnedPackage(RegistryPackageMixin, UnpinnedPackage[RegistryPinn
         try:
             range_ = semver.reduce_versions(*self.versions)
         except VersionsNotCompatibleException as e:
-            new_msg = "Version error for package {}: {}".format(self.name, e)
-            raise DependencyException(new_msg) from e
+            raise DependencyVersionException(self.name) from e
 
         should_version_check = bool(flags.VERSION_CHECK)
         dbt_version = get_installed_version()
@@ -146,7 +147,12 @@ class RegistryUnpinnedPackage(RegistryPackageMixin, UnpinnedPackage[RegistryPinn
             target = None
         if not target:
             # raise an exception if no installable target version is found
-            package_version_not_found(self.package, range_, installable, should_version_check)
+            raise PackageVersionNotFound(
+                package_name=self.package,
+                version_range=range_,
+                available_versions=installable,
+                should_version_check=should_version_check,
+            )
         latest_compatible = installable[-1]
         return RegistryPinnedPackage(
             package=self.package, version=target, version_latest=latest_compatible

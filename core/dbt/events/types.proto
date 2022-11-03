@@ -1136,6 +1136,12 @@ message NoNodesForSelectionCriteria {
     string spec_raw = 2;
 }
 
+// M031
+message DependencyException {
+    EventInfo info = 1;
+    map<string, string> data = 3;
+}
+
 // Q - Node execution
 
 // Q001
@@ -1415,6 +1421,14 @@ message FoundStats {
     EventInfo info = 1;
     string stat_line = 2;
 }
+
+// X - Exceptions
+
+//X001
+message GeneralException {
+    EventInfo info = 1;
+}
+
 
 // Z - Misc
 

@@ -14,7 +14,7 @@ from dbt.exceptions import DbtProfileError
 from dbt.exceptions import DbtProjectError
 from dbt.exceptions import ValidationException
 from dbt.exceptions import RuntimeException
-from dbt.exceptions import validator_error_message
+from dbt.exception_messages import validator_error_message
 from dbt.events.types import MissingProfileTarget
 from dbt.events.functions import fire_event
 from dbt.utils import coerce_dict_str

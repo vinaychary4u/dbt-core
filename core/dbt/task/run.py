@@ -174,6 +174,7 @@ class ModelRunner(CompileRunner):
         return f"{self.node.language} {self.node.get_materialization()} model {self.get_node_representation()}"
 
     def print_start_line(self):
+        breakpoint()
         fire_event(
             LogStartLine(
                 description=self.describe_node(),

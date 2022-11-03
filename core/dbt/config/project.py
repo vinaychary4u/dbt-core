@@ -21,9 +21,9 @@ from dbt.clients.system import path_exists
 from dbt.clients.system import load_file_contents
 from dbt.clients.yaml_helper import load_yaml_text
 from dbt.contracts.connection import QueryComment
+from dbt.exception_messages import validator_error_message
 from dbt.exceptions import DbtProjectError
 from dbt.exceptions import SemverException
-from dbt.exceptions import validator_error_message
 from dbt.exceptions import RuntimeException
 from dbt.graph import SelectionSpec
 from dbt.helper_types import NoValue

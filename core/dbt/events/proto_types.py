@@ -1496,6 +1496,16 @@ class NoNodesForSelectionCriteria(betterproto.Message):
 
 
 @dataclass
+class DependencyException(betterproto.Message):
+    """M031"""
+
+    info: "EventInfo" = betterproto.message_field(1)
+    data: Dict[str, str] = betterproto.map_field(
+        3, betterproto.TYPE_STRING, betterproto.TYPE_STRING
+    )
+
+
+@dataclass
 class RunningOperationCaughtError(betterproto.Message):
     """Q001"""
 
@@ -1825,6 +1835,13 @@ class FoundStats(betterproto.Message):
 
     info: "EventInfo" = betterproto.message_field(1)
     stat_line: str = betterproto.string_field(2)
+
+
+@dataclass
+class GeneralException(betterproto.Message):
+    """X001"""
+
+    info: "EventInfo" = betterproto.message_field(1)
 
 
 @dataclass

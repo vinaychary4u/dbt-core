@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, NoReturn, Union, Type, Iterator, Set
 
-from dbt.exceptions import raise_dependency_error, InternalException
+from .exceptions import raise_dependency_error, InternalException
 
 from dbt.config import Project, RuntimeConfig
 from dbt.config.renderer import DbtProjectYamlRenderer

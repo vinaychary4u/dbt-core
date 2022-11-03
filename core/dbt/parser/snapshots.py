@@ -4,7 +4,8 @@ from typing import List
 from dbt.dataclass_schema import ValidationError
 
 from dbt.contracts.graph.parsed import IntermediateSnapshotNode, ParsedSnapshotNode
-from dbt.exceptions import ParsingException, validator_error_message
+from dbt.exception_messages import validator_error_message
+from dbt.exceptions import ParsingException
 from dbt.node_types import NodeType
 from dbt.parser.base import SQLParser
 from dbt.parser.search import BlockContents, BlockSearcher, FileBlock

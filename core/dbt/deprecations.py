@@ -31,7 +31,7 @@ class DBTDeprecation:
             except AttributeError:
                 msg = f"Event Class `{class_name}` is not defined in `{module_path}`"
                 raise NameError(msg)
-        raise NotImplementedError("event not implemented for {}".format(self._event))
+        raise NotImplementedError("event not implemented for {}".format(self))
 
     def show(self, *args, **kwargs) -> None:
         if self.name not in active_deprecations:

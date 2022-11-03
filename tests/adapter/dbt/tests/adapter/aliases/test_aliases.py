@@ -80,8 +80,11 @@ class BaseAliasErrors:
     def test_alias_dupe_thorews_exeption(self, project):
         message = ".*identical database representation.*"
         with pytest.raises(Exception) as exc:
-            assert message in exc
+            # assert message in exc
             run_dbt(["run"])
+        assert message in exc
+        # breakpoint()
+        # print("ab")
 
 
 class BaseSameAliasDifferentSchemas:

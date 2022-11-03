@@ -29,7 +29,8 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 # New for Python models :p
 import ast
 from dbt.dataclass_schema import ValidationError
-from dbt.exceptions import ParsingException, validator_error_message, UndefinedMacroException
+from dbt.exception_messages import validator_error_message
+from dbt.exceptions import ParsingException, UndefinedMacroException
 
 
 dbt_function_key_words = set(["ref", "source", "config", "get"])

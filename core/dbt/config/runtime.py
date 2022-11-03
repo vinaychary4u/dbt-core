@@ -24,11 +24,11 @@ from dbt.contracts.graph.manifest import ManifestMetadata
 from dbt.contracts.project import Configuration, UserConfig
 from dbt.contracts.relation import ComponentName
 from dbt.dataclass_schema import ValidationError
+from dbt.exception_messages import validator_error_message
 from dbt.exceptions import (
     DbtProjectError,
     RuntimeException,
     raise_compiler_error,
-    validator_error_message,
 )
 from dbt.events.functions import warn_or_error
 from dbt.events.types import UnusedResourceConfigPath

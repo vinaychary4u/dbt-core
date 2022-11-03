@@ -49,8 +49,8 @@ from dbt.contracts.graph.unparsed import (
     UnparsedMetric,
     UnparsedSourceDefinition,
 )
+from dbt.exception_messages import validator_error_message
 from dbt.exceptions import (
-    validator_error_message,
     JSONValidationException,
     raise_invalid_property_yml_version,
     ValidationException,

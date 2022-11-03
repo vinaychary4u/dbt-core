@@ -1,22 +1,17 @@
 import builtins
 import functools
-from typing import NoReturn, Optional, Mapping, Any
+from typing import Any, Mapping, NoReturn, Optional
 
 from dbt.events.helpers import env_secrets, scrub_secrets
+<<<<<<< HEAD
 from dbt.events.types import JinjaLogWarning
+=======
+from dbt.events.types import GeneralMacroWarning
+from dbt.exception_messages import get_not_found_or_disabled_msg
+>>>>>>> 212c6106e (WIP)
 from dbt.node_types import NodeType
 
 import dbt.dataclass_schema
-
-
-def validator_error_message(exc):
-    """Given a dbt.dataclass_schema.ValidationError (which is basically a
-    jsonschema.ValidationError), return the relevant parts as a string
-    """
-    if not isinstance(exc, dbt.dataclass_schema.ValidationError):
-        return str(exc)
-    path = "[%s]" % "][".join(map(repr, exc.relative_path))
-    return "at path {}: {}".format(path, exc.message)
 
 
 class Exception(builtins.Exception):
@@ -309,12 +304,6 @@ class AliasException(ValidationException):
     pass
 
 
-class DependencyException(Exception):
-    # this can happen due to raise_dependency_error and its callers
-    CODE = 10006
-    MESSAGE = "Dependency Error"
-
-
 class DbtConfigError(RuntimeException):
     CODE = 10007
     MESSAGE = "DBT Configuration Error"
@@ -451,10 +440,6 @@ def raise_database_error(msg, node=None) -> NoReturn:
     raise DatabaseException(msg, node)
 
 
-def raise_dependency_error(msg) -> NoReturn:
-    raise DependencyException(scrub_secrets(msg, env_secrets()))
-
-
 def raise_git_cloning_error(error: CommandResultError) -> NoReturn:
     error.cmd = scrub_secrets(str(error.cmd), env_secrets())
     raise error
@@ -566,37 +551,6 @@ def doc_target_not_found(
         model.unique_id, target_doc_name, target_package_string
     )
     raise_compiler_error(msg, model)
-
-
-def get_not_found_or_disabled_msg(
-    original_file_path,
-    unique_id,
-    resource_type_title,
-    target_name: str,
-    target_kind: str,
-    target_package: Optional[str] = None,
-    disabled: Optional[bool] = None,
-) -> str:
-    if disabled is None:
-        reason = "was not found or is disabled"
-    elif disabled is True:
-        reason = "is disabled"
-    else:
-        reason = "was not found"
-
-    target_package_string = ""
-    if target_package is not None:
-        target_package_string = "in package '{}' ".format(target_package)
-
-    return "{} '{}' ({}) depends on a {} named '{}' {}which {}".format(
-        resource_type_title,
-        unique_id,
-        original_file_path,
-        target_kind,
-        target_name,
-        target_package_string,
-        reason,
-    )
 
 
 def target_not_found(
@@ -716,31 +670,6 @@ def relation_wrong_type(relation, expected_type, model=None):
         ).format(relation=relation, current_type=relation.type, expected_type=expected_type),
         model,
     )
-
-
-def package_not_found(package_name):
-    raise_dependency_error("Package {} was not found in the package index".format(package_name))
-
-
-def package_version_not_found(
-    package_name, version_range, available_versions, should_version_check
-):
-    base_msg = (
-        "Could not find a matching compatible version for package {}\n"
-        "  Requested range: {}\n"
-        "  Compatible versions: {}\n"
-    )
-    addendum = (
-        (
-            "\n"
-            "  Not shown: package versions incompatible with installed version of dbt-core\n"
-            "  To include them, run 'dbt --no-version-check deps'"
-        )
-        if should_version_check
-        else ""
-    )
-    msg = base_msg.format(package_name, version_range, available_versions) + addendum
-    raise_dependency_error(msg)
 
 
 def invalid_materialization_argument(name, argument):
@@ -996,9 +925,17 @@ def raise_duplicate_alias(
 
 
 def warn(msg, node=None):
+<<<<<<< HEAD
     dbt.events.functions.warn_or_error(JinjaLogWarning(msg=msg), node=node)
     return ""
+=======
+    dbt.events.functions.warn_or_error(GeneralMacroWarning(msg=msg), node=node)
+    return ""  # does it return nothin for a macro reason?
 
+>>>>>>> 212c6106e (WIP)
+
+# TODO: importing here just to track things separately
+from dbt.deps.exceptions import raise_dependency_error  # noqa
 
 # Update this when a new function should be added to the
 # dbt context's `exceptions` key!

@@ -978,7 +978,7 @@ def invalid_target_fail_unless_test(
                     target_name=target_name,
                     target_kind=target_kind,
                     target_package=target_package if target_package else "",
-                    disabled=str(disabled),
+                    disabled="None" if disabled is None else str(disabled),
                 )
             )
     else:

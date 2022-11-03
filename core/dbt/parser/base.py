@@ -18,7 +18,8 @@ from dbt.context.context_config import ContextConfig
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.parsed import HasUniqueID, ManifestNodes
 from dbt.contracts.graph.unparsed import UnparsedNode, Docs
-from dbt.exceptions import ParsingException, validator_error_message, InternalException
+from dbt.exception_messages import validator_error_message
+from dbt.exceptions import ParsingException, InternalException
 from dbt import hooks
 from dbt.node_types import NodeType, ModelLanguage
 from dbt.parser.search import FileBlock

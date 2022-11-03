@@ -18,6 +18,7 @@ from dbt.events.format import format_fancy_output_line, pluralize
 from dbt.events.proto_types import EventInfo, RunResultMsg, ListOfStrings  # noqa
 from dbt.events.proto_types import NodeInfo, ReferenceKeyMsg  # noqa
 from dbt.events import proto_types as pt
+from dbt.exception_messages import get_not_found_or_disabled_msg_2
 
 from dbt.node_types import NodeType
 
@@ -40,6 +41,7 @@ from dbt.node_types import NodeType
 # | M    | Deps generation     |
 # | Q    | Node execution      |
 # | W    | Node testing        |
+# | X    | Exceptions          |
 # | Z    | Misc                |
 # | T    | Test only           |
 #
@@ -1491,28 +1493,14 @@ class NodeNotFoundOrDisabled(WarnLevel, pt.NodeNotFoundOrDisabled):
         return "I060"
 
     def message(self) -> str:
-        # this is duplicated logic from exceptions.get_not_found_or_disabled_msg
-        # when we convert exceptions to be stuctured maybe it can be combined?
-        # convverting the bool to a string since None is also valid
-        if self.disabled == "None":
-            reason = "was not found or is disabled"
-        elif self.disabled == "True":
-            reason = "is disabled"
-        else:
-            reason = "was not found"
-
-        target_package_string = ""
-        if self.target_package is not None:
-            target_package_string = "in package '{}' ".format(self.target_package)
-
-        msg = "{} '{}' ({}) depends on a {} named '{}' {}which {}".format(
-            self.resource_type_title,
-            self.unique_id,
-            self.original_file_path,
-            self.target_kind,
-            self.target_name,
-            target_package_string,
-            reason,
+        msg = get_not_found_or_disabled_msg_2(
+            original_file_path=self.original_file_path,
+            unique_id=self.unique_id,
+            resource_type_title=self.resource_type_title,
+            target_name=self.target_name,
+            target_kind=self.target_kind,
+            target_package=self.target_package,
+            disabled=self.disabled,
         )
 
         return warning_tag(msg)
@@ -1822,6 +1810,15 @@ class NoNodesForSelectionCriteria(WarnLevel, pt.NoNodesForSelectionCriteria):
 
     def message(self) -> str:
         return f"The selection criterion '{self.spec_raw}' does not match any nodes"
+
+
+@dataclass
+class DependencyException(ErrorLevel, pt.DependencyException):
+    def code(self):
+        return "M031"
+
+    def message(self) -> str:
+        return f"This is the custom message: {self.data.get('message')}"
 
 
 # =======================================================
@@ -2296,6 +2293,20 @@ class FoundStats(InfoLevel, pt.FoundStats):
 
     def message(self) -> str:
         return f"Found {self.stat_line}"
+
+
+# =======================================================
+# X - Exceptions
+# =======================================================
+
+
+@dataclass
+class GeneralException(ErrorLevel, pt.GeneralException):
+    def code(self):
+        return "X001"
+
+    def message(self) -> str:
+        return "General Exception"
 
 
 # =======================================================

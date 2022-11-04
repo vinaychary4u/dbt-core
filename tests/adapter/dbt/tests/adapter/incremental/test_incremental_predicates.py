@@ -3,13 +3,10 @@ from dbt.tests.util import run_dbt, check_relations_equal
 from collections import namedtuple
 
 
-models__merge_incremental_predicates_sql = """
+models__delete_insert_incremental_predicates_sql = """
 {{ config(
     materialized = 'incremental',
-    unique_key = 'id',
-    incremental_predicates = [
-        "id != 2"
-    ]
+    unique_key = 'id'
 ) }}
 
 {% if not is_incremental() %}
@@ -20,7 +17,7 @@ select 2 as id, 'goodbye' as msg, 'red' as color
 
 {% else %}
 
--- merge will not happen on the above record where id = 2, so new record will be inserted instead
+-- delete will not happen on the above record where id = 2, so new record will be inserted instead
 select 1 as id, 'hey' as msg, 'blue' as color
 union all
 select 2 as id, 'yo' as msg, 'green' as color
@@ -30,7 +27,7 @@ select 3 as id, 'anyway' as msg, 'purple' as color
 {% endif %}
 """
 
-seeds__expected_merge_incremental_predicates_csv = """id,msg,color
+seeds__expected_delete_insert_incremental_predicates_csv = """id,msg,color
 1,hey,blue
 2,goodbye,red
 2,yo,green
@@ -54,13 +51,24 @@ class BaseIncrementalPredicates:
     @pytest.fixture(scope="class")
     def models(self):
         return {
-            "merge_incremental_predicates.sql": models__merge_incremental_predicates_sql
+            "delete_insert_incremental_predicates.sql": models__delete_insert_incremental_predicates_sql
         }
 
     @pytest.fixture(scope="class")
     def seeds(self):
         return {
-            "expected_merge_incremental_predicates.csv": seeds__expected_merge_incremental_predicates_csv
+            "expected_delete_insert_incremental_predicates.csv": seeds__expected_delete_insert_incremental_predicates_csv
+        }
+
+    @pytest.fixture(scope="class")
+    def project_config_update(self):
+        return {
+            "models": {
+                "+incremental_predicates": [
+                    "id != 2"
+                ],
+                "+incremental_strategy": "delete+insert"
+            }
         }
 
     def update_incremental_model(self, incremental_model):
@@ -71,11 +79,6 @@ class BaseIncrementalPredicates:
     def get_test_fields(
         self, project, seed, incremental_model, update_sql_file, opt_model_count=None
     ):
-        """build a test case and return values for assertions
-        [INFO] Models must be in place to test incremental model
-        construction and merge behavior. Database touches are side
-        effects to extract counts (which speak to health of unique keys)."""
-        # idempotently create some number of seeds and incremental models'''
 
         seed_count = len(run_dbt(["seed", "--select", seed, "--full-refresh"]))
 
@@ -127,12 +130,12 @@ class BaseIncrementalPredicates:
     def test__incremental_predicates(self, project):
         """seed should match model after two incremental runs"""
 
-        expected_fields = self.get_expected_fields(relation="expected_merge_incremental_predicates", seed_rows=4)
+        expected_fields = self.get_expected_fields(relation="expected_delete_insert_incremental_predicates", seed_rows=4)
         test_case_fields = self.get_test_fields(
-            project, seed="expected_merge_incremental_predicates", incremental_model="merge_incremental_predicates", update_sql_file=None
+            project, seed="expected_delete_insert_incremental_predicates", incremental_model="delete_insert_incremental_predicates", update_sql_file=None
         )
         self.check_scenario_correctness(expected_fields, test_case_fields, project)
 
 
-class TestIncrementalPredicates(BaseIncrementalPredicates):
+class TestIncrementalPredicatesDeleteInsert(BaseIncrementalPredicates):
     pass

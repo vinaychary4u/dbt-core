@@ -169,6 +169,7 @@ def _trimmed(inp: str) -> str:
     return inp[:44] + "..." + inp[-3:]
 
 
+# TODO: I'll likely need to add a ConstraintsBuilder class similar to TestBuilder within SchemaParser
 class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
     def __init__(
         self,

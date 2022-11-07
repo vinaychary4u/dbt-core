@@ -296,6 +296,17 @@ class UndefinedMacroException(CompilationException):
         )
 
 
+# TODO: create a new class that displays in the terminal that a data type config is missing/wrong
+class UndefinedDataTypeException(CompilationException):
+    def __str__(self, prefix="! ") -> str:
+        msg = super().__str__(prefix)
+        return (
+            f"{msg}. This can happen when a data_type configuration does "
+            "not exist or is defined as null when `constraints_enabled: true` for a dbt model. \
+            Check for typos and/or verify data_type is defined for all columns for the dbt models with constraints. "
+        )
+
+
 class UnknownAsyncIDException(Exception):
     CODE = 10012
     MESSAGE = "RPC server got an unknown async ID"

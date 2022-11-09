@@ -24,7 +24,6 @@ from typing import Optional, List, Union, Dict, Any, Sequence
 @dataclass
 class UnparsedBaseNode(dbtClassMixin, Replaceable):
     package_name: str
-    root_path: str
     path: str
     original_file_path: str
 
@@ -232,7 +231,7 @@ class ExternalTable(AdditionalPropertiesAllowed, Mergeable):
     file_format: Optional[str] = None
     row_format: Optional[str] = None
     tbl_properties: Optional[str] = None
-    partitions: Optional[List[ExternalPartition]] = None
+    partitions: Optional[Union[List[str], List[ExternalPartition]]] = None
 
     def __bool__(self):
         return self.location is not None
@@ -364,7 +363,6 @@ class SourcePatch(dbtClassMixin, Replaceable):
 @dataclass
 class UnparsedDocumentation(dbtClassMixin, Replaceable):
     package_name: str
-    root_path: str
     path: str
     original_file_path: str
 

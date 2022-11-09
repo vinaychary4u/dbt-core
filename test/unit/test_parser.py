@@ -66,7 +66,6 @@ class BaseParserTest(unittest.TestCase):
                 unique_id=f'macro.root.{name}',
                 package_name='root',
                 original_file_path=normalize('macros/macro.sql'),
-                root_path=get_abs_os_path('./dbt_packages/root'),
                 path=normalize('macros/macro.sql'),
                 macro_sql=sql,
             )
@@ -521,7 +520,6 @@ class ModelParserTest(BaseParserTest):
             fqn=['snowplow', 'nested', 'model_1'],
             package_name='snowplow',
             original_file_path=normalize('models/nested/model_1.sql'),
-            root_path=get_abs_os_path('./dbt_packages/snowplow'),
             config=NodeConfig(materialized='table'),
             path=normalize('nested/model_1.sql'),
             language='sql',
@@ -580,7 +578,6 @@ def model(dbt, session):
             fqn=['snowplow', 'nested', 'py_model'],
             package_name='snowplow',
             original_file_path=normalize('models/nested/py_model.py'),
-            root_path=get_abs_os_path('./dbt_packages/snowplow'),
             config=NodeConfig(materialized='table', packages=python_packages),
             # config.packages = ['textblob']
             path=normalize('nested/py_model.py'),
@@ -623,7 +620,17 @@ def model(dbt):
         self.parser.manifest.files[block.file.file_id] = block.file
         with self.assertRaises(ParsingException):
             self.parser.parse_file(block)
-    
+
+    def test_wrong_python_model_def_miss_session(self):
+        py_code = """
+def model():
+    return df
+        """
+        block = self.file_block_for(py_code, 'nested/py_model.py')
+        self.parser.manifest.files[block.file.file_id] = block.file
+        with self.assertRaises(ParsingException):
+            self.parser.parse_file(block)
+
     def test_wrong_python_model_def_wrong_arg(self):
         """ First argument for python model should be dbt
         """
@@ -755,7 +762,6 @@ class StaticModelParserTest(BaseParserTest):
             unique_id=macro_unique_id,
             package_name='root',
             original_file_path=normalize('macros/macro.sql'),
-            root_path=get_abs_os_path('./dbt_packages/root'),
             path=normalize('macros/macro.sql'),
             macro_sql='{% macro ref(model_name) %}{% set x = raise("boom") %}{% endmacro %}',
         )
@@ -772,7 +778,6 @@ class StaticModelParserTest(BaseParserTest):
             fqn=['snowplow', 'nested', 'model_1'],
             package_name='snowplow',
             original_file_path=normalize('models/nested/model_1.sql'),
-            root_path=get_abs_os_path('./dbt_packages/snowplow'),
             config=NodeConfig(materialized='table'),
             path=normalize('nested/model_1.sql'),
             language='sql',
@@ -808,7 +813,6 @@ class StaticModelParserUnitTest(BaseParserTest):
             fqn=['snowplow', 'nested', 'model_1'],
             package_name='snowplow',
             original_file_path=normalize('models/nested/model_1.sql'),
-            root_path=get_abs_os_path('./dbt_packages/snowplow'),
             config=NodeConfig(materialized='table'),
             path=normalize('nested/model_1.sql'),
             language='sql',
@@ -989,7 +993,6 @@ class SnapshotParserTest(BaseParserTest):
             fqn=['snowplow', 'nested', 'snap_1', 'foo'],
             package_name='snowplow',
             original_file_path=normalize('snapshots/nested/snap_1.sql'),
-            root_path=get_abs_os_path('./dbt_packages/snowplow'),
             config=SnapshotConfig(
                 strategy='timestamp',
                 updated_at='last_update',
@@ -1058,7 +1061,6 @@ class SnapshotParserTest(BaseParserTest):
             fqn=['snowplow', 'nested', 'snap_1', 'foo'],
             package_name='snowplow',
             original_file_path=normalize('snapshots/nested/snap_1.sql'),
-            root_path=get_abs_os_path('./dbt_packages/snowplow'),
             config=SnapshotConfig(
                 strategy='timestamp',
                 updated_at='last_update',
@@ -1096,7 +1098,6 @@ class SnapshotParserTest(BaseParserTest):
             fqn=['snowplow', 'nested', 'snap_1', 'bar'],
             package_name='snowplow',
             original_file_path=normalize('snapshots/nested/snap_1.sql'),
-            root_path=get_abs_os_path('./dbt_packages/snowplow'),
             config=SnapshotConfig(
                 strategy='timestamp',
                 updated_at='last_update',
@@ -1156,7 +1157,6 @@ class MacroParserTest(BaseParserTest):
             unique_id='macro.snowplow.foo',
             package_name='snowplow',
             original_file_path=normalize('macros/macro.sql'),
-            root_path=get_abs_os_path('./dbt_packages/snowplow'),
             path=normalize('macros/macro.sql'),
             macro_sql=raw_code,
         )
@@ -1179,7 +1179,6 @@ class MacroParserTest(BaseParserTest):
             unique_id='macro.snowplow.bar',
             package_name='snowplow',
             original_file_path=normalize('macros/macro.sql'),
-            root_path=get_abs_os_path('./dbt_packages/snowplow'),
             path=normalize('macros/macro.sql'),
             macro_sql='{% macro bar(c, d) %}c + d{% endmacro %}',
         )
@@ -1189,7 +1188,6 @@ class MacroParserTest(BaseParserTest):
             unique_id='macro.snowplow.foo',
             package_name='snowplow',
             original_file_path=normalize('macros/macro.sql'),
-            root_path=get_abs_os_path('./dbt_packages/snowplow'),
             path=normalize('macros/macro.sql'),
             macro_sql='{% macro foo(a, b) %}a ~ b{% endmacro %}',
         )
@@ -1232,7 +1230,6 @@ class SingularTestParserTest(BaseParserTest):
             fqn=['snowplow', 'test_1'],
             package_name='snowplow',
             original_file_path=normalize('tests/test_1.sql'),
-            root_path=get_abs_os_path('./dbt_packages/snowplow'),
             refs=[['blah']],
             config=TestConfig(severity='ERROR'),
             tags=[],
@@ -1272,7 +1269,6 @@ class GenericTestParserTest(BaseParserTest):
             unique_id='macro.snowplow.test_not_null',
             package_name='snowplow',
             original_file_path=normalize('tests/generic/test_1.sql'),
-            root_path=get_abs_os_path('./dbt_packages/snowplow'),
             path=normalize('tests/generic/test_1.sql'),
             macro_sql=raw_code,
         )
@@ -1311,7 +1307,6 @@ class AnalysisParserTest(BaseParserTest):
             fqn=['snowplow', 'analysis', 'nested', 'analysis_1'],
             package_name='snowplow',
             original_file_path=normalize('analyses/nested/analysis_1.sql'),
-            root_path=get_abs_os_path('./dbt_packages/snowplow'),
             depends_on=DependsOn(),
             config=NodeConfig(),
             path=normalize('analysis/nested/analysis_1.sql'),

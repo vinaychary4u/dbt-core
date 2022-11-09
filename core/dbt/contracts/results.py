@@ -11,11 +11,12 @@ from dbt.contracts.util import (
 from dbt.exceptions import InternalException
 from dbt.events.functions import fire_event
 from dbt.events.types import TimingInfoCollected
+from dbt.events.proto_types import RunResultMsg
 from dbt.logger import (
     TimingProcessor,
     JsonOnly,
 )
-from dbt.utils import lowercase
+from dbt.utils import lowercase, cast_to_str, cast_to_int
 from dbt.dataclass_schema import dbtClassMixin, StrEnum
 
 import agate
@@ -119,6 +120,17 @@ class BaseResult(dbtClassMixin):
             data["failures"] = None
         return data
 
+    def to_msg(self):
+        # TODO: add more fields
+        msg = RunResultMsg()
+        msg.status = str(self.status)
+        msg.message = cast_to_str(self.message)
+        msg.thread = self.thread_id
+        msg.execution_time = self.execution_time
+        msg.num_failures = cast_to_int(self.failures)
+        # timing_info, adapter_response, message
+        return msg
+
 
 @dataclass
 class NodeResult(BaseResult):
@@ -208,7 +220,9 @@ class RunResultsArtifact(ExecutionResult, ArtifactMixin):
         generated_at: datetime,
         args: Dict,
     ):
-        processed_results = [process_run_result(result) for result in results]
+        processed_results = [
+            process_run_result(result) for result in results if isinstance(result, RunResult)
+        ]
         meta = RunResultsMetadata(
             dbt_schema_version=str(cls.dbt_schema_version),
             generated_at=generated_at,
@@ -327,7 +341,7 @@ def process_freshness_result(result: FreshnessNodeResult) -> FreshnessNodeOutput
     criteria = result.node.freshness
     if criteria is None:
         raise InternalException(
-            "Somehow evaluated a freshness result for a source " "that has no freshness criteria!"
+            "Somehow evaluated a freshness result for a source that has no freshness criteria!"
         )
     return SourceFreshnessOutput(
         unique_id=unique_id,

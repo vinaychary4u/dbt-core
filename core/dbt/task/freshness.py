@@ -3,9 +3,7 @@ import threading
 import time
 
 from .base import BaseRunner
-from .printer import (
-    print_run_result_error,
-)
+from .printer import print_run_end_messages
 from .runnable import GraphRunnableTask
 
 from dbt.contracts.results import (
@@ -18,7 +16,6 @@ from dbt.contracts.results import (
 from dbt.exceptions import RuntimeException, InternalException
 from dbt.events.functions import fire_event, info
 from dbt.events.types import (
-    FreshnessCheckComplete,
     LogStartLine,
     LogFreshnessResult,
 )
@@ -116,6 +113,7 @@ class FreshnessRunner(BaseRunner):
             )
 
         status = compiled_node.freshness.status(freshness["age"])
+        message = compiled_node.freshness.message(freshness["age"])
 
         return SourceFreshnessResult(
             node=compiled_node,
@@ -123,7 +121,7 @@ class FreshnessRunner(BaseRunner):
             thread_id=threading.current_thread().name,
             timing=[],
             execution_time=0,
-            message=None,
+            message=message,
             adapter_response={},
             failures=None,
             **freshness,
@@ -178,9 +176,7 @@ class FreshnessTask(GraphRunnableTask):
             elapsed_time=elapsed_time, generated_at=generated_at, results=results
         )
 
+    # this should match the logic in other tasks
     def task_end_messages(self, results):
-        for result in results:
-            if result.status in (FreshnessStatus.Error, FreshnessStatus.RuntimeErr):
-                print_run_result_error(result)
-
-        fire_event(FreshnessCheckComplete())
+        if results:
+            print_run_end_messages(results)

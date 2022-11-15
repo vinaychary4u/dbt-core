@@ -184,6 +184,11 @@ class Time(dbtClassMixin, Mergeable):
         difference = timedelta(**kwargs).total_seconds()
         return actual_age > difference
 
+    def human_friendly(self) -> str:
+        count = self.count
+        period = str(self.period) + ("s" if count != 1 else "")
+        return f"{count} {period}"
+
     def __bool__(self):
         return self.count is not None and self.period is not None
 
@@ -203,6 +208,21 @@ class FreshnessThreshold(dbtClassMixin, Mergeable):
             return FreshnessStatus.Warn
         else:
             return FreshnessStatus.Pass
+
+    # human-readable message for artifacts & logs, including end-of-freshness check summary
+    def message(self, age: float) -> Optional[str]:
+        from dbt.contracts.results import FreshnessStatus
+
+        age_pretty = str(timedelta(seconds=age))
+        expected = None
+        if self.status(age) == FreshnessStatus.Error:
+            expected = self.error_after.human_friendly()
+        elif self.status(age) == FreshnessStatus.Warn:
+            expected = self.warn_after.human_friendly()
+        if expected:
+            return f"Last updated {age_pretty} ago. Expected no more than {expected}."
+        else:
+            return None  # match the 'message' for passing tests
 
     def __bool__(self):
         return bool(self.warn_after) or bool(self.error_after)

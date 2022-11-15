@@ -1848,15 +1848,6 @@ class CompileComplete(InfoLevel, pt.CompileComplete):
 
 
 @dataclass
-class FreshnessCheckComplete(InfoLevel, pt.FreshnessCheckComplete):
-    def code(self):
-        return "Q003"
-
-    def message(self) -> str:
-        return "Done."
-
-
-@dataclass
 class SeedHeader(InfoLevel, pt.SeedHeader):
     def code(self):
         return "Q004"
@@ -2955,7 +2946,6 @@ if 1 == 0:
 
     RunningOperationCaughtError(exc="")
     CompileComplete()
-    FreshnessCheckComplete()
     SeedHeader(header="")
     SeedHeaderSeparator(len_header=0)
     SQLRunnerException(exc="")

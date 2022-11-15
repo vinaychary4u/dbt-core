@@ -80,8 +80,11 @@ def print_run_result_error(result, newline: bool = True, is_warning: bool = Fals
     if newline:
         with TextOnly():
             fire_event(EmptyLine())
-
-    if result.status == NodeStatus.Fail or (is_warning and result.status == NodeStatus.Warn):
+    if (
+        result.status == NodeStatus.Fail
+        or (is_warning and result.status == NodeStatus.Warn)
+        or (result.node.resource_type == NodeType.Source and result.status == NodeStatus.Error)
+    ):
         if is_warning:
             fire_event(
                 RunResultWarning(
@@ -107,12 +110,14 @@ def print_run_result_error(result, newline: bool = True, is_warning: bool = Fals
         else:
             fire_event(RunResultErrorNoMessage(status=result.status))
 
-        if result.node.build_path is not None:
+        # SourceFreshnessResult doesn't have build_path
+        if hasattr(result.node, "build_path") and result.node.build_path is not None:
             with TextOnly():
                 fire_event(EmptyLine())
             fire_event(SQLCompiledPath(path=result.node.compiled_path))
 
-        if result.node.should_store_failures:
+        # SourceFreshnessResult doesn't have should_store_failures
+        if hasattr(result.node, "should_store_failures") and result.node.should_store_failures:
             with TextOnly():
                 fire_event(EmptyLine())
             fire_event(CheckNodeTestFailure(relation_name=result.node.relation_name))

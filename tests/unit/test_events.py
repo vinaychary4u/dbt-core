@@ -1,7 +1,7 @@
 # flake8: noqa
 from dbt.events.test_types import UnitTestInfo
 from dbt.events import AdapterLogger
-from dbt.events.functions import event_to_json, LOG_VERSION, reset_event_history
+from dbt.events.functions import event_to_json, LOG_VERSION, reset_event_history, create_event
 from dbt.events.types import *
 from dbt.events.test_types import *
 
@@ -488,7 +488,7 @@ sample_values = [
     ServingDocsExitInfo(),
     RunResultWarning(resource_type="", node_name="", path=""),
     RunResultFailure(resource_type="", node_name="", path=""),
-    StatsLine(stats={}),
+    StatsLine(stats={"error": 0, "skip": 0, "pass": 0, "warn": 0,"total": 0}),
     RunResultError(msg=""),
     RunResultErrorNoMessage(status=""),
     SQLCompiledPath(path=""),
@@ -540,7 +540,8 @@ class TestEventJSONSerialization:
             assert type(event) != type
 
         # if we have everything we need to test, try to serialize everything
-        for event in sample_values:
+        for detail_event in sample_values:
+            event = create_event(detail_event)
             event_dict = event.to_dict()
             try:
                 event_json = event_to_json(event)
@@ -549,5 +550,3 @@ class TestEventJSONSerialization:
 
 
 T = TypeVar("T")
-
-

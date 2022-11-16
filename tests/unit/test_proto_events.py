@@ -1,5 +1,3 @@
-import sys
-import os
 from dbt.events.types import (
     MainReportVersion,
     MainReportArgs,
@@ -9,7 +7,6 @@ from dbt.events.types import (
     LogStartLine,
     LogTestResult,
 )
-from dbt.events.base_types import Event
 from dbt.events.functions import event_to_dict, LOG_VERSION, reset_metadata_vars, create_event
 from dbt.events import proto_types as pt
 from dbt.events import proto_event as pe
@@ -43,7 +40,6 @@ def test_events(monkeypatch):
     # look at the detail message
     detail_event_type = type(event.main_report_version).__name__
     assert detail_event_type == "MainReportVersion"
-
 
     # A002 event
     detail_event = MainReportArgs(args={"one": "1", "two": "2"})

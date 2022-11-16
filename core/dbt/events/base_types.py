@@ -54,6 +54,9 @@ class DetailEvent:
     def message(self):
         raise Exception("message() not implemented for event")
 
+    def code(self):
+        raise Exception("code() not implemented for event")
+
 
 # Create with level, msg,
 @dataclass

@@ -100,7 +100,7 @@ message Event {
         proto_types.ParseCmdWritingManifest parse_cmd_writing_manifest = 403;
         proto_types.ParseCmdDone parse_cmd_done = 404;
         proto_types.ManifestDependenciesLoaded manifest_dependencies_loaded = 405;
-        proto_types.ManifestLoaderCreated manifest_lader_created = 406;
+        proto_types.ManifestLoaderCreated manifest_loader_created = 406;
         proto_types.ManifestLoaded manifest_loaded = 407;
         proto_types.ManifestChecked manifest_checked = 408;
         proto_types.ManifestFlatGraphBuilt manifest_flat_graph_built = 409;
@@ -124,7 +124,7 @@ message Event {
         proto_types.PartialParsingFailedBecauseHashChanged partial_parsing_failed_because_hash_changed = 427;
         proto_types.PartialParsingNotEnabled partial_parsing_not_enabled = 428;
         proto_types.ParsedFileLoadFailed parsed_file_load_failed = 429;
-        proto_types.PartialParseSaveFileNotFound partial_parsing_save_file_not_found = 430;
+        proto_types.PartialParseSaveFileNotFound partial_parse_save_file_not_found = 430;
         proto_types.StaticParserCausedJinjaRendering static_parser_caused_jinja_rendering = 431;
         proto_types.UsingExperimentalParser using_experimental_parser = 432;
         proto_types.SampleFullJinjaRendering sample_full_jinja_rendering = 433;
@@ -234,7 +234,7 @@ message Event {
         proto_types.CheckCleanPath check_clean_path = 812;
         proto_types.ConfirmCleanPath confirm_clean_path = 813;
         proto_types.ProtectedCleanPath protected_clean_path = 814;
-        proto_types.FinishedCleanPaths finished_clean_path = 815;
+        proto_types.FinishedCleanPaths finished_clean_paths = 815;
         proto_types.OpenCommand open_command = 816;
         proto_types.EmptyLine empty_line = 817;
         proto_types.ServingDocsPort serving_docs_port = 818;
@@ -271,4 +271,3 @@ message Event {
     }
 
 }
-

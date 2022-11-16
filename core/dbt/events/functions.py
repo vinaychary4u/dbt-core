@@ -281,15 +281,18 @@ def create_event(e: DetailEvent, level=None):
         raise Exception(f"No attribute found for {e_name}, tried {attr_name}")
     # Create Event
     level = level if level else e.level_tag()
-    event = Event(msg=e.message(), level=level, code=e.code(), **{attr_name: e})
-    # Add detailed event to event at "detail" group/oneof
+    event = Event(msg=e.message(), level=level, code=e.code())
+    setattr(event, attr_name, e)
     return event
 
 
 def event_type_to_snake_case(type_name: str) -> str:
-    type_name = type_name.replace("SQL", "Sql")
-    type_name = type_name.replace("YAML", "Yaml")
-    type_name = type_name.replace("GET", "Get")
+    type_name = (
+        type_name.replace("SQL", "Sql")
+        .replace("YAML", "Yaml")
+        .replace("GET", "Get")
+        .replace("ID", "Id")
+    )
     return "".join(["_" + c.lower() if c.isupper() else c for c in type_name]).lstrip("_")
 
 

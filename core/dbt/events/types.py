@@ -15,8 +15,7 @@ from dbt.events.base_types import (
 from dbt.events.format import format_fancy_output_line, pluralize
 
 # The generated classes quote the included message classes, requiring the following line
-from dbt.events.proto_types import RunResultMsg, ListOfStrings  # noqa
-from dbt.events.proto_types import NodeInfo, ReferenceKeyMsg
+from dbt.events.proto_types import RunResultMsg, ListOfStrings, NodeInfo, ReferenceKeyMsg  # noqa
 from dbt.events import proto_types as pt
 
 from dbt.node_types import NodeType

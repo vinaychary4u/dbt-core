@@ -245,7 +245,7 @@ def fire_event(e: BaseEvent, level=None) -> None:
     if hasattr(event, attr_name):
         setattr(event, attr_name, e)
     else:
-        raise Exception("No attribute found for {e_name}, tried {attr_name}")
+        raise Exception(f"No attribute found for {e_name}, tried {attr_name}")
 
     add_to_event_history(event)
 
@@ -279,9 +279,9 @@ def fire_event(e: BaseEvent, level=None) -> None:
 
 
 def event_type_to_snake_case(type_name: str) -> str:
-    type_name.replace("SQL", "Sql")
-    type_name.replace("YAML", "Yaml")
-    type_name.replace("GET", "Get")
+    type_name = type_name.replace("SQL", "Sql")
+    type_name = type_name.replace("YAML", "Yaml")
+    type_name = type_name.replace("GET", "Get")
     return "".join(["_" + c.lower() if c.isupper() else c for c in type_name]).lstrip("_")
 
 

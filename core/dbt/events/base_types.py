@@ -60,16 +60,16 @@ class BaseEvent:
 class Event(pt.Event):
     def __post_init__(self):
         super().__post_init__()
-        self.info.invocation_id = get_invocation_id()
-        self.info.extra = get_global_metadata_vars()
-        self.info.ts = datetime.utcnow()
-        self.info.pid = get_pid()
-        self.info.thread = get_thread_name()
-        self.info.name = type(self).__name__
+        self.invocation_id = get_invocation_id()
+        self.extra = get_global_metadata_vars()
+        self.ts = datetime.utcnow()
+        self.pid = get_pid()
+        self.thread = get_thread_name()
+        self.name = type(self).__name__
 
 
 # DynamicLevel requires that the level be supplied on the
-# event construction call using the "info" function from functions.py
+# fire_event call using the "level" keyword parameter
 @dataclass  # type: ignore[misc]
 class DynamicLevel(BaseEvent):
     pass

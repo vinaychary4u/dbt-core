@@ -28,7 +28,7 @@ from dbt.exceptions import (
     ValidationException,
     missing_materialization,
 )
-from dbt.events.functions import fire_event, get_invocation_id, info
+from dbt.events.functions import fire_event, get_invocation_id
 from dbt.events.types import (
     DatabaseErrorRunningHook,
     EmptyLine,
@@ -199,8 +199,8 @@ class ModelRunner(CompileRunner):
                 total=self.num_nodes,
                 execution_time=result.execution_time,
                 node_info=self.node.node_info,
-                info=info(level=level),
-            )
+            ),
+            level=level,
         )
 
     def before_execute(self):

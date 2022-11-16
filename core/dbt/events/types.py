@@ -15,7 +15,7 @@ from dbt.events.base_types import (
 from dbt.events.format import format_fancy_output_line, pluralize
 
 # The generated classes quote the included message classes, requiring the following line
-from dbt.events.proto_types import EventInfo, RunResultMsg, ListOfStrings  # noqa
+from dbt.events.proto_types import RunResultMsg, ListOfStrings  # noqa
 from dbt.events.proto_types import NodeInfo, ReferenceKeyMsg
 from dbt.events import proto_types as pt
 
@@ -476,7 +476,7 @@ class ConnectionReused(DebugLevel, pt.ConnectionReused):
 
 
 @dataclass
-class ConnectionLeftOpen(DebugLevel, pt.ConnectionLeftOpen):
+class ConnectionLeftOpenInCleanup(DebugLevel, pt.ConnectionLeftOpenInCleanup):
     def code(self):
         return "E007"
 
@@ -502,7 +502,6 @@ class RollbackFailed(DebugLevel, pt.RollbackFailed):  # noqa
         return f"Failed to rollback '{self.conn_name}'"
 
 
-# TODO: can we combine this with ConnectionClosed?
 @dataclass
 class ConnectionClosed(DebugLevel, pt.ConnectionClosed):
     def code(self):
@@ -512,9 +511,8 @@ class ConnectionClosed(DebugLevel, pt.ConnectionClosed):
         return f"On {self.conn_name}: Close"
 
 
-# TODO: can we combine this with ConnectionLeftOpen?
 @dataclass
-class ConnectionLeftOpen2(DebugLevel, pt.ConnectionLeftOpen2):
+class ConnectionLeftOpen(DebugLevel, pt.ConnectionLeftOpen):
     def code(self):
         return "E011"
 
@@ -2783,11 +2781,11 @@ if 1 == 0:
     AdapterEventError()
     NewConnection(conn_type="", conn_name="")
     ConnectionReused(conn_name="")
-    ConnectionLeftOpen(conn_name="")
+    ConnectionLeftOpenInCleanup(conn_name="")
     ConnectionClosedInCleanup(conn_name="")
     RollbackFailed(conn_name="")
     ConnectionClosed(conn_name="")
-    ConnectionLeftOpen2(conn_name="")
+    ConnectionLeftOpen(conn_name="")
     Rollback(conn_name="")
     CacheMiss(conn_name="", database="", schema="")
     ListRelations(database="", schema="")

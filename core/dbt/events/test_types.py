@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from dbt.events.types import InfoLevel, DebugLevel, WarnLevel, ErrorLevel
 from dbt.events.base_types import NoFile
 from dbt.events import proto_types as pl
-from dbt.events.proto_types import EventInfo  # noqa
 
 
 # Keeping log messages for testing separate since they are used for debugging.

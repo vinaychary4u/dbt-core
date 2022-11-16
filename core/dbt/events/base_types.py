@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import os
 import threading
 from datetime import datetime
+import dbt.events.proto_types as pt
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # These base types define the _required structure_ for the concrete event #
@@ -47,31 +48,24 @@ def get_thread_name() -> str:
 class BaseEvent:
     """BaseEvent for proto message generated python events"""
 
+    def level_tag(self) -> str:
+        return "debug"
+
+    def message(self):
+        raise Exception("message() not implemented for event")
+
+
+# Create with level, msg,
+@dataclass
+class Event(pt.Event):
     def __post_init__(self):
         super().__post_init__()
-        if not self.info.level:
-            self.info.level = self.level_tag()
-        assert self.info.level in ["info", "warn", "error", "debug", "test"]
-        if not hasattr(self.info, "msg") or not self.info.msg:
-            self.info.msg = self.message()
         self.info.invocation_id = get_invocation_id()
         self.info.extra = get_global_metadata_vars()
         self.info.ts = datetime.utcnow()
         self.info.pid = get_pid()
         self.info.thread = get_thread_name()
-        self.info.code = self.code()
         self.info.name = type(self).__name__
-
-    def level_tag(self) -> str:
-        return "debug"
-
-    # This is here because although we know that info should always
-    # exist, mypy doesn't.
-    def log_level(self) -> str:
-        return self.info.level  # type: ignore
-
-    def message(self):
-        raise Exception("message() not implemented for event")
 
 
 # DynamicLevel requires that the level be supplied on the

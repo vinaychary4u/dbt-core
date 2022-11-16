@@ -4,17 +4,270 @@ package proto_types;
 
 import "google/protobuf/timestamp.proto";
 
-// Common event info
-message EventInfo {
-    string name = 1;
-    string code = 2;
-    string msg = 3;
-    string level = 4;
-    string invocation_id = 5;
-    int32 pid = 6;
-    string thread = 7;
-    google.protobuf.Timestamp ts = 8;
-    map<string, string> extra = 9;
+// Event containing standard fields and detail sub-events
+message Event {
+    string msg = 1;
+    string level = 2;
+    string invocation_id = 3;
+    int32 pid = 4;
+    string thread = 5;
+    google.protobuf.Timestamp ts = 9;
+    string code = 10;
+    map<string, string> extra = 11;
+    oneof detail {
+        MainReportVersion main_report_version = 101;
+        MainReportArgs main_report_args = 102;
+        MainTrackingUserState main_tracking_user_state = 103;
+        MergedFromState merged_from_state = 104;
+        MissingProfileTarget missing_profile_target = 105;
+        InvalidVarsYAML invalid_vars_yaml = 108;
+        DbtProjectError dbt_project_error = 109;
+        DbtProjectErrorException dbt_project_error_exception = 110;
+        DbtProfileError dbt_profile_error = 111;
+        DbtProfileErrorException dbt_profile_error_exception = 112;
+        ProfileListTitle profile_list_title = 113;
+        ListSingleProfile list_single_profile = 114;
+        NoDefinedProfiles no_defined_profiles = 115;
+        ProfileHelpMessage profile_help_message = 116;
+        StarterProjectPath starter_project_path = 117;
+        ConfigFolderDirectory config_folder_directory = 118;
+        NoSampleProfileFound no_sample_profile_found = 119;
+        ProfileWrittenWithSample profile_written_with_sample = 120;
+        ProfileWrittenWithTargetTemplateYAML profile_written_with_target_template_yaml = 121;
+        ProfileWrittenWithProjectTemplateYAML profile_written_with_project_template_yaml = 122;
+        SettingUpProfile setting_up_profile = 123;
+        InvalidProfileTemplateYAML invalid_profile_template_yaml = 124;
+        ProjectNameAlreadyExists project_name_already_exists = 125;
+        ProjectCreated project_created = 126;
+        PackageRedirectDeprecation package_redirect_deprecation = 201;
+        PackageInstallPathDeprecation package_install_path_deprecation = 202;
+        ConfigSourcePathDeprecation config_source_path_deprecation = 203;
+        ConfigDataPathDeprecation config_data_path_deprecation = 204;
+        AdapterDeprecationWarning adapter_deprecation_warning = 205;
+        MetricAttributesRenamed metric_attributes_renamed = 206;
+        ExposureNameDeprecation exposure_name_deprecation = 207;
+        AdapterEventDebug adapter_event_debug = 301;
+        AdapterEventInfo adapter_event_info = 302;
+        AdapterEventWarning adapter_event_warning = 303;
+        AdapterEventError adapter_event_error = 304;
+        NewConnection new_connection = 305;
+        ConnectionReused connection_reused = 306;
+        ConnectionLeftOpenInCleanup connection_left_open_in_cleanup = 307;
+        ConnectionClosedInCleanup connection_closed_in_cleanup = 308;
+        RollbackFailed rollback_failed = 309;
+        ConnectionClosed connection_closed = 310;
+        ConnectionLeftOpen connection_left_open = 311;
+        Rollback rollback = 312;
+        CacheMiss cache_miss = 313;
+        ListRelations list_relations = 314;
+        ConnectionUsed connection_used = 315;
+        SQLQuery sql_query = 316;
+        SQLQueryStatus sql_query_status = 317;
+        SQLCommit sql_commit = 318;
+        ColTypeChange col_type_change = 319;
+        SchemaCreation schema_creation = 320;
+        SchemaDrop schema_drop = 321;
+        UncachedRelation uncached_relation = 322;
+        AddLink add_link = 323;
+        AddRelation add_relation = 324;
+        DropMissingRelation drop_missing_relation = 325;
+        DropCascade drop_cascade = 326;
+        DropRelation drop_relation = 327;
+        UpdateReference update_reference = 328;
+        TemporaryRelation temporary_relation = 329;
+        RenameSchema rename_schema = 330;
+        DumpBeforeAddGraph dump_before_add_graph = 331;
+        DumpAfterAddGraph dump_after_add_graph = 332;
+        DumpBeforeRenameSchema dump_before_rename_schema = 333;
+        DumpAfterRenameSchema dump_after_rename_schema = 334;
+        AdapterImportError adapter_import_error = 335;
+        PluginLoadError plugin_load_error = 336;
+        NewConnectionOpening new_connection_opening = 337;
+        CodeExecution code_execution = 338;
+        CodeExecutionStatus code_execution_status = 339;
+        CatalogGenerationError catalog_generation_error = 340;
+        WriteCatalogFailure write_catalog_failure = 341;
+        CatalogWritten catalog_written = 342;
+        CannotGenerateDocs cannot_generate_docs = 343;
+        BuildingCatalog building_catalog = 344;
+        DatabaseErrorRunningHook database_error_running_hook = 345;
+        HooksRunning hooks_running = 346;
+        HookFinished hook_finished = 347;
+        ParseCmdStart parse_cmd_start = 401;
+        ParseCmdCompiling parse_cmd_compiling = 402;
+        ParseCmdWritingManifest parse_cmd_writing_manifest = 403;
+        ParseCmdDone parse_cmd_done = 404;
+        ManifestDependenciesLoaded manifest_dependencies_loaded = 405;
+        ManifestLoaderCreated manifest_lader_created = 406;
+        ManifestLoaded manifest_loaded = 407;
+        ManifestChecked manifest_checked = 408;
+        ManifestFlatGraphBuilt manifest_flat_graph_built = 409;
+        ParseCmdPerfInfoPath parse_cmd_perf_info_path = 410;
+        GenericTestFileParse generic_test_file_parse = 411;
+        MacroFileParse macro_file_parse = 412;
+        PartialParsingFullReparseBecauseOfError partial_parsing_full_reparse_because_of_error = 413;
+        PartialParsingExceptionFile partial_parsing_exception_file = 414;
+        PartialParsingFile partial_parsing_file = 415;
+        PartialParsingException partial_parsing_exception = 416;
+        PartialParsingSkipParsing partial_parsing_skip_parsing = 417;
+        PartialParsingMacroChangeStartFullParse partial_parsing_macro_change_start_full_parse = 418;
+        PartialParsingProjectEnvVarsChanged partial_parsing_project_env_vars_changed = 419;
+        PartialParsingProfileEnvVarsChanged partial_parsing_profile_env_vars_changed = 420;
+        PartialParsingDeletedMetric partial_parsing_deleted_metric = 421;
+        ManifestWrongMetadataVersion manifest_wrong_metadata_version = 422;
+        PartialParsingVersionMismatch partial_parsing_version_mismatch = 423;
+        PartialParsingFailedBecauseConfigChange partial_parsing_failed_because_config_change = 424;
+        PartialParsingFailedBecauseProfileChange partial_parsing_failed_because_profile_change = 425;
+        PartialParsingFailedBecauseNewProjectDependency partial_parsing_failed_because_new_project_dependency = 426;
+        PartialParsingFailedBecauseHashChanged partial_parsing_failed_because_hash_changed = 427;
+        PartialParsingNotEnabled partial_parsing_not_enabled = 428;
+        ParsedFileLoadFailed parsed_file_load_failed = 429;
+        PartialParseSaveFileNotFound partial_parsing_save_file_not_found = 430;
+        StaticParserCausedJinjaRendering static_parser_caused_jinja_rendering = 431;
+        UsingExperimentalParser using_experimental_parser = 432;
+        SampleFullJinjaRendering sample_full_jinja_rendering = 433;
+        StaticParserFallbackJinjaRendering static_parser_fallback_jinja_rendering = 434;
+        StaticParsingMacroOverrideDetected static_parsing_macro_override_detected = 435;
+        StaticParserSuccess static_parser_success = 436;
+        StaticParserFailure static_parser_failure = 437;
+        ExperimentalParserSuccess experimental_parser_success = 438;
+        ExperimentalParserFailure experimental_parser_failure = 439;
+        PartialParsingEnabled partial_parsing_enabled = 440;
+        PartialParsingAddedFile partial_parsing_added_file = 441;
+        PartialParsingDeletedFile partial_parsing_deleted_file = 442;
+        PartialParsingUpdatedFile partial_parsing_updated_file = 443;
+        PartialParsingNodeMissingInSourceFile partial_parsing_node_missing_in_source_file = 444;
+        PartialParsingMissingNodes partial_parsing_missing_nodes = 445;
+        PartialParsingChildMapMissingUniqueID partial_parsing_child_map_missing_unique_id = 446;
+        PartialParsingUpdateSchemaFile partial_parsing_update_schema_file = 447;
+        PartialParsingDeletedSource partial_parsing_deleted_source = 448;
+        PartialParsingDeletedExposure partial_parsing_deleted_exposure = 449;
+        InvalidDisabledTargetInTestNode invalid_disabled_target_in_test_node = 450;
+        UnusedResourceConfigPath unused_resource_config_path = 451;
+        SeedIncreased seed_increased = 452;
+        SeedExceedsLimitSamePath seed_exceeds_limit_same_path = 453;
+        SeedExceedsLimitAndPathChanged seed_exceeds_limit_and_path_changed = 454;
+        SeedExceedsLimitChecksumChanged seed_exceeds_limit_checksum_changed = 455;
+        UnusedTables unused_tables = 456;
+        WrongResourceSchemaFile wrong_resource_schema_file = 457;
+        NoNodeForYamlKey no_node_for_yaml_key = 458;
+        MacroPatchNotFound macro_patch_not_found = 459;
+        NodeNotFoundOrDisabled node_not_found_or_disabled = 460;
+        GeneralMacroWarning general_macro_warning = 461;
+        GitSparseCheckoutSubdirectory git_sparse_checkout_subdirectory = 501;
+        GitProgressCheckoutRevision git_progress_checkout_revision = 502;
+        GitProgressUpdatingExistingDependency git_progress_updating_existing_dependency = 503;
+        GitProgressPullingNewDependency git_progress_pulling_new_dependency = 504;
+        GitNothingToDo git_nothing_to_do = 505;
+        GitProgressUpdatedCheckoutRange git_progress_updated_checkout_range = 506;
+        GitProgressCheckedOutAt git_progress_checked_out_at = 507;
+        RegistryProgressGETRequest registry_progress_get_request = 508;
+        RegistryProgressGETResponse registry_progress_get_response = 509;
+        SelectorReportInvalidSelector selector_report_invalid_selector = 510;
+        JinjaLogInfo jinja_log_info = 511;
+        JinjaLogDebug jinja_log_debug = 512;
+        DepsNoPackagesFound deps_no_packages_found = 513;
+        DepsStartPackageInstall deps_start_package_install = 514;
+        DepsInstallInfo deps_install_info = 515;
+        DepsUpdateAvailable deps_update_available = 516;
+        DepsUpToDate deps_up_to_date = 517;
+        DepsListSubdirectory deps_list_subdirectory = 518;
+        DepsNotifyUpdatesAvailable deps_notify_updates_available = 519;
+        RetryExternalCall retry_external_call = 520;
+        RecordRetryException record_retry_exception = 521;
+        RegistryIndexProgressGETRequest registry_index_progress_get_request = 522;
+        RegistryIndexProgressGETResponse registry_index_progress_get_response = 523;
+        RegistryResponseUnexpectedType registry_response_unexpected_type = 524;
+        RegistryResponseMissingTopKeys registry_response_missing_top_keys = 525;
+        RegistryResponseMissingNestedKeys registry_response_missing_nested_keys = 526;
+        RegistryResponseExtraNestedKeys registry_response_extra_nested_keys = 527;
+        DepsSetDownloadDirectory deps_set_download_directory = 528;
+        DepsUnpinned deps_unpinned = 529;
+        NoNodesForSelectionCriteria no_nodes_for_selection_criteria = 530;
+        RunningOperationCaughtError running_operation_caught_error = 601;
+        CompileComplete compile_complete = 602;
+        FreshnessCheckComplete freshness_check_complete = 603;
+        SeedHeader seed_header = 604;
+        SeedHeaderSeparator seed_header_separator = 605;
+        SQLRunnerException sql_runner_exception = 606;
+        LogTestResult log_test_result = 607;
+        LogStartLine log_start_line = 608;
+        LogModelResult log_model_result = 609;
+        LogSnapshotResult log_snapshot_result = 615;
+        LogSeedResult log_seed_result = 616;
+        LogFreshnessResult log_freshness_result = 617;
+        LogCancelLine log_cancel_line = 622;
+        DefaultSelector default_selector = 623;
+        NodeStart node_start = 624;
+        NodeFinished node_finished = 625;
+        QueryCancelationUnsupported query_cancelation_unsupported = 626;
+        ConcurrencyLine concurrency_line = 627;
+        CompilingNode compiling_node = 628;
+        WritingInjectedSQLForNode writing_injected_sql_for_node = 629;
+        NodeCompiling node_compiling = 630;
+        NodeExecuting node_executing = 631;
+        LogHookStartLine log_hook_start_line = 632;
+        LogHookEndLine log_hook_end_line = 633;
+        SkippingDetails skipping_details = 634;
+        NothingToDo nothing_to_do = 635;
+        RunningOperationUncaughtError running_operation_uncaught_error = 636;
+        EndRunResult end_run_result = 637;
+        NoNodesSelected no_nodes_selected = 638;
+        CatchableExceptionOnRun catchable_exception_on_run = 702;
+        InternalExceptionOnRun internal_exception_on_run = 703;
+        GenericExceptionOnRun generic_exception_on_run = 704;
+        NodeConnectionReleaseError node_connection_release_error = 705;
+        FoundStats found_stats = 706;
+        MainKeyboardInterrupt main_keyboard_interrupt = 801;
+        MainEncounteredError main_encountered_error = 802;
+        MainStackTrace main_stack_trace = 803;
+        SystemErrorRetrievingModTime system_error_retrieving_mod_time = 804;
+        SystemCouldNotWrite system_could_not_write = 805;
+        SystemExecutingCmd system_executing_cmd = 806;
+        SystemStdOutMsg system_std_out_msg = 807;
+        SystemStdErrMsg system_std_err_msg = 808;
+        SystemReportReturnCode system_report_return_code = 809;
+        TimingInfoCollected timing_info_collected = 810;
+        LogDebugStackTrace log_debug_stack_trace = 811;
+        CheckCleanPath check_clean_path = 812;
+        ConfirmCleanPath confirm_clean_path = 813;
+        ProtectedCleanPath protected_clean_path = 814;
+        FinishedCleanPaths finished_clean_path = 815;
+        OpenCommand open_command = 816;
+        EmptyLine empty_line = 817;
+        ServingDocsPort serving_docs_port = 818;
+        ServingDocsAccessInfo serving_docs_access_info = 819;
+        ServingDocsExitInfo serving_docs_exit_info = 820;
+        RunResultWarning run_result_warning = 821;
+        RunResultFailure run_result_failure = 822;
+        StatsLine stats_line = 823;
+        RunResultError run_result_error = 824;
+        RunResultErrorNoMessage run_result_error_no_message = 825;
+        SQLCompiledPath sql_compiled_path = 826;
+        CheckNodeTestFailure check_node_test_failure = 827;
+        FirstRunResultError first_run_result_error = 828;
+        AfterFirstRunResultError after_first_run_result_error = 829;
+        EndOfRunSummary end_of_run_summary = 830;
+        LogSkipBecauseError log_skip_because_error = 834;
+        EnsureGitInstalled ensure_git_installed = 836;
+        DepsCreatingLocalSymlink deps_creating_local_symlink = 837;
+        DepsSymlinkNotAvailable deps_symlink_not_available = 838;
+        DisableTracking disable_tracking = 839;
+        SendingEvent sending_event = 840;
+        SendEventFailure send_event_failure = 841;
+        FlushEvents flush_events = 842;
+        FlushEventsFailure flush_events_failure = 843;
+        TrackingInitializeFailure tracking_initialize_failure = 844;
+        EventBufferFull event_buffer_full = 845;
+        RunResultWarningMessage run_result_warning_message = 846;
+        IntegrationTestInfo integration_test_info = 901;
+        IntegrationTestDebug integration_test_debug = 902;
+        IntegrationTestWarn integration_test_warn = 903;
+        IntegrationTestError integration_test_error = 904;
+        IntegrationTestException integration_test_exception = 905;
+        UnitTestInfo unit_test_info = 906;
+    }
+
 }
 
 // TimingInfo
@@ -59,517 +312,435 @@ message ListOfStrings {
    repeated string value = 1;
 }
 
-// GenericMessage, used for deserializing only
-message GenericMessage {
-    EventInfo info = 1;
-}
 
 // A - Pre-project loading = 1
 
-// A001
+// A001 - 101
 message MainReportVersion {
-    EventInfo info = 1;
-    string version = 2;
-    int32 log_version = 3;
+    string version = 1;
+    int32 log_version = 2;
 }
 
 // A002 - 102
 message MainReportArgs {
-    EventInfo info = 1;
-    map<string, string> args = 2;
+    map<string, string> args = 1;
 }
 
 // A003 - 103
 message MainTrackingUserState {
-    EventInfo info = 1;
-    string user_state = 2;
+    string user_state = 1;
 }
 
 // A004 - 104
 message MergedFromState {
-    EventInfo info = 1;
-    int32 num_merged = 2;
-    repeated string sample = 3;
+    int32 num_merged = 1;
+    repeated string sample = 2;
 }
 
 // A005 - 105
 message MissingProfileTarget {
-    EventInfo info = 1;
-    string profile_name = 2;
-    string target_name = 3;
+    string profile_name = 1;
+    string target_name = 2;
 }
 
 // Skipped A006, A007
 
 // A008 - 108
 message InvalidVarsYAML {
-    EventInfo info = 1;
 }
 
 // A009 - 109
 message DbtProjectError {
-    EventInfo info = 1;
 }
 
 // A010 - 110
 message DbtProjectErrorException {
-    EventInfo info = 1;
-    string exc = 2;
+    string exc = 1;
 }
 
 // A011 - 111
 message DbtProfileError {
-    EventInfo info = 1;
 }
 
 // A012 - 112
 message DbtProfileErrorException {
-    EventInfo info = 1;
-    string exc = 2;
+    string exc = 1;
 }
 
 // A013 - 113
 message ProfileListTitle {
-    EventInfo info = 1;
 }
 
 // A014 - 114
 message ListSingleProfile {
-    EventInfo info = 1;
-    string profile = 2;
+    string profile = 1;
 }
 
 // A015 - 115
 message NoDefinedProfiles {
-    EventInfo info = 1;
 }
 
 // A016 - 116
 message ProfileHelpMessage {
-    EventInfo info = 1;
 }
 
 // A017 - 117
 message StarterProjectPath {
-    EventInfo info = 1;
-    string dir = 2;
+    string dir = 1;
 }
 
 // A018 - 118
 message ConfigFolderDirectory {
-    EventInfo info = 1;
-    string dir = 2;
+    string dir = 1;
 }
 
 // A019 - 119
 message NoSampleProfileFound {
-    EventInfo info = 1;
-    string adapter = 2;
+    string adapter = 1;
 }
 
 // A020 - 120
 message ProfileWrittenWithSample {
-    EventInfo info = 1;
-    string name = 2;
-    string path = 3;
+    string name = 1;
+    string path = 2;
 }
 
 // A021 - 121
 message ProfileWrittenWithTargetTemplateYAML {
-    EventInfo info = 1;
-    string name = 2;
-    string path = 3;
+    string name = 1;
+    string path = 2;
 }
 
 // A022 - 122
 message ProfileWrittenWithProjectTemplateYAML {
-    EventInfo info = 1;
-    string name = 2;
-    string path = 3;
+    string name = 1;
+    string path = 2;
 }
 
 // A023 - 123
 message SettingUpProfile {
-    EventInfo info = 1;
 }
 
 // A024 - 124
 message InvalidProfileTemplateYAML {
-    EventInfo info = 1;
 }
 
 // A025 - 125
 message ProjectNameAlreadyExists {
-    EventInfo info = 1;
-    string name = 2;
+    string name = 1;
 }
 
 // A026 - 126
 message ProjectCreated {
-    EventInfo info = 1;
-    string project_name = 2;
-    string docs_url = 3;
-    string slack_url = 4;
+    string project_name = 1;
+    string docs_url = 2;
+    string slack_url = 3;
 }
 
 // D - Deprecation = 2
 
 // D001 - 201
 message PackageRedirectDeprecation {
-    EventInfo info = 1;
-    string old_name = 2;
-    string new_name = 3;
+    string old_name = 1;
+    string new_name = 2;
 }
 
 // D002 - 202
 message PackageInstallPathDeprecation {
-    EventInfo info = 1;
 }
 
 // D003 - 203
 message ConfigSourcePathDeprecation {
-    EventInfo info = 1;
-    string deprecated_path = 2;
-    string exp_path = 3;
+    string deprecated_path = 1;
+    string exp_path = 2;
 }
 
 // D004 - 204
 message ConfigDataPathDeprecation {
-    EventInfo info = 1;
-    string deprecated_path = 2;
-    string exp_path = 3;
+    string deprecated_path = 1;
+    string exp_path = 2;
 }
 
 //D005 - 205
 message AdapterDeprecationWarning {
-    EventInfo info = 1;
-    string old_name = 2;
-    string new_name = 3;
+    string old_name = 1;
+    string new_name = 2;
 }
 
 //D006 - 206
 message MetricAttributesRenamed {
-    EventInfo info = 1;
-    string metric_name = 2;
+    string metric_name = 1;
 }
 
 //D007 - 207
 message ExposureNameDeprecation {
-    EventInfo info = 1;
-    string exposure = 2;
+    string exposure = 1;
 }
 
 // E - DB Adapter - 3
 
 // E001 - 301
 message AdapterEventDebug {
-    EventInfo info = 1;
-    string name = 2;
-    string base_msg = 3;
-    repeated string args = 4;
+    string name = 1;
+    string base_msg = 2;
+    repeated string args = 3;
 }
 
 // E002 - 302
 message AdapterEventInfo {
-    EventInfo info = 1;
-    string name = 2;
-    string base_msg = 3;
-    repeated string args = 4;
+    string name = 1;
+    string base_msg = 2;
+    repeated string args = 3;
 }
 
 // E003 - 303
 message AdapterEventWarning {
-    EventInfo info = 1;
-    string name = 2;
-    string base_msg = 3;
-    repeated string args = 4;
+    string name = 1;
+    string base_msg = 2;
+    repeated string args = 3;
 }
 
 // E004 - 304
 message AdapterEventError {
-    EventInfo info = 1;
-    string name = 2;
-    string base_msg = 3;
-    repeated string args = 4;
-    string exc_info = 5;
+    string name = 1;
+    string base_msg = 2;
+    repeated string args = 3;
+    string exc_info = 4;
 }
 
 // E005 - 305
 message NewConnection {
-    EventInfo info = 1;
-    string conn_type = 2;
-    string conn_name = 3;
+    string conn_type = 1;
+    string conn_name = 2;
 }
 
 // E006 - 306
 message ConnectionReused {
-    EventInfo info = 1;
-    string conn_name = 2;
+    string conn_name = 1;
 }
 
 // E007 - 307
-message ConnectionLeftOpen {
-    EventInfo info = 1;
-    string conn_name = 2;
+message ConnectionLeftOpenInCleanup {
+    string conn_name = 1;
 }
 
 // E008 - 308
 message ConnectionClosedInCleanup {
-    EventInfo info = 1;
-    string conn_name = 2;
+    string conn_name = 1;
 }
 
 // E009 - 309
 message RollbackFailed {
-    EventInfo info = 1;
-    string conn_name = 2;
-    string exc_info = 3;
+    string conn_name = 1;
+    string exc_info = 2;
 }
 
 // E010 - 310
 message ConnectionClosed {
-    EventInfo info = 1;
-    string conn_name = 2;
+    string conn_name = 1;
 }
 
 // E011 - 311
-message ConnectionLeftOpen2 {
-    EventInfo info = 1;
-    string conn_name = 2;
+message ConnectionLeftOpen {
+    string conn_name = 1;
 }
 
 // E012 - 312
 message Rollback {
-    EventInfo info = 1;
-    string conn_name = 2;
+    string conn_name = 1;
 }
 
 // E013 -313
 message CacheMiss {
-    EventInfo info = 1;
-    string conn_name = 2;
-    string database = 3;
-    string schema = 4;
+    string conn_name = 1;
+    string database = 2;
+    string schema = 3;
 }
 
 // E014 - 314
 message ListRelations {
-    EventInfo info = 1;
-    string database = 2;
-    string schema = 3;
-    repeated ReferenceKeyMsg relations = 4;
+    string database = 1;
+    string schema = 2;
+    repeated ReferenceKeyMsg relations = 3;
 }
 
 // E015 - 315
 message ConnectionUsed {
-    EventInfo info = 1;
-    string conn_type = 2;
-    string conn_name = 3;
+    string conn_type = 1;
+    string conn_name = 2;
 }
 
 // E016 - 316
 message SQLQuery {
-    EventInfo info = 1;
-    string conn_name = 2;
-    string sql = 3;
+    string conn_name = 1;
+    string sql = 2;
 }
 
 // E017 - 317
 message SQLQueryStatus {
-    EventInfo info = 1;
-    string status = 2;
-    float elapsed = 3;
+    string status = 1;
+    float elapsed = 2;
 }
 
 // E018 - 318
 message SQLCommit {
-    EventInfo info = 1;
-    string conn_name = 2;
+    string conn_name = 1;
 }
 
 // E019 - 319
 message ColTypeChange {
-    EventInfo info = 1;
-    string orig_type = 2;
-    string new_type = 3;
-    ReferenceKeyMsg table = 4;
+    string orig_type = 1;
+    string new_type = 2;
+    ReferenceKeyMsg table = 3;
 }
 
 // E020 - 320
 message SchemaCreation {
-    EventInfo info = 1;
-    ReferenceKeyMsg relation = 2;
+    ReferenceKeyMsg relation = 1;
 }
 
 // E021 - 321
 message SchemaDrop {
-    EventInfo info = 1;
-    ReferenceKeyMsg relation = 2;
+    ReferenceKeyMsg relation = 1;
 }
 
 // E022 - 322
 message UncachedRelation {
-    EventInfo info = 1;
-    ReferenceKeyMsg dep_key = 2;
-    ReferenceKeyMsg ref_key = 3;
+    ReferenceKeyMsg dep_key = 1;
+    ReferenceKeyMsg ref_key = 2;
 }
 
 // E023 - 323
 message AddLink {
-    EventInfo info = 1;
-    ReferenceKeyMsg dep_key = 2;
-    ReferenceKeyMsg ref_key = 3;
+    ReferenceKeyMsg dep_key = 1;
+    ReferenceKeyMsg ref_key = 2;
 }
 
 // E024 - 324
 message AddRelation {
-    EventInfo info = 1;
-    ReferenceKeyMsg relation = 2;
+    ReferenceKeyMsg relation = 1;
 }
 
 // E025 - 325
 message DropMissingRelation {
-    EventInfo info = 1;
-    ReferenceKeyMsg relation = 2;
+    ReferenceKeyMsg relation = 1;
 }
 
 // E026 - 326
 message DropCascade {
-    EventInfo info = 1;
-    ReferenceKeyMsg dropped = 2;
-    repeated ReferenceKeyMsg consequences = 3;
+    ReferenceKeyMsg dropped = 1;
+    repeated ReferenceKeyMsg consequences = 2;
 }
 
 // E027 - 327
 message DropRelation {
-    EventInfo info = 1;
-    ReferenceKeyMsg dropped = 2;
+    ReferenceKeyMsg dropped = 1;
 }
 
 // E028 - 328
 message UpdateReference {
-    EventInfo info = 1;
-    ReferenceKeyMsg old_key = 2;
-    ReferenceKeyMsg new_key = 3;
-    ReferenceKeyMsg cached_key = 4;
+    ReferenceKeyMsg old_key = 1;
+    ReferenceKeyMsg new_key = 2;
+    ReferenceKeyMsg cached_key = 3;
 }
 
 // E029 - 329
 message TemporaryRelation {
-    EventInfo info = 1;
-    ReferenceKeyMsg key = 2;
+    ReferenceKeyMsg key = 1;
 }
 
 // E030 - 330
 message RenameSchema {
-    EventInfo info = 1;
-    ReferenceKeyMsg old_key = 2;
-    ReferenceKeyMsg new_key = 3;
+    ReferenceKeyMsg old_key = 1;
+    ReferenceKeyMsg new_key = 2;
 }
 
 // E031 - 331
 message DumpBeforeAddGraph {
-    EventInfo info = 1;
-    map<string, ListOfStrings> dump = 2;
+    map<string, ListOfStrings> dump = 1;
 }
 
 // E032 - 332
 message DumpAfterAddGraph {
-    EventInfo info = 1;
-    map<string, ListOfStrings> dump = 2;
+    map<string, ListOfStrings> dump = 1;
 }
 
 // E033 - 333
 message DumpBeforeRenameSchema {
-    EventInfo info = 1;
-    map<string, ListOfStrings> dump = 2;
+    map<string, ListOfStrings> dump = 1;
 }
 
 // E034 - 334
 message DumpAfterRenameSchema {
-    EventInfo info = 1;
-    map<string, ListOfStrings> dump = 2;
+    map<string, ListOfStrings> dump = 1;
 }
 
 // E035 - 335
 message AdapterImportError {
-    EventInfo info = 1;
-    string exc = 2;
+    string exc = 1;
 }
 
 // E036 - 336
 message PluginLoadError {
-    EventInfo info = 1;
-    string exc_info = 2;
+    string exc_info = 1;
 }
 
 // E037 - 337
 message NewConnectionOpening {
-    EventInfo info = 1;
-    string connection_state = 2;
+    string connection_state = 1;
 }
 
 // E038 - 338
 message CodeExecution {
-    EventInfo info = 1;
-    string conn_name = 2;
-    string code_content = 3;
+    string conn_name = 1;
+    string code_content = 2;
 }
 
 // E039 - 339
 message CodeExecutionStatus {
-    EventInfo info = 1;
-    string status = 2;
-    float elapsed = 3;
+    string status = 1;
+    float elapsed = 2;
 }
 
 // E040 - 340
 message CatalogGenerationError {
-    EventInfo info = 1;
-    string exc = 2;
+    string exc = 1;
 }
 
 // E041 - 341
 message WriteCatalogFailure {
-    EventInfo info = 1;
-    int32 num_exceptions = 2;
+    int32 num_exceptions = 1;
 }
 
 // E042 - 342
 message CatalogWritten {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // E043 - 343
 message CannotGenerateDocs {
-    EventInfo info = 1;
 }
 
 // E044 - 344
 message BuildingCatalog {
-    EventInfo info = 1;
 }
 
 // E045 - 345
 message DatabaseErrorRunningHook {
-    EventInfo info = 1;
-    string hook_type = 2;
+    string hook_type = 1;
 }
 
 // E046 - 346
 message HooksRunning {
-    EventInfo info = 1;
-    int32 num_hooks = 2;
-    string hook_type = 3;
+    int32 num_hooks = 1;
+    string hook_type = 2;
 }
 
 // E047 - 347
 message HookFinished {
-    EventInfo info = 1;
-    string stat_line = 2;
-    string execution = 3;
-    float execution_time = 4;
+    string stat_line = 1;
+    string execution = 2;
+    float execution_time = 3;
 }
 
 
@@ -577,611 +748,513 @@ message HookFinished {
 
 // I001 - 401
 message ParseCmdStart {
-    EventInfo info = 1;
 }
 
 // I002 - 402
 message ParseCmdCompiling {
-    EventInfo info = 1;
 }
 
 // I003 - 403
 message ParseCmdWritingManifest {
-    EventInfo info = 1;
 }
 
 // I004 - 404
 message ParseCmdDone {
-    EventInfo info = 1;
 }
 
 // I005 - 405
 message ManifestDependenciesLoaded {
-    EventInfo info = 1;
 }
 
 // I006 - 406
 message ManifestLoaderCreated {
-    EventInfo info = 1;
 }
 
 // I007 - 407
 message ManifestLoaded {
-    EventInfo info = 1;
 }
 
 // I008 - 408
 message ManifestChecked {
-    EventInfo info = 1;
 }
 
 // I009 - 409
 message ManifestFlatGraphBuilt {
-    EventInfo info = 1;
 }
 
 // I010 - 410
 message ParseCmdPerfInfoPath {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // I011 - 411
 message GenericTestFileParse {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // I012 - 412
 message MacroFileParse {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // I013 - 413
 message PartialParsingFullReparseBecauseOfError  {
-    EventInfo info = 1;
 }
 
 // I014 - 414
 message PartialParsingExceptionFile {
-    EventInfo info = 1;
-    string file = 2;
+    string file = 1;
 }
 
 // I015 - 415
 message PartialParsingFile {
-    EventInfo info = 1;
-    string file_id = 2;
+    string file_id = 1;
 }
 
 // I016 - 416
 message PartialParsingException {
-    EventInfo info = 1;
-    map<string, string> exc_info = 2;
+    map<string, string> exc_info = 1;
 }
 
 // I017 - 417
 message PartialParsingSkipParsing {
-    EventInfo info = 1;
 }
 
 // I018 - 418
 message PartialParsingMacroChangeStartFullParse {
-    EventInfo info = 1;
 }
 
 // I019 - 419
 message PartialParsingProjectEnvVarsChanged {
-    EventInfo info = 1;
 }
 
 // I020 - 420
 message PartialParsingProfileEnvVarsChanged {
-    EventInfo info = 1;
 }
 
 // I021 - 421
 message PartialParsingDeletedMetric {
-    EventInfo info = 1;
-    string unique_id = 2;
+    string unique_id = 1;
 }
 
 // I022 - 422
 message ManifestWrongMetadataVersion {
-    EventInfo info = 1;
-    string version = 2;
+    string version = 1;
 }
 
 // I023 - 423
 message PartialParsingVersionMismatch {
-    EventInfo info = 1;
-    string saved_version = 2;
-    string current_version = 3;
+    string saved_version = 1;
+    string current_version = 2;
 }
 
 // I024 - 424
 message PartialParsingFailedBecauseConfigChange {
-    EventInfo info = 1;
 }
 
 // I025 - 425
 message PartialParsingFailedBecauseProfileChange {
-    EventInfo info = 1;
 }
 
 // I026 - 426
 message PartialParsingFailedBecauseNewProjectDependency {
-    EventInfo info = 1;
 }
 
 // I027 - 427
 message PartialParsingFailedBecauseHashChanged {
-    EventInfo info = 1;
 }
 
 // I028 - 428
 message PartialParsingNotEnabled {
-    EventInfo info = 1;
 }
 
 // I029 - 429
 message ParsedFileLoadFailed {
-    EventInfo info = 1;
-    string path = 2;
-    string exc = 3;
-    string exc_info = 4;
+    string path = 1;
+    string exc = 2;
+    string exc_info = 3;
 }
 
 // I030 - 430
 message PartialParseSaveFileNotFound {
-    EventInfo info = 1;
 }
 
 // I031 - 431
 message StaticParserCausedJinjaRendering {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // I032 - 432
 message UsingExperimentalParser {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // I033 - 433
 message SampleFullJinjaRendering {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // I034 - 434
 message StaticParserFallbackJinjaRendering {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // I035 - 435
 message StaticParsingMacroOverrideDetected {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // I036 - 436
 message StaticParserSuccess {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // I037 - 437
 message StaticParserFailure {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // I038 - 438
 message ExperimentalParserSuccess {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // I039 - 439
 message ExperimentalParserFailure {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // I040 - 440
 message PartialParsingEnabled {
-    EventInfo info = 1;
-    int32 deleted = 2;
-    int32 added = 3;
-    int32 changed = 4;
+    int32 deleted = 1;
+    int32 added = 2;
+    int32 changed = 3;
 }
 
 // I041 - 441
 message PartialParsingAddedFile {
-    EventInfo info = 1;
-    string file_id = 2;
+    string file_id = 1;
 }
 
 // I042 - 442
 message PartialParsingDeletedFile {
-    EventInfo info = 1;
-    string file_id = 2;
+    string file_id = 1;
 }
 
 // I043 - 443
 message PartialParsingUpdatedFile {
-    EventInfo info = 1;
-    string file_id = 2;
+    string file_id = 1;
 }
 
 // I044 - 444
 message PartialParsingNodeMissingInSourceFile {
-    EventInfo info = 1;
-    string file_id=2;
+    string file_id=1;
 }
 
 // I045 - 445
 message PartialParsingMissingNodes {
-    EventInfo info = 1;
-    string file_id = 2;
+    string file_id = 1;
 }
 
 // I046 - 446
 message PartialParsingChildMapMissingUniqueID {
-    EventInfo info = 1;
-    string unique_id = 2;
+    string unique_id = 1;
 }
 
 // I047 - 447
 message PartialParsingUpdateSchemaFile {
-    EventInfo info = 1;
-    string file_id = 2;
+    string file_id = 1;
 }
 
 // I048 - 448
 message PartialParsingDeletedSource {
-    EventInfo info = 1;
-    string unique_id = 2;
+    string unique_id = 1;
 }
 
 // I049 - 449
 message PartialParsingDeletedExposure {
-    EventInfo info = 1;
-    string unique_id = 2;
+    string unique_id = 1;
 }
 
 // I050 - 450
 message InvalidDisabledTargetInTestNode {
-    EventInfo info = 1;
-    string resource_type_title = 2;
-    string unique_id = 3;
-    string original_file_path = 4;
-    string target_kind = 5;
-    string target_name = 6;
-    string target_package = 7;
+    string resource_type_title = 1;
+    string unique_id = 2;
+    string original_file_path = 3;
+    string target_kind = 4;
+    string target_name = 5;
+    string target_package = 6;
 }
 
 // I051 - 451
 message UnusedResourceConfigPath {
-    EventInfo info = 1;
-    repeated string unused_config_paths = 2;
+    repeated string unused_config_paths = 1;
 }
 
 // I052 - 452
 message SeedIncreased {
-    EventInfo info = 1;
-    string package_name = 2;
-    string name = 3;
+    string package_name = 1;
+    string name = 2;
 }
 
 // I053 - 453
 message SeedExceedsLimitSamePath {
-    EventInfo info = 1;
-    string package_name = 2;
-    string name = 3;
+    string package_name = 1;
+    string name = 2;
 }
 
 // I054 - 454
 message SeedExceedsLimitAndPathChanged {
-    EventInfo info = 1;
-    string package_name = 2;
-    string name = 3;
+    string package_name = 1;
+    string name = 2;
 }
 
 // I055 - 455
 message SeedExceedsLimitChecksumChanged {
-    EventInfo info = 1;
-    string package_name = 2;
-    string name = 3;
-    string checksum_name = 4;
+    string package_name = 1;
+    string name = 2;
+    string checksum_name = 3;
 }
 
 // I056 - 456
 message UnusedTables {
-    EventInfo info = 1;
-    repeated string unused_tables = 2;
+    repeated string unused_tables = 1;
 }
 
 // I057 - 457
 message WrongResourceSchemaFile {
-    EventInfo info = 1;
-    string patch_name = 2;
-    string resource_type = 3;
-    string plural_resource_type = 4;
-    string yaml_key = 5;
-    string file_path = 6;
+    string patch_name = 1;
+    string resource_type = 2;
+    string plural_resource_type = 3;
+    string yaml_key = 4;
+    string file_path = 5;
 }
 
 // I058 - 458
 message NoNodeForYamlKey {
-    EventInfo info = 1;
-    string patch_name = 2;
-    string yaml_key = 3;
-    string file_path = 4;
+    string patch_name = 1;
+    string yaml_key = 2;
+    string file_path = 3;
 }
 
 // I059 - 459
 message MacroPatchNotFound {
-    EventInfo info = 1;
-    string patch_name = 2;
+    string patch_name = 3;
 }
 
 // I060 - 460
 message NodeNotFoundOrDisabled {
-    EventInfo info = 1;
-    string original_file_path = 2;
-    string unique_id = 3;
-    string resource_type_title = 4;
-    string target_name = 5;
-    string target_kind = 6;
-    string target_package = 7;
-    string disabled = 8;
+    string original_file_path = 1;
+    string unique_id = 2;
+    string resource_type_title = 3;
+    string target_name = 4;
+    string target_kind = 5;
+    string target_package = 6;
+    string disabled = 7;
 }
 
 // I061 - 461
 message GeneralMacroWarning {
-    EventInfo info = 1;
-    string msg = 2;
+    string msg = 1;
 }
 
 // M - Deps generation - 5
 
 // M001 - 501
 message GitSparseCheckoutSubdirectory {
-    EventInfo info = 1;
-    string subdir = 2;
+    string subdir = 1;
 }
 
 // M002 - 502
 message GitProgressCheckoutRevision {
-    EventInfo info = 1;
-    string revision = 2;
+    string revision = 1;
 }
 
 // M003 - 503
 message GitProgressUpdatingExistingDependency {
-    EventInfo info = 1;
-    string dir = 2;
+    string dir = 1;
 }
 
 // M004 - 504
 message GitProgressPullingNewDependency {
-    EventInfo info = 1;
-    string dir = 2;
+    string dir = 1;
 }
 
 // M005 - 505
 message GitNothingToDo {
-    EventInfo info = 1;
-    string sha = 2;
+    string sha = 1;
 }
 
 // M006 - 506
 message GitProgressUpdatedCheckoutRange {
-    EventInfo info = 1;
-    string start_sha = 2;
-    string end_sha = 3;
+    string start_sha = 1;
+    string end_sha = 2;
 }
 
 // M007 - 507
 message GitProgressCheckedOutAt {
-    EventInfo info = 1;
-    string end_sha = 2;
+    string end_sha = 1;
 }
 
 // M008 - 508
 message RegistryProgressGETRequest {
-    EventInfo info = 1;
-    string url = 2;
+    string url = 1;
 }
 
 // M009 - 509
 message RegistryProgressGETResponse {
-    EventInfo info = 1;
-    string url = 2;
-    int32 resp_code = 3;
+    string url = 1;
+    int32 resp_code = 2;
 }
 
 // M010 - 510
 message SelectorReportInvalidSelector {
-    EventInfo info = 1;
-    string valid_selectors = 2;
-    string spec_method = 3;
-    string raw_spec = 4;
+    string valid_selectors = 1;
+    string spec_method = 2;
+    string raw_spec = 3;
 }
 
 // M011 - 511
 message JinjaLogInfo {
-    EventInfo info = 1;
-    string msg = 2;
+    string msg = 1;
 }
 
 // M012 - 512
 message JinjaLogDebug {
-    EventInfo info = 1;
-    string msg = 2;
+    string msg = 1;
 }
 
 // M013 - 513
 message DepsNoPackagesFound {
-    EventInfo info = 1;
 }
 
 // M014 - 514
 message DepsStartPackageInstall {
-    EventInfo info = 1;
-    string package_name = 2;
+    string package_name = 1;
 }
 
 // M015 - 515
 message DepsInstallInfo {
-    EventInfo info = 1;
-    string version_name = 2;
+    string version_name = 1;
 }
 
 // M016 - 516
 message DepsUpdateAvailable {
-    EventInfo info = 1;
-    string version_latest = 2;
+    string version_latest = 1;
 }
 
 // M017 - 517
 message DepsUpToDate {
-    EventInfo info = 1;
 }
 
 // M018 - 518
 message DepsListSubdirectory {
-    EventInfo info = 1;
-    string subdirectory = 2;
+    string subdirectory = 1;
 }
 
 // M019 - 519
 message DepsNotifyUpdatesAvailable {
-    EventInfo info = 1;
-    ListOfStrings packages = 2;
+    ListOfStrings packages = 1;
 }
 
 // M020 - 520
 message RetryExternalCall {
-    EventInfo info = 1;
-    int32 attempt = 2;
-    int32 max = 3;
+    int32 attempt = 1;
+    int32 max = 2;
 }
 
 // M021 - 521
 message RecordRetryException {
-    EventInfo info = 1;
-    string exc = 2;
+    string exc = 1;
 }
 
 // M022 - 522
 message RegistryIndexProgressGETRequest {
-    EventInfo info = 1;
-    string url = 2;
+    string url = 1;
 }
 
 // M023 - 523
 message RegistryIndexProgressGETResponse {
-    EventInfo info = 1;
-    string url = 2;
-    int32 resp_code = 3;
+    string url = 1;
+    int32 resp_code = 2;
 }
 
 // M024 - 524
 message RegistryResponseUnexpectedType {
-    EventInfo info = 1;
-    string response = 2;
+    string response = 1;
 }
 
 // M025 - 525
 message RegistryResponseMissingTopKeys {
-    EventInfo info = 1;
-    string response = 2;
+    string response = 1;
 }
 
 // M026 - 526
 message RegistryResponseMissingNestedKeys {
-    EventInfo info = 1;
-    string response = 2;
+    string response = 1;
 }
 
 // m027 - 527
 message RegistryResponseExtraNestedKeys {
-    EventInfo info = 1;
-    string response = 2;
+    string response = 1;
 }
 
 // M028 - 528
 message DepsSetDownloadDirectory {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // M029 - 529
 message DepsUnpinned {
-    EventInfo info = 1;
     string revision = 2;
     string git = 3;
 }
 
 // M030 - 530
 message NoNodesForSelectionCriteria {
-    EventInfo info = 1;
-    string spec_raw = 2;
+    string spec_raw = 1;
 }
 
 // Q - Node execution - 6
 
 // Q001 - 601
 message RunningOperationCaughtError {
-    EventInfo info = 1;
-    string exc = 2;
+    string exc = 1;
 }
 
 // Q002 - 602
 message CompileComplete {
-    EventInfo info = 1;
 }
 
 // Q003 - 603
 message FreshnessCheckComplete {
-    EventInfo info = 1;
 }
 
 // Q004 - 604
 message SeedHeader {
-    EventInfo info = 1;
-    string header = 2;
+    string header = 1;
 }
 
 // Q005 - 605
 message SeedHeaderSeparator {
-    EventInfo info = 1;
-    int32 len_header = 2;
+    int32 len_header = 1;
 }
 
 // Q006 - 606
 message SQLRunnerException {
-    EventInfo info = 1;
-    string exc = 2;
-    string exc_info = 3;
+    string exc = 1;
+    string exc_info = 2;
 }
 
 // Q007 - 607
 message LogTestResult {
-    EventInfo info = 1;
-    NodeInfo node_info = 2;
-    string name = 3;
-    string status = 4;
-    int32 index = 5;
-    int32 num_models = 6;
-    float execution_time = 7;
-    int32 num_failures = 8;
+    NodeInfo node_info = 1;
+    string name = 2;
+    string status = 3;
+    int32 index = 4;
+    int32 num_models = 5;
+    float execution_time = 6;
+    int32 num_failures = 7;
 }
 
 
@@ -1190,63 +1263,58 @@ message LogTestResult {
 
 // Q011 - 611
 message LogStartLine {
-    EventInfo info = 1;
-    NodeInfo node_info = 2;
-    string description = 3;
-    int32 index = 4;
-    int32 total = 5;
+    NodeInfo node_info = 1;
+    string description = 2;
+    int32 index = 3;
+    int32 total = 4;
 }
 
 // Q012 - 612
 message LogModelResult {
-    EventInfo info = 1;
-    NodeInfo node_info = 2;
-    string description = 3;
-    string status = 4;
-    int32 index = 5;
-    int32 total = 6;
-    int32 execution_time = 7;
+    NodeInfo node_info = 1;
+    string description = 2;
+    string status = 3;
+    int32 index = 4;
+    int32 total = 5;
+    int32 execution_time = 6;
 }
 
 // skipped Q013, Q014
 
 // Q015 - 615
 message LogSnapshotResult {
-    EventInfo info = 1;
-    NodeInfo node_info = 2;
-    string description = 3;
-    string status = 4;
-    int32 index = 5;
-    int32 total = 6;
-    float execution_time = 7;
-    map<string, string> cfg = 8;
+    NodeInfo node_info = 1;
+    string description = 2;
+    string status = 3;
+    int32 index = 4;
+    int32 total = 5;
+    float execution_time = 6;
+    map<string, string> cfg = 7;
 }
 
 // Q016 - 616
 message LogSeedResult {
-    EventInfo info = 1;
-    NodeInfo node_info = 2;
-    string status = 3;
-    string result_message = 4;
-    int32 index = 5;
-    int32 total = 6;
-    float execution_time = 7;
-    string schema = 8;
-    string relation = 9;
+    NodeInfo node_info = 1;
+    string status = 2;
+    string result_message = 3;
+    int32 index = 4;
+    int32 total = 5;
+    float execution_time = 6;
+    string schema = 7;
+    string relation = 8;
 }
 
 // Skipped Q017
 
 // Q018 - 618
 message LogFreshnessResult {
-    EventInfo info = 1;
-    string status = 2;
-    NodeInfo node_info = 3;
-    int32 index = 4;
-    int32 total = 5;
-    float execution_time = 6;
-    string source_name = 7;
-    string table_name = 8;
+    string status = 1;
+    NodeInfo node_info = 2;
+    int32 index = 3;
+    int32 total = 4;
+    float execution_time = 5;
+    string source_name = 6;
+    string table_name = 7;
 }
 
 
@@ -1255,124 +1323,107 @@ message LogFreshnessResult {
 
 // Q022 - 622
 message LogCancelLine {
-    EventInfo info = 1;
-    string conn_name = 2;
+    string conn_name = 1;
 }
 
 // Q023 - 623
 message DefaultSelector {
-    EventInfo info = 1;
-    string name = 2;
+    string name = 1;
 }
 
 // Q024 - 624
 message NodeStart {
-    EventInfo info = 1;
-    NodeInfo node_info = 2;
-    string unique_id = 3;
+    NodeInfo node_info = 1;
+    string unique_id = 2;
 }
 
 // Q025 - 625
 message NodeFinished {
-    EventInfo info = 1;
-    NodeInfo node_info = 2;
-    string unique_id = 3;
-    RunResultMsg run_result = 4;
+    NodeInfo node_info = 1;
+    string unique_id = 2;
+    RunResultMsg run_result = 3;
 }
 
 // Q026 - 626
 message QueryCancelationUnsupported {
-    EventInfo info = 1;
-    string type = 2;
+    string type = 1;
 }
 
 // Q027 - 627
 message ConcurrencyLine {
-    EventInfo info = 1;
-    int32 num_threads = 2;
-    string target_name = 3;
+    int32 num_threads = 1;
+    string target_name = 2;
 }
 
 // Q028 - 628
 message CompilingNode {
-    EventInfo info = 1;
-    string unique_id = 2;
+    string unique_id = 1;
 }
 
 // Q029 - 629
 message WritingInjectedSQLForNode {
-    EventInfo info = 1;
-    string unique_id = 2;
+    string unique_id = 1;
 }
 
 // Q030 - 630
 message NodeCompiling {
-    EventInfo info = 1;
-    NodeInfo node_info = 2;
-    string unique_id = 3;
+    NodeInfo node_info = 1;
+    string unique_id = 2;
 }
 
 // Q031 - 631
 message NodeExecuting {
-    EventInfo info = 1;
-    NodeInfo node_info = 2;
-    string unique_id = 3;
+    NodeInfo node_info = 1;
+    string unique_id = 2;
 }
 
 // Q032 - 632
 message LogHookStartLine {
-    EventInfo info = 1;
-    NodeInfo node_info = 2;
-    string statement = 3;
-    int32 index = 4;
-    int32 total = 5;
+    NodeInfo node_info = 1;
+    string statement = 2;
+    int32 index = 3;
+    int32 total = 4;
 }
 
 // Q033 - 633
 message LogHookEndLine {
-    EventInfo info = 1;
-    NodeInfo node_info = 2;
-    string statement = 3;
-    string status = 4;
-    int32 index = 5;
-    int32 total = 6;
-    float execution_time = 7;
+    NodeInfo node_info = 1;
+    string statement = 2;
+    string status = 3;
+    int32 index = 4;
+    int32 total = 5;
+    float execution_time = 6;
 }
 
 // Q034 - 634
 message SkippingDetails {
-    EventInfo info = 1;
-    NodeInfo node_info = 2;
-    string resource_type = 3;
-    string schema = 4;
-    string node_name = 5;
-    int32 index = 6;
-    int32 total = 7;
+    NodeInfo node_info = 1;
+    string resource_type = 2;
+    string schema = 3;
+    string node_name = 4;
+    int32 index = 5;
+    int32 total = 6;
 }
 
 // Q035 - 635
 message NothingToDo {
-    EventInfo info = 1;
 }
 
 // Q036 - 636
 message RunningOperationUncaughtError {
-    EventInfo info = 1;
     string exc = 2;
 }
 
 // Q037 - 637
 message EndRunResult {
-    EventInfo info = 1;
-    repeated RunResultMsg results = 2;
-    float elapsed_time = 3;
-    google.protobuf.Timestamp generated_at = 4;
-    bool success = 5;
+    repeated RunResultMsg results = 1;
+    float elapsed_time = 2;
+    google.protobuf.Timestamp generated_at = 3;
+    bool success = 4;
 }
 
 // Q038 - 638
 message NoNodesSelected {
-    EventInfo info = 1;
 }
 
 // W - Node testing - 7
@@ -1381,330 +1432,277 @@ message NoNodesSelected {
 
 // W002 - 702
 message CatchableExceptionOnRun {
-    EventInfo info = 1;
-    string exc = 2;
-    string exc_info = 3;
+    string exc = 1;
+    string exc_info = 2;
 }
 
 // W003 - 703
 message InternalExceptionOnRun {
-    EventInfo info = 1;
-    string build_path = 2;
-    string exc = 3;
+    string build_path = 1;
+    string exc = 2;
 }
 
 // W004 - 704
 message GenericExceptionOnRun {
-    EventInfo info = 1;
-    string build_path = 2;
-    string unique_id = 3;
-    string exc = 4;
+    string build_path = 1;
+    string unique_id = 2;
+    string exc = 3;
 }
 
 // W005 - 705
 message NodeConnectionReleaseError {
-    EventInfo info = 1;
-    string node_name = 2;
-    string exc = 3;
-    string exc_info = 4;
+    string node_name = 1;
+    string exc = 2;
+    string exc_info = 3;
 }
 
 // W006 - 706
 message FoundStats {
-    EventInfo info = 1;
-    string stat_line = 2;
+    string stat_line = 1;
 }
 
 // Z - Misc - 8
 
 // Z001 - 801
 message MainKeyboardInterrupt {
-    EventInfo info = 1;
 }
 
 // Z002 - 802
 message MainEncounteredError {
-    EventInfo info = 1;
-    string exc = 2;
+    string exc = 1;
 }
 
 // Z003 - 803
 message MainStackTrace {
-    EventInfo info = 1;
-    string stack_trace = 2;
+    string stack_trace = 1;
 }
 
 // Z004 - 804
 message SystemErrorRetrievingModTime {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // Z005 - 805
 message SystemCouldNotWrite {
-    EventInfo info = 1;
-    string path = 2;
-    string reason = 3;
-    string exc = 4;
+    string path = 1;
+    string reason = 2;
+    string exc = 3;
 }
 
 // Z006 - 806
 message SystemExecutingCmd {
-    EventInfo info = 1;
-    repeated string cmd = 2;
+    repeated string cmd = 1;
 }
 
 // Z007 - 807
 message SystemStdOutMsg {
-    EventInfo info = 1;
-    bytes bmsg = 2;
+    bytes bmsg = 1;
 }
 
 // Z008 - 808
 message SystemStdErrMsg {
-    EventInfo info = 1;
-    bytes bmsg = 2;
+    bytes bmsg = 1;
 }
 
 // Z009 - 809
 message SystemReportReturnCode {
-    EventInfo info = 1;
-    int32 returncode = 2;
+    int32 returncode = 1;
 }
 
 // Z010 - 810
 message TimingInfoCollected {
-    EventInfo info = 1;
 }
 
 // Z011 - 811
 message LogDebugStackTrace {
-    EventInfo info = 1;
-    string exc_info = 2;
+    string exc_info = 1;
 }
 
 // Z012 - 812
 message CheckCleanPath {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // Z013 - 813
 message ConfirmCleanPath {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // Z014 - 814
 message ProtectedCleanPath {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // Z015 - 815
 message FinishedCleanPaths {
-    EventInfo info = 1;
 }
 
 // Z016 - 816
 message OpenCommand {
-    EventInfo info = 1;
-    string open_cmd = 2;
-    string profiles_dir = 3;
+    string open_cmd = 1;
+    string profiles_dir = 2;
 }
 
 // Z017 - 817
 message EmptyLine {
-    EventInfo info = 1;
 }
 
 // Z018 - 818
 message ServingDocsPort {
-    EventInfo info = 1;
-    string address = 2;
-    int32 port = 3;
+    string address = 1;
+    int32 port = 2;
 }
 
 // Z019 - 819
 message ServingDocsAccessInfo {
-    EventInfo info = 1;
-    string port = 2;
+    string port = 1;
 }
 
 // Z020 - 820
 message ServingDocsExitInfo {
-    EventInfo info = 1;
 }
 
 // Z021 - 821
 message RunResultWarning {
-    EventInfo info = 1;
-    string resource_type = 2;
-    string node_name = 3;
-    string path = 4;
+    string resource_type = 1;
+    string node_name = 2;
+    string path = 3;
 }
 
 // Z022 - 822
 message RunResultFailure {
-    EventInfo info = 1;
-    string resource_type = 2;
-    string node_name = 3;
-    string path = 4;
+    string resource_type = 1;
+    string node_name = 2;
+    string path = 3;
 }
 
 // Z023 - 823
 message StatsLine {
-    EventInfo info = 1;
-    map<string, int32> stats = 2;
+    map<string, int32> stats = 1;
 }
 
 // Z024 - 824
 message RunResultError {
-    EventInfo info = 1;
-    string msg = 2;
+    string msg = 1;
 }
 
 // Z025 - 825
 message RunResultErrorNoMessage {
-    EventInfo info = 1;
-    string status = 2;
+    string status = 1;
 }
 
 // Z026 - 826
 message SQLCompiledPath {
-    EventInfo info = 1;
-    string path = 2;
+    string path = 1;
 }
 
 // Z027 - 827
 message CheckNodeTestFailure {
-    EventInfo info = 1;
-    string relation_name = 2;
+    string relation_name = 1;
 }
 
 // Z028 - 828
 message FirstRunResultError {
-    EventInfo info = 1;
-    string msg = 2;
+    string msg = 1;
 }
 
 // Z029 - 829
 message AfterFirstRunResultError {
-    EventInfo info = 1;
-    string msg = 2;
+    string msg = 1;
 }
 
 // Z030 - 830
 message EndOfRunSummary {
-    EventInfo info = 1;
-    int32 num_errors = 2;
-    int32 num_warnings = 3;
-    bool keyboard_interrupt = 4;
+    int32 num_errors = 1;
+    int32 num_warnings = 2;
+    bool keyboard_interrupt = 3;
 }
 
 // Skipped Z031, Z032, Z033
 
 // Z034 - 834
 message LogSkipBecauseError {
-    EventInfo info = 1;
-    string schema = 2;
-    string relation = 3;
-    int32 index = 4;
-    int32 total = 5;
+    string schema = 1;
+    string relation = 2;
+    int32 index = 3;
+    int32 total = 4;
 }
 
 // Z036 - 836
 message EnsureGitInstalled {
-    EventInfo info = 1;
 }
 
 // Z037 - 837
 message DepsCreatingLocalSymlink {
-    EventInfo info = 1;
 }
 
 // Z038 - 838
 message DepsSymlinkNotAvailable {
-    EventInfo info = 1;
 }
 
 // Z039 - 839
 message DisableTracking {
-    EventInfo info = 1;
 }
 
 // Z040 - 840
 message SendingEvent {
-    EventInfo info = 1;
-    string kwargs = 2;
+    string kwargs = 1;
 }
 
 // Z041 - 841
 message SendEventFailure {
-    EventInfo info = 1;
 }
 
 // Z042 - 842
 message FlushEvents {
-    EventInfo info = 1;
 }
 
 // Z043 - 843
 message FlushEventsFailure {
-    EventInfo info = 1;
 }
 
 // Z044 - 844
 message TrackingInitializeFailure {
-    EventInfo info = 1;
-    string exc_info = 2;
+    string exc_info = 1;
 }
 
 // Z045 - 845
 message EventBufferFull {
-    EventInfo info = 1;
 }
 
 // Z046 - 846
 message RunResultWarningMessage {
-    EventInfo info = 1;
-    string msg = 2;
+    string msg = 1;
 }
 
 // T - Integration tests - 9
 
 // T001 - 901
 message IntegrationTestInfo {
-    EventInfo info = 1;
-    string msg = 2;
+    string msg = 1;
 }
 
 // T002 - 902
 message IntegrationTestDebug {
-    EventInfo info = 1;
-    string msg = 2;
+    string msg = 1;
 }
 
 // T003 - 903
 message IntegrationTestWarn {
-    EventInfo info = 1;
-    string msg = 2;
+    string msg = 1;
 }
 
 // T004 - 904
 message IntegrationTestError {
-    EventInfo info = 1;
-    string msg = 2;
+    string msg = 1;
 }
 
 // T005 - 905
 message IntegrationTestException {
-    EventInfo info = 1;
-    string msg = 2;
+    string msg = 1;
 }
 
 // T006 - 906
 message UnitTestInfo {
-    EventInfo info = 1;
-    string msg = 2;
+    string msg = 1;
 }

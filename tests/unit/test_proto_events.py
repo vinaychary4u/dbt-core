@@ -19,10 +19,11 @@ from dbt.version import installed
 event_keys = {"code", "msg", "level", "invocation_id", "pid", "thread", "ts", "extra", "name"}
 
 
-def test_events():
+def test_events(monkeypatch):
 
     # Set an environment variable to ensure that the "extra" attribute shows up
-    os.environ["DBT_ENV_CUSTOM_ENV_one"] = "1"
+    monkeypatch.setenv("DBT_ENV_CUSTOM_ENV_env_key", "env_value")
+    reset_metadata_vars()
 
     # A001 event
     detail_event = MainReportVersion(version=str(installed), log_version=LOG_VERSION)
@@ -54,14 +55,14 @@ def test_events():
     assert set(event_dict.keys()) == event_keys | {"main_report_args"}
     assert event_json
     assert event.code == "A002"
-    del os.environ["DBT_ENV_CUSTOM_ENV_one"]
     reset_metadata_vars()
 
 
-def test_exception_events():
+def test_exception_events(monkeypatch):
 
     # Set an environment variable to ensure that the "extra" attribute shows up
-    os.environ["DBT_ENV_CUSTOM_ENV_one"] = "1"
+    monkeypatch.setenv("DBT_ENV_CUSTOM_ENV_env_key", "env_value")
+    reset_metadata_vars()
 
     detail_event = RollbackFailed(conn_name="test", exc_info="something failed")
     event = create_event(detail_event)
@@ -93,7 +94,6 @@ def test_exception_events():
     assert set(event_dict.keys()) == event_keys | {"main_encountered_error"}
     assert event_json
     assert event.code == "Z002"
-    del os.environ["DBT_ENV_CUSTOM_ENV_one"]
     reset_metadata_vars()
 
 
@@ -121,7 +121,6 @@ def test_node_info_events():
 def test_extra_dict_on_event(monkeypatch):
 
     monkeypatch.setenv("DBT_ENV_CUSTOM_ENV_env_key", "env_value")
-
     reset_metadata_vars()
 
     detail_event = MainReportVersion(version=str(installed), log_version=LOG_VERSION)

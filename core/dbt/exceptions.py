@@ -1011,6 +1011,12 @@ def warn(msg, node=None):
     return ""
 
 
+# TODO: remove this later as Sung created this to avoid errors with running dbt-snowflake==1.3.0
+def warn_or_error(msg, node=None):
+    dbt.events.functions.warn_or_error(GeneralMacroWarning(msg=msg), node=node)
+    return ""
+
+
 # Update this when a new function should be added to the
 # dbt context's `exceptions` key!
 CONTEXT_EXPORTS = {

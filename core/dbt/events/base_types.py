@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import os
 import threading
 from datetime import datetime
-import dbt.events.proto_types as pt
+import dbt.events.proto_event as pe
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # These base types define the _required structure_ for the concrete event #
@@ -57,7 +57,7 @@ class BaseEvent:
 
 # Create with level, msg,
 @dataclass
-class Event(pt.Event):
+class Event(pe.Event):
     def __post_init__(self):
         super().__post_init__()
         self.invocation_id = get_invocation_id()

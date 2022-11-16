@@ -45,8 +45,8 @@ def get_thread_name() -> str:
 
 
 @dataclass
-class BaseEvent:
-    """BaseEvent for proto message generated python events"""
+class DetailEvent:
+    """DetailEvent for proto message generated python events"""
 
     def level_tag(self) -> str:
         return "debug"
@@ -71,12 +71,12 @@ class Event(pe.Event):
 # DynamicLevel requires that the level be supplied on the
 # fire_event call using the "level" keyword parameter
 @dataclass  # type: ignore[misc]
-class DynamicLevel(BaseEvent):
+class DynamicLevel(DetailEvent):
     pass
 
 
 @dataclass
-class TestLevel(BaseEvent):
+class TestLevel(DetailEvent):
     __test__ = False
 
     def level_tag(self) -> str:
@@ -84,25 +84,25 @@ class TestLevel(BaseEvent):
 
 
 @dataclass  # type: ignore[misc]
-class DebugLevel(BaseEvent):
+class DebugLevel(DetailEvent):
     def level_tag(self) -> str:
         return "debug"
 
 
 @dataclass  # type: ignore[misc]
-class InfoLevel(BaseEvent):
+class InfoLevel(DetailEvent):
     def level_tag(self) -> str:
         return "info"
 
 
 @dataclass  # type: ignore[misc]
-class WarnLevel(BaseEvent):
+class WarnLevel(DetailEvent):
     def level_tag(self) -> str:
         return "warn"
 
 
 @dataclass  # type: ignore[misc]
-class ErrorLevel(BaseEvent):
+class ErrorLevel(DetailEvent):
     def level_tag(self) -> str:
         return "error"
 

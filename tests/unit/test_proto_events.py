@@ -8,52 +8,54 @@ from dbt.events.types import (
     LogStartLine,
     LogTestResult,
 )
-from dbt.events.functions import event_to_dict, LOG_VERSION, reset_metadata_vars, info
-from dbt.events import proto_types as pl
+from dbt.events.base_types import Event
+from dbt.events.functions import event_to_dict, LOG_VERSION, reset_metadata_vars, create_event
+from dbt.events import proto_types as pt
+from dbt.events import proto_event as pe
 from dbt.version import installed
 
 
-info_keys = {"name", "code", "msg", "level", "invocation_id", "pid", "thread", "ts", "extra"}
+event_keys = {"code", "msg", "level", "invocation_id", "pid", "thread", "ts", "extra"}
 
 
 def test_events():
 
     # A001 event
-    event = MainReportVersion(version=str(installed), log_version=LOG_VERSION)
+    detail_event = MainReportVersion(version=str(installed), log_version=LOG_VERSION)
+    event = create_event(detail_event)
     event_dict = event_to_dict(event)
+    print(f"--- event_dict: {event_dict}")
     event_json = event.to_json()
     serialized = bytes(event)
     assert "Running with dbt=" in str(serialized)
-    assert set(event_dict.keys()) == {"version", "info", "log_version"}
-    assert set(event_dict["info"].keys()) == info_keys
+    assert set(event_dict["main_report_version"].keys()) == {"version", "log_version"}
+    assert set(event_dict.keys()) == event_keys | {"main_report_version"}
     assert event_json
-    assert event.info.code == "A001"
+    assert event.code == "A001"
 
-    # Extract EventInfo from serialized message
-    generic_event = pl.GenericMessage().parse(serialized)
-    assert generic_event.info.code == "A001"
-    # get the message class for the real message from the generic message
-    message_class = getattr(sys.modules["dbt.events.proto_types"], generic_event.info.name)
-    new_event = message_class().parse(serialized)
-    assert new_event.info.code == event.info.code
-    assert new_event.version == event.version
+    # Extract event from serialized message
+    event = pe.Event().parse(serialized)
+    assert event.code == "A001"
+    # look at the detail message
 
     # A002 event
-    event = MainReportArgs(args={"one": "1", "two": "2"})
+    detail_event = MainReportArgs(args={"one": "1", "two": "2"})
+    event = create_event(detail_event)
     event_dict = event_to_dict(event)
     event_json = event.to_json()
 
-    assert set(event_dict.keys()) == {"info", "args"}
-    assert set(event_dict["info"].keys()) == info_keys
+    assert set(event_dict["main_report_args"].keys()) == {"args"}
+    assert set(event_dict.keys()) == event_keys | {"main_report_args"}
     assert event_json
-    assert event.info.code == "A002"
+    assert event.code == "A002"
 
 
 def test_exception_events():
-    event = RollbackFailed(conn_name="test", exc_info="something failed")
+    detail_event = RollbackFailed(conn_name="test", exc_info="something failed")
+    event = create_event(detail_event)
     event_dict = event_to_dict(event)
     event_json = event.to_json()
-    assert set(event_dict.keys()) == {"info", "conn_name", "exc_info"}
+    assert set(event_dict["rollback_failed"].keys()) == {"conn_name", "exc_info"}
     assert set(event_dict["info"].keys()) == info_keys
     assert event_json
     assert event.info.code == "E009"
@@ -94,7 +96,7 @@ def test_node_info_events():
         description="some description",
         index=123,
         total=111,
-        node_info=pl.NodeInfo(**node_info),
+        node_info=pt.NodeInfo(**node_info),
     )
     assert event
     assert event.node_info.node_path == "some_path"
@@ -113,7 +115,7 @@ def test_extra_dict_on_event(monkeypatch):
     serialized = bytes(event)
 
     # Extract EventInfo from serialized message
-    generic_event = pl.GenericMessage().parse(serialized)
+    generic_event = pt.GenericMessage().parse(serialized)
     assert generic_event.info.code == "A001"
     # get the message class for the real message from the generic message
     message_class = getattr(sys.modules["dbt.events.proto_types"], generic_event.info.name)

@@ -1,7 +1,7 @@
 import betterproto
 from colorama import Style
 
-from dbt.events.base_types import NoStdOut, BaseEvent, NoFile, Cache, Event
+from dbt.events.base_types import NoStdOut, DetailEvent, NoFile, Cache, Event
 from dbt.events.types import EventBufferFull, MainReportVersion, EmptyLine
 from dbt.events.helpers import env_secrets, scrub_secrets
 import dbt.flags as flags
@@ -211,7 +211,7 @@ def send_to_logger(l: Union[Logger, logbook.Logger], level: str, log_line: str):
         )
 
 
-def warn_or_error(e: BaseEvent, node=None):
+def warn_or_error(e: DetailEvent, node=None):
     if flags.WARN_ERROR:
         from dbt.exceptions import raise_compiler_error
 
@@ -222,7 +222,7 @@ def warn_or_error(e: BaseEvent, node=None):
 
 # an alternative to fire_event which only creates and logs the event value
 # if the condition is met. Does nothing otherwise.
-def fire_event_if(conditional: bool, lazy_e: Callable[[], BaseEvent]) -> None:
+def fire_event_if(conditional: bool, lazy_e: Callable[[], DetailEvent]) -> None:
     if conditional:
         fire_event(lazy_e())
 
@@ -231,22 +231,15 @@ def fire_event_if(conditional: bool, lazy_e: Callable[[], BaseEvent]) -> None:
 # this is where all the side effects happen branched by event type
 # (i.e. - mutating the event history, printing to stdout, logging
 # to files, etc.)
-def fire_event(e: BaseEvent, level=None) -> None:
+def fire_event(e: DetailEvent, level=None) -> None:
     # skip logs when `--log-cache-events` is not passed
     if isinstance(e, Cache) and not flags.LOG_CACHE_EVENTS:
         return
 
     # Create Event
-    level = level if level else e.level_tag()
-    event = Event(msg=e.message(), level=level)
-    # Add sub-message to event at detail
-    e_name = type(e).__name__
-    attr_name = event_type_to_snake_case(e_name)
-    if hasattr(event, attr_name):
-        setattr(event, attr_name, e)
-    else:
-        raise Exception(f"No attribute found for {e_name}, tried {attr_name}")
+    event = create_event(e, level=level)
 
+    # TODO: should eventually be removed
     add_to_event_history(event)
 
     # backwards compatibility for plugins that require old logger (dbt-rpc)
@@ -276,6 +269,20 @@ def fire_event(e: BaseEvent, level=None) -> None:
         log_line = create_log_line(event)
         if log_line:
             send_to_logger(STDOUT_LOG, level=event.level, log_line=log_line)
+
+
+def create_event(e: DetailEvent, level=None):
+    # Create Event
+    level = level if level else e.level_tag()
+    event = Event(msg=e.message(), level=level)
+    # Add detailed event to event at "detail" group/oneof
+    e_name = type(e).__name__
+    attr_name = event_type_to_snake_case(e_name)
+    if hasattr(event, attr_name):
+        setattr(event, attr_name, e)
+    else:
+        raise Exception(f"No attribute found for {e_name}, tried {attr_name}")
+    return event
 
 
 def event_type_to_snake_case(type_name: str) -> str:

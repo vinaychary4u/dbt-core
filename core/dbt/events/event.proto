@@ -14,7 +14,8 @@ message Event {
     string thread = 5;
     google.protobuf.Timestamp ts = 9;
     string code = 10;
-    map<string, string> extra = 11;
+    string name = 11;
+    map<string, string> extra = 12;
     oneof detail {
         proto_types.MainReportVersion main_report_version = 101;
         proto_types.MainReportArgs main_report_args = 102;

@@ -127,7 +127,10 @@ def event_to_dict(event: Event) -> dict:
     try:
         # We could use to_json here, but it wouldn't sort the keys.
         # The 'to_json' method just does json.dumps on the dict anyway.
-        event_dict = event.to_dict(casing=betterproto.Casing.SNAKE, include_default_values=True)  # type: ignore
+        # Note: we need to have include_default_values set to False here, or we get a mess
+        # in the big oneof list. If we want no defaults for the oneof, but defaults in other
+        # places, we'd have to customize the betterproto to_dict code.
+        event_dict = event.to_dict(casing=betterproto.Casing.SNAKE, include_default_values=False)  # type: ignore
     except AttributeError as exc:
         event_type = type(event).__name__
         raise BaseException(f"type {event_type} is not serializable. {str(exc)}")
@@ -272,16 +275,14 @@ def fire_event(e: DetailEvent, level=None) -> None:
 
 
 def create_event(e: DetailEvent, level=None):
-    # Create Event
-    level = level if level else e.level_tag()
-    event = Event(msg=e.message(), level=level)
-    # Add detailed event to event at "detail" group/oneof
     e_name = type(e).__name__
     attr_name = event_type_to_snake_case(e_name)
-    if hasattr(event, attr_name):
-        setattr(event, attr_name, e)
-    else:
+    if not hasattr(Event, attr_name):
         raise Exception(f"No attribute found for {e_name}, tried {attr_name}")
+    # Create Event
+    level = level if level else e.level_tag()
+    event = Event(msg=e.message(), level=level, code=e.code(), **{attr_name: e})
+    # Add detailed event to event at "detail" group/oneof
     return event
 
 

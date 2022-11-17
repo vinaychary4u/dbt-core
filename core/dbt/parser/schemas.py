@@ -132,6 +132,8 @@ class ParserRef:
         column: Union[HasDocs, UnparsedColumn],
         description: str,
         data_type: Optional[str],
+        constraint: Optional[str],
+        check: Optional[str],
         meta: Dict[str, Any],
     ):
         tags: List[str] = []
@@ -145,6 +147,8 @@ class ParserRef:
             name=column.name,
             description=description,
             data_type=data_type,
+            constraint=constraint,
+            check=check,
             meta=meta,
             tags=tags,
             quote=quote,
@@ -157,8 +161,10 @@ class ParserRef:
         for column in target.columns:
             description = column.description
             data_type = column.data_type
+            constraint = column.constraint
+            check = column.check
             meta = column.meta
-            refs.add(column, description, data_type, meta)
+            refs.add(column, description, data_type, constraint, check, meta)
         return refs
 
 
@@ -311,6 +317,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
             raise CompilationException(msg) from exc
 
         original_name = os.path.basename(target.original_file_path)
+        # print(f"original_name: {original_name}")
         compiled_path = get_pseudo_test_path(builder.compiled_name, original_name)
 
         # fqn is the relative path of the yaml file where this generic test is defined,

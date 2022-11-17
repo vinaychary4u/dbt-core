@@ -30,4 +30,4 @@ class TestCustomVarInLogs:
         _, log_output = run_dbt_and_capture(['--log-format=json', 'deps'],)
         logs = parse_json_logs(log_output)
         for log in logs:
-            assert log['info'].get('extra') == {"SOME_VAR": "value"}
+            assert log.get('extra') == {"SOME_VAR": "value"}

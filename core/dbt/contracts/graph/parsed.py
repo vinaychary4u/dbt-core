@@ -17,6 +17,7 @@ from typing import (
 
 from dbt.dataclass_schema import dbtClassMixin, ExtensibleDbtClassMixin
 
+from dbt.exceptions import CompilationException
 from dbt.clients.system import write_file
 from dbt.contracts.files import FileHash
 from dbt.contracts.graph.unparsed import (
@@ -222,7 +223,30 @@ class ParsedNodeDefaults(NodeInfoMixin, ParsedNodeMandatory):
     created_at: float = field(default_factory=lambda: time.time())
     config_call_dict: Dict[str, Any] = field(default_factory=dict)
 
+    def constraints_validator(self):
+        node_errors = {}
+        # iterate through the columns and check if the constraints are valid
+        if self.resource_type == "model" and self.config.constraints_enabled is True:
+            if self.config.materialized != "table":
+                node_errors[self.original_file_path] = [
+                    {"materialization": self.config.materialized}
+                ]
+
+            for column, column_info in self.columns.items():
+                if column_info.data_type is None:
+                    node_errors[self.original_file_path].append(
+                        {"column_name": column, "data_type": column_info.data_type}
+                    )
+
+        if node_errors:
+            raise CompilationException(
+                f"Only the table materialization is supported for constraints.\nPlease set constraints_enabled to false or change materialization \nto table for all dbt models in scope. data_type must NOT be null. \n{node_errors}"
+            )
+
+    # TODO: this is where we see the columninfo object display the data_type and constraint values
     def write_node(self, target_path: str, subdirectory: str, payload: str):
+        self.constraints_validator()
+
         if os.path.basename(self.path) == os.path.basename(self.original_file_path):
             # One-to-one relationship of nodes to files.
             path = self.original_file_path

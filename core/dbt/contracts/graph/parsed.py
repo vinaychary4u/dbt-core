@@ -224,24 +224,21 @@ class ParsedNodeDefaults(NodeInfoMixin, ParsedNodeMandatory):
     config_call_dict: Dict[str, Any] = field(default_factory=dict)
 
     def constraints_validator(self):
-        node_errors = {}
+        materialization_error = {}
+        data_type_errors = {}
         # iterate through the columns and check if the constraints are valid
         if self.resource_type == "model" and self.config.constraints_enabled is True:
             if self.config.materialized != "table":
                 materialization_error = {"materialization": self.config.materialized}
-                node_errors[self.original_file_path] = materialization_error
 
             for column, column_info in self.columns.items():
                 if column_info.data_type is None:
                     data_type_error = {column: {"data_type": column_info.data_type}}
-                    if node_errors:
-                        node_errors[self.original_file_path].update(data_type_error)
-                    else:
-                        node_errors[self.original_file_path] = data_type_error
+                    data_type_errors.update(data_type_error)
 
-        if node_errors:
+        if materialization_error or data_type_errors:
             raise CompilationException(
-                f"Only the table materialization is supported for constraints.\nPlease set constraints_enabled to false or change materialization \nto table for all dbt models in scope. data_type must NOT be null. \nErrors: {node_errors}"
+                f"Only the table materialization is supported for constraints and data_type values must NOT be null or blank.\n  Materialization Errors: {materialization_error}\n  Data Type Errors: {data_type_errors}"
             )
 
     # TODO: this is where we see the columninfo object display the data_type and constraint values

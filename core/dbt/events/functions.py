@@ -139,7 +139,7 @@ def event_to_dict(event: Event) -> dict:
         raise BaseException(f"type {event_type} is not serializable. {str(exc)}")
 
     # Kludge warning: create a new dictionary with only the relevant keys. In the
-    # future we may create our own version of betterproto's to_dict()
+    # future we may create our own version of betterproto's to_dict(). See github issue #6285.
     attr_name = event_type_to_snake_case(event.name)
     dict_keys = Event.dict_keys() + [attr_name]
     new_event_dict = {key: event_dict[key] for key in dict_keys}

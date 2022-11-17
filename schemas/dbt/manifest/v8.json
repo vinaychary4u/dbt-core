@@ -834,6 +834,26 @@
             }
           ]
         },
+        "constraint": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "check": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "quote": {
           "oneOf": [
             {
@@ -853,7 +873,7 @@
         }
       },
       "additionalProperties": true,
-      "description": "ColumnInfo(name: str, description: str = '', meta: Dict[str, Any] = <factory>, data_type: Optional[str] = None, quote: Optional[bool] = None, tags: List[str] = <factory>, _extra: Dict[str, Any] = <factory>)"
+      "description": "ColumnInfo(name: str, description: str = '', meta: Dict[str, Any] = <factory>, data_type: Optional[str] = None, constraint: Optional[str] = None, check: Optional[str] = None, quote: Optional[bool] = None, tags: List[str] = <factory>, _extra: Dict[str, Any] = <factory>)"
     },
     "InjectedCTE": {
       "type": "object",

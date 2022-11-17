@@ -446,6 +446,14 @@ class NodeConfig(NodeAndTestConfig):
         default_factory=Docs,
         metadata=MergeBehavior.Update.meta(),
     )
+    # TODO: add new config options here. Must be placed here and not its own data class as this is evolving the existing nodeconfig
+    constraints_enabled: Optional[bool] = False
+
+    # TODO: this won't work because this is a data class for NODE CONFIGS, not column specific configs related to a node
+    columns: Dict[str, Any] = field(
+        default_factory=dict,
+        metadata=MergeBehavior.Update.meta(),
+    )
 
     # we validate that node_color has a suitable value to prevent dbt-docs from crashing
     def __post_init__(self):
@@ -456,6 +464,12 @@ class NodeConfig(NodeAndTestConfig):
                     f"Invalid color name for docs.node_color: {node_color}. "
                     "It is neither a valid HTML color name nor a valid HEX code."
                 )
+        if self.constraints_enabled is True and self.materialized != "table":
+            raise CompilationException(
+                "Only the table materialization is supported for constraints. Please set constraints_enabled to false or change materialization to table."
+            )
+            # print(f"self.constraints_enabled: {self.constraints_enabled}")
+            # print(f"self.columns: {self.columns}")
 
     @classmethod
     def __pre_deserialize__(cls, data):

@@ -585,6 +585,10 @@
           "type": "boolean",
           "default": true
         },
+        "constraints_enabled": {
+          "type": "boolean",
+          "default": false
+        },
         "alias": {
           "oneOf": [
             {

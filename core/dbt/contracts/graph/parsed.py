@@ -225,20 +225,25 @@ class ParsedNodeDefaults(NodeInfoMixin, ParsedNodeMandatory):
 
     def constraints_validator(self):
         materialization_error = {}
+        language_error = {}
         data_type_errors = {}
-        # iterate through the columns and check if the constraints are valid
+
         if self.resource_type == "model" and self.config.constraints_enabled is True:
             if self.config.materialized != "table":
                 materialization_error = {"materialization": self.config.materialized}
+
+            language = str(self.language)
+            if language != "sql":
+                language_error = {"language": language}
 
             for column, column_info in self.columns.items():
                 if column_info.data_type is None:
                     data_type_error = {column: {"data_type": column_info.data_type}}
                     data_type_errors.update(data_type_error)
 
-        if materialization_error or data_type_errors:
+        if materialization_error or language_error or data_type_errors:
             raise CompilationException(
-                f"Only the table materialization is supported for constraints and data_type values must NOT be null or blank.\n  Materialization Errors: {materialization_error}\n  Data Type Errors: {data_type_errors}"
+                f"Only the SQL table materialization is supported for constraints and data_type values must NOT be null or blank.\n  Materialization Error: {materialization_error}\n  Language Error: {language_error}\n  Data Type Errors: {data_type_errors}"
             )
 
     # TODO: this is where we see the columninfo object display the data_type and constraint values

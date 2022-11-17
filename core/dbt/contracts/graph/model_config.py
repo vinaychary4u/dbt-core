@@ -466,7 +466,7 @@ class NodeConfig(NodeAndTestConfig):
                 )
         if self.constraints_enabled is True and self.materialized != "table":
             raise CompilationException(
-                "Only the table materialization is supported for constraints. Please set constraints_enabled to false or change materialization to table."
+                "Only the table materialization is supported for constraints. Please set constraints_enabled to false or change materialization to table for all dbt models in scope."
             )
             # print(f"self.constraints_enabled: {self.constraints_enabled}")
             # print(f"self.columns: {self.columns}")

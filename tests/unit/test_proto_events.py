@@ -7,26 +7,22 @@ from dbt.events.types import (
     LogStartLine,
     LogTestResult,
 )
-from dbt.events.functions import event_to_dict, LOG_VERSION, reset_metadata_vars, create_event
+from dbt.events.functions import event_to_dict, LOG_VERSION, reset_metadata_vars, create_event, event_to_json
 from dbt.events import proto_types as pt
 from dbt.events import proto_event as pe
 from dbt.version import installed
 
 
-event_keys = {"code", "msg", "level", "invocation_id", "pid", "thread", "ts", "extra", "name"}
+event_keys = {"code", "msg", "level", "invocation_id", "pid", "thread", "ts", "extra", "name", "category"}
 
 
 def test_events(monkeypatch):
-
-    # Set an environment variable to ensure that the "extra" attribute shows up
-    monkeypatch.setenv("DBT_ENV_CUSTOM_ENV_env_key", "env_value")
-    reset_metadata_vars()
 
     # A001 event
     detail_event = MainReportVersion(version=str(installed), log_version=LOG_VERSION)
     event = create_event(detail_event)
     event_dict = event_to_dict(event)
-    event_json = event.to_json()
+    event_json = event_to_json(event)
     serialized = bytes(event)
     assert "Running with dbt=" in str(serialized)
     assert set(event_dict["main_report_version"].keys()) == {"version", "log_version"}
@@ -45,7 +41,7 @@ def test_events(monkeypatch):
     detail_event = MainReportArgs(args={"one": "1", "two": "2"})
     event = create_event(detail_event)
     event_dict = event_to_dict(event)
-    event_json = event.to_json()
+    event_json = event_to_json(event)
 
     assert set(event_dict["main_report_args"].keys()) == {"args"}
     assert set(event_dict.keys()) == event_keys | {"main_report_args"}
@@ -63,7 +59,7 @@ def test_exception_events(monkeypatch):
     detail_event = RollbackFailed(conn_name="test", exc_info="something failed")
     event = create_event(detail_event)
     event_dict = event_to_dict(event)
-    event_json = event.to_json()
+    event_json = event_to_json(event)
     assert set(event_dict["rollback_failed"].keys()) == {"conn_name", "exc_info"}
     assert set(event_dict.keys()) == event_keys | {"rollback_failed"}
     assert event_json
@@ -72,7 +68,7 @@ def test_exception_events(monkeypatch):
     detail_event = PluginLoadError(exc_info="something failed")
     event = create_event(detail_event)
     event_dict = event_to_dict(event)
-    event_json = event.to_json()
+    event_json = event_to_json(event)
     assert set(event_dict["plugin_load_error"].keys()) == {"exc_info"}
     assert set(event_dict.keys()) == event_keys | {"plugin_load_error"}
     assert event_json
@@ -84,7 +80,7 @@ def test_exception_events(monkeypatch):
     detail_event = MainEncounteredError(exc="Rollback failed")
     event = create_event(detail_event)
     event_dict = event_to_dict(event)
-    event_json = event.to_json()
+    event_json = event_to_json(event)
 
     assert set(event_dict["main_encountered_error"].keys()) == {"exc"}
     assert set(event_dict.keys()) == event_keys | {"main_encountered_error"}

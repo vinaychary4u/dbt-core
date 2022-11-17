@@ -118,23 +118,32 @@ def event_to_json(
     event: Event,
 ) -> str:
     event_dict = event_to_dict(event)
-    raw_log_line = json.dumps(event_dict, sort_keys=True)
+    raw_log_line = json.dumps(event_dict)
     return raw_log_line
 
 
 def event_to_dict(event: Event) -> dict:
+    """This creates a dictionary using the betterproto to_dict, but removing
+    all of the extra oneof detail events. We need defaults for our json
+    logs, but can't have the multiple detail attributes"""
     event_dict = dict()
     try:
         # We could use to_json here, but it wouldn't sort the keys.
         # The 'to_json' method just does json.dumps on the dict anyway.
-        # Note: we need to have include_default_values set to False here, or we get a mess
-        # in the big oneof list. If we want no defaults for the oneof, but defaults in other
-        # places, we'd have to customize the betterproto to_dict code.
-        event_dict = event.to_dict(casing=betterproto.Casing.SNAKE, include_default_values=False)  # type: ignore
+        # Note: we need to have include_default_values set to True here because we
+        # need defaults in the json log output, but that includes a huge unnecessary
+        # pile of oneof field dictionaries, so we'll have to munge it.
+        event_dict = event.to_dict(casing=betterproto.Casing.SNAKE, include_default_values=True)  # type: ignore
     except AttributeError as exc:
         event_type = type(event).__name__
         raise BaseException(f"type {event_type} is not serializable. {str(exc)}")
-    return event_dict
+
+    # Kludge warning: create a new dictionary with only the relevant keys. In the
+    # future we may create our own version of betterproto's to_dict()
+    attr_name = event_type_to_snake_case(event.name)
+    dict_keys = Event.dict_keys() + [attr_name]
+    new_event_dict = {key: event_dict[key] for key in dict_keys}
+    return new_event_dict
 
 
 # translates an Event to a completely formatted text-based log line
@@ -275,18 +284,21 @@ def fire_event(e: DetailEvent, level=None) -> None:
 
 
 def create_event(e: DetailEvent, level=None):
+    """Takes a DetailEvent and creates an Event"""
     e_name = type(e).__name__
     attr_name = event_type_to_snake_case(e_name)
     if not hasattr(Event, attr_name):
         raise Exception(f"No attribute found for {e_name}, tried {attr_name}")
     # Create Event
     level = level if level else e.level_tag()
-    event = Event(msg=e.message(), level=level, code=e.code())
+    event = Event(msg=e.message(), level=level, code=e.code(), name=e_name)
     setattr(event, attr_name, e)
     return event
 
 
 def event_type_to_snake_case(type_name: str) -> str:
+    """This creates the attribute names from class names in the Event message/class"""
+    # Replace all uppercase words in order to get right snake casing
     type_name = (
         type_name.replace("SQL", "Sql")
         .replace("YAML", "Yaml")

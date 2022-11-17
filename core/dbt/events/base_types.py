@@ -61,6 +61,8 @@ class DetailEvent:
 # Create with level, msg,
 @dataclass
 class Event(pe.Event):
+    """All logging detail events are wrapped in an Event"""
+
     def __post_init__(self):
         super().__post_init__()
         self.invocation_id = get_invocation_id()
@@ -68,7 +70,22 @@ class Event(pe.Event):
         self.ts = datetime.utcnow()
         self.pid = get_pid()
         self.thread = get_thread_name()
-        self.name = type(self).__name__
+
+    @classmethod
+    def dict_keys(cls):
+        """For cleaning the defaults-included output of betterproto to_dict method"""
+        return [
+            "msg",
+            "level",
+            "invocation_id",
+            "pid",
+            "thread",
+            "ts",
+            "code",
+            "name",
+            "category",
+            "extra",
+        ]
 
 
 # DynamicLevel requires that the level be supplied on the

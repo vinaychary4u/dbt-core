@@ -19,11 +19,12 @@ class Event(betterproto.Message):
     invocation_id: str = betterproto.string_field(3)
     pid: int = betterproto.int32_field(4)
     thread: str = betterproto.string_field(5)
-    ts: datetime = betterproto.message_field(9)
-    code: str = betterproto.string_field(10)
-    name: str = betterproto.string_field(11)
+    ts: datetime = betterproto.message_field(6)
+    code: str = betterproto.string_field(7)
+    name: str = betterproto.string_field(8)
+    category: str = betterproto.string_field(9)
     extra: Dict[str, str] = betterproto.map_field(
-        12, betterproto.TYPE_STRING, betterproto.TYPE_STRING
+        10, betterproto.TYPE_STRING, betterproto.TYPE_STRING
     )
     main_report_version: proto_types.MainReportVersion = betterproto.message_field(
         101, group="detail"

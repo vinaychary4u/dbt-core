@@ -177,6 +177,21 @@ def verify_python_model_code(node):
         raise ParsingException("No jinja in python model code is allowed", node=node)
 
 
+# TODO: Do we need to do this?
+# def verify_model_constraints(node):
+#     try:
+#         rendered_model = get_rendered(
+#             node.raw_code,
+#             {},
+#             node,
+#         )
+#         print(rendered_model)
+#         if rendered_model != node.raw_code:
+#             raise ParsingException("")
+#     except (UndefinedMacroException, ParsingException):
+#         raise ParsingException("No jinja in python model code is allowed", node=node)
+
+
 class ModelParser(SimpleSQLParser[ParsedModelNode]):
     def parse_from_dict(self, dct, validate=True) -> ParsedModelNode:
         if validate:

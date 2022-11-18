@@ -180,7 +180,6 @@ class GenericTestBlock(TestBlock[Testable], Generic[Testable]):
         )
 
 
-# TODO: create a ConstraintsBuilder equivalent
 class TestBuilder(Generic[Testable]):
     """An object to hold assorted test settings and perform basic parsing
 
@@ -195,7 +194,6 @@ class TestBuilder(Generic[Testable]):
         r"((?P<test_namespace>([a-zA-Z_][0-9a-zA-Z_]*))\.)?"
         r"(?P<test_name>([a-zA-Z_][0-9a-zA-Z_]*))"
     )
-    # TODO: add config args like: "default", "data_type", "constraint", "check"
     # args in the test entry representing test configs
     CONFIG_ARGS = (
         "severity",

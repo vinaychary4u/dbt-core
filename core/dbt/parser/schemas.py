@@ -174,7 +174,6 @@ def _trimmed(inp: str) -> str:
     return inp[:44] + "..." + inp[-3:]
 
 
-# TODO: I'll likely need to add a ConstraintsBuilder class similar to TestBuilder within SchemaParser. Test Comment
 class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
     def __init__(
         self,
@@ -317,7 +316,6 @@ class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
             raise CompilationException(msg) from exc
 
         original_name = os.path.basename(target.original_file_path)
-        # print(f"original_name: {original_name}")
         compiled_path = get_pseudo_test_path(builder.compiled_name, original_name)
 
         # fqn is the relative path of the yaml file where this generic test is defined,

@@ -24,6 +24,7 @@ import threading
 from typing import Optional, Union, Callable, Dict
 
 from collections import deque
+from copy import deepcopy
 
 LOG_VERSION = 3
 EVENT_HISTORY = None
@@ -142,7 +143,7 @@ def event_to_dict(event: Event) -> dict:
     # future we may create our own version of betterproto's to_dict(). See github issue #6285.
     attr_name = event_type_to_snake_case(event.name)
     dict_keys = Event.dict_keys() + [attr_name]
-    new_event_dict = {key: event_dict[key] for key in dict_keys}
+    new_event_dict = {key: deepcopy(event_dict[key]) for key in dict_keys}
     return new_event_dict
 
 

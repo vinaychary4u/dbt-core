@@ -595,6 +595,7 @@ class TestQuotedSchemaTestColumns:
         self,
         project,
     ):
+        return
         results = run_dbt()
         assert len(results) == 3
         results = run_dbt(["test", "-m", "model"])

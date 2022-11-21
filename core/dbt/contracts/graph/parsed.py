@@ -224,6 +224,7 @@ class ParsedNodeDefaults(NodeInfoMixin, ParsedNodeMandatory):
     unrendered_config: Dict[str, Any] = field(default_factory=dict)
     created_at: float = field(default_factory=lambda: time.time())
     config_call_dict: Dict[str, Any] = field(default_factory=dict)
+    constraints_enabled: bool = False
 
     def constraints_validator(self):
         materialization_error = {}
@@ -245,7 +246,7 @@ class ParsedNodeDefaults(NodeInfoMixin, ParsedNodeMandatory):
 
         if materialization_error or language_error or data_type_errors:
             raise CompilationException(
-                f"Only the SQL table materialization is supported for constraints \ndata_type values must be defined for all columns and NOT be null or blank.\n  Materialization Error: {materialization_error}\n  Language Error: {language_error}\n  Data Type Errors: {data_type_errors}"
+                f"Only the SQL table materialization is supported for constraints. \n`data_type` values must be defined for all columns and NOT be null or blank.\n  Materialization Error: {materialization_error}\n  Language Error: {language_error}\n  Data Type Errors: {data_type_errors}"
             )
 
     # TODO: this is where we see the columninfo object display the data_type and constraint values

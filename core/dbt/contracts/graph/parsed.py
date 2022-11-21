@@ -249,7 +249,6 @@ class ParsedNodeDefaults(NodeInfoMixin, ParsedNodeMandatory):
                 f"Only the SQL table materialization is supported for constraints. \n`data_type` values must be defined for all columns and NOT be null or blank.\n  Materialization Error: {materialization_error}\n  Language Error: {language_error}\n  Data Type Errors: {data_type_errors}"
             )
 
-    # TODO: this is where we see the columninfo object display the data_type and constraint values
     def write_node(self, target_path: str, subdirectory: str, payload: str):
         self.constraints_validator()
 

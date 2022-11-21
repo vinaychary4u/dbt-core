@@ -132,7 +132,7 @@ class ParserRef:
         column: Union[HasDocs, UnparsedColumn],
         description: str,
         data_type: Optional[str],
-        constraint: Optional[str],
+        constraints: Optional[List[str]],
         check: Optional[str],
         meta: Dict[str, Any],
     ):
@@ -147,7 +147,7 @@ class ParserRef:
             name=column.name,
             description=description,
             data_type=data_type,
-            constraint=constraint,
+            constraints=constraints,
             check=check,
             meta=meta,
             tags=tags,
@@ -161,10 +161,10 @@ class ParserRef:
         for column in target.columns:
             description = column.description
             data_type = column.data_type
-            constraint = column.constraint
+            constraints = column.constraints
             check = column.check
             meta = column.meta
-            refs.add(column, description, data_type, constraint, check, meta)
+            refs.add(column, description, data_type, constraints, check, meta)
         return refs
 
 

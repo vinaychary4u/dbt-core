@@ -834,13 +834,14 @@
             }
           ]
         },
-        "constraint": {
+        "constraints": {
           "oneOf": [
             {
-              "type": "string"
-            },
-            {
-              "type": "null"
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
             }
           ]
         },
@@ -873,7 +874,7 @@
         }
       },
       "additionalProperties": true,
-      "description": "ColumnInfo(name: str, description: str = '', meta: Dict[str, Any] = <factory>, data_type: Optional[str] = None, constraint: Optional[str] = None, check: Optional[str] = None, quote: Optional[bool] = None, tags: List[str] = <factory>, _extra: Dict[str, Any] = <factory>)"
+      "description": "ColumnInfo(name: str, description: str = '', meta: Dict[str, Any] = <factory>, data_type: Optional[str] = None, constraints: Optional[List[str]] = None, check: Optional[str] = None, quote: Optional[bool] = None, tags: List[str] = <factory>, _extra: Dict[str, Any] = <factory>)"
     },
     "InjectedCTE": {
       "type": "object",

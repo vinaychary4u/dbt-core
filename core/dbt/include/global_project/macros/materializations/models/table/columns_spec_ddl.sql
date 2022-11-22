@@ -6,7 +6,8 @@
     {% for i in user_provided_columns %}
       {% set col = user_provided_columns[i] %}
       {% set constraints = col['constraints'] %}
-      {{ col['name'] }} {{ col['data_type'] }} {% for x in constraints %} {{ x or "" }} {% endfor %} {{ "," if not loop.last }}
+      {% set check = col['check'] %}
+      {{ col['name'] }} {{ col['data_type'] }} {% for x in constraints %} {{ x or "" }} {% endfor %} {% if check -%} check {{ check or "" }} {%- endif %} {{ "," if not loop.last }}
     {% endfor %}
   )
   {% endif %}

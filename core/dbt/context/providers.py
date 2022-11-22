@@ -555,7 +555,7 @@ class ParseMetricResolver(BaseMetricResolver):
     def resolve(self, name: str, package: Optional[str] = None) -> MetricReference:
         self.model.metrics.append(self._repack_args(name, package))
 
-        return MetricReference(name, package)
+        return MetricReference(name, package, self.manifest, self.Relation)
 
 
 class RuntimeMetricResolver(BaseMetricResolver):
@@ -575,7 +575,7 @@ class RuntimeMetricResolver(BaseMetricResolver):
                 target_package=target_package,
             )
 
-        return ResolvedMetricReference(target_metric, self.manifest, self.Relation)
+        return MetricReference(target_metric, self.manifest, self.Relation)
 
 
 # `var` implementations.

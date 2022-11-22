@@ -2,13 +2,23 @@ from dbt.node_types import NodeType
 
 
 class MetricReference(object):
-    def __init__(self, metric_name, package_name=None):
+    def __init__(self, metric_name, package_name=None, manifest=None, Relation=None):
         self.metric_name = metric_name
         self.package_name = package_name
+        self.manifest = manifest
+        self.Relation = Relation
 
     def __str__(self):
         return f"{self.metric_name}"
 
+    @classmethod
+    def parent_metrics(cls, metric_node, manifest):
+        yield metric_node
+
+        for parent_unique_id in metric_node.depends_on.nodes:
+            node = manifest.metrics.get(parent_unique_id)
+            if node and node.resource_type == NodeType.Metric:
+                yield from cls.parent_metrics(node, manifest)
 
 class ResolvedMetricReference(MetricReference):
     """

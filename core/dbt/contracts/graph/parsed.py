@@ -244,9 +244,18 @@ class ParsedNodeDefaults(NodeInfoMixin, ParsedNodeMandatory):
                     data_type_error = {column: {"data_type": column_info.data_type}}
                     data_type_errors.update(data_type_error)
 
+        materialization_error_msg = f"\nMaterialization Error: {materialization_error}"
+        materialization_error_msg_payload = (
+            f"{materialization_error_msg if materialization_error else ''}"
+        )
+        language_error_msg = f"\nLanguage Error: {language_error}"
+        language_error_msg_payload = f"{language_error_msg if language_error else ''}"
+        data_type_errors_msg = f"\nData Type Errors: {data_type_errors}"
+        data_type_errors_msg_payload = f"{data_type_errors_msg if data_type_errors else ''}"
+
         if materialization_error or language_error or data_type_errors:
             raise CompilationException(
-                f"Only the SQL table materialization is supported for constraints. \n`data_type` values must be defined for all columns and NOT be null or blank.\n  Materialization Error: {materialization_error}\n  Language Error: {language_error}\n  Data Type Errors: {data_type_errors}"
+                f"Only the SQL table materialization is supported for constraints. \n`data_type` values must be defined for all columns and NOT be null or blank.{materialization_error_msg_payload}{language_error_msg_payload}{data_type_errors_msg_payload}"
             )
 
     def write_node(self, target_path: str, subdirectory: str, payload: str):

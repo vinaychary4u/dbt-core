@@ -1,4 +1,12 @@
-{% macro get_columns_spec_ddl() %}
+{%- macro get_columns_spec_ddl() -%}
+    {{ adapter.dispatch('get_columns_spec_ddl', 'dbt')() }}
+{%- endmacro -%}
+
+{% macro default__get_columns_spec_ddl() -%}
+  {{ return(columns_spec_ddl()) }}
+{%- endmacro %}
+
+{% macro columns_spec_ddl() %}
   {# loop through user_provided_columns to create DDL with data types and constraints #}
   {% if config.get('constraints_enabled', False) %}
     {%- set user_provided_columns = model['columns'] -%}

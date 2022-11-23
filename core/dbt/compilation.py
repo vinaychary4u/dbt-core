@@ -33,6 +33,8 @@ from dbt.node_types import NodeType, ModelLanguage
 from dbt.events.format import pluralize
 import dbt.tracking
 
+from .language_provider import IbisProvider
+
 graph_file_name = "graph.gpickle"
 
 
@@ -369,7 +371,23 @@ class Compiler:
         )
         compiled_node = _compiled_type_for(node).from_dict(data)
 
-        if compiled_node.language == ModelLanguage.python:
+        compiled_node.was_ibis = False
+        if compiled_node.language == ModelLanguage.ibis:
+
+            provider = IbisProvider()
+            context = self._create_node_context(compiled_node, manifest, extra_context)
+            sql = provider.compile(node.raw_code, context)
+
+            # lol
+            compiled_node.compiled_code = sql
+            compiled_node.language = ModelLanguage.sql
+
+            # efficiency hack?
+            # doesn't seem to help much, if at all
+            compiled_node.was_ibis = True
+
+        elif compiled_node.language == ModelLanguage.python:
+
             # TODO could we also 'minify' this code at all? just aesthetic, not functional
 
             # quoating seems like something very specific to sql so far
@@ -390,12 +408,13 @@ class Compiler:
             self.config.quoting = original_quoting
 
         else:
-            context = self._create_node_context(compiled_node, manifest, extra_context)
-            compiled_node.compiled_code = jinja.get_rendered(
-                node.raw_code,
-                context,
-                node,
-            )
+            if not compiled_node.was_ibis:
+                context = self._create_node_context(compiled_node, manifest, extra_context)
+                compiled_node.compiled_code = jinja.get_rendered(
+                    node.raw_code,
+                    context,
+                    node,
+                )
 
         compiled_node.relation_name = self._get_relation_name(node)
 

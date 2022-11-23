@@ -31,9 +31,6 @@ import ast
 from dbt.dataclass_schema import ValidationError
 from dbt.exceptions import ParsingException, validator_error_message, UndefinedMacroException
 
-from .language_provider import IbisProvider
-
-
 dbt_function_key_words = set(["ref", "source", "config", "get"])
 dbt_function_full_names = set(["dbt.ref", "dbt.source", "dbt.config", "dbt.config.get"])
 
@@ -222,21 +219,7 @@ class ModelParser(SimpleSQLParser[ParsedModelNode]):
     def render_update(self, node: ParsedModelNode, config: ContextConfig) -> None:
         self.manifest._parsing_info.static_analysis_path_count += 1
 
-        if node.language == ModelLanguage.ibis:
-            provider = IbisProvider()
-            try:
-                context = self._context_for(node, config)
-                sql = provider.compile(node.raw_code, config)
-                
-                # lol
-                node.raw_code = sql
-                node.language = ModelLanguage.sql
-
-            except ValidationError as exc:
-                msg = validator_error_message(exc)
-                raise ParsingException(msg, node=node) from exc
-
-        elif node.language == ModelLanguage.python:
+        if node.language == ModelLanguage.python:
             try:
                 verify_python_model_code(node)
                 context = self._context_for(node, config)

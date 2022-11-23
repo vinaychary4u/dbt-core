@@ -18,6 +18,6 @@ class IbisProvider(LanguageProvider):
         pass
 
     def compile(self, code: str, context) -> str:
-        from . import _dbt_ibis as dbt_ibis
+        from .dbt_ibis import _dbt_ibis as dbt_ibis
 
-        return dbt_ibis.compile(code)
+        return dbt_ibis.compile(code, context)

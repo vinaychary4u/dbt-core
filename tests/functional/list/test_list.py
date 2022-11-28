@@ -94,6 +94,7 @@ class TestList:
                     "packages": [],
                     "incremental_strategy": None,
                     "docs": {"node_color": None, "show": True},
+                    "constraints_enabled": False
                 },
                 "unique_id": "snapshot.test.my_snapshot",
                 "original_file_path": normalize("snapshots/snapshot.sql"),
@@ -133,6 +134,7 @@ class TestList:
                     "packages": [],
                     "incremental_strategy": None,
                     "docs": {"node_color": None, "show": True},
+                    "constraints_enabled": False
                 },
                 "unique_id": "analysis.test.a",
                 "original_file_path": normalize("analyses/a.sql"),
@@ -173,6 +175,7 @@ class TestList:
                         "packages": [],
                         "incremental_strategy": None,
                         "docs": {"node_color": None, "show": True},
+                        "constraints_enabled": False
                     },
                     "original_file_path": normalize("models/ephemeral.sql"),
                     "unique_id": "model.test.ephemeral",
@@ -207,6 +210,7 @@ class TestList:
                         "packages": [],
                         "incremental_strategy": "delete+insert",
                         "docs": {"node_color": None, "show": True},
+                        "constraints_enabled": False
                     },
                     "original_file_path": normalize("models/incremental.sql"),
                     "unique_id": "model.test.incremental",
@@ -238,6 +242,7 @@ class TestList:
                         "packages": [],
                         "incremental_strategy": None,
                         "docs": {"node_color": None, "show": True},
+                        "constraints_enabled": False
                     },
                     "original_file_path": normalize("models/sub/inner.sql"),
                     "unique_id": "model.test.inner",
@@ -269,6 +274,7 @@ class TestList:
                         "packages": [],
                         "incremental_strategy": None,
                         "docs": {"node_color": None, "show": True},
+                        "constraints_enabled": False
                     },
                     "original_file_path": normalize("models/outer.sql"),
                     "unique_id": "model.test.outer",
@@ -380,6 +386,7 @@ class TestList:
                     "packages": [],
                     "incremental_strategy": None,
                     "docs": {"node_color": None, "show": True},
+                    "constraints_enabled": False,
                 },
                 "unique_id": "seed.test.seed",
                 "original_file_path": normalize("seeds/seed.csv"),

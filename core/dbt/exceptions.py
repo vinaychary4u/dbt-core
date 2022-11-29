@@ -3,12 +3,8 @@ import functools
 from typing import Any, Mapping, NoReturn, Optional
 
 from dbt.events.helpers import env_secrets, scrub_secrets
-<<<<<<< HEAD
 from dbt.events.types import JinjaLogWarning
-=======
-from dbt.events.types import GeneralMacroWarning
 from dbt.exception_messages import get_not_found_or_disabled_msg
->>>>>>> 212c6106e (WIP)
 from dbt.node_types import NodeType
 
 import dbt.dataclass_schema
@@ -925,14 +921,9 @@ def raise_duplicate_alias(
 
 
 def warn(msg, node=None):
-<<<<<<< HEAD
     dbt.events.functions.warn_or_error(JinjaLogWarning(msg=msg), node=node)
     return ""
-=======
-    dbt.events.functions.warn_or_error(GeneralMacroWarning(msg=msg), node=node)
-    return ""  # does it return nothin for a macro reason?
 
->>>>>>> 212c6106e (WIP)
 
 # TODO: importing here just to track things separately
 from dbt.deps.exceptions import raise_dependency_error  # noqa

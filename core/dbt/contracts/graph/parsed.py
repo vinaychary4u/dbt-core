@@ -229,7 +229,7 @@ class ParsedNodeDefaults(NodeInfoMixin, ParsedNodeMandatory):
     def constraints_validator(self):
         materialization_error = {}
         language_error = {}
-        data_type_errors = {}
+        data_type_errors = set()
 
         if self.resource_type == "model" and self.config.constraints_enabled is True:
             if self.config.materialized != "table":
@@ -241,7 +241,7 @@ class ParsedNodeDefaults(NodeInfoMixin, ParsedNodeMandatory):
 
             for column, column_info in self.columns.items():
                 if column_info.data_type is None:
-                    data_type_error = {column: {"data_type": column_info.data_type}}
+                    data_type_error = {column}
                     data_type_errors.update(data_type_error)
 
         materialization_error_msg = f"\nMaterialization Error: {materialization_error}"
@@ -250,7 +250,7 @@ class ParsedNodeDefaults(NodeInfoMixin, ParsedNodeMandatory):
         )
         language_error_msg = f"\nLanguage Error: {language_error}"
         language_error_msg_payload = f"{language_error_msg if language_error else ''}"
-        data_type_errors_msg = f"\nData Type Errors: {data_type_errors}"
+        data_type_errors_msg = f"\nColumns with `data_type` Blank/Null Errors: {data_type_errors}"
         data_type_errors_msg_payload = f"{data_type_errors_msg if data_type_errors else ''}"
 
         if materialization_error or language_error or data_type_errors:

@@ -41,7 +41,7 @@ from dbt.contracts.util import BaseArtifactMetadata, SourceKey, ArtifactMixin, s
 from dbt.dataclass_schema import dbtClassMixin
 from dbt.exceptions import (
     CompilationException,
-    raise_duplicate_resource_name,
+    DuplicateResourceName,
     raise_compiler_error,
 )
 from dbt.helper_types import PathSet
@@ -1237,7 +1237,7 @@ class WritableManifest(ArtifactMixin):
 
 def _check_duplicates(value: BaseNode, src: Mapping[str, BaseNode]):
     if value.unique_id in src:
-        raise_duplicate_resource_name(value, src[value.unique_id])
+        raise DuplicateResourceName(value, src[value.unique_id])
 
 
 K_T = TypeVar("K_T")

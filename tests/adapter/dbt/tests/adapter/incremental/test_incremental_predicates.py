@@ -139,3 +139,16 @@ class BaseIncrementalPredicates:
 
 class TestIncrementalPredicatesDeleteInsert(BaseIncrementalPredicates):
     pass
+
+
+class TestPredicatesDeleteInsert(BaseIncrementalPredicates):
+    @pytest.fixture(scope="class")
+    def project_config_update(self):
+        return {
+            "models": {
+                "+predicates": [
+                    "id != 2"
+                ],
+                "+incremental_strategy": "delete+insert"
+            }
+        }

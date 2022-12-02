@@ -10,9 +10,7 @@ from tests.functional.exposures.fixtures import (
     simple_exposure_yml,
     disabled_models_exposure_yml,
     enabled_yaml_level_exposure_yml,
-    invalid_config_exposure_yml,
-    source_schema_yml,
-    metrics_schema_yml
+    invalid_config_exposure_yml
 )
 
 
@@ -31,9 +29,7 @@ class TestExposureEnabledConfigProjectLevel(ExposureConfigTests):
         return {
             "model.sql": models_sql,
             "second_model.sql": second_model_sql,
-            "exposure.yml": simple_exposure_yml,
-            "schema.yml": source_schema_yml,
-            "metrics.yml": metrics_schema_yml,
+            "schema.yml": simple_exposure_yml,
         }
 
     @pytest.fixture(scope="class")

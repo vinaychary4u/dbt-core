@@ -71,7 +71,7 @@ from dbt.contracts.graph.nodes import (
     ResultNode,
 )
 from dbt.contracts.util import Writable
-from dbt.exceptions import target_not_found, AmbiguousAlias
+from dbt.exceptions import TargetNotFound, AmbiguousAlias
 from dbt.parser.base import Parser
 from dbt.parser.analysis import AnalysisParser
 from dbt.parser.generic_test import GenericTestParser
@@ -987,7 +987,7 @@ def invalid_target_fail_unless_test(
                 )
             )
     else:
-        target_not_found(
+        raise TargetNotFound(
             node=node,
             target_name=target_name,
             target_kind=target_kind,

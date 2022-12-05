@@ -1,0 +1,6 @@
+version: 2 
+entities:
+
+  - name: customers
+    model: ref('dim_customers')
+    description: "Our customers entity"

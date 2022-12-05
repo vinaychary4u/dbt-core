@@ -523,3 +523,43 @@ class UnparsedMetric(dbtClassMixin, Replaceable):
 
         if data.get("model") is not None and data.get("calculation_method") == "derived":
             raise ValidationError("Derived metrics cannot have a 'model' property")
+
+@dataclass
+class EntityDimension(dbtClassMixin, Mergeable):
+    """This class is used for the dimension information at the entity level"""
+    name: str
+    column_name: Optional[str]
+    date_type: Optional[str]
+    default_timestamp: Optional[str]
+    primary_key: Optional[bool]
+    time_grains: Optional[List[str]] = field(default_factory=list)
+    description: str = ""
+
+@dataclass
+class EntityInheritence(dbtClassMixin, Mergeable):
+    """This class is used for entity dimension inheritence. Neither of the options
+    are required by default so both are set to optional. This will be unioned
+    with EntityDimension but these inputs will be removed in the output and in 
+    ParsedEntity.
+    The acceptable inputs for include are either a list of columns/dimensions or *
+    to represent all fields
+    """
+    include: Optional[Union[List[str],str]]
+    exclude: Optional[List[str]]
+
+@dataclass
+class UnparsedEntity(dbtClassMixin, Replaceable):
+    """This class is used for entity information"""
+    name: str
+    model: str
+    description: str = ""
+    dimensions: List[Union[EntityDimension,EntityInheritence]] = field(default_factory=list)
+    meta: Dict[str, Any] = field(default_factory=dict)
+    tags: List[str] = field(default_factory=list)
+    config: Dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def validate(cls, data):
+        super(UnparsedEntity, cls).validate(data)
+        errors = []
+        ## TODO: Add validation here around include/exclude and others

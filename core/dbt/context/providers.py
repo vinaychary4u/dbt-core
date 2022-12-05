@@ -37,6 +37,7 @@ from dbt.contracts.graph.parsed import (
     ParsedMacro,
     ParsedExposure,
     ParsedMetric,
+    ParsedEntity,
     ParsedSeedNode,
     ParsedSourceDefinition,
 )
@@ -301,11 +302,9 @@ class BaseMetricResolver(BaseResolver):
         self.validate_args(name, package)
         return self.resolve(name, package)
 
-
 class Config(Protocol):
     def __init__(self, model, context_config: Optional[ContextConfig]):
         ...
-
 
 # Implementation of "config(..)" calls in models
 class ParseConfigObject(Config):
@@ -1492,7 +1491,6 @@ class MetricRefResolver(BaseResolver):
                 "the name argument to ref() must be a string"
             )
 
-
 def generate_parse_metrics(
     metric: ParsedMetric,
     config: RuntimeConfig,
@@ -1515,6 +1513,41 @@ def generate_parse_metrics(
         ),
     }
 
+class EntityRefResolver(BaseResolver):
+    def __call__(self, *args) -> str:
+        package = None
+        if len(args) == 1:
+            name = args[0]
+        elif len(args) == 2:
+            package, name = args
+        else:
+            ref_invalid_args(self.model, args)
+        self.validate_args(name, package)
+        self.model.refs.append(list(args))
+        return ""
+
+    def validate_args(self, name, package):
+        if not isinstance(name, str):
+            raise ParsingException(
+                f"In the entity associated with {self.model.original_file_path} "
+                "the name argument to ref() must be a string"
+            )
+
+def generate_parse_entities(
+    entity: ParsedEntity,
+    config: RuntimeConfig,
+    manifest: Manifest,
+    package_name: str,
+) -> Dict[str, Any]:
+    project = config.load_dependencies()[package_name]
+    return {
+        "ref": EntityRefResolver(
+            None,
+            entity,
+            project,
+            manifest,
+        ),
+    }
 
 # This class is currently used by the schema parser in order
 # to limit the number of macros in the context by using

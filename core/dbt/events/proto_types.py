@@ -908,7 +908,6 @@ class PartialParsingDeletedMetric(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
     unique_id: str = betterproto.string_field(2)
 
-
 @dataclass
 class ManifestWrongMetadataVersion(betterproto.Message):
     """I022"""
@@ -1249,6 +1248,12 @@ class JinjaLogWarning(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
     msg: str = betterproto.string_field(2)
 
+@dataclass
+class PartialParsingDeletedEntity(betterproto.Message):
+    """I062"""
+
+    info: "EventInfo" = betterproto.message_field(1)
+    unique_id: str = betterproto.string_field(2)
 
 @dataclass
 class GitSparseCheckoutSubdirectory(betterproto.Message):

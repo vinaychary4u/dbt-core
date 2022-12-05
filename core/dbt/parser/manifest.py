@@ -68,6 +68,7 @@ from dbt.contracts.graph.parsed import (
     ColumnInfo,
     ParsedExposure,
     ParsedMetric,
+    ParsedEntity,
 )
 from dbt.contracts.util import Writable
 from dbt.exceptions import (
@@ -344,7 +345,7 @@ class ManifestLoader:
                     project, project_parser_files[project.project_name], parser_types
                 )
 
-            # Now that we've loaded most of the nodes (except for schema tests, sources, metrics)
+            # Now that we've loaded most of the nodes (except for schema tests, sources, metrics, entities)
             # load up the Lookup objects to resolve them by name, so the SourceFiles store
             # the unique_id instead of the name. Sources are loaded from yaml files, so
             # aren't in place yet
@@ -388,6 +389,7 @@ class ManifestLoader:
             self.process_refs(self.root_project.project_name)
             self.process_docs(self.root_project)
             self.process_metrics(self.root_project)
+            self.process_entities(self.root_project)
 
             # update tracking data
             self._perf_info.process_manifest_elapsed = time.perf_counter() - start_process
@@ -836,6 +838,10 @@ class ManifestLoader:
             if metric.created_at < self.started_at:
                 continue
             _process_refs_for_metric(self.manifest, current_project, metric)
+        for entity in self.manifest.entities.values():
+            if entity.created_at < self.started_at:
+                continue
+            _process_refs_for_entity(self.manifest, current_project, entity)
 
     # Takes references in 'metrics' array of nodes and exposures, finds the target
     # node, and updates 'depends_on.nodes' with the unique id
@@ -855,6 +861,23 @@ class ManifestLoader:
             if exposure.created_at < self.started_at:
                 continue
             _process_metrics_for_node(self.manifest, current_project, exposure)
+
+    # Takes references in 'entities' array of nodes and exposures, finds the target
+    # node, and updates 'depends_on.nodes' with the unique id
+    def process_entities(self, config: RuntimeConfig):
+        current_project = config.project_name
+        for node in self.manifest.nodes.values():
+            if node.created_at < self.started_at:
+                continue
+            _process_entities_for_node(self.manifest, current_project, node)
+        for entity in self.manifest.entities.values():
+            if entity.created_at < self.started_at:
+                continue
+            _process_entities_for_node(self.manifest, current_project, entity)
+        for exposure in self.manifest.exposures.values():
+            if exposure.created_at < self.started_at:
+                continue
+            _process_entities_for_node(self.manifest, current_project, exposure)
 
     # nodes: node and column descriptions
     # sources: source and table descriptions, column descriptions
@@ -911,6 +934,16 @@ class ManifestLoader:
                 config.project_name,
             )
             _process_docs_for_metrics(ctx, metric)
+        for entity in self.manifest.entities.values():
+            if entity.created_at < self.started_at:
+                continue
+            ctx = generate_runtime_docs_context(
+                config,
+                entity,
+                self.manifest,
+                config.project_name,
+            )
+            _process_docs_for_entities(ctx, entity)
 
     # Loops through all nodes and exposures, for each element in
     # 'sources' array finds the source node and updates the
@@ -1097,6 +1130,8 @@ def _process_docs_for_exposure(context: Dict[str, Any], exposure: ParsedExposure
 def _process_docs_for_metrics(context: Dict[str, Any], metric: ParsedMetric) -> None:
     metric.description = get_rendered(metric.description, context)
 
+def _process_docs_for_entities(context: Dict[str, Any], entity: ParsedEntity) -> None:
+    entity.description = get_rendered(entity.description, context)
 
 def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposure: ParsedExposure):
     """Given a manifest and exposure in that manifest, process its refs"""
@@ -1182,6 +1217,46 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: P
         metric.depends_on.nodes.append(target_model_id)
         manifest.update_metric(metric)
 
+def _process_refs_for_entity(manifest: Manifest, current_project: str, entity: ParsedEntity):
+    """Given a manifest and an entity in that manifest, process its refs"""
+    for ref in entity.refs:
+        target_model: Optional[Union[Disabled, ManifestNode]] = None
+        target_model_name: str
+        target_model_package: Optional[str] = None
+
+        if len(ref) == 1:
+            target_model_name = ref[0]
+        elif len(ref) == 2:
+            target_model_package, target_model_name = ref
+        else:
+            raise dbt.exceptions.InternalException(
+                f"Refs should always be 1 or 2 arguments - got {len(ref)}"
+            )
+
+        target_model = manifest.resolve_ref(
+            target_model_name,
+            target_model_package,
+            current_project,
+            entity.package_name,
+        )
+
+        if target_model is None or isinstance(target_model, Disabled):
+            # This may raise. Even if it doesn't, we don't want to add
+            # this entity to the graph b/c there is no destination entity
+            entity.config.enabled = False
+            invalid_target_fail_unless_test(
+                node=entity,
+                target_name=target_model_name,
+                target_kind="node",
+                target_package=target_model_package,
+                disabled=(isinstance(target_model, Disabled)),
+            )
+            continue
+
+        target_model_id = target_model.unique_id
+
+        entity.depends_on.nodes.append(target_model_id)
+        manifest.update_entity(entity)
 
 def _process_metrics_for_node(
     manifest: Manifest,
@@ -1227,6 +1302,49 @@ def _process_metrics_for_node(
 
         node.depends_on.nodes.append(target_metric_id)
 
+def _process_entities_for_node(
+    manifest: Manifest,
+    current_project: str,
+    node: Union[ManifestNode, ParsedEntity, ParsedExposure],
+):
+    """Given a manifest and a node in that manifest, process its entities"""
+    for entity in node.entities:
+        target_entity: Optional[Union[Disabled, ParsedEntity]] = None
+        target_entity_name: str
+        target_entity_package: Optional[str] = None
+
+        if len(entity) == 1:
+            target_entity_name = entity[0]
+        elif len(entity) == 2:
+            target_entity_package, target_entity_name = entity
+        else:
+            raise dbt.exceptions.InternalException(
+                f"Entity references should always be 1 or 2 arguments - got {len(entity)}"
+            )
+
+        target_entity = manifest.resolve_entity(
+            target_entity_name,
+            target_entity_package,
+            current_project,
+            node.package_name,
+        )
+
+        if target_entity is None or isinstance(target_entity, Disabled):
+            # This may raise. Even if it doesn't, we don't want to add
+            # this node to the graph b/c there is no destination node
+            node.config.enabled = False
+            invalid_target_fail_unless_test(
+                node=node,
+                target_name=target_entity_name,
+                target_kind="source",
+                target_package=target_entity_package,
+                disabled=(isinstance(target_entity, Disabled)),
+            )
+            continue
+
+        target_entity_id = target_entity.unique_id
+
+        node.depends_on.nodes.append(target_entity_id)
 
 def _process_refs_for_node(manifest: Manifest, current_project: str, node: ManifestNode):
     """Given a manifest and a node in that manifest, process its refs"""
@@ -1298,7 +1416,7 @@ def _process_sources_for_exposure(
         exposure.depends_on.nodes.append(target_source_id)
         manifest.update_exposure(exposure)
 
-
+## TODO: Remove this code because metrics can't be based on sources
 def _process_sources_for_metric(manifest: Manifest, current_project: str, metric: ParsedMetric):
     target_source: Optional[Union[Disabled, ParsedSourceDefinition]] = None
     for source_name, table_name in metric.sources:

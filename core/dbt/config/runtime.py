@@ -116,6 +116,7 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
             sources=project.sources,
             tests=project.tests,
             metrics=project.metrics,
+            entities=project.entities,
             exposures=project.exposures,
             vars=project.vars,
             config_version=project.config_version,
@@ -311,6 +312,7 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
             "sources": self._get_config_paths(self.sources),
             "tests": self._get_config_paths(self.tests),
             "metrics": self._get_config_paths(self.metrics),
+            "entities": self._get_config_paths(self.entities),
             "exposures": self._get_config_paths(self.exposures),
         }
 
@@ -506,6 +508,7 @@ class UnsetProfileConfig(RuntimeConfig):
                 "sources": self.sources,
                 "tests": self.tests,
                 "metrics": self.metrics,
+                "entities": self.entities,
                 "exposures": self.exposures,
                 "vars": self.vars.to_dict(),
                 "require-dbt-version": [v.to_version_string() for v in self.dbt_version],
@@ -568,6 +571,7 @@ class UnsetProfileConfig(RuntimeConfig):
             sources=project.sources,
             tests=project.tests,
             metrics=project.metrics,
+            entities=project.entities,
             exposures=project.exposures,
             vars=project.vars,
             config_version=project.config_version,

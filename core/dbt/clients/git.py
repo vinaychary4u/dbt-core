@@ -105,7 +105,7 @@ def checkout(cwd, repo, revision=None):
     try:
         return _checkout(cwd, repo, revision)
     except CommandResultError as exc:
-        raise GitCheckoutError(repo, revision, exc)
+        raise GitCheckoutError(repo=repo, revision=revision, error=exc)
 
 
 def get_current_sha(cwd):

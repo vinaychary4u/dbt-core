@@ -55,7 +55,44 @@ class MacroReturn(builtins.BaseException):
 
 
 class InternalException(Exception):
-    pass
+    def __init__(self, msg):
+        self.stack = []
+        self.msg = scrub_secrets(msg, env_secrets())
+
+    @property
+    def type(self):
+        return "Internal"
+
+    def process_stack(self):
+        lines = []
+        stack = self.stack
+        first = True
+
+        if len(stack) > 1:
+            lines.append("")
+
+            for item in stack:
+                msg = "called by"
+
+                if first:
+                    msg = "in"
+                    first = False
+
+                lines.append(f"> {msg}")
+
+        return lines
+
+    def __str__(self):
+        if hasattr(self.msg, "split"):
+            split_msg = self.msg.split("\n")
+        else:
+            split_msg = str(self.msg).split("\n")
+
+        lines = ["{}".format(self.type + " Error")] + split_msg
+
+        lines += self.process_stack()
+
+        return lines[0] + "\n" + "\n".join(["  " + line for line in lines[1:]])
 
 
 class RuntimeException(RuntimeError, Exception):
@@ -272,7 +309,7 @@ class IncompatibleSchemaException(RuntimeException):
         self.found = found
         self.filename = "input file"
 
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def add_filename(self, filename: str):
         self.filename = filename
@@ -483,7 +520,7 @@ class GraphDependencyNotFound(CompilationException):
     def __init__(self, node, dependency):
         self.node = node
         self.dependency = dependency
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = f"'{self.node.unique_id}' depends on '{self.dependency}' which is not in the graph!"
@@ -494,7 +531,7 @@ class GraphDependencyNotFound(CompilationException):
 class GitCloningProblem(RuntimeException):
     def __init__(self, repo):
         self.repo = scrub_secrets(repo, env_secrets())
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = f"""\
@@ -509,7 +546,7 @@ class GitCloningError(InternalException):
         self.repo = repo
         self.revision = revision
         self.error = error
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         stderr = self.error.stderr.strip()
@@ -528,7 +565,7 @@ class GitCheckoutError(InternalException):
         self.repo = repo
         self.revision = revision
         self.stderr = error.stderr.strip()
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = f"Error checking out spec='{self.revision}' for repo {self.repo}\n{self.stderr}"
@@ -539,7 +576,7 @@ class InvalidMaterializationArg(CompilationException):
     def __init__(self, name, argument):
         self.name = name
         self.argument = argument
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = f"materialization '{self.name}' received unknown argument '{self.argument}'."
@@ -548,7 +585,7 @@ class InvalidMaterializationArg(CompilationException):
 
 class SymbolicLinkError(CompilationException):
     def __init__(self):
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = (
@@ -564,7 +601,7 @@ class SymbolicLinkError(CompilationException):
 class DisallowSecretEnvVar(ParsingException):
     def __init__(self, env_var_name):
         self.env_var_name = env_var_name
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = (
@@ -581,7 +618,7 @@ class InvalidMacroArgType(CompilationException):
         self.got_value = got_value
         self.expected_type = expected_type
         self.version = version
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         got_type = type(self.got_value)
@@ -597,7 +634,7 @@ class InvalidBoolean(CompilationException):
     def __init__(self, return_value, macro_name):
         self.return_value = return_value
         self.macro_name = macro_name
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = (
@@ -611,7 +648,7 @@ class RefInvalidArgs(CompilationException):
     def __init__(self, node, args):
         self.node = node
         self.args = args
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = f"ref() takes at most two arguments ({len(self.args)} given)"
@@ -622,7 +659,7 @@ class MetricInvalidArgs(CompilationException):
     def __init__(self, node, args):
         self.node = node
         self.args = args
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = f"metric() takes at most two arguments ({len(self.args)} given)"
@@ -633,7 +670,7 @@ class RefBadContext(CompilationException):
     def __init__(self, node, args):
         self.node = node
         self.args = args
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         # This explicitly references model['name'], instead of model['alias'], for
@@ -662,7 +699,7 @@ class InvalidDocArgs(CompilationException):
     def __init__(self, node, args):
         self.node = node
         self.args = args
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = f"doc() takes at most two arguments ({len(self.args)} given)"
@@ -674,7 +711,7 @@ class DocTargetNotFound(CompilationException):
         self.node = node
         self.target_doc_name = target_doc_name
         self.target_doc_package = target_doc_package
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         target_package_string = ""
@@ -687,7 +724,7 @@ class DocTargetNotFound(CompilationException):
 class MacroInvalidDispatchArg(CompilationException):
     def __init__(self, macro_name):
         self.macro_name = macro_name
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = f"""\
@@ -708,7 +745,7 @@ class DuplicateMacroName(CompilationException):
         self.node_1 = node_1
         self.node_2 = node_2
         self.namespace = namespace
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         duped_name = self.node_1.name
@@ -734,7 +771,7 @@ class DuplicateMacroName(CompilationException):
 class TestNameNotString(ParsingException):
     def __init__(self, test_name):
         self.test_name = test_name
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
 
@@ -745,7 +782,7 @@ class TestNameNotString(ParsingException):
 class TestArgsNotDict(ParsingException):
     def __init__(self, test_args):
         self.test_args = test_args
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
 
@@ -756,7 +793,7 @@ class TestArgsNotDict(ParsingException):
 class TestDefinitionDictLength(ParsingException):
     def __init__(self, test):
         self.test = test
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
 
@@ -770,7 +807,7 @@ class TestDefinitionDictLength(ParsingException):
 class TestInvalidType(ParsingException):
     def __init__(self, test):
         self.test = test
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = f"test must be dict or str, got {type(self.test)} (value {self.test})"
@@ -781,7 +818,7 @@ class TestInvalidType(ParsingException):
 class EnvVarMissing(ParsingException):
     def __init__(self, var):
         self.var = var
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = f"Env var required but not provided: '{self.var}'"
@@ -802,7 +839,7 @@ class TargetNotFound(CompilationException):
         self.target_kind = target_kind
         self.target_package = target_package
         self.disabled = disabled
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         original_file_path = self.node.original_file_path
@@ -831,7 +868,7 @@ class DuplicateSourcePatchName(CompilationException):
     def __init__(self, patch_1, patch_2):
         self.patch_1 = patch_1
         self.patch_2 = patch_2
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         name = f"{self.patch_1.overrides}.{self.patch_1.name}"
@@ -853,7 +890,7 @@ class DuplicateMacroPatchName(CompilationException):
     def __init__(self, patch_1, existing_patch_path):
         self.patch_1 = patch_1
         self.existing_patch_path = existing_patch_path
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         package_name = self.patch_1.package_name
@@ -875,7 +912,7 @@ class DuplicateAlias(AliasException):
         self.kwargs = kwargs
         self.aliases = aliases
         self.canonical_key = canonical_key
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         # dupe found: go through the dict so we can have a nice-ish error
@@ -891,7 +928,7 @@ class MaterializationNotAvailable(CompilationException):
     def __init__(self, model, adapter_type):
         self.model = model
         self.adapter_type = adapter_type
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         materialization = self.model.get_materialization()
@@ -903,7 +940,7 @@ class RelationReturnedMultipleResults(CompilationException):
     def __init__(self, kwargs, matches):
         self.kwargs = kwargs
         self.matches = matches
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = (
@@ -918,7 +955,7 @@ class ApproximateMatch(CompilationException):
     def __init__(self, target, relation):
         self.target = target
         self.relation = relation
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
 
@@ -1052,7 +1089,7 @@ class MissingMaterialization(CompilationException):
     def __init__(self, model, adapter_type):
         self.model = model
         self.adapter_type = adapter_type
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         materialization = self.model.get_materialization()
@@ -1082,7 +1119,7 @@ class AmbiguousAlias(CompilationException):
             self.duped_name = f"{self.node_1.database}.{self.node_1.schema}.{self.node_1.alias}"
         else:
             self.duped_name = duped_name
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
 
@@ -1106,7 +1143,7 @@ class AmbiguousCatalogMatch(CompilationException):
         self.unique_id = unique_id
         self.match_1 = match_1
         self.match_2 = match_2
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_match_string(self, match):
         return "{}.{}".format(
@@ -1194,7 +1231,7 @@ class NoneRelationFound(CacheInconsistency):
 class DataclassNotDict(CompilationException):
     def __init__(self, obj):
         self.obj = obj  # TODO: what kind of obj is this?
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = (
@@ -1210,7 +1247,7 @@ class DependencyNotFound(CompilationException):
         self.node = node
         self.node_description = node_description
         self.required_pkg = required_pkg
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = (
@@ -1226,7 +1263,7 @@ class DuplicatePatchPath(CompilationException):
     def __init__(self, patch_1, existing_patch_path):
         self.patch_1 = patch_1
         self.existing_patch_path = existing_patch_path
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         name = self.patch_1.name
@@ -1249,7 +1286,7 @@ class DuplicateResourceName(CompilationException):
     def __init__(self, node_1, node_2):
         self.node_1 = node_1
         self.node_2 = node_2
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         duped_name = self.node_1.name
@@ -1301,7 +1338,7 @@ class InvalidPropertyYML(CompilationException):
     def __init__(self, path, issue):
         self.path = path
         self.issue = issue
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = (
@@ -1343,7 +1380,7 @@ class RelationWrongType(CompilationException):
         self.relation = relation
         self.expected_type = expected_type
         self.model = model
-        super().__init__(self.get_message())
+        super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = (

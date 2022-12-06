@@ -1015,7 +1015,7 @@ def _check_resource_uniqueness(
 
         existing_node = names_resources.get(name)
         if existing_node is not None:
-            dbt.exceptions.DuplicateResourceName(existing_node, node)
+            raise dbt.exceptions.DuplicateResourceName(existing_node, node)
 
         existing_alias = alias_resources.get(full_node_name)
         if existing_alias is not None:

@@ -50,6 +50,7 @@ from dbt.contracts.graph.unparsed import (
     UnparsedExposure,
     UnparsedMetric,
     UnparsedEntity,
+    EntityDimension,
     UnparsedSourceDefinition,
 )
 from dbt.exceptions import (
@@ -131,6 +132,7 @@ class ParserRef:
     def __init__(self):
         self.column_info: Dict[str, ColumnInfo] = {}
 
+    ## TODO: Mimic this for dimension information at the entity level
     def add(
         self,
         column: Union[HasDocs, UnparsedColumn],
@@ -164,6 +166,7 @@ class ParserRef:
             meta = column.meta
             refs.add(column, description, data_type, meta)
         return refs
+
 
 
 def _trimmed(inp: str) -> str:
@@ -504,8 +507,8 @@ class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
 
             parser: YamlDocsReader
 
-            # There are 7 kinds of parsers:
-            # Model, Seed, Snapshot, Source, Macro, Analysis, Exposures
+            # There are 9 kinds of parsers:
+            # Model, Seed, Snapshot, Source, Macro, Analysis, Exposures, Metrics, & Entities
 
             # NonSourceParser.parse(), TestablePatchParser is a variety of
             # NodePatchParser
@@ -1225,6 +1228,10 @@ class EntityParser(YamlReader):
         self.schema_parser = schema_parser
         self.yaml = yaml
 
+    def clean_dimensions(self, unparsed: UnparsedEntity):
+        """Mimicing the format of UnparsedColumn"""
+        print("filler")
+
     def parse_entity(self, unparsed: UnparsedEntity):
         package_name = self.project.project_name
         unique_id = f"{NodeType.Entity}.{package_name}.{unparsed.name}"
@@ -1254,6 +1261,15 @@ class EntityParser(YamlReader):
                 f"Calculated a {type(config)} for an entity, but expected a EntityConfig"
             )
 
+        ## TODO: Remove or migrate the dimension mapping to this area
+        # parsed_dimensions = {}
+        # # breakpoint()
+        # for dimension in unparsed.dimensions:
+        #     breakpoint()
+        #     if dimension:
+        #         # breakpoint()
+        #         parsed_dimensions[dimension.name] = dimension
+
         parsed = ParsedEntity(
             package_name=package_name,
             path=path,
@@ -1263,12 +1279,14 @@ class EntityParser(YamlReader):
             model=unparsed.model,
             name=unparsed.name,
             description=unparsed.description,
-            dimensions=unparsed.dimensions,
+            dimensions= {dimension.name: dimension for dimension in unparsed.dimensions} if unparsed.dimensions else {},
             meta=unparsed.meta,
             tags=unparsed.tags,
             config=config,
             unrendered_config=unrendered_config,
         )
+
+        breakpoint()
 
         ctx = generate_parse_entities(
             parsed,

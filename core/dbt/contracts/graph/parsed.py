@@ -38,6 +38,7 @@ from dbt.contracts.graph.unparsed import (
     MaturityType,
     MetricFilter,
     MetricTime,
+    EntityDimension
 )
 from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
 from dbt.events.proto_types import NodeInfo
@@ -925,7 +926,7 @@ class ParsedEntity(UnparsedBaseNode, HasUniqueID, HasFqn):
     name: str
     model: str
     description: str
-    dimensions: List[str]
+    dimensions: Dict[str, EntityDimension] = field(default_factory=dict)
     model_unique_id: Optional[str] = None
     resource_type: NodeType = NodeType.Metric
     meta: Dict[str, Any] = field(default_factory=dict)

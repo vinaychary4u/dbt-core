@@ -548,6 +548,7 @@ class ManifestLoader:
                     ManifestWrongMetadataVersion(version=self.manifest.metadata.dbt_version)
                 )
                 self.manifest.metadata.dbt_version = __version__
+            # breakpoint()
             manifest_msgpack = self.manifest.to_msgpack()
             make_directory(os.path.dirname(path))
             with open(path, "wb") as fp:

@@ -526,7 +526,8 @@ class UnparsedMetric(dbtClassMixin, Replaceable):
 
 @dataclass
 class EntityDimension(dbtClassMixin, Mergeable):
-    """This class is used for the dimension information at the entity level"""
+    """This class is used for the dimension information at the entity level. It 
+    closely matches the implementation of columns for models."""
     name: str
     description: str = ""
     column_name: Optional[str] = None
@@ -538,7 +539,7 @@ class EntityDimension(dbtClassMixin, Mergeable):
     meta: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
-class EntityInheritence(dbtClassMixin, Mergeable):
+class EntityInheritence(EntityDimension):
     """This class is used for entity dimension inheritence. This class is optional
     but if it is present then include needs to be present. Exclude cannot be present
     without some idea of what is being included, whereas exclude is fully optional.
@@ -546,8 +547,8 @@ class EntityInheritence(dbtClassMixin, Mergeable):
     to represent all fields. The acceptable inputs for exclude are a list of columns/
     dimensions
     """
-    include: Union[List[str],str] = None
-    exclude: Optional[List[str]] = []
+    include: Union[List[str],str] = field(default_factory=list)
+    exclude: Optional[List[str]] = field(default_factory=list)
 
 @dataclass
 class UnparsedEntity(dbtClassMixin, Replaceable):
@@ -555,10 +556,8 @@ class UnparsedEntity(dbtClassMixin, Replaceable):
     name: str
     model: str
     description: str = ""
-    dimensions: Optional[Sequence[EntityDimension]] = None
-    # dimensions: Optional[Sequence[EntityInheritence]] = None
-    # dimensions: Optional[List[str]] = None
-    # List[Union[EntityDimension,EntityInheritence]] = field(default_factory=list)
+    dimensions: Optional[Union[Optional[Sequence[EntityDimension]],Optional[EntityInheritence]]] = None
+    # dimensions: Optional[Sequence[EntityDimension]] = None
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
     config: Dict[str, Any] = field(default_factory=dict)

@@ -1263,7 +1263,6 @@ class EntityParser(YamlReader):
 
         ## TODO: Remove or migrate the dimension mapping to this area
         # parsed_dimensions = {}
-        # # breakpoint()
         # for dimension in unparsed.dimensions:
         #     breakpoint()
         #     if dimension:
@@ -1285,8 +1284,6 @@ class EntityParser(YamlReader):
             config=config,
             unrendered_config=unrendered_config,
         )
-
-        breakpoint()
 
         ctx = generate_parse_entities(
             parsed,
@@ -1331,6 +1328,7 @@ class EntityParser(YamlReader):
 
     def parse(self):
         for data in self.get_key_dicts():
+            breakpoint()
             try:
                 UnparsedEntity.validate(data)
                 unparsed = UnparsedEntity.from_dict(data)

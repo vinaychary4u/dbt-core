@@ -6,6 +6,10 @@ entities:
     description: "Our customers entity"
 
     dimensions:
+      - include: *
+        exclude:
+          - first_name
+
       - name: first_name_v3_testing
         description: string
         column_name: first_name

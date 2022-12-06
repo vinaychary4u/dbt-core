@@ -8,7 +8,7 @@ from dbt.utils import MultiDict
 
 from dbt.context.base import contextproperty, contextmember, Var
 from dbt.context.target import TargetContext
-from dbt.exceptions import raise_parsing_error, DisallowSecretEnvVar
+from dbt.exceptions import EnvVarMissing, DisallowSecretEnvVar
 
 
 class ConfiguredContext(TargetContext):
@@ -104,8 +104,7 @@ class SchemaYamlContext(ConfiguredContext):
 
             return return_value
         else:
-            msg = f"Env var required but not provided: '{var}'"
-            raise_parsing_error(msg)
+            raise EnvVarMissing(var)
 
 
 class MacroResolvingContext(ConfiguredContext):

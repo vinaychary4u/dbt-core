@@ -470,8 +470,12 @@ def raise_compiler_error(msg, node=None) -> NoReturn:
     raise CompilationException(msg, node)
 
 
-def raise_parsing_error(msg, node=None) -> NoReturn:
-    raise ParsingException(msg, node)
+# event level exception
+class EventCompilationException(CompilationException):
+    def __init__(self, msg, node):
+        self.msg = scrub_secrets(msg, env_secrets())
+        self.node = node
+        super().__init__(self.msg)
 
 
 # compilation level exceptions
@@ -727,6 +731,63 @@ class DuplicateMacroName(CompilationException):
 
 
 # parser level exceptions
+class TestNameNotString(ParsingException):
+    def __init__(self, test_name):
+        self.test_name = test_name
+        super().__init__(self.get_message())
+
+    def get_message(self) -> str:
+
+        msg = f"test name must be a str, got {type(self.test_name)} (value {self.test_name})"
+        return msg
+
+
+class TestArgsNotDict(ParsingException):
+    def __init__(self, test_args):
+        self.test_args = test_args
+        super().__init__(self.get_message())
+
+    def get_message(self) -> str:
+
+        msg = f"test arguments must be a dict, got {type(self.test_args)} (value {self.test_args})"
+        return msg
+
+
+class TestDefinitionDictLength(ParsingException):
+    def __init__(self, test):
+        self.test = test
+        super().__init__(self.get_message())
+
+    def get_message(self) -> str:
+
+        msg = (
+            "test definition dictionary must have exactly one key, got"
+            f" {self.test} instead ({len(self.test)} keys)"
+        )
+        return msg
+
+
+class TestInvalidType(ParsingException):
+    def __init__(self, test):
+        self.test = test
+        super().__init__(self.get_message())
+
+    def get_message(self) -> str:
+        msg = f"test must be dict or str, got {type(self.test)} (value {self.test})"
+        return msg
+
+
+# This is triggered across multiple files
+class EnvVarMissing(ParsingException):
+    def __init__(self, var):
+        self.var = var
+        super().__init__(self.get_message())
+
+    def get_message(self) -> str:
+        msg = f"Env var required but not provided: '{self.var}'"
+        return msg
+
+
 class TargetNotFound(CompilationException):
     def __init__(
         self,
@@ -1492,6 +1553,10 @@ def disallow_secret_env_var(env_var_name) -> NoReturn:
     """Raise an error when a secret env var is referenced outside allowed
     rendering contexts"""
     raise DisallowSecretEnvVar(env_var_name)
+
+
+def raise_parsing_error(msg, node=None) -> NoReturn:
+    raise ParsingException(msg, node)
 
 
 # These are the exceptions functions that were not called within dbt-core but will remain here but deprecated to give a chance to rework

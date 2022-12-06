@@ -43,6 +43,7 @@ from dbt.events.functions import get_metadata_vars
 from dbt.exceptions import (
     CompilationException,
     DisallowSecretEnvVar,
+    EnvVarMissing,
     InternalException,
     MacroInvalidDispatchArg,
     MetricInvalidArgs,
@@ -54,7 +55,6 @@ from dbt.exceptions import (
     TargetNotFound,
     ValidationException,
     raise_compiler_error,
-    raise_parsing_error,
 )
 from dbt.config import IsFQNResource
 from dbt.node_types import NodeType, ModelLanguage
@@ -1241,8 +1241,7 @@ class ProviderContext(ManifestContext):
                         source_file.env_vars.append(var)  # type: ignore[union-attr]
             return return_value
         else:
-            msg = f"Env var required but not provided: '{var}'"
-            raise_parsing_error(msg)
+            raise EnvVarMissing(var)
 
     @contextproperty
     def selected_resources(self) -> List[str]:
@@ -1599,8 +1598,7 @@ class TestContext(ProviderContext):
                     source_file.add_env_var(var, yaml_key, name)  # type: ignore[union-attr]
             return return_value
         else:
-            msg = f"Env var required but not provided: '{var}'"
-            raise_parsing_error(msg)
+            raise EnvVarMissing(var)
 
 
 def generate_test_context(

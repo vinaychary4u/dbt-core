@@ -12,9 +12,9 @@ from dbt.contracts.graph.nodes import Resource
 from dbt.exceptions import (
     CompilationException,
     DisallowSecretEnvVar,
+    EnvVarMissing,
     MacroReturn,
     raise_compiler_error,
-    raise_parsing_error,
 )
 from dbt.events.functions import fire_event, get_invocation_id
 from dbt.events.types import JinjaLogInfo, JinjaLogDebug
@@ -315,8 +315,7 @@ class BaseContext(metaclass=ContextMeta):
 
             return return_value
         else:
-            msg = f"Env var required but not provided: '{var}'"
-            raise_parsing_error(msg)
+            raise EnvVarMissing(var)
 
     if os.environ.get("DBT_MACRO_DEBUGGING"):
 

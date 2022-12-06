@@ -21,7 +21,14 @@ from dbt.contracts.graph.unparsed import (
     UnparsedNodeUpdate,
     UnparsedExposure,
 )
-from dbt.exceptions import raise_compiler_error, raise_parsing_error, UndefinedMacroException
+from dbt.exceptions import (
+    TestArgsNotDict,
+    TestDefinitionDictLength,
+    TestInvalidType,
+    TestNameNotString,
+    UndefinedMacroException,
+    raise_compiler_error,
+)
 from dbt.parser.search import FileBlock
 
 
@@ -314,9 +321,7 @@ class TestBuilder(Generic[Testable]):
     @staticmethod
     def extract_test_args(test, name=None) -> Tuple[str, Dict[str, Any]]:
         if not isinstance(test, dict):
-            raise_parsing_error(
-                "test must be dict or str, got {} (value {})".format(type(test), test)
-            )
+            raise TestInvalidType(test)
 
         # If the test is a dictionary with top-level keys, the test name is "test_name"
         # and the rest are arguments
@@ -330,20 +335,13 @@ class TestBuilder(Generic[Testable]):
         else:
             test = list(test.items())
             if len(test) != 1:
-                raise_parsing_error(
-                    "test definition dictionary must have exactly one key, got"
-                    " {} instead ({} keys)".format(test, len(test))
-                )
+                raise TestDefinitionDictLength(test)
             test_name, test_args = test[0]
 
         if not isinstance(test_args, dict):
-            raise_parsing_error(
-                "test arguments must be dict, got {} (value {})".format(type(test_args), test_args)
-            )
+            raise TestArgsNotDict(test_args)
         if not isinstance(test_name, str):
-            raise_parsing_error(
-                "test name must be a str, got {} (value {})".format(type(test_name), test_name)
-            )
+            raise TestNameNotString(test_name)
         test_args = deepcopy(test_args)
         if name is not None:
             test_args["column_name"] = name

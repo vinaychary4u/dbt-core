@@ -42,13 +42,13 @@ from dbt.dataclass_schema import dbtClassMixin
 from dbt.exceptions import (
     CompilationException,
     DuplicateResourceName,
-    raise_compiler_error,
+    DuplicateMacroInPackage,
+    DuplicateMaterializationName,
 )
 from dbt.helper_types import PathSet
 from dbt.events.functions import fire_event
 from dbt.events.types import MergedFromState
 from dbt.node_types import NodeType
-from dbt.ui import line_wrap_message
 from dbt import flags
 from dbt import tracking
 import dbt.utils
@@ -398,12 +398,7 @@ class MaterializationCandidate(MacroCandidate):
             return NotImplemented
         equal = self.specificity == other.specificity and self.locality == other.locality
         if equal:
-            raise_compiler_error(
-                "Found two materializations with the name {} (packages {} and "
-                "{}). dbt cannot resolve this ambiguity".format(
-                    self.macro.name, self.macro.package_name, other.macro.package_name
-                )
-            )
+            raise DuplicateMaterializationName(self.macro, other)
 
         return equal
 
@@ -1040,26 +1035,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     def add_macro(self, source_file: SourceFile, macro: Macro):
         if macro.unique_id in self.macros:
             # detect that the macro exists and emit an error
-            other_path = self.macros[macro.unique_id].original_file_path
-            # subtract 2 for the "Compilation Error" indent
-            # note that the line wrap eats newlines, so if you want newlines,
-            # this is the result :(
-            msg = line_wrap_message(
-                f"""\
-                dbt found two macros named "{macro.name}" in the project
-                "{macro.package_name}".
-
-
-                To fix this error, rename or remove one of the following
-                macros:
-
-                    - {macro.original_file_path}
-
-                    - {other_path}
-                """,
-                subtract=2,
-            )
-            raise_compiler_error(msg)
+            raise DuplicateMacroInPackage(macro=macro, macro_mapping=self.macros)
 
         self.macros[macro.unique_id] = macro
         source_file.macros.append(macro.unique_id)

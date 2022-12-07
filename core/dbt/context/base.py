@@ -14,7 +14,7 @@ from dbt.exceptions import (
     DisallowSecretEnvVar,
     EnvVarMissing,
     MacroReturn,
-    raise_compiler_error,
+    RequiredVarNotFound,
 )
 from dbt.events.functions import fire_event, get_invocation_id
 from dbt.events.types import JinjaLogInfo, JinjaLogDebug
@@ -128,7 +128,6 @@ class ContextMeta(type):
 
 
 class Var:
-    UndefinedVarError = "Required var '{}' not found in config:\nVars supplied to {} = {}"
     _VAR_NOTSET = object()
 
     def __init__(
@@ -153,10 +152,7 @@ class Var:
             return "<Configuration>"
 
     def get_missing_var(self, var_name):
-        dct = {k: self._merged[k] for k in self._merged}
-        pretty_vars = json.dumps(dct, sort_keys=True, indent=4)
-        msg = self.UndefinedVarError.format(var_name, self.node_name, pretty_vars)
-        raise_compiler_error(msg, self._node)
+        raise RequiredVarNotFound(var_name, self._merged, self._node)
 
     def has_var(self, var_name: str):
         return var_name in self._merged

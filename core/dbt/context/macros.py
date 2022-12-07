@@ -3,7 +3,7 @@ from typing import Any, Dict, Iterable, Union, Optional, List, Iterator, Mapping
 from dbt.clients.jinja import MacroGenerator, MacroStack
 from dbt.contracts.graph.nodes import Macro
 from dbt.include.global_project import PROJECT_NAME as GLOBAL_PROJECT_NAME
-from dbt.exceptions import DuplicateMacroName, raise_compiler_error
+from dbt.exceptions import DuplicateMacroName, PackageNotFoundForMacro
 
 
 FlatNamespace = Dict[str, MacroGenerator]
@@ -75,7 +75,7 @@ class MacroNamespace(Mapping):
         elif package_name in self.packages:
             return self.packages[package_name].get(name)
         else:
-            raise_compiler_error(f"Could not find package '{package_name}'")
+            raise PackageNotFoundForMacro(package_name)
 
 
 # This class builds the MacroNamespace by adding macros to

@@ -1,4 +1,5 @@
 import builtins
+import json
 import re
 from typing import NoReturn, Optional, Mapping, Any
 
@@ -6,9 +7,8 @@ from dbt.events.functions import warn_or_error
 from dbt.events.helpers import env_secrets, scrub_secrets
 from dbt.events.types import JinjaLogWarning
 from dbt.events.contextvars import get_node_info
-
 from dbt.node_types import NodeType
-
+from dbt.ui import line_wrap_message
 
 import dbt.dataclass_schema
 
@@ -708,6 +708,35 @@ class SymbolicLinkError(CompilationException):
 
 
 # context level exceptions
+
+
+class RequiredVarNotFound(CompilationException):
+    def __init__(self, var_name, merged, node):
+        self.var_name = var_name
+        self.merged = merged
+        self.node = node
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        if self.node is not None:
+            node_name = self.node.name
+        else:
+            node_name = "<Configuration>"
+
+        dct = {k: self.merged[k] for k in self.merged}
+        pretty_vars = json.dumps(dct, sort_keys=True, indent=4)
+
+        msg = f"Required var '{self.var_name}' not found in config:\nVars supplied to {node_name} = {pretty_vars}"
+        return msg
+
+
+class PackageNotFoundForMacro(CompilationException):
+    def __init__(self, package_name):
+        self.package_name = package_name
+        msg = f"Could not find package '{self.package_name}'"
+        super().__init__(msg)
+
+
 class DisallowSecretEnvVar(ParsingException):
     def __init__(self, env_var_name):
         self.env_var_name = env_var_name
@@ -1034,6 +1063,25 @@ class DuplicateAlias(AliasException):
 
 
 # adapters exceptions
+
+
+class MultipleDatabasesNotAllowed(CompilationException):
+    def __init__(self, databases):
+        self.databases = databases
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = str(self.databases)
+        return msg
+
+
+class RelationTypeNull(CompilationException):
+    def __init__(self, relation):
+        self.relation = relation
+        self.msg = f"Tried to drop relation {self.relation}, but its type is null."
+        super().__init__(msg=self.msg)
+
+
 class MaterializationNotAvailable(CompilationException):
     def __init__(self, model, adapter_type):
         self.model = model
@@ -1182,6 +1230,107 @@ class PackageNotFound(DependencyException):
         self.package_name = package_name
         msg = f"Package {self.package_name} was not found in the package index"
         super().__init__(msg)
+
+
+# config level exceptions
+
+
+class NonUniquePackageName(CompilationException):
+    def __init__(self, project_name):
+        self.project_name = project_name
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = (
+            "dbt found more than one package with the name "
+            f'"{self.project_name}" included in this project. Package '
+            "names must be unique in a project. Please rename "
+            "one of these packages."
+        )
+        return msg
+
+
+class UninstalledPackagesFound(CompilationException):
+    def __init__(self, count_packages_specified, count_packages_installed, packages_install_path):
+        self.count_packages_specified = count_packages_specified
+        self.count_packages_installed = count_packages_installed
+        self.packages_install_path = packages_install_path
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = (
+            f"dbt found {self.count_packages_specified} package(s) "
+            "specified in packages.yml, but only "
+            f"{self.count_packages_installed} package(s) installed "
+            f'in {self.packages_install_path}. Run "dbt deps" to '
+            "install package dependencies."
+        )
+        return msg
+
+
+class VarsArgNotYamlDict(CompilationException):
+    def __init__(self, var_type):
+        self.var_type = var_type
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        type_name = self.var_type.__name__
+
+        msg = "The --vars argument must be a YAML dictionary, but was " "of type '{}'".format(
+            type_name
+        )
+        return msg
+
+
+# contracts level
+
+
+class DuplicateMacroInPackage(CompilationException):
+    def __init__(self, macro, macro_mapping):
+        self.macro = macro
+        self.macro_mapping = macro_mapping
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        other_path = self.macro_mapping[self.macro.unique_id].original_file_path
+        # subtract 2 for the "Compilation Error" indent
+        # note that the line wrap eats newlines, so if you want newlines,
+        # this is the result :(
+        msg = line_wrap_message(
+            f"""\
+            dbt found two macros named "{self.macro.name}" in the project
+            "{self.macro.package_name}".
+
+
+            To fix this error, rename or remove one of the following
+            macros:
+
+                - {self.macro.original_file_path}
+
+                - {other_path}
+            """,
+            subtract=2,
+        )
+        return msg
+
+
+class DuplicateMaterializationName(CompilationException):
+    def __init__(self, macro, other_macro):
+        self.macro = macro
+        self.other_macro = other_macro
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        macro_name = self.macro.name
+        macro_package_name = self.macro.package_name
+        other_package_name = self.other_macro.macro.package_name
+
+        msg = (
+            f"Found two materializations with the name {macro_name} (packages "
+            f"{macro_package_name} and {other_package_name}). dbt cannot resolve "
+            "this ambiguity"
+        )
+        return msg
 
 
 # jinja exceptions
@@ -1337,7 +1486,7 @@ class NoneRelationFound(CacheInconsistency):
         super().__init__(msg)
 
 
-# this is part of the context and also raised in dbt.contratcs.relation.py
+# this is part of the context and also raised in dbt.contracts.relation.py
 class DataclassNotDict(CompilationException):
     def __init__(self, obj):
         self.obj = obj  # TODO: what kind of obj is this?

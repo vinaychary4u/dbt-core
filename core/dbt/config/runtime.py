@@ -26,8 +26,9 @@ from dbt.contracts.relation import ComponentName
 from dbt.dataclass_schema import ValidationError
 from dbt.exceptions import (
     DbtProjectError,
+    NonUniquePackageName,
     RuntimeException,
-    raise_compiler_error,
+    UninstalledPackagesFound,
     validator_error_message,
 )
 from dbt.events.functions import warn_or_error
@@ -352,22 +353,15 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
                 count_packages_specified = len(self.packages.packages)  # type: ignore
                 count_packages_installed = len(tuple(self._get_project_directories()))
                 if count_packages_specified > count_packages_installed:
-                    raise_compiler_error(
-                        f"dbt found {count_packages_specified} package(s) "
-                        f"specified in packages.yml, but only "
-                        f"{count_packages_installed} package(s) installed "
-                        f'in {self.packages_install_path}. Run "dbt deps" to '
-                        f"install package dependencies."
+                    raise UninstalledPackagesFound(
+                        count_packages_specified,
+                        count_packages_installed,
+                        self.packages_install_path,
                     )
                 project_paths = itertools.chain(internal_packages, self._get_project_directories())
             for project_name, project in self.load_projects(project_paths):
                 if project_name in all_projects:
-                    raise_compiler_error(
-                        f"dbt found more than one package with the name "
-                        f'"{project_name}" included in this project. Package '
-                        f"names must be unique in a project. Please rename "
-                        f"one of these packages."
-                    )
+                    raise NonUniquePackageName(project_name)
                 all_projects[project_name] = project
             self.dependencies = all_projects
         return self.dependencies

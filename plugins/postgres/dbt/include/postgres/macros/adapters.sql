@@ -5,15 +5,31 @@
   {{ sql_header if sql_header is not none }}
 
   {# Verify global macro is dispatched and can be overridden elegantly in any adapter(I can do this by creating a custom macro in the dbt-postgres equivalent adapter) #}
-  create {% if temporary -%}
-    temporary
-  {%- elif unlogged -%}
-    unlogged
-  {%- endif %} table {{ relation }}
-  {{ get_columns_spec_ddl() }}
-  as (
-    {{ sql }}
-  );
+  {# If constraints_enabled is True, use a completely different set of DDL else default to normal DDL #}
+  {% if config.get('constraints_enabled', False) %}
+    create {% if temporary -%}
+      temporary
+    {%- elif unlogged -%}
+      unlogged
+    {%- endif %} table {{ relation }}
+    {{ get_columns_spec_ddl() }} ;
+
+    insert into {{ relation }} {{ get_column_names() }}
+     (
+      {{ sql }}
+    );
+
+  {% else %}
+    create {% if temporary -%}
+      temporary
+    {%- elif unlogged -%}
+      unlogged
+    {%- endif %} table {{ relation }}
+    {{ get_columns_spec_ddl() }}
+    as (
+      {{ sql }}
+    );
+  {% endif %}
 {%- endmacro %}
 
 {% macro postgres__get_create_index_sql(relation, index_dict) -%}

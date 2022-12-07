@@ -120,14 +120,15 @@ class TestModelLevelConstraintsEnabledConfigs(BaseConstraintsEnabledModelvsProje
         run_dbt(["run"])
         manifest = get_manifest(project.project_root)
         model_id = "model.test.my_model"
+        my_model_columns = manifest.nodes[model_id].columns
         my_model_config = manifest.nodes[model_id].config
         constraints_enabled_actual_config = my_model_config.constraints_enabled
 
         assert constraints_enabled_actual_config is True
 
-        # expected_columns = {}
-        # expected_constraints = {}
-        # expected_checks = {}
+        expected_columns = "{'id': ColumnInfo(name='id', description='hello', meta={}, data_type='integer', constraints=['not null', 'primary key'], check='(id > 0)', quote=None, tags=[], _extra={}), 'color': ColumnInfo(name='color', description='', meta={}, data_type='text', constraints=None, check=None, quote=None, tags=[], _extra={}), 'date_day': ColumnInfo(name='date_day', description='', meta={}, data_type='date', constraints=None, check=None, quote=None, tags=[], _extra={})}"
+
+        assert expected_columns == str(my_model_columns)
 
 
 class TestModelLevelConstraintsDisabledConfigs(BaseConstraintsEnabledModelvsProject):

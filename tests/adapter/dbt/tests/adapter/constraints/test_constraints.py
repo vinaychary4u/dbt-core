@@ -5,13 +5,7 @@ from dbt.tests.util import (
     run_dbt_and_capture
 )
 
-# Verify compilation errors show expected dynamic messages
-
-# Verify config hierarchy overrides work as expected(ex: constraints enabled at the model level override constraints enabled at the project_yml level with True or False values)
-
 # Verify only SQL table materializations work with constraints
-
-# Verify all or nothing data_type configs are enforced
 
 # Verify manfiest is updated with the correct constraints, data_types, and checks
 
@@ -21,6 +15,20 @@ my_model_sql = """
 {{
   config(
     materialized = "table"
+  )
+}}
+
+select
+  1 as id,
+  'blue' as color,
+  cast('2019-01-01' as date) as date_day
+"""
+
+my_model_constraints_disabled_sql = """
+{{
+  config(
+    materialized = "table",
+    constraints_enabled = false
   )
 }}
 
@@ -116,6 +124,29 @@ class TestModelLevelConstraintsEnabledConfigs(BaseConstraintsEnabledModelvsProje
         constraints_enabled_actual_config = my_model_config.constraints_enabled
 
         assert constraints_enabled_actual_config is True
+
+        # expected_columns = {}
+        # expected_constraints = {}
+        # expected_checks = {}
+
+
+class TestModelLevelConstraintsDisabledConfigs(BaseConstraintsEnabledModelvsProject):
+    @pytest.fixture(scope="class")
+    def models(self):
+        return {
+            "my_model.sql": my_model_constraints_disabled_sql,
+            "constraints_schema.yml": model_schema_yml,
+        }
+
+    def test__model_constraints_enabled_true(self, project):
+
+        run_dbt(["run"])
+        manifest = get_manifest(project.project_root)
+        model_id = "model.test.my_model"
+        my_model_config = manifest.nodes[model_id].config
+        constraints_enabled_actual_config = my_model_config.constraints_enabled
+
+        assert constraints_enabled_actual_config is False
 
 
 # If there is no schema config, show a compilation error

@@ -11,19 +11,16 @@
       unlogged
     {%- endif %} table {{ relation }}
     {{ get_columns_spec_ddl() }} ;
-
     insert into {{ relation }} {{ get_column_names() }}
      (
       {{ sql }}
     );
-
   {% else %}
     create {% if temporary -%}
       temporary
     {%- elif unlogged -%}
       unlogged
     {%- endif %} table {{ relation }}
-    {{ get_columns_spec_ddl() }}
     as (
       {{ sql }}
     );

@@ -5,9 +5,7 @@ from dbt.tests.util import (
     run_dbt_and_capture
 )
 
-# Verify only SQL table materializations work with constraints
 
-# create a sql model fixture
 my_model_sql = """
 {{
   config(
@@ -151,7 +149,7 @@ class TestModelLevelConstraintsDisabledConfigs(BaseConstraintsEnabledModelvsProj
             "constraints_schema.yml": model_schema_yml,
         }
 
-    def test__model_constraints_enabled_true(self, project):
+    def test__model_constraints_enabled_false(self, project):
 
         run_dbt(["run"])
         manifest = get_manifest(project.project_root)

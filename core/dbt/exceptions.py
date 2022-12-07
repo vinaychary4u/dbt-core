@@ -512,7 +512,7 @@ class EventCompilationException(CompilationException):
     def __init__(self, msg, node):
         self.msg = scrub_secrets(msg, env_secrets())
         self.node = node
-        super().__init__(self.msg)
+        super().__init__(msg=self.msg)
 
 
 # compilation level exceptions
@@ -528,6 +528,116 @@ class GraphDependencyNotFound(CompilationException):
 
 
 # client level exceptions
+class MacroNameNotString(CompilationException):
+    def __init__(self, kwarg_value):
+        self.kwarg_value = kwarg_value
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = (
+            f"The macro_name parameter ({self.kwarg_value}) "
+            "to adapter.dispatch was not a string"
+        )
+        return msg
+
+
+class MissingControlFlowStartTag(CompilationException):
+    def __init__(self, tag, expected_tag, tag_parser):
+        self.tag = tag
+        self.expected_tag = expected_tag
+        self.tag_parser = tag_parser
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        linepos = self.tag_parser.linepos(self.tag.start)
+        msg = (
+            f"Got an unexpected control flow end tag, got {self.tag.block_type_name} but "
+            f"expected {self.expected_tag} next (@ {linepos})"
+        )
+        return msg
+
+
+class UnexpectedControlFlowEndTag(CompilationException):
+    def __init__(self, tag, expected_tag, tag_parser):
+        self.tag = tag
+        self.expected_tag = expected_tag
+        self.tag_parser = tag_parser
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        linepos = self.tag_parser.linepos(self.tag.start)
+        msg = (
+            f"Got an unexpected control flow end tag, got {self.tag.block_type_name} but "
+            f"never saw a preceeding {self.expected_tag} (@ {linepos})"
+        )
+        return msg
+
+
+class UnexpectedMacroEOF(CompilationException):
+    def __init__(self, expected_name, actual_name):
+        self.expected_name = expected_name
+        self.actual_name = actual_name
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = f'unexpected EOF, expected {self.expected_name}, got "{self.actual_name}"'
+        return msg
+
+
+class MacroNamespaceNotString(CompilationException):
+    def __init__(self, kwarg_type):
+        self.kwarg_type = kwarg_type
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = (
+            "The macro_namespace parameter to adapter.dispatch "
+            f"is a {self.kwarg_type}, not a string"
+        )
+        return msg
+
+
+class NestedTags(CompilationException):
+    def __init__(self, outer, inner):
+        self.outer = outer
+        self.inner = inner
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = (
+            f"Got nested tags: {self.outer.block_type_name} (started at {self.outer.start}) did "
+            f"not have a matching {{{{% end{self.outer.block_type_name} %}}}} before a "
+            f"subsequent {self.inner.block_type_name} was found (started at {self.inner.start})"
+        )
+        return msg
+
+
+class BlockDefinitionNotAtTop(CompilationException):
+    def __init__(self, tag_parser, tag_start):
+        self.tag_parser = tag_parser
+        self.tag_start = tag_start
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        position = self.tag_parser.linepos(self.tag_start)
+        msg = (
+            f"Got a block definition inside control flow at {position}. "
+            "All dbt block definitions must be at the top level"
+        )
+        return msg
+
+
+class MissingCloseTag(CompilationException):
+    def __init__(self, block_type_name, linecount):
+        self.block_type_name = block_type_name
+        self.linecount = linecount
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = f"Reached EOF without finding a close tag for {self.block_type_name} (searched from line {self.linecount})"
+        return msg
+
+
 class GitCloningProblem(RuntimeException):
     def __init__(self, repo):
         self.repo = scrub_secrets(repo, env_secrets())
@@ -1082,7 +1192,7 @@ class MissingConfig(CompilationException):
         msg = (
             f"Model '{self.unique_id}' does not define a required config parameter '{self.name}'."
         )
-        super().__init__(msg)
+        super().__init__(msg=msg)
 
 
 class MissingMaterialization(CompilationException):
@@ -1108,7 +1218,7 @@ class MissingRelation(CompilationException):
         self.relation = relation
         self.model = model
         msg = f"Relation {self.relation} not found!"
-        super().__init__(msg)
+        super().__init__(msg=msg)
 
 
 class AmbiguousAlias(CompilationException):

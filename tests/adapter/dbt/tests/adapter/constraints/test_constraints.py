@@ -7,9 +7,6 @@ from dbt.tests.util import (
 
 # Verify only SQL table materializations work with constraints
 
-# Verify manfiest is updated with the correct constraints, data_types, and checks
-
-
 # create a sql model fixture
 my_model_sql = """
 {{
@@ -70,6 +67,21 @@ select
   1 as id,
   'blue' as color,
   cast('2019-01-01' as date) as date_day
+"""
+
+my_model_python_error = """
+import holidays, s3fs
+
+
+def model(dbt, _):
+    dbt.config(
+        materialized="table",
+        packages=["holidays", "s3fs"],  # how to import python libraries in dbt's context
+        constraints_enabled=True,
+    )
+    df = dbt.ref("my_model")
+    df_describe = df.describe()  # basic statistics profiling
+    return df_describe
 """
 
 model_schema_errors_yml = """
@@ -150,7 +162,6 @@ class TestModelLevelConstraintsDisabledConfigs(BaseConstraintsEnabledModelvsProj
         assert constraints_enabled_actual_config is False
 
 
-# If there is no schema config, show a compilation error
 class TestSchemaConstraintsEnabledConfigs(BaseConstraintsEnabledModelvsProject):
     @pytest.fixture(scope="class")
     def models(self):
@@ -169,12 +180,13 @@ class TestModelLevelConstraintsErrorMessages(BaseConstraintsEnabledModelvsProjec
     def models(self):
         return {
             "my_model.sql": my_model_error_sql,
+            "python_model.py": my_model_python_error,
             "constraints_schema.yml": model_schema_errors_yml,
         }
 
     def test__config_errors(self, project):
 
-        results, log_output = run_dbt_and_capture(['run'], expect_pass=False)
+        results, log_output = run_dbt_and_capture(['run', '-s', 'my_model'], expect_pass=False)
         manifest = get_manifest(project.project_root)
         model_id = "model.test.my_model"
         my_model_config = manifest.nodes[model_id].config
@@ -186,3 +198,16 @@ class TestModelLevelConstraintsErrorMessages(BaseConstraintsEnabledModelvsProjec
         expected_empty_data_type_error = "Columns with `data_type` Blank/Null Errors: {'date_day'}"
         assert expected_materialization_error in log_output
         assert expected_empty_data_type_error in log_output
+
+    def test__python_errors(self, project):
+
+        results, log_output = run_dbt_and_capture(['run', '-s', 'python_model'], expect_pass=False)
+        manifest = get_manifest(project.project_root)
+        model_id = "model.test.python_model"
+        my_model_config = manifest.nodes[model_id].config
+        constraints_enabled_actual_config = my_model_config.constraints_enabled
+
+        assert constraints_enabled_actual_config is True
+
+        expected_python_error = "Language Error: {'language': 'python'}"
+        assert expected_python_error in log_output

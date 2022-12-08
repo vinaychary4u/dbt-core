@@ -499,14 +499,6 @@ class ConnectionException(Exception):
     pass
 
 
-# TODO: these are all the functins that need to be converted and deprecated
-
-
-# TODO: this was copied into jinja_exxceptions because it's in the context - eventually remove?
-def raise_compiler_error(msg, node=None) -> NoReturn:
-    raise CompilationException(msg, node)
-
-
 # event level exception
 class EventCompilationException(CompilationException):
     def __init__(self, msg, node):
@@ -528,6 +520,43 @@ class GraphDependencyNotFound(CompilationException):
 
 
 # client level exceptions
+
+
+class NoSupportedLanguagesFound(CompilationException):
+    def __init__(self, node):
+        self.node = node
+        self.msg = f"No supported_languages found in materialization macro {self.node.name}"
+        super().__init__(msg=self.msg)
+
+
+class MaterializtionMacroNotUsed(CompilationException):
+    def __init__(self, node):
+        self.node = node
+        self.msg = "Only materialization macros can be used with this function"
+        super().__init__(msg=self.msg)
+
+
+class UndefinedCompilation(CompilationException):
+    def __init__(self, name, node):
+        self.name = name
+        self.node = node
+        self.msg = f"{self.name} is undefined"
+        super().__init__(msg=self.msg)
+
+
+class CaughtMacroExceptionWithNode(CompilationException):
+    def __init__(self, exc, node):
+        self.exc = exc
+        self.node = node
+        super().__init__(msg=str(exc))
+
+
+class CaughtMacroException(CompilationException):
+    def __init__(self, exc):
+        self.exc = exc
+        super().__init__(msg=str(exc))
+
+
 class MacroNameNotString(CompilationException):
     def __init__(self, kwarg_value):
         self.kwarg_value = kwarg_value
@@ -710,6 +739,79 @@ class SymbolicLinkError(CompilationException):
 # context level exceptions
 
 
+class LoadAgateTableValueError(CompilationException):
+    def __init__(self, exc, node):
+        self.exc = exc
+        self.node = node
+        msg = str(self.exc)
+        super().__init__(msg=msg)
+
+
+class LoadAgateTableNotSeed(CompilationException):
+    def __init__(self, resource_type, node):
+        self.resource_type = resource_type
+        self.node = node
+        msg = f"can only load_agate_table for seeds (got a {self.resource_type})"
+        super().__init__(msg=msg)
+
+
+class MacrosSourcesUnWriteable(CompilationException):
+    def __init__(self, node):
+        self.node = node
+        msg = 'cannot "write" macros or sources'
+        super().__init__(msg=msg)
+
+
+class PackageNotInDeps(CompilationException):
+    def __init__(self, package_name, node):
+        self.package_name = package_name
+        self.node = node
+        msg = f"Node package named {self.package_name} not found!"
+        super().__init__(msg=msg)
+
+
+class OperationsCannotRefEphemeralNodes(CompilationException):
+    def __init__(self, target_name, node):
+        self.target_name = target_name
+        self.node = node
+        msg = f"Operations can not ref() ephemeral nodes, but {target_name} is ephemeral"
+        super().__init__(msg=msg)
+
+
+class InvalidPersistDocsValueType(CompilationException):
+    def __init__(self, persist_docs):
+        self.persist_docs = persist_docs
+        msg = (
+            "Invalid value provided for 'persist_docs'. Expected dict "
+            f"but received {type(self.persist_docs)}"
+        )
+        super().__init__(msg=msg)
+
+
+class InvalidInlineModelConfig(CompilationException):
+    def __init__(self, node):
+        self.node = node
+        msg = "Invalid inline model config"
+        super().__init__(msg=msg)
+
+
+class ConflictingConfigKeys(CompilationException):
+    def __init__(self, oldkey, newkey, node):
+        self.oldkey = oldkey
+        self.newkey = newkey
+        self.node = node
+        msg = f'Invalid config, has conflicting keys "{self.oldkey}" and "{self.newkey}"'
+        super().__init__(msg=msg)
+
+
+class InvalidNumberSourceArgs(CompilationException):
+    def __init__(self, args, node):
+        self.args = args
+        self.node = node
+        msg = f"source() takes exactly two arguments ({len(self.args)} given)"
+        super().__init__(msg=msg)
+
+
 class RequiredVarNotFound(CompilationException):
     def __init__(self, var_name, merged, node):
         self.var_name = var_name
@@ -734,7 +836,7 @@ class PackageNotFoundForMacro(CompilationException):
     def __init__(self, package_name):
         self.package_name = package_name
         msg = f"Could not find package '{self.package_name}'"
-        super().__init__(msg)
+        super().__init__(msg=msg)
 
 
 class DisallowSecretEnvVar(ParsingException):
@@ -907,6 +1009,69 @@ class DuplicateMacroName(CompilationException):
 
 
 # parser level exceptions
+class SameKeyNested(CompilationException):
+    def __init__(self):
+        msg = "Test cannot have the same key at the top-level and in config"
+        super().__init__(msg=msg)
+
+
+class TestArgIncludesModel(CompilationException):
+    def __init__(self):
+        msg = 'Test arguments include "model", which is a reserved argument'
+        super().__init__(msg=msg)
+
+
+class UnexpectedTestNamePattern(CompilationException):
+    def __init__(self, test_name):
+        self.test_name = test_name
+        msg = f"Test name string did not match expected pattern: {self.test_name}"
+        super().__init__(msg=msg)
+
+
+class CustomMacroPopulatingConfigValues(CompilationException):
+    def __init__(self, target_name, column_name, name, key, err_msg):
+        self.target_name = target_name
+        self.column_name = column_name
+        self.name = name
+        self.key = key
+        self.err_msg = err_msg
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        # Generic tests do not include custom macros in the Jinja
+        # rendering context, so this will almost always fail. As it
+        # currently stands, the error message is inscrutable, which
+        # has caused issues for some projects migrating from
+        # pre-0.20.0 to post-0.20.0.
+        # See https://github.com/dbt-labs/dbt-core/issues/4103
+        # and https://github.com/dbt-labs/dbt-core/issues/5294
+
+        msg = (
+            f"The {self.target_name}.{self.column_name} column's "
+            f'"{self.name}" test references an undefined '
+            f"macro in its {self.key} configuration argument. "
+            f"The macro {self.err_msg}.\n"
+            "Please note that the generic test configuration parser "
+            "currently does not support using custom macros to "
+            "populate configuration values"
+        )
+        return msg
+
+
+class TagsNotListOfStrings(CompilationException):
+    def __init__(self, tags):
+        self.tags = tags
+        msg = f"got {self.tags} ({type(self.tags)}) for tags, expected a list of strings"
+        super().__init__(msg=msg)
+
+
+class TagNotString(CompilationException):
+    def __init__(self, tag):
+        self.tag = tag
+        msg = f"got {self.tag} ({type(self.tag)}) for tag, expected a str"
+        super().__init__(msg=msg)
+
+
 class TestNameNotString(ParsingException):
     def __init__(self, test_name):
         self.test_name = test_name
@@ -1063,6 +1228,80 @@ class DuplicateAlias(AliasException):
 
 
 # adapters exceptions
+class InvalidMacroResult(CompilationException):
+    def __init__(self, freshness_macro_name, table):
+        self.freshness_macro_name = freshness_macro_name
+        self.table = table
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = 'Got an invalid result from "{self.freshness_macro_name}" macro: {[tuple(r) for r in self.table]}'
+
+        return msg
+
+
+class SnapshotTargetNotSnapshotTable(CompilationException):
+    def __init__(self, missing):
+        self.missing = missing
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = 'Snapshot target is not a snapshot table (missing "{}")'.format(
+            '", "'.join(self.missing)
+        )
+        return msg
+
+
+class SnapshotTargetIncomplete(CompilationException):
+    def __init__(self, extra, missing):
+        self.extra = extra
+        self.missing = missing
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = (
+            'Snapshot target has ("{}") but not ("{}") - is it an '
+            "unmigrated previous version archive?".format(
+                '", "'.join(self.extra), '", "'.join(self.missing)
+            )
+        )
+        return msg
+
+
+class RenameToNoneAttempted(CompilationException):
+    def __init__(self, src_name, dst_name, name):
+        self.src_name = src_name
+        self.dst_name = dst_name
+        self.name = name
+        self.msg = f"Attempted to rename {self.src_name} to {self.dst_name} for {self.name}"
+        super().__init__(msg=self.msg)
+
+
+class NullRelationDropAttempted(CompilationException):
+    def __init__(self, name):
+        self.name = name
+        self.msg = f"Attempted to drop a null relation for {self.name}"
+        super().__init__(msg=self.msg)
+
+
+class NullRelationCacheAttempted(CompilationException):
+    def __init__(self, name):
+        self.name = name
+        self.msg = f"Attempted to cache a null relation for {self.name}"
+        super().__init__(msg=self.msg)
+
+
+class InvalidQuoteConfigType(CompilationException):
+    def __init__(self, quote_config):
+        self.quote_config = quote_config
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = (
+            'The seed configuration value of "quote_columns" has an '
+            f"invalid type {type(self.quote_config)}"
+        )
+        return msg
 
 
 class MultipleDatabasesNotAllowed(CompilationException):
@@ -1691,9 +1930,9 @@ def raise_dataclass_not_dict(obj) -> NoReturn:
     raise DataclassNotDict(obj)
 
 
-# TODO: add this is once it's removed above
-# def raise_compiler_error(msg, node=None) -> NoReturn:
-#     raise CompilationException(msg, node)
+# note: this is called all over the code in addition to in jinja
+def raise_compiler_error(msg, node=None) -> NoReturn:
+    raise CompilationException(msg, node)
 
 
 def raise_database_error(msg, node=None) -> NoReturn:

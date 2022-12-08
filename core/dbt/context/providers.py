@@ -42,19 +42,27 @@ from dbt.contracts.graph.metrics import MetricReference, ResolvedMetricReference
 from dbt.events.functions import get_metadata_vars
 from dbt.exceptions import (
     CompilationException,
+    ConflictingConfigKeys,
     DisallowSecretEnvVar,
     EnvVarMissing,
     InternalException,
+    InvalidInlineModelConfig,
+    InvalidNumberSourceArgs,
+    InvalidPersistDocsValueType,
+    LoadAgateTableNotSeed,
+    LoadAgateTableValueError,
     MacroInvalidDispatchArg,
+    MacrosSourcesUnWriteable,
     MetricInvalidArgs,
     MissingConfig,
+    OperationsCannotRefEphemeralNodes,
+    PackageNotInDeps,
     ParsingException,
     RefBadContext,
     RefInvalidArgs,
     RuntimeException,
     TargetNotFound,
     ValidationException,
-    raise_compiler_error,
 )
 from dbt.config import IsFQNResource
 from dbt.node_types import NodeType, ModelLanguage
@@ -257,9 +265,7 @@ class BaseSourceResolver(BaseResolver):
 
     def __call__(self, *args: str) -> RelationProxy:
         if len(args) != 2:
-            raise_compiler_error(
-                f"source() takes exactly two arguments ({len(args)} given)", self.model
-            )
+            raise InvalidNumberSourceArgs(args, node=self.model)
         self.validate_args(args[0], args[1])
         return self.resolve(args[0], args[1])
 
@@ -315,12 +321,7 @@ class ParseConfigObject(Config):
             if oldkey in config:
                 newkey = oldkey.replace("_", "-")
                 if newkey in config:
-                    raise_compiler_error(
-                        'Invalid config, has conflicting keys "{}" and "{}"'.format(
-                            oldkey, newkey
-                        ),
-                        self.model,
-                    )
+                    raise ConflictingConfigKeys(oldkey, newkey, node=self.model)
                 config[newkey] = config.pop(oldkey)
         return config
 
@@ -330,7 +331,7 @@ class ParseConfigObject(Config):
         elif len(args) == 0 and len(kwargs) > 0:
             opts = kwargs
         else:
-            raise_compiler_error("Invalid inline model config", self.model)
+            raise InvalidInlineModelConfig(node=self.model)
 
         opts = self._transform_config(opts)
 
@@ -400,20 +401,14 @@ class RuntimeConfigObject(Config):
     def persist_relation_docs(self) -> bool:
         persist_docs = self.get("persist_docs", default={})
         if not isinstance(persist_docs, dict):
-            raise_compiler_error(
-                f"Invalid value provided for 'persist_docs'. Expected dict "
-                f"but received {type(persist_docs)}"
-            )
+            raise InvalidPersistDocsValueType(persist_docs)
 
         return persist_docs.get("relation", False)
 
     def persist_column_docs(self) -> bool:
         persist_docs = self.get("persist_docs", default={})
         if not isinstance(persist_docs, dict):
-            raise_compiler_error(
-                f"Invalid value provided for 'persist_docs'. Expected dict "
-                f"but received {type(persist_docs)}"
-            )
+            raise InvalidPersistDocsValueType(persist_docs)
 
         return persist_docs.get("columns", False)
 
@@ -510,12 +505,7 @@ class OperationRefResolver(RuntimeRefResolver):
         if target_model.is_ephemeral_model:
             # In operations, we can't ref() ephemeral nodes, because
             # Macros do not support set_cte
-            raise_compiler_error(
-                "Operations can not ref() ephemeral nodes, but {} is ephemeral".format(
-                    target_model.name
-                ),
-                self.model,
-            )
+            raise OperationsCannotRefEphemeralNodes(target_model.name, node=self.model)
         else:
             return super().create_relation(target_model, name)
 
@@ -594,7 +584,7 @@ class ModelConfiguredVar(Var):
         if package_name != self._config.project_name:
             if package_name not in dependencies:
                 # I don't think this is actually reachable
-                raise_compiler_error(f"Node package named {package_name} not found!", self._node)
+                raise PackageNotInDeps(package_name, node=self._node)
             yield dependencies[package_name]
         yield self._config
 
@@ -777,7 +767,7 @@ class ProviderContext(ManifestContext):
     def write(self, payload: str) -> str:
         # macros/source defs aren't 'writeable'.
         if isinstance(self.model, (Macro, SourceDefinition)):
-            raise_compiler_error('cannot "write" macros or sources')
+            raise MacrosSourcesUnWriteable(node=self.model)
         self.model.build_path = self.model.write_node(self.config.target_path, "run", payload)
         return ""
 
@@ -792,21 +782,19 @@ class ProviderContext(ManifestContext):
         try:
             return func(*args, **kwargs)
         except Exception:
-            raise_compiler_error(message_if_exception, self.model)
+            raise CompilationException(message_if_exception, self.model)
 
     @contextmember
     def load_agate_table(self) -> agate.Table:
         if not isinstance(self.model, SeedNode):
-            raise_compiler_error(
-                "can only load_agate_table for seeds (got a {})".format(self.model.resource_type)
-            )
+            raise LoadAgateTableNotSeed(self.model.resource_type, node=self.model)
         assert self.model.root_path
         path = os.path.join(self.model.root_path, self.model.original_file_path)
         column_types = self.model.config.column_types
         try:
             table = agate_helper.from_csv(path, text_columns=column_types)
         except ValueError as e:
-            raise_compiler_error(str(e))
+            raise LoadAgateTableValueError(str(e), node=self.model)
         table.original_abspath = os.path.abspath(path)
         return table
 
@@ -1430,9 +1418,7 @@ class ExposureRefResolver(BaseResolver):
 class ExposureSourceResolver(BaseResolver):
     def __call__(self, *args) -> str:
         if len(args) != 2:
-            raise_compiler_error(
-                f"source() takes exactly two arguments ({len(args)} given)", self.model
-            )
+            raise InvalidNumberSourceArgs(args, node=self.model)
         self.model.sources.append(list(args))
         return ""
 

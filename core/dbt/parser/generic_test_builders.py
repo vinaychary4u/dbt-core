@@ -22,12 +22,17 @@ from dbt.contracts.graph.unparsed import (
     UnparsedExposure,
 )
 from dbt.exceptions import (
+    CustomMacroPopulatingConfigValues,
+    SameKeyNested,
+    TagNotString,
+    TagsNotListOfStrings,
+    TestArgIncludesModel,
     TestArgsNotDict,
     TestDefinitionDictLength,
     TestInvalidType,
     TestNameNotString,
+    UnexpectedTestNamePattern,
     UndefinedMacroException,
-    raise_compiler_error,
 )
 from dbt.parser.search import FileBlock
 
@@ -229,9 +234,7 @@ class TestBuilder(Generic[Testable]):
         test_name, test_args = self.extract_test_args(test, column_name)
         self.args: Dict[str, Any] = test_args
         if "model" in self.args:
-            raise_compiler_error(
-                'Test arguments include "model", which is a reserved argument',
-            )
+            raise TestArgIncludesModel()
         self.package_name: str = package_name
         self.target: Testable = target
 
@@ -239,9 +242,7 @@ class TestBuilder(Generic[Testable]):
 
         match = self.TEST_NAME_PATTERN.match(test_name)
         if match is None:
-            raise_compiler_error(
-                "Test name string did not match expected pattern: {}".format(test_name)
-            )
+            raise UnexpectedTestNamePattern(test_name)
 
         groups = match.groupdict()
         self.name: str = groups["test_name"]
@@ -258,9 +259,7 @@ class TestBuilder(Generic[Testable]):
             value = self.args.pop(key, None)
             # 'modifier' config could be either top level arg or in config
             if value and "config" in self.args and key in self.args["config"]:
-                raise_compiler_error(
-                    "Test cannot have the same key at the top-level and in config"
-                )
+                raise SameKeyNested()
             if not value and "config" in self.args:
                 value = self.args["config"].pop(key, None)
             if isinstance(value, str):
@@ -268,22 +267,12 @@ class TestBuilder(Generic[Testable]):
                 try:
                     value = get_rendered(value, render_ctx, native=True)
                 except UndefinedMacroException as e:
-
-                    # Generic tests do not include custom macros in the Jinja
-                    # rendering context, so this will almost always fail. As it
-                    # currently stands, the error message is inscrutable, which
-                    # has caused issues for some projects migrating from
-                    # pre-0.20.0 to post-0.20.0.
-                    # See https://github.com/dbt-labs/dbt-core/issues/4103
-                    # and https://github.com/dbt-labs/dbt-core/issues/5294
-                    raise_compiler_error(
-                        f"The {self.target.name}.{column_name} column's "
-                        f'"{self.name}" test references an undefined '
-                        f"macro in its {key} configuration argument. "
-                        f"The macro {e.msg}.\n"
-                        "Please note that the generic test configuration parser "
-                        "currently does not support using custom macros to "
-                        "populate configuration values"
+                    raise CustomMacroPopulatingConfigValues(
+                        target_name=self.target.name,
+                        column_name=column_name,
+                        name=self.name,
+                        key=key,
+                        err_msg=e.msg
                     )
 
             if value is not None:
@@ -432,12 +421,10 @@ class TestBuilder(Generic[Testable]):
         if isinstance(tags, str):
             tags = [tags]
         if not isinstance(tags, list):
-            raise_compiler_error(
-                f"got {tags} ({type(tags)}) for tags, expected a list of strings"
-            )
+            raise TagsNotListOfStrings(tags)
         for tag in tags:
             if not isinstance(tag, str):
-                raise_compiler_error(f"got {tag} ({type(tag)}) for tag, expected a str")
+                raise TagNotString(tag)
         return tags[:]
 
     def macro_name(self) -> str:

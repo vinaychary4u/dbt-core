@@ -33,7 +33,6 @@ select
   cast('2019-01-01' as date) as date_day
 """
 
-# create a yaml fixture
 model_schema_yml = """
 version: 2
 models:

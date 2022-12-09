@@ -7,7 +7,7 @@ from typing import Iterator, List, Optional, Tuple
 
 import requests
 
-import dbt.exceptions
+# import dbt.exceptions
 import dbt.semver
 
 from dbt.ui import green, red, yellow

@@ -416,6 +416,21 @@ class ExposureNameDeprecation(WarnLevel, pt.ExposureNameDeprecation):  # noqa
         return line_wrap_message(warning_tag(f"Deprecated functionality\n\n{description}"))
 
 
+@dataclass
+class FunctionDeprecated(WarnLevel, pt.FunctionDeprecated):
+    def code(self):
+        return "D008"
+
+    def message(self):
+        description = (
+            f"Call to deprecated function {self.function_name}. \n"
+            f"Details of deprecation: {self.reason} \n"
+            f"To resolve this deprecation: {self.suggested_action} \n"
+            f"This will be removed in version: {self.version}."
+        )
+        return line_wrap_message(warning_tag(f"Deprecated functionality\n\n{description}"))
+
+
 # =======================================================
 # E - DB Adapter
 # =======================================================

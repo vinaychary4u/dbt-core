@@ -5,6 +5,8 @@ from typing import Any, Dict, List, Mapping, NoReturn, Optional, Union
 
 # from dbt.contracts.graph import ManifestNode # or ParsedNode?
 from dbt.dataclass_schema import ValidationError
+from dbt.internal_deprecations import deprecated
+
 from dbt.events.functions import warn_or_error
 from dbt.events.helpers import env_secrets, scrub_secrets
 from dbt.events.types import JinjaLogWarning
@@ -2175,7 +2177,12 @@ def raise_dataclass_not_dict(obj) -> NoReturn:
     raise DataclassNotDict(obj)
 
 
-# note: this is called all over the code in addition to in jinja
+# note: this is called all over the code in addition to in jinja but calling it from here is deprecated
+@deprecated(
+    reason="Not doing it this way",
+    version="1.5.0",
+    suggested_action="raise CompilationException directly",
+)
 def raise_compiler_error(msg, node=None) -> NoReturn:
     raise CompilationException(msg, node)
 

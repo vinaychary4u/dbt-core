@@ -353,11 +353,14 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
                 count_packages_specified = len(self.packages.packages)  # type: ignore
                 count_packages_installed = len(tuple(self._get_project_directories()))
                 if count_packages_specified > count_packages_installed:
-                    raise UninstalledPackagesFound(
-                        count_packages_specified,
-                        count_packages_installed,
-                        self.packages_install_path,
-                    )
+                    # tempoarily put this here to trigger deprecation log
+                    # TODO: remove after testing
+                    raise_compiler_error("Placeholder message!!")
+                    # raise UninstalledPackagesFound(
+                    #     count_packages_specified,
+                    #     count_packages_installed,
+                    #     self.packages_install_path,
+                    # )
                 project_paths = itertools.chain(internal_packages, self._get_project_directories())
             for project_name, project in self.load_projects(project_paths):
                 if project_name in all_projects:

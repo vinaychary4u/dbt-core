@@ -8,7 +8,6 @@ def deprecated(reason="", suggested_action="", version=""):
     def inner(func):
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
-            print("Inside wrapped")
             function_name = func.__name__
 
             warn_or_error(

@@ -422,13 +422,14 @@ class FunctionDeprecated(WarnLevel, pt.FunctionDeprecated):
         return "D008"
 
     def message(self):
-        description = (
-            f"Call to deprecated function {self.function_name}. \n"
-            f"Details of deprecation: {self.reason} \n"
-            f"To resolve this deprecation: {self.suggested_action} \n"
-            f"This will be removed in version: {self.version}."
-        )
-        return line_wrap_message(warning_tag(f"Deprecated functionality\n\n{description}"))
+        if self.reason != "":
+            details = f"Details of deprecation: {self.reason}"
+        if self.suggested_action != "":
+            action = f"To resolve this deprecation: {self.suggested_action}."
+        if self.version != "":
+            version_removed = f"This will be removed in version {self.version}."
+        description = f"Call to deprecated function {self.function_name}.\n{details}\n{action}\n{version_removed}"
+        return warning_tag(f"Deprecated functionality\n\n{description}")
 
 
 # =======================================================

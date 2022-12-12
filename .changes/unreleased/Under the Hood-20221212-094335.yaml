@@ -1,0 +1,7 @@
+kind: Under the Hood
+body: Add deprecation decorator to be used on functions in the python code base.
+time: 2022-12-12T09:43:35.215068-06:00
+custom:
+  Author: emmyoop
+  Issue: "6393"
+  PR: "6413"

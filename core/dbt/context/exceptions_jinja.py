@@ -12,7 +12,7 @@ from dbt.exceptions import (
     MissingRelation,
     AmbiguousAlias,
     AmbiguousCatalogMatch,
-    InternalException,
+    CacheInconsistency,
     DataclassNotDict,
     CompilationException,
     DatabaseException,
@@ -51,9 +51,8 @@ def raise_ambiguous_catalog_match(unique_id, match_1, match_2) -> NoReturn:
     raise AmbiguousCatalogMatch(unique_id, match_1, match_2)
 
 
-# TODO: this should be improved to not format message here
 def raise_cache_inconsistent(message) -> NoReturn:
-    raise InternalException("Cache inconsistency detected: {}".format(message))
+    raise CacheInconsistency(message)
 
 
 def raise_dataclass_not_dict(obj) -> NoReturn:
@@ -90,7 +89,7 @@ def raise_invalid_property_yml_version(path, issue) -> NoReturn:
 
 # TODO: this should be improved to not format message here
 def raise_not_implemented(msg) -> NoReturn:
-    raise NotImplementedException("ERROR: {}".format(msg))
+    raise NotImplementedException(msg)
 
 
 def relation_wrong_type(relation, expected_type, model=None) -> NoReturn:

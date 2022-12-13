@@ -1,8 +1,9 @@
 import builtins
 import json
 import re
-from typing import NoReturn, Optional, Mapping, Any
+from typing import Any, Mapping, NoReturn, Optional
 
+from dbt.dataclass_schema import ValidationError
 from dbt.events.functions import warn_or_error
 from dbt.events.helpers import env_secrets, scrub_secrets
 from dbt.events.types import JinjaLogWarning
@@ -11,26 +12,6 @@ from dbt.node_types import NodeType
 from dbt.ui import line_wrap_message
 
 import dbt.dataclass_schema
-
-
-def validator_error_message(exc):
-    """Given a dbt.dataclass_schema.ValidationError (which is basically a
-    jsonschema.ValidationError), return the relevant parts as a string
-    """
-    if not isinstance(exc, dbt.dataclass_schema.ValidationError):
-        return str(exc)
-    path = "[%s]" % "][".join(map(repr, exc.relative_path))
-    return "at path {}: {}".format(path, exc.message)
-
-
-def _fix_dupe_msg(path_1: str, path_2: str, name: str, type_name: str) -> str:
-    if path_1 == path_2:
-        return f"remove one of the {type_name} entries for {name} in this file:\n - {path_1!s}\n"
-    else:
-        return (
-            f"remove the {type_name} entry for {name} in one of these files:\n"
-            f" - {path_1!s}\n{path_2!s}"
-        )
 
 
 class Exception(builtins.Exception):
@@ -146,6 +127,15 @@ class RuntimeException(RuntimeError, Exception):
                 lines.append("> {} {}".format(msg, self.node_to_string(item)))
 
         return lines
+
+    def validator_error_message(self, exc):
+        """Given a dbt.dataclass_schema.ValidationError (which is basically a
+        jsonschema.ValidationError), return the relevant parts as a string
+        """
+        if not isinstance(exc, dbt.dataclass_schema.ValidationError):
+            return str(exc)
+        path = "[%s]" % "][".join(map(repr, exc.relative_path))
+        return "at path {}: {}".format(path, exc.message)
 
     def __str__(self, prefix="! "):
         node_string = ""
@@ -268,6 +258,17 @@ class CompilationException(RuntimeException):
     @property
     def type(self):
         return "Compilation"
+
+    def _fix_dupe_msg(self, path_1: str, path_2: str, name: str, type_name: str) -> str:
+        if path_1 == path_2:
+            return (
+                f"remove one of the {type_name} entries for {name} in this file:\n - {path_1!s}\n"
+            )
+        else:
+            return (
+                f"remove the {type_name} entry for {name} in one of these files:\n"
+                f" - {path_1!s}\n{path_2!s}"
+            )
 
 
 class RecursionException(RuntimeException):
@@ -423,7 +424,10 @@ class VersionsNotCompatibleException(SemverException):
 
 
 class NotImplementedException(Exception):
-    pass
+    def __init__(self, message):
+        self.message = message
+        self.msg = f"ERROR: {self.message}"
+        super().__init__(msg=self.msg)
 
 
 class FailedToConnectException(DatabaseException):
@@ -1009,6 +1013,118 @@ class DuplicateMacroName(CompilationException):
 
 
 # parser level exceptions
+class InvalidDictParse(ParsingException):
+    def __init__(self, exc, node):
+        self.exc = exc
+        self.node = node
+        msg = self.validator_error_message(exc)
+        super().__init__(msg=msg)
+
+
+class InvalidConfigUpdate(ParsingException):
+    def __init__(self, exc, node):
+        self.exc = exc
+        self.node = node
+        msg = self.validator_error_message(exc)
+        super().__init__(msg=msg)
+
+
+class PythonParsingException(ParsingException):
+    def __init__(self, exc, node):
+        self.exc = exc
+        self.node = node
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        validated_exc = self.validator_error_message(self.exc)
+        msg = f"{validated_exc}\n{self.exc.text}"
+        return msg
+
+
+class PythonLiteralEval(ParsingException):
+    def __init__(self, exc, node):
+        self.exc = exc
+        self.node = node
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = self.validator_error_message(
+            f"Error when trying to literal_eval an arg to dbt.ref(), dbt.source(), dbt.config() or dbt.config.get() \n{self.exc}\n"
+            "https://docs.python.org/3/library/ast.html#ast.literal_eval\n"
+            "In dbt python model, `dbt.ref`, `dbt.source`, `dbt.config`, `dbt.config.get` function args only support Python literal structures"
+        )
+
+        return msg
+
+
+class InvalidModelConfig(ParsingException):
+    def __init__(self, exc, node):
+        self.msg = self.validator_error_message(exc)
+        self.node = node
+        super().__init__(msg=self.msg)
+
+
+class YamlParseFailure(ParsingException):
+    def __init__(
+        self,
+        path,
+        key,
+        yaml_data,
+        cause,
+    ):
+        self.path = path
+        self.key = key
+        self.yaml_data = yaml_data
+        self.cause = cause
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        if isinstance(self.cause, str):
+            reason = self.cause
+        elif isinstance(self.cause, ValidationError):
+            reason = self.validator_error_message(self.cause)
+        else:
+            reason = self.cause.msg
+        msg = f"Invalid {self.key} config given in {self.path} @ {self.key}: {self.yaml_data} - {reason}"
+        return msg
+
+
+class YamlLoadFailure(ParsingException):
+    def __init__(self, project_name, path, exc):
+        self.project_name = project_name
+        self.path = path
+        self.exc = exc
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        reason = self.validator_error_message(self.exc)
+
+        msg = f"Error reading {self.project_name}: {self.path} - {reason}"
+
+        return msg
+
+
+class InvalidTestConfig(ParsingException):
+    def __init__(self, exc, node):
+        self.msg = self.validator_error_message(exc)
+        self.node = node
+        super().__init__(msg=self.msg)
+
+
+class InvalidSchemaConfig(ParsingException):
+    def __init__(self, exc, node):
+        self.msg = self.validator_error_message(exc)
+        self.node = node
+        super().__init__(msg=self.msg)
+
+
+class InvalidSnapshopConfig(ParsingException):
+    def __init__(self, exc, node):
+        self.msg = self.validator_error_message(exc)
+        self.node = node
+        super().__init__(msg=self.msg)
+
+
 class SameKeyNested(CompilationException):
     def __init__(self):
         msg = "Test cannot have the same key at the top-level and in config"
@@ -1176,7 +1292,7 @@ class DuplicateSourcePatchName(CompilationException):
 
     def get_message(self) -> str:
         name = f"{self.patch_1.overrides}.{self.patch_1.name}"
-        fix = _fix_dupe_msg(
+        fix = self._fix_dupe_msg(
             self.patch_1.path,
             self.patch_2.path,
             name,
@@ -1199,7 +1315,7 @@ class DuplicateMacroPatchName(CompilationException):
     def get_message(self) -> str:
         package_name = self.patch_1.package_name
         name = self.patch_1.name
-        fix = _fix_dupe_msg(
+        fix = self._fix_dupe_msg(
             self.patch_1.original_file_path, self.existing_patch_path, name, "macros"
         )
         msg = (
@@ -1227,6 +1343,57 @@ class DuplicateAlias(AliasException):
         return msg
 
 
+# Postgres Exceptions
+
+
+class UnexpectedDbReference(NotImplementedException):
+    def __init__(self, adapter, database, expected):
+        self.adapter = adapter
+        self.database = database
+        self.expected = expected
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = f"Cross-db references not allowed in {self.adapter} ({self.database} vs {self.expected})"
+        return msg
+
+
+class CrossDbReferenceProhibited(CompilationException):
+    def __init__(self, adapter, exc_msg):
+        self.adapter = adapter
+        self.exc_msg = exc_msg
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = f"Cross-db references not allowed in adapter {self.adapter}: Got {self.exc_msg}"
+        return msg
+
+
+class IndexConfigNotDict(CompilationException):
+    def __init__(self, raw_index):
+        self.raw_index = raw_index
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = (
+            f"Invalid index config:\n"
+            f"  Got: {self.raw_index}\n"
+            f'  Expected a dictionary with at minimum a "columns" key'
+        )
+        return msg
+
+
+class InvalidIndexConfig(CompilationException):
+    def __init__(self, exc):
+        self.exc = exc
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        validator_msg = self.validator_error_message(self.exc)
+        msg = f"Could not parse index config: {validator_msg}"
+        return msg
+
+
 # adapters exceptions
 class InvalidMacroResult(CompilationException):
     def __init__(self, freshness_macro_name, table):
@@ -1235,7 +1402,7 @@ class InvalidMacroResult(CompilationException):
         super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
-        msg = 'Got an invalid result from "{self.freshness_macro_name}" macro: {[tuple(r) for r in self.table]}'
+        msg = f'Got an invalid result from "{self.freshness_macro_name}" macro: {[tuple(r) for r in self.table]}'
 
         return msg
 
@@ -1472,6 +1639,34 @@ class PackageNotFound(DependencyException):
 
 
 # config level exceptions
+
+
+class ProfileConfigInvalid(DbtProfileError):
+    def __init__(self, exc):
+        self.exc = exc
+        msg = self.validator_error_message(self.exc)
+        super().__init__(msg=msg)
+
+
+class ProjectContractInvalid(DbtProjectError):
+    def __init__(self, exc):
+        self.exc = exc
+        msg = self.validator_error_message(self.exc)
+        super().__init__(msg=msg)
+
+
+class ProjectContractBroken(DbtProjectError):
+    def __init__(self, exc):
+        self.exc = exc
+        msg = self.validator_error_message(self.exc)
+        super().__init__(msg=msg)
+
+
+class ConfigContractBroken(DbtProjectError):
+    def __init__(self, exc):
+        self.exc = exc
+        msg = self.validator_error_message(self.exc)
+        super().__init__(msg=msg)
 
 
 class NonUniquePackageName(CompilationException):
@@ -1765,7 +1960,7 @@ class DuplicatePatchPath(CompilationException):
 
     def get_message(self) -> str:
         name = self.patch_1.name
-        fix = _fix_dupe_msg(
+        fix = self._fix_dupe_msg(
             self.patch_1.original_file_path,
             self.existing_patch_path,
             name,
@@ -1921,9 +2116,8 @@ def raise_ambiguous_catalog_match(unique_id, match_1, match_2) -> NoReturn:
     raise AmbiguousCatalogMatch(unique_id, match_1, match_2)
 
 
-# TODO: this should be improved to not format message here
 def raise_cache_inconsistent(message) -> NoReturn:
-    raise InternalException("Cache inconsistency detected: {}".format(message))
+    raise CacheInconsistency(message)
 
 
 def raise_dataclass_not_dict(obj) -> NoReturn:
@@ -1961,7 +2155,7 @@ def raise_invalid_property_yml_version(path, issue) -> NoReturn:
 
 # TODO: this should be improved to not format message here
 def raise_not_implemented(msg) -> NoReturn:
-    raise NotImplementedException("ERROR: {}".format(msg))
+    raise NotImplementedException(msg)
 
 
 def relation_wrong_type(relation, expected_type, model=None) -> NoReturn:

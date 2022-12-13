@@ -25,11 +25,11 @@ from dbt.contracts.project import Configuration, UserConfig
 from dbt.contracts.relation import ComponentName
 from dbt.dataclass_schema import ValidationError
 from dbt.exceptions import (
+    ConfigContractBroken,
     DbtProjectError,
     NonUniquePackageName,
     RuntimeException,
     UninstalledPackagesFound,
-    validator_error_message,
 )
 from dbt.events.functions import warn_or_error
 from dbt.events.types import UnusedResourceConfigPath
@@ -187,7 +187,7 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
         try:
             Configuration.validate(self.serialize())
         except ValidationError as e:
-            raise DbtProjectError(validator_error_message(e)) from e
+            raise ConfigContractBroken(e) from e
 
     @classmethod
     def _get_rendered_profile(

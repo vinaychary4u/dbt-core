@@ -56,12 +56,15 @@ from dbt.exceptions import (
     DuplicateSourcePatchName,
     JSONValidationException,
     InternalException,
+    InvalidSchemaConfig,
+    InvalidTestConfig,
     ParsingException,
     PropertyYMLInvalidTag,
     PropertyYMLMissingVersion,
     PropertyYMLVersionNotInt,
     ValidationException,
-    validator_error_message,
+    YamlLoadFailure,
+    YamlParseFailure,
 )
 from dbt.events.functions import warn_or_error
 from dbt.events.types import WrongResourceSchemaFile, NoNodeForYamlKey, MacroPatchNotFound
@@ -93,34 +96,13 @@ schema_file_keys = (
 )
 
 
-def error_context(
-    path: str,
-    key: str,
-    data: Any,
-    cause: Union[str, ValidationException, JSONValidationException],
-) -> str:
-    """Provide contextual information about an error while parsing"""
-    if isinstance(cause, str):
-        reason = cause
-    elif isinstance(cause, ValidationError):
-        reason = validator_error_message(cause)
-    else:
-        reason = cause.msg
-    return "Invalid {key} config given in {path} @ {key}: {data} - {reason}".format(
-        key=key, path=path, data=data, reason=reason
-    )
-
-
 def yaml_from_file(source_file: SchemaSourceFile) -> Dict[str, Any]:
     """If loading the yaml fails, raise an exception."""
     path = source_file.path.relative_path
     try:
         return load_yaml_text(source_file.contents, source_file.path)
     except ValidationException as e:
-        reason = validator_error_message(e)
-        raise ParsingException(
-            "Error reading {}: {} - {}".format(source_file.project_name, path, reason)
-        )
+        raise YamlLoadFailure(source_file.project_name, path, e)
 
 
 class ParserRef:
@@ -264,7 +246,6 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
             GenericTestNode.validate(dct)
             return GenericTestNode.from_dict(dct)
         except ValidationError as exc:
-            msg = validator_error_message(exc)
             # this is a bit silly, but build an UnparsedNode just for error
             # message reasons
             node = self._create_error_node(
@@ -273,7 +254,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
                 original_file_path=target.original_file_path,
                 raw_code=raw_code,
             )
-            raise ParsingException(msg, node=node) from exc
+            raise InvalidTestConfig(exc, node)
 
     # lots of time spent in this method
     def _parse_generic_test(
@@ -415,8 +396,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
                 # env_vars should have been updated in the context env_var method
             except ValidationError as exc:
                 # we got a ValidationError - probably bad types in config()
-                msg = validator_error_message(exc)
-                raise ParsingException(msg, node=node) from exc
+                raise InvalidSchemaConfig(exc, node=node) from exc
 
     def parse_node(self, block: GenericTestBlock) -> GenericTestNode:
         """In schema parsing, we rewrite most of the part of parse_node that
@@ -626,8 +606,7 @@ class YamlReader(metaclass=ABCMeta):
             # check that entry is a dict and that all dict values
             # are strings
             if coerce_dict_str(entry) is None:
-                msg = error_context(path, self.key, data, "expected a dict with string keys")
-                raise ParsingException(msg)
+                raise YamlParseFailure(path, self.key, data, "expected a dict with string keys")
 
             if "name" not in entry:
                 raise ParsingException("Entry did not contain a name")
@@ -674,8 +653,7 @@ class SourceParser(YamlDocsReader):
             cls.validate(data)
             return cls.from_dict(data)
         except (ValidationError, JSONValidationException) as exc:
-            msg = error_context(path, self.key, data, exc)
-            raise ParsingException(msg) from exc
+            raise YamlParseFailure(path, self.key, data, exc)
 
     # The other parse method returns TestBlocks. This one doesn't.
     # This takes the yaml dictionaries in 'sources' keys and uses them
@@ -800,8 +778,7 @@ class NonSourceParser(YamlDocsReader, Generic[NonSourceTarget, Parsed]):
                     self.normalize_docs_attribute(data, path)
                 node = self._target_type().from_dict(data)
             except (ValidationError, JSONValidationException) as exc:
-                msg = error_context(path, self.key, data, exc)
-                raise ParsingException(msg) from exc
+                raise YamlParseFailure(path, self.key, data, exc)
             else:
                 yield node
 
@@ -1084,8 +1061,7 @@ class ExposureParser(YamlReader):
                 UnparsedExposure.validate(data)
                 unparsed = UnparsedExposure.from_dict(data)
             except (ValidationError, JSONValidationException) as exc:
-                msg = error_context(self.yaml.path, self.key, data, exc)
-                raise ParsingException(msg) from exc
+                raise YamlParseFailure(self.yaml.path, self.key, data, exc)
 
             self.parse_exposure(unparsed)
 
@@ -1202,6 +1178,5 @@ class MetricParser(YamlReader):
                 unparsed = UnparsedMetric.from_dict(data)
 
             except (ValidationError, JSONValidationException) as exc:
-                msg = error_context(self.yaml.path, self.key, data, exc)
-                raise ParsingException(msg) from exc
+                raise YamlParseFailure(self.yaml.path, self.key, data, exc)
             self.parse_metric(unparsed)

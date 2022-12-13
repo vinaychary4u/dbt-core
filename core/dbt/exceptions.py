@@ -199,13 +199,13 @@ class RPCKilledException(RuntimeException):
 
     def __init__(self, signum):
         self.signum = signum
-        self.message = "RPC process killed by signal {}".format(self.signum)
-        super().__init__(self.message)
+        self.msg = f"RPC process killed by signal {self.signum}"
+        super().__init__(self.msg)
 
     def data(self):
         return {
             "signum": self.signum,
-            "message": self.message,
+            "message": self.msg,
         }
 
 
@@ -227,11 +227,11 @@ class RPCLoadException(RuntimeException):
 
     def __init__(self, cause):
         self.cause = cause
-        self.message = "{}: {}".format(self.MESSAGE, self.cause["message"])
-        super().__init__(self.message)
+        self.msg = f'{self.MESSAGE}: {self.cause["message"]}'
+        super().__init__(self.msg)
 
     def data(self):
-        return {"cause": self.cause, "message": self.message}
+        return {"cause": self.cause, "message": self.msg}
 
 
 class DatabaseException(RuntimeException):
@@ -371,9 +371,9 @@ class DbtConfigError(RuntimeException):
     CODE = 10007
     MESSAGE = "DBT Configuration Error"
 
-    def __init__(self, message, project=None, result_type="invalid_project", path=None):
+    def __init__(self, msg, project=None, result_type="invalid_project", path=None):
         self.project = project
-        super().__init__(message)
+        super().__init__(msg)
         self.result_type = result_type
         self.path = path
 
@@ -389,8 +389,8 @@ class FailFastException(RuntimeException):
     CODE = 10013
     MESSAGE = "FailFast Error"
 
-    def __init__(self, message, result=None, node=None):
-        super().__init__(msg=message, node=node)
+    def __init__(self, msg, result=None, node=None):
+        super().__init__(msg=msg, node=node)
         self.result = result
 
     @property
@@ -424,10 +424,10 @@ class VersionsNotCompatibleException(SemverException):
 
 
 class NotImplementedException(Exception):
-    def __init__(self, message):
-        self.message = message
-        self.msg = f"ERROR: {self.message}"
-        super().__init__(msg=self.msg)
+    def __init__(self, msg):
+        self.msg = msg
+        self.formatted_msg = f"ERROR: {self.msg}"
+        super().__init__(msg=self.formatted_msg)
 
 
 class FailedToConnectException(DatabaseException):
@@ -435,12 +435,12 @@ class FailedToConnectException(DatabaseException):
 
 
 class CommandError(RuntimeException):
-    def __init__(self, cwd, cmd, message="Error running command"):
+    def __init__(self, cwd, cmd, msg="Error running command"):
         cmd_scrubbed = list(scrub_secrets(cmd_txt, env_secrets()) for cmd_txt in cmd)
-        super().__init__(message)
+        super().__init__(msg)
         self.cwd = cwd
         self.cmd = cmd_scrubbed
-        self.args = (cwd, cmd_scrubbed, message)
+        self.args = (cwd, cmd_scrubbed, msg)
 
     def __str__(self):
         if len(self.cmd) == 0:
@@ -449,25 +449,25 @@ class CommandError(RuntimeException):
 
 
 class ExecutableError(CommandError):
-    def __init__(self, cwd, cmd, message):
-        super().__init__(cwd, cmd, message)
+    def __init__(self, cwd, cmd, msg):
+        super().__init__(cwd, cmd, msg)
 
 
 class WorkingDirectoryError(CommandError):
-    def __init__(self, cwd, cmd, message):
-        super().__init__(cwd, cmd, message)
+    def __init__(self, cwd, cmd, msg):
+        super().__init__(cwd, cmd, msg)
 
     def __str__(self):
         return '{}: "{}"'.format(self.msg, self.cwd)
 
 
 class CommandResultError(CommandError):
-    def __init__(self, cwd, cmd, returncode, stdout, stderr, message="Got a non-zero returncode"):
-        super().__init__(cwd, cmd, message)
+    def __init__(self, cwd, cmd, returncode, stdout, stderr, msg="Got a non-zero returncode"):
+        super().__init__(cwd, cmd, msg)
         self.returncode = returncode
         self.stdout = scrub_secrets(stdout.decode("utf-8"), env_secrets())
         self.stderr = scrub_secrets(stderr.decode("utf-8"), env_secrets())
-        self.args = (cwd, self.cmd, returncode, self.stdout, self.stderr, message)
+        self.args = (cwd, self.cmd, returncode, self.stdout, self.stderr, msg)
 
     def __str__(self):
         return "{} running: {}".format(self.msg, self.cmd)
@@ -1857,10 +1857,10 @@ class AmbiguousCatalogMatch(CompilationException):
 
 
 class CacheInconsistency(InternalException):
-    def __init__(self, message):
-        self.message = message
-        msg = f"Cache inconsistency detected: {self.message}"
-        super().__init__(msg)
+    def __init__(self, msg):
+        self.msg = msg
+        formatted_msg = f"Cache inconsistency detected: {self.msg}"
+        super().__init__(msg=formatted_msg)
 
 
 class NewNameAlreadyInCache(CacheInconsistency):

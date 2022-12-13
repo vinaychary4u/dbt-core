@@ -14,6 +14,17 @@ from dbt.ui import line_wrap_message
 import dbt.dataclass_schema
 
 
+class MacroReturn(builtins.BaseException):
+    """
+    Hack of all hacks
+    This is not actually an exception.
+    It's how we return a value from a macro.
+    """
+
+    def __init__(self, value):
+        self.value = value
+
+
 class Exception(builtins.Exception):
     CODE = -32000
     MESSAGE = "Server Error"
@@ -24,15 +35,6 @@ class Exception(builtins.Exception):
             "type": self.__class__.__name__,
             "message": str(self),
         }
-
-
-class MacroReturn(builtins.BaseException):
-    """
-    Hack of all hacks
-    """
-
-    def __init__(self, value):
-        self.value = value
 
 
 class InternalException(Exception):

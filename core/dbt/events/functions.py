@@ -22,6 +22,12 @@ metadata_vars: Optional[Dict[str, str]] = None
 # generates events, without configuring the event manager.
 EVENT_MANAGER: EventManager = EventManager()
 
+# make sure that logs / exceptions go *somewhere* if they occur before the
+# EventManager has been actually configured. this should only be needed if something
+# has been configured / initialized incorrectly
+def setup_basic_logger():
+    EVENT_MANAGER.add_logger(_get_stdout_config(level=EventLevel.INFO))
+
 
 def setup_event_logger(log_path: str, level_override: Optional[EventLevel] = None):
     cleanup_event_logger()

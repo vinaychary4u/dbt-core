@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import dbt.version
-from dbt.events.functions import fire_event, setup_event_logger, LOG_VERSION
+from dbt.events.functions import fire_event, setup_basic_logger, setup_event_logger, LOG_VERSION
 from dbt.events.types import (
     MainEncounteredError,
     MainKeyboardInterrupt,
@@ -219,6 +219,8 @@ def track_run(task):
 
 def run_from_args(parsed):
     log_cache_events(getattr(parsed, "log_cache_events", False))
+    # just in case something goes wrong before we reach the real 'setup_event_logger'
+    setup_basic_logger()
 
     # this will convert DbtConfigErrors into RuntimeExceptions
     # task could be any one of the task objects

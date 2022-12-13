@@ -108,6 +108,7 @@ class BaseTask(metaclass=ABCMeta):
             tracking.track_invalid_invocation(args=args, result_type=exc.result_type)
             raise dbt.exceptions.RuntimeException("Could not run dbt") from exc
         except dbt.exceptions.DbtProfileError as exc:
+            # This will use the 'basic' event manager, if the real one hasn't yet been configured
             fire_event(DbtProfileError())
             fire_event(DbtProfileErrorException(exc=str(exc)))
 

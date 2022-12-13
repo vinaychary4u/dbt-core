@@ -87,7 +87,6 @@ def raise_invalid_property_yml_version(path, issue) -> NoReturn:
     raise InvalidPropertyYML(path, issue)
 
 
-# TODO: this should be improved to not format message here
 def raise_not_implemented(msg) -> NoReturn:
     raise NotImplementedException(msg)
 

@@ -1923,7 +1923,7 @@ class NoneRelationFound(CacheInconsistency):
 # this is part of the context and also raised in dbt.contracts.relation.py
 class DataclassNotDict(CompilationException):
     def __init__(self, obj):
-        self.obj = obj  # TODO: what kind of obj is this?
+        self.obj = obj
         super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
@@ -2153,7 +2153,6 @@ def raise_invalid_property_yml_version(path, issue) -> NoReturn:
     raise InvalidPropertyYML(path, issue)
 
 
-# TODO: this should be improved to not format message here
 def raise_not_implemented(msg) -> NoReturn:
     raise NotImplementedException(msg)
 

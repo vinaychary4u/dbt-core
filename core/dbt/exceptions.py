@@ -694,35 +694,24 @@ class GitCloningProblem(RuntimeException):
         return msg
 
 
-class GitCloningError(InternalException):
-    def __init__(self, repo: str, revision: str, error: CommandResultError):
+class BadSpecException(InternalException):
+    def __init__(self, repo, revision, error):
         self.repo = repo
         self.revision = revision
-        self.error = error
-        super().__init__(msg=self.get_message())
-
-    def get_message(self) -> str:
-        stderr = self.error.stderr.strip()
-        if "usage: git" in stderr:
-            stderr = stderr.split("\nusage: git")[0]
-        if re.match("fatal: destination path '(.+)' already exists", stderr):
-            self.error.cmd = list(scrub_secrets(str(self.error.cmd), env_secrets()))
-            raise self.error
-
-        msg = f"Error checking out spec='{self.revision}' for repo {self.repo}\n{stderr}"
-        return scrub_secrets(msg, env_secrets())
-
-
-class GitCheckoutError(InternalException):
-    def __init__(self, repo: str, revision: str, error: CommandResultError):
-        self.repo = repo
-        self.revision = revision
-        self.stderr = error.stderr.strip()
+        self.stderr = scrub_secrets(error.stderr.strip(), env_secrets())
         super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = f"Error checking out spec='{self.revision}' for repo {self.repo}\n{self.stderr}"
-        return scrub_secrets(msg, env_secrets())
+        return msg
+
+
+class GitCloningError(BadSpecException):
+    pass
+
+
+class GitCheckoutError(BadSpecException):
+    pass
 
 
 class InvalidMaterializationArg(CompilationException):
@@ -736,18 +725,25 @@ class InvalidMaterializationArg(CompilationException):
         return msg
 
 
-class SymbolicLinkError(CompilationException):
-    def __init__(self):
+class OperationException(CompilationException):
+    def __init__(self, operation_name):
+        self.operation_name = operation_name
         super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
         msg = (
-            "dbt encountered an error when attempting to create a symbolic link. "
+            f"dbt encountered an error when attempting to create a {self.operation_name}. "
             "If this error persists, please create an issue at: \n\n"
             "https://github.com/dbt-labs/dbt-core"
         )
 
         return msg
+
+
+class SymbolicLinkError(OperationException):
+    def __init__(self):
+        self.operation_name = "symbolic link"
+        super().__init__()
 
 
 # context level exceptions
@@ -2247,13 +2243,7 @@ def get_relation_returned_multiple_results(kwargs, matches):
 
 
 def system_error(operation_name):
-    # Note: This was converted for core to use SymbolicLinkError because it's the only way it was used. Maintaining flexibility here for now.
-    msg = (
-        f"dbt encountered an error when attempting to {operation_name}. "
-        "If this error persists, please create an issue at: \n\n"
-        "https://github.com/dbt-labs/dbt-core"
-    )
-    raise CompilationException(msg)
+    raise OperationException(operation_name)
 
 
 def invalid_materialization_argument(name, argument):
@@ -2261,8 +2251,7 @@ def invalid_materialization_argument(name, argument):
 
 
 def bad_package_spec(repo, spec, error_message):
-    msg = f"Error checking out spec='{spec}' for repo {repo}\n{error_message}"
-    raise InternalException(scrub_secrets(msg, env_secrets()))
+    BadSpecException(spec, repo, error_message)
 
 
 def raise_git_cloning_error(error: CommandResultError) -> NoReturn:

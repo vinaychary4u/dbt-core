@@ -29,7 +29,8 @@ from dbt.exceptions import (
     DbtProjectError,
     NonUniquePackageName,
     RuntimeException,
-    UninstalledPackagesFound,
+    # UninstalledPackagesFound,
+    raise_compiler_error,
 )
 from dbt.events.functions import warn_or_error
 from dbt.events.types import UnusedResourceConfigPath

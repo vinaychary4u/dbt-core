@@ -4,10 +4,11 @@ from typing import Any, Dict, NoReturn, Optional, Mapping, Iterable, Set, List
 
 from dbt import flags
 from dbt import tracking
+from dbt import utils
 from dbt.clients.jinja import get_rendered
 from dbt.clients.yaml_helper import yaml, safe_load, SafeLoader, Loader, Dumper  # noqa: F401
 from dbt.constants import SECRET_ENV_PREFIX, DEFAULT_ENV_PLACEHOLDER
-from dbt.contracts.graph.compiled import CompiledResource
+from dbt.contracts.graph.nodes import Resource
 from dbt.exceptions import (
     CompilationException,
     MacroReturn,
@@ -16,7 +17,8 @@ from dbt.exceptions import (
     disallow_secret_env_var,
 )
 from dbt.events.functions import fire_event, get_invocation_id
-from dbt.events.types import MacroEventInfo, MacroEventDebug
+from dbt.events.types import JinjaLogInfo, JinjaLogDebug
+from dbt.events.contextvars import get_node_info
 from dbt.version import __version__ as dbt_version
 
 # These modules are added to the context. Consider alternative
@@ -133,11 +135,11 @@ class Var:
         self,
         context: Mapping[str, Any],
         cli_vars: Mapping[str, Any],
-        node: Optional[CompiledResource] = None,
+        node: Optional[Resource] = None,
     ) -> None:
         self._context: Mapping[str, Any] = context
         self._cli_vars: Mapping[str, Any] = cli_vars
-        self._node: Optional[CompiledResource] = node
+        self._node: Optional[Resource] = node
         self._merged: Mapping[str, Any] = self._generate_merged()
 
     def _generate_merged(self) -> Mapping[str, Any]:
@@ -557,9 +559,9 @@ class BaseContext(metaclass=ContextMeta):
             {% endmacro %}"
         """
         if info:
-            fire_event(MacroEventInfo(msg=msg))
+            fire_event(JinjaLogInfo(msg=msg, node_info=get_node_info()))
         else:
-            fire_event(MacroEventDebug(msg=msg))
+            fire_event(JinjaLogDebug(msg=msg, node_info=get_node_info()))
         return ""
 
     @contextproperty
@@ -686,6 +688,19 @@ class BaseContext(metaclass=ContextMeta):
             else:
                 dict_diff.update({k: dict_a[k]})
         return dict_diff
+
+    @contextmember
+    @staticmethod
+    def local_md5(value: str) -> str:
+        """Calculates an MD5 hash of the given string.
+        It's called "local_md5" to emphasize that it runs locally in dbt (in jinja context) and not an MD5 SQL command.
+
+        :param value: The value to hash
+
+        Usage:
+            {% set value_hash = local_md5("hello world") %}
+        """
+        return utils.md5(value)
 
 
 def generate_base_context(cli_vars: Dict[str, Any]) -> Dict[str, Any]:

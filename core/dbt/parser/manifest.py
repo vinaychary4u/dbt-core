@@ -53,7 +53,6 @@ from dbt.context.providers import ParseProvider
 from dbt.contracts.files import FileHash, ParseFileType, SchemaSourceFile
 from dbt.parser.read_files import read_files, load_source_file
 from dbt.parser.partial import PartialParsing, special_override_macros
-from dbt.contracts.graph.compiled import ManifestNode
 from dbt.contracts.graph.manifest import (
     Manifest,
     Disabled,
@@ -61,13 +60,15 @@ from dbt.contracts.graph.manifest import (
     ManifestStateCheck,
     ParsingInfo,
 )
-from dbt.contracts.graph.parsed import (
-    ParsedSourceDefinition,
-    ParsedNode,
-    ParsedMacro,
+from dbt.contracts.graph.nodes import (
+    SourceDefinition,
+    Macro,
     ColumnInfo,
-    ParsedExposure,
-    ParsedMetric,
+    Exposure,
+    Metric,
+    SeedNode,
+    ManifestNode,
+    ResultNode,
 )
 from dbt.contracts.util import Writable
 from dbt.exceptions import (
@@ -366,7 +367,7 @@ class ManifestLoader:
             self._perf_info.parse_project_elapsed = time.perf_counter() - start_parse_projects
 
             # patch_sources converts the UnparsedSourceDefinitions in the
-            # Manifest.sources to ParsedSourceDefinition via 'patch_source'
+            # Manifest.sources to SourceDefinition via 'patch_source'
             # in SourcePatcher
             start_patch = time.perf_counter()
             patcher = SourcePatcher(self.root_project, self.manifest)
@@ -537,7 +538,9 @@ class ManifestLoader:
                     macro.depends_on.add_macro(dep_macro_id)  # will check for dupes
 
     def write_manifest_for_partial_parse(self):
-        path = os.path.join(self.root_project.target_path, PARTIAL_PARSE_FILE_NAME)
+        path = os.path.join(
+            self.root_project.project_root, self.root_project.target_path, PARTIAL_PARSE_FILE_NAME
+        )
         try:
             # This shouldn't be necessary, but we have gotten bug reports (#3757) of the
             # saved manifest not matching the code version.
@@ -851,6 +854,10 @@ class ManifestLoader:
             if metric.created_at < self.started_at:
                 continue
             _process_metrics_for_node(self.manifest, current_project, metric)
+        for exposure in self.manifest.exposures.values():
+            if exposure.created_at < self.started_at:
+                continue
+            _process_metrics_for_node(self.manifest, current_project, exposure)
 
     # nodes: node and column descriptions
     # sources: source and table descriptions, column descriptions
@@ -915,7 +922,7 @@ class ManifestLoader:
         for node in self.manifest.nodes.values():
             if node.resource_type == NodeType.Source:
                 continue
-            assert not isinstance(node, ParsedSourceDefinition)
+            assert not isinstance(node, SourceDefinition)
             if node.created_at < self.started_at:
                 continue
             _process_sources_for_node(self.manifest, current_project, node)
@@ -1034,7 +1041,7 @@ def _check_manifest(manifest: Manifest, config: RuntimeConfig) -> None:
 
 
 def _get_node_column(node, column_name):
-    """Given a ParsedNode, add some fields that might be missing. Return a
+    """Given a ManifestNode, add some fields that might be missing. Return a
     reference to the dict that refers to the given column, creating it if
     it doesn't yet exist.
     """
@@ -1047,7 +1054,7 @@ def _get_node_column(node, column_name):
     return column
 
 
-DocsContextCallback = Callable[[Union[ParsedNode, ParsedSourceDefinition]], Dict[str, Any]]
+DocsContextCallback = Callable[[ResultNode], Dict[str, Any]]
 
 
 # node and column descriptions
@@ -1063,7 +1070,7 @@ def _process_docs_for_node(
 # source and table descriptions, column descriptions
 def _process_docs_for_source(
     context: Dict[str, Any],
-    source: ParsedSourceDefinition,
+    source: SourceDefinition,
 ):
     table_description = source.description
     source_description = source.source_description
@@ -1079,22 +1086,22 @@ def _process_docs_for_source(
 
 
 # macro argument descriptions
-def _process_docs_for_macro(context: Dict[str, Any], macro: ParsedMacro) -> None:
+def _process_docs_for_macro(context: Dict[str, Any], macro: Macro) -> None:
     macro.description = get_rendered(macro.description, context)
     for arg in macro.arguments:
         arg.description = get_rendered(arg.description, context)
 
 
 # exposure descriptions
-def _process_docs_for_exposure(context: Dict[str, Any], exposure: ParsedExposure) -> None:
+def _process_docs_for_exposure(context: Dict[str, Any], exposure: Exposure) -> None:
     exposure.description = get_rendered(exposure.description, context)
 
 
-def _process_docs_for_metrics(context: Dict[str, Any], metric: ParsedMetric) -> None:
+def _process_docs_for_metrics(context: Dict[str, Any], metric: Metric) -> None:
     metric.description = get_rendered(metric.description, context)
 
 
-def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposure: ParsedExposure):
+def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposure: Exposure):
     """Given a manifest and exposure in that manifest, process its refs"""
     for ref in exposure.refs:
         target_model: Optional[Union[Disabled, ManifestNode]] = None
@@ -1137,7 +1144,7 @@ def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposur
         manifest.update_exposure(exposure)
 
 
-def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: ParsedMetric):
+def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: Metric):
     """Given a manifest and a metric in that manifest, process its refs"""
     for ref in metric.refs:
         target_model: Optional[Union[Disabled, ManifestNode]] = None
@@ -1180,11 +1187,17 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: P
 
 
 def _process_metrics_for_node(
-    manifest: Manifest, current_project: str, node: Union[ManifestNode, ParsedMetric]
+    manifest: Manifest,
+    current_project: str,
+    node: Union[ManifestNode, Metric, Exposure],
 ):
     """Given a manifest and a node in that manifest, process its metrics"""
+
+    if isinstance(node, SeedNode):
+        return
+
     for metric in node.metrics:
-        target_metric: Optional[Union[Disabled, ParsedMetric]] = None
+        target_metric: Optional[Union[Disabled, Metric]] = None
         target_metric_name: str
         target_metric_package: Optional[str] = None
 
@@ -1224,6 +1237,10 @@ def _process_metrics_for_node(
 
 def _process_refs_for_node(manifest: Manifest, current_project: str, node: ManifestNode):
     """Given a manifest and a node in that manifest, process its refs"""
+
+    if isinstance(node, SeedNode):
+        return
+
     for ref in node.refs:
         target_model: Optional[Union[Disabled, ManifestNode]] = None
         target_model_name: str
@@ -1268,10 +1285,8 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
         manifest.update_node(node)
 
 
-def _process_sources_for_exposure(
-    manifest: Manifest, current_project: str, exposure: ParsedExposure
-):
-    target_source: Optional[Union[Disabled, ParsedSourceDefinition]] = None
+def _process_sources_for_exposure(manifest: Manifest, current_project: str, exposure: Exposure):
+    target_source: Optional[Union[Disabled, SourceDefinition]] = None
     for source_name, table_name in exposure.sources:
         target_source = manifest.resolve_source(
             source_name,
@@ -1293,8 +1308,8 @@ def _process_sources_for_exposure(
         manifest.update_exposure(exposure)
 
 
-def _process_sources_for_metric(manifest: Manifest, current_project: str, metric: ParsedMetric):
-    target_source: Optional[Union[Disabled, ParsedSourceDefinition]] = None
+def _process_sources_for_metric(manifest: Manifest, current_project: str, metric: Metric):
+    target_source: Optional[Union[Disabled, SourceDefinition]] = None
     for source_name, table_name in metric.sources:
         target_source = manifest.resolve_source(
             source_name,
@@ -1317,7 +1332,11 @@ def _process_sources_for_metric(manifest: Manifest, current_project: str, metric
 
 
 def _process_sources_for_node(manifest: Manifest, current_project: str, node: ManifestNode):
-    target_source: Optional[Union[Disabled, ParsedSourceDefinition]] = None
+
+    if isinstance(node, SeedNode):
+        return
+
+    target_source: Optional[Union[Disabled, SourceDefinition]] = None
     for source_name, table_name in node.sources:
         target_source = manifest.resolve_source(
             source_name,
@@ -1343,7 +1362,7 @@ def _process_sources_for_node(manifest: Manifest, current_project: str, node: Ma
 
 # This is called in task.rpc.sql_commands when a "dynamic" node is
 # created in the manifest, in 'add_refs'
-def process_macro(config: RuntimeConfig, manifest: Manifest, macro: ParsedMacro) -> None:
+def process_macro(config: RuntimeConfig, manifest: Manifest, macro: Macro) -> None:
     ctx = generate_runtime_docs_context(
         config,
         macro,

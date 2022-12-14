@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from dbt.ui import line_wrap_message, warning_tag, red, green, yellow
 from dbt.constants import MAXIMUM_SEED_SIZE_NAME, PIN_PACKAGE_URL
 from dbt.events.base_types import (
+    DynamicLevel,
     NoFile,
     DebugLevel,
     InfoLevel,
@@ -13,9 +14,9 @@ from dbt.events.base_types import (
 )
 from dbt.events.format import format_fancy_output_line, pluralize
 
-# The generated classes quote the included message classes, requiring the following line
+# The generated classes quote the included message classes, requiring the following lines
 from dbt.events.proto_types import EventInfo, RunResultMsg, ListOfStrings  # noqa
-from dbt.events.proto_types import NodeInfo, ReferenceKeyMsg
+from dbt.events.proto_types import NodeInfo, ReferenceKeyMsg, TimingInfoMsg  # noqa
 from dbt.events import proto_types as pt
 
 from dbt.node_types import NodeType
@@ -475,7 +476,7 @@ class ConnectionReused(DebugLevel, pt.ConnectionReused):
 
 
 @dataclass
-class ConnectionLeftOpen(DebugLevel, pt.ConnectionLeftOpen):
+class ConnectionLeftOpenInCleanup(DebugLevel, pt.ConnectionLeftOpenInCleanup):
     def code(self):
         return "E007"
 
@@ -484,7 +485,7 @@ class ConnectionLeftOpen(DebugLevel, pt.ConnectionLeftOpen):
 
 
 @dataclass
-class ConnectionClosed(DebugLevel, pt.ConnectionClosed):
+class ConnectionClosedInCleanup(DebugLevel, pt.ConnectionClosedInCleanup):
     def code(self):
         return "E008"
 
@@ -503,7 +504,7 @@ class RollbackFailed(DebugLevel, pt.RollbackFailed):  # noqa
 
 # TODO: can we combine this with ConnectionClosed?
 @dataclass
-class ConnectionClosed2(DebugLevel, pt.ConnectionClosed2):
+class ConnectionClosed(DebugLevel, pt.ConnectionClosed):
     def code(self):
         return "E010"
 
@@ -513,7 +514,7 @@ class ConnectionClosed2(DebugLevel, pt.ConnectionClosed2):
 
 # TODO: can we combine this with ConnectionLeftOpen?
 @dataclass
-class ConnectionLeftOpen2(DebugLevel, pt.ConnectionLeftOpen2):
+class ConnectionLeftOpen(DebugLevel, pt.ConnectionLeftOpen):
     def code(self):
         return "E011"
 
@@ -1518,7 +1519,7 @@ class NodeNotFoundOrDisabled(WarnLevel, pt.NodeNotFoundOrDisabled):
 
 
 @dataclass
-class GeneralMacroWarning(WarnLevel, pt.GeneralMacroWarning):
+class JinjaLogWarning(WarnLevel, pt.JinjaLogWarning):
     def code(self):
         return "I061"
 
@@ -1625,7 +1626,7 @@ class SelectorReportInvalidSelector(InfoLevel, pt.SelectorReportInvalidSelector)
 
 
 @dataclass
-class MacroEventInfo(InfoLevel, EventStringFunctor, pt.MacroEventInfo):
+class JinjaLogInfo(InfoLevel, EventStringFunctor, pt.JinjaLogInfo):
     def code(self):
         return "M011"
 
@@ -1635,7 +1636,7 @@ class MacroEventInfo(InfoLevel, EventStringFunctor, pt.MacroEventInfo):
 
 
 @dataclass
-class MacroEventDebug(DebugLevel, EventStringFunctor, pt.MacroEventDebug):
+class JinjaLogDebug(DebugLevel, EventStringFunctor, pt.JinjaLogDebug):
     def code(self):
         return "M012"
 
@@ -1883,76 +1884,54 @@ class SQLRunnerException(DebugLevel, pt.SQLRunnerException):  # noqa
 
 
 @dataclass
-@dataclass
-class PrintErrorTestResult(ErrorLevel, pt.PrintErrorTestResult):
+class LogTestResult(DynamicLevel, pt.LogTestResult):
     def code(self):
         return "Q007"
 
     def message(self) -> str:
-        info = "ERROR"
+        if self.status == "error":
+            info = "ERROR"
+            status = red(info)
+        elif self.status == "pass":
+            info = "PASS"
+            status = green(info)
+        elif self.status == "warn":
+            info = f"WARN {self.num_failures}"
+            status = yellow(info)
+        else:  # self.status == "fail":
+            info = f"FAIL {self.num_failures}"
+            status = red(info)
         msg = f"{info} {self.name}"
+
         return format_fancy_output_line(
             msg=msg,
-            status=red(info),
+            status=status,
             index=self.index,
             total=self.num_models,
             execution_time=self.execution_time,
         )
 
-
-@dataclass
-class PrintPassTestResult(InfoLevel, pt.PrintPassTestResult):
-    def code(self):
-        return "Q008"
-
-    def message(self) -> str:
-        info = "PASS"
-        msg = f"{info} {self.name}"
-        return format_fancy_output_line(
-            msg=msg,
-            status=green(info),
-            index=self.index,
-            total=self.num_models,
-            execution_time=self.execution_time,
-        )
+    @classmethod
+    def status_to_level(cls, status):
+        # The statuses come from TestStatus
+        # TODO should this return EventLevel enum instead?
+        level_lookup = {
+            "fail": "error",
+            "pass": "info",
+            "warn": "warn",
+            "error": "error",
+        }
+        if status in level_lookup:
+            return level_lookup[status]
+        else:
+            return "info"
 
 
-@dataclass
-class PrintWarnTestResult(WarnLevel, pt.PrintWarnTestResult):
-    def code(self):
-        return "Q009"
-
-    def message(self) -> str:
-        info = f"WARN {self.num_failures}"
-        msg = f"{info} {self.name}"
-        return format_fancy_output_line(
-            msg=msg,
-            status=yellow(info),
-            index=self.index,
-            total=self.num_models,
-            execution_time=self.execution_time,
-        )
+# Skipped Q008, Q009, Q010
 
 
 @dataclass
-class PrintFailureTestResult(ErrorLevel, pt.PrintFailureTestResult):
-    def code(self):
-        return "Q010"
-
-    def message(self) -> str:
-        info = f"FAIL {self.num_failures}"
-        msg = f"{info} {self.name}"
-        return format_fancy_output_line(
-            msg=msg,
-            status=red(info),
-            index=self.index,
-            total=self.num_models,
-            execution_time=self.execution_time,
-        )
-
-
-@dataclass
-class PrintStartLine(InfoLevel, pt.PrintStartLine):  # noqa
+class LogStartLine(InfoLevel, pt.LogStartLine):  # noqa
     def code(self):
         return "Q011"
 
@@ -1962,67 +1941,48 @@ class PrintStartLine(InfoLevel, pt.PrintStartLine):  # noqa
 
 
 @dataclass
-class PrintModelResultLine(InfoLevel, pt.PrintModelResultLine):
+class LogModelResult(DynamicLevel, pt.LogModelResult):
     def code(self):
         return "Q012"
 
     def message(self) -> str:
-        info = "OK created"
+        if self.status == "error":
+            info = "ERROR creating"
+            status = red(self.status.upper())
+        else:
+            info = "OK created"
+            status = green(self.status)
+
         msg = f"{info} {self.description}"
         return format_fancy_output_line(
             msg=msg,
-            status=green(self.status),
+            status=status,
             index=self.index,
             total=self.total,
             execution_time=self.execution_time,
         )
 
 
-@dataclass
-class PrintModelErrorResultLine(ErrorLevel, pt.PrintModelErrorResultLine):
-    def code(self):
-        return "Q013"
-
-    def message(self) -> str:
-        info = "ERROR creating"
-        msg = f"{info} {self.description}"
-        return format_fancy_output_line(
-            msg=msg,
-            status=red(self.status.upper()),
-            index=self.index,
-            total=self.total,
-            execution_time=self.execution_time,
-        )
+# Skipped Q013, Q014
 
 
 @dataclass
-class PrintSnapshotErrorResultLine(ErrorLevel, pt.PrintSnapshotErrorResultLine):
-    def code(self):
-        return "Q014"
-
-    def message(self) -> str:
-        info = "ERROR snapshotting"
-        msg = "{info} {description}".format(info=info, description=self.description, **self.cfg)
-        return format_fancy_output_line(
-            msg=msg,
-            status=red(self.status.upper()),
-            index=self.index,
-            total=self.total,
-            execution_time=self.execution_time,
-        )
-
-
-@dataclass
-class PrintSnapshotResultLine(InfoLevel, pt.PrintSnapshotResultLine):
+class LogSnapshotResult(DynamicLevel, pt.LogSnapshotResult):
     def code(self):
         return "Q015"
 
     def message(self) -> str:
-        info = "OK snapshotted"
+        if self.status == "error":
+            info = "ERROR snapshotting"
+            status = red(self.status.upper())
+        else:
+            info = "OK snapshotted"
+            status = green(self.status)
+
         msg = "{info} {description}".format(info=info, description=self.description, **self.cfg)
         return format_fancy_output_line(
             msg=msg,
-            status=green(self.status),
+            status=status,
             index=self.index,
             total=self.total,
             execution_time=self.execution_time,
@@ -2030,109 +1990,78 @@ class PrintSnapshotResultLine(InfoLevel, pt.PrintSnapshotResultLine):
 
 
 @dataclass
-class PrintSeedErrorResultLine(ErrorLevel, pt.PrintSeedErrorResultLine):
+class LogSeedResult(DynamicLevel, pt.LogSeedResult):
     def code(self):
         return "Q016"
 
     def message(self) -> str:
-        info = "ERROR loading"
+        if self.status == "error":
+            info = "ERROR loading"
+            status = red(self.status.upper())
+        else:
+            info = "OK loaded"
+            status = green(self.result_message)
         msg = f"{info} seed file {self.schema}.{self.relation}"
         return format_fancy_output_line(
             msg=msg,
-            status=red(self.status.upper()),
+            status=status,
             index=self.index,
             total=self.total,
             execution_time=self.execution_time,
         )
 
 
-@dataclass
-class PrintSeedResultLine(InfoLevel, pt.PrintSeedResultLine):
-    def code(self):
-        return "Q017"
-
-    def message(self) -> str:
-        info = "OK loaded"
-        msg = f"{info} seed file {self.schema}.{self.relation}"
-        return format_fancy_output_line(
-            msg=msg,
-            status=green(self.status),
-            index=self.index,
-            total=self.total,
-            execution_time=self.execution_time,
-        )
+# Skipped Q017
 
 
 @dataclass
-class PrintFreshnessErrorLine(ErrorLevel, pt.PrintFreshnessErrorLine):
+class LogFreshnessResult(DynamicLevel, pt.LogFreshnessResult):
     def code(self):
         return "Q018"
 
     def message(self) -> str:
-        info = "ERROR"
+        if self.status == "runtime error":
+            info = "ERROR"
+            status = red(info)
+        elif self.status == "error":
+            info = "ERROR STALE"
+            status = red(info)
+        elif self.status == "warn":
+            info = "WARN"
+            status = yellow(info)
+        else:
+            info = "PASS"
+            status = green(info)
         msg = f"{info} freshness of {self.source_name}.{self.table_name}"
         return format_fancy_output_line(
             msg=msg,
-            status=red(info),
+            status=status,
             index=self.index,
             total=self.total,
             execution_time=self.execution_time,
         )
 
-
-@dataclass
-class PrintFreshnessErrorStaleLine(ErrorLevel, pt.PrintFreshnessErrorStaleLine):
-    def code(self):
-        return "Q019"
-
-    def message(self) -> str:
-        info = "ERROR STALE"
-        msg = f"{info} freshness of {self.source_name}.{self.table_name}"
-        return format_fancy_output_line(
-            msg=msg,
-            status=red(info),
-            index=self.index,
-            total=self.total,
-            execution_time=self.execution_time,
-        )
+    @classmethod
+    def status_to_level(cls, status):
+        # The statuses come from FreshnessStatus
+        # TODO should this return EventLevel enum instead?
+        level_lookup = {
+            "runtime error": "error",
+            "pass": "info",
+            "warn": "warn",
+            "error": "error",
+        }
+        if status in level_lookup:
+            return level_lookup[status]
+        else:
+            return "info"
 
 
-@dataclass
-class PrintFreshnessWarnLine(WarnLevel, pt.PrintFreshnessWarnLine):
-    def code(self):
-        return "Q020"
-
-    def message(self) -> str:
-        info = "WARN"
-        msg = f"{info} freshness of {self.source_name}.{self.table_name}"
-        return format_fancy_output_line(
-            msg=msg,
-            status=yellow(info),
-            index=self.index,
-            total=self.total,
-            execution_time=self.execution_time,
-        )
+# Skipped Q019, Q020, Q021
 
 
 @dataclass
-class PrintFreshnessPassLine(InfoLevel, pt.PrintFreshnessPassLine):
-    def code(self):
-        return "Q021"
-
-    def message(self) -> str:
-        info = "PASS"
-        msg = f"{info} freshness of {self.source_name}.{self.table_name}"
-        return format_fancy_output_line(
-            msg=msg,
-            status=green(info),
-            index=self.index,
-            total=self.total,
-            execution_time=self.execution_time,
-        )
-
-
-@dataclass
-class PrintCancelLine(ErrorLevel, pt.PrintCancelLine):
+class LogCancelLine(ErrorLevel, pt.LogCancelLine):
     def code(self):
         return "Q022"
 
@@ -2156,7 +2085,7 @@ class NodeStart(DebugLevel, pt.NodeStart):
         return "Q024"
 
     def message(self) -> str:
-        return f"Began running node {self.unique_id}"
+        return f"Began running node {self.node_info.unique_id}"
 
 
 @dataclass
@@ -2165,7 +2094,7 @@ class NodeFinished(DebugLevel, pt.NodeFinished):
         return "Q025"
 
     def message(self) -> str:
-        return f"Finished running node {self.unique_id}"
+        return f"Finished running node {self.node_info.unique_id}"
 
 
 @dataclass
@@ -2191,13 +2120,7 @@ class ConcurrencyLine(InfoLevel, pt.ConcurrencyLine):  # noqa
         return f"Concurrency: {self.num_threads} threads (target='{self.target_name}')"
 
 
-@dataclass
-class CompilingNode(DebugLevel, pt.CompilingNode):
-    def code(self):
-        return "Q028"
-
-    def message(self) -> str:
-        return f"Compiling {self.unique_id}"
+# Skipped Q028
 
 
 @dataclass
@@ -2206,7 +2129,7 @@ class WritingInjectedSQLForNode(DebugLevel, pt.WritingInjectedSQLForNode):
         return "Q029"
 
     def message(self) -> str:
-        return f'Writing injected SQL for node "{self.unique_id}"'
+        return f'Writing injected SQL for node "{self.node_info.unique_id}"'
 
 
 @dataclass
@@ -2215,7 +2138,7 @@ class NodeCompiling(DebugLevel, pt.NodeCompiling):
         return "Q030"
 
     def message(self) -> str:
-        return f"Began compiling node {self.unique_id}"
+        return f"Began compiling node {self.node_info.unique_id}"
 
 
 @dataclass
@@ -2224,11 +2147,11 @@ class NodeExecuting(DebugLevel, pt.NodeExecuting):
         return "Q031"
 
     def message(self) -> str:
-        return f"Began executing node {self.unique_id}"
+        return f"Began executing node {self.node_info.unique_id}"
 
 
 @dataclass
-class PrintHookStartLine(InfoLevel, pt.PrintHookStartLine):  # noqa
+class LogHookStartLine(InfoLevel, pt.LogHookStartLine):  # noqa
     def code(self):
         return "Q032"
 
@@ -2240,7 +2163,7 @@ class PrintHookStartLine(InfoLevel, pt.PrintHookStartLine):  # noqa
 
 
 @dataclass
-class PrintHookEndLine(InfoLevel, pt.PrintHookEndLine):  # noqa
+class LogHookEndLine(InfoLevel, pt.LogHookEndLine):  # noqa
     def code(self):
         return "Q033"
 
@@ -2466,18 +2389,18 @@ class TimingInfoCollected(DebugLevel, pt.TimingInfoCollected):
         return "Z010"
 
     def message(self) -> str:
-        return "finished collecting timing info"
+        return f"Timing info for {self.node_info.unique_id} ({self.timing_info.name}): {self.timing_info.started_at} => {self.timing_info.completed_at}"
 
 
 # This prints the stack trace at the debug level while allowing just the nice exception message
 # at the error level - or whatever other level chosen.  Used in multiple places.
 @dataclass
-class PrintDebugStackTrace(DebugLevel, pt.PrintDebugStackTrace):  # noqa
+class LogDebugStackTrace(DebugLevel, pt.LogDebugStackTrace):  # noqa
     def code(self):
         return "Z011"
 
     def message(self) -> str:
-        return ""
+        return f"{self.exc_info}"
 
 
 # We don't write "clean" events to the log, because the clean command
@@ -2680,7 +2603,7 @@ class EndOfRunSummary(InfoLevel, pt.EndOfRunSummary):
 
 
 @dataclass
-class PrintSkipBecauseError(ErrorLevel, pt.PrintSkipBecauseError):
+class LogSkipBecauseError(ErrorLevel, pt.LogSkipBecauseError):
     def code(self):
         return "Z034"
 
@@ -2783,18 +2706,6 @@ class TrackingInitializeFailure(DebugLevel, pt.TrackingInitializeFailure):  # no
         return "Got an exception trying to initialize tracking"
 
 
-@dataclass
-class EventBufferFull(WarnLevel, pt.EventBufferFull):
-    def code(self):
-        return "Z045"
-
-    def message(self) -> str:
-        return (
-            "Internal logging/event buffer full."
-            "Earliest logs/events will be dropped as new ones are fired (FIFO)."
-        )
-
-
 # this is the message from the result object
 @dataclass
 class RunResultWarningMessage(WarnLevel, EventStringFunctor, pt.RunResultWarningMessage):
@@ -2804,419 +2715,3 @@ class RunResultWarningMessage(WarnLevel, EventStringFunctor, pt.RunResultWarning
     def message(self) -> str:
         # This is the message on the result object, cannot be formatted in event
         return self.msg
-
-
-# since mypy doesn't run on every file we need to suggest to mypy that every
-# class gets instantiated. But we don't actually want to run this code.
-# making the conditional `if False` causes mypy to skip it as dead code so
-# we need to skirt around that by computing something it doesn't check statically.
-#
-# TODO remove these lines once we run mypy everywhere.
-if 1 == 0:
-
-    # A - pre-project loading
-    MainReportVersion(version="")
-    MainReportArgs(args={})
-    MainTrackingUserState(user_state="")
-    MergedFromState(num_merged=0, sample=[])
-    MissingProfileTarget(profile_name="", target_name="")
-    InvalidVarsYAML()
-    DbtProjectError()
-    DbtProjectErrorException(exc="")
-    DbtProfileError()
-    DbtProfileErrorException(exc="")
-    ProfileListTitle()
-    ListSingleProfile(profile="")
-    NoDefinedProfiles()
-    ProfileHelpMessage()
-    StarterProjectPath(dir="")
-    ConfigFolderDirectory(dir="")
-    NoSampleProfileFound(adapter="")
-    ProfileWrittenWithSample(name="", path="")
-    ProfileWrittenWithTargetTemplateYAML(name="", path="")
-    ProfileWrittenWithProjectTemplateYAML(name="", path="")
-    SettingUpProfile()
-    InvalidProfileTemplateYAML()
-    ProjectNameAlreadyExists(name="")
-    ProjectCreated(project_name="")
-
-    # D - Deprecations ======================
-    PackageRedirectDeprecation(old_name="", new_name="")
-    PackageInstallPathDeprecation()
-    ConfigSourcePathDeprecation(deprecated_path="", exp_path="")
-    ConfigDataPathDeprecation(deprecated_path="", exp_path="")
-    AdapterDeprecationWarning(old_name="", new_name="")
-    MetricAttributesRenamed(metric_name="")
-    ExposureNameDeprecation(exposure="")
-
-    # E - DB Adapter ======================
-    AdapterEventDebug()
-    AdapterEventInfo()
-    AdapterEventWarning()
-    AdapterEventError()
-    NewConnection(conn_type="", conn_name="")
-    ConnectionReused(conn_name="")
-    ConnectionLeftOpen(conn_name="")
-    ConnectionClosed(conn_name="")
-    RollbackFailed(conn_name="")
-    ConnectionClosed2(conn_name="")
-    ConnectionLeftOpen2(conn_name="")
-    Rollback(conn_name="")
-    CacheMiss(conn_name="", database="", schema="")
-    ListRelations(database="", schema="")
-    ConnectionUsed(conn_type="", conn_name="")
-    SQLQuery(conn_name="", sql="")
-    SQLQueryStatus(status="", elapsed=0.1)
-    SQLCommit(conn_name="")
-    ColTypeChange(
-        orig_type="", new_type="", table=ReferenceKeyMsg(database="", schema="", identifier="")
-    )
-    SchemaCreation(relation=ReferenceKeyMsg(database="", schema="", identifier=""))
-    SchemaDrop(relation=ReferenceKeyMsg(database="", schema="", identifier=""))
-    UncachedRelation(
-        dep_key=ReferenceKeyMsg(database="", schema="", identifier=""),
-        ref_key=ReferenceKeyMsg(database="", schema="", identifier=""),
-    )
-    AddLink(
-        dep_key=ReferenceKeyMsg(database="", schema="", identifier=""),
-        ref_key=ReferenceKeyMsg(database="", schema="", identifier=""),
-    )
-    AddRelation(relation=ReferenceKeyMsg(database="", schema="", identifier=""))
-    DropMissingRelation(relation=ReferenceKeyMsg(database="", schema="", identifier=""))
-    DropCascade(
-        dropped=ReferenceKeyMsg(database="", schema="", identifier=""),
-        consequences=[ReferenceKeyMsg(database="", schema="", identifier="")],
-    )
-    DropRelation(dropped=ReferenceKeyMsg())
-    UpdateReference(
-        old_key=ReferenceKeyMsg(database="", schema="", identifier=""),
-        new_key=ReferenceKeyMsg(database="", schema="", identifier=""),
-        cached_key=ReferenceKeyMsg(database="", schema="", identifier=""),
-    )
-    TemporaryRelation(key=ReferenceKeyMsg(database="", schema="", identifier=""))
-    RenameSchema(
-        old_key=ReferenceKeyMsg(database="", schema="", identifier=""),
-        new_key=ReferenceKeyMsg(database="", schema="", identifier=""),
-    )
-    DumpBeforeAddGraph(dump=dict())
-    DumpAfterAddGraph(dump=dict())
-    DumpBeforeRenameSchema(dump=dict())
-    DumpAfterRenameSchema(dump=dict())
-    AdapterImportError(exc="")
-    PluginLoadError(exc_info="")
-    NewConnectionOpening(connection_state="")
-    CodeExecution(conn_name="", code_content="")
-    CodeExecutionStatus(status="", elapsed=0.1)
-    CatalogGenerationError(exc="")
-    WriteCatalogFailure(num_exceptions=0)
-    CatalogWritten(path="")
-    CannotGenerateDocs()
-    BuildingCatalog()
-    DatabaseErrorRunningHook(hook_type="")
-    HooksRunning(num_hooks=0, hook_type="")
-    HookFinished(stat_line="", execution="", execution_time=0)
-
-    # I - Project parsing ======================
-    ParseCmdStart()
-    ParseCmdCompiling()
-    ParseCmdWritingManifest()
-    ParseCmdDone()
-    ManifestDependenciesLoaded()
-    ManifestLoaderCreated()
-    ManifestLoaded()
-    ManifestChecked()
-    ManifestFlatGraphBuilt()
-    ParseCmdPerfInfoPath(path="")
-    GenericTestFileParse(path="")
-    MacroFileParse(path="")
-    PartialParsingFullReparseBecauseOfError()
-    PartialParsingExceptionFile(file="")
-    PartialParsingFile(file_id="")
-    PartialParsingException(exc_info={})
-    PartialParsingSkipParsing()
-    PartialParsingMacroChangeStartFullParse()
-    PartialParsingProjectEnvVarsChanged()
-    PartialParsingProfileEnvVarsChanged()
-    PartialParsingDeletedMetric(unique_id="")
-    ManifestWrongMetadataVersion(version="")
-    PartialParsingVersionMismatch(saved_version="", current_version="")
-    PartialParsingFailedBecauseConfigChange()
-    PartialParsingFailedBecauseProfileChange()
-    PartialParsingFailedBecauseNewProjectDependency()
-    PartialParsingFailedBecauseHashChanged()
-    PartialParsingNotEnabled()
-    ParsedFileLoadFailed(path="", exc="", exc_info="")
-    PartialParseSaveFileNotFound()
-    StaticParserCausedJinjaRendering(path="")
-    UsingExperimentalParser(path="")
-    SampleFullJinjaRendering(path="")
-    StaticParserFallbackJinjaRendering(path="")
-    StaticParsingMacroOverrideDetected(path="")
-    StaticParserSuccess(path="")
-    StaticParserFailure(path="")
-    ExperimentalParserSuccess(path="")
-    ExperimentalParserFailure(path="")
-    PartialParsingEnabled(deleted=0, added=0, changed=0)
-    PartialParsingAddedFile(file_id="")
-    PartialParsingDeletedFile(file_id="")
-    PartialParsingUpdatedFile(file_id="")
-    PartialParsingNodeMissingInSourceFile(file_id="")
-    PartialParsingMissingNodes(file_id="")
-    PartialParsingChildMapMissingUniqueID(unique_id="")
-    PartialParsingUpdateSchemaFile(file_id="")
-    PartialParsingDeletedSource(unique_id="")
-    PartialParsingDeletedExposure(unique_id="")
-    InvalidDisabledTargetInTestNode(
-        resource_type_title="",
-        unique_id="",
-        original_file_path="",
-        target_kind="",
-        target_name="",
-        target_package="",
-    )
-    UnusedResourceConfigPath(unused_config_paths=[])
-    SeedIncreased(package_name="", name="")
-    SeedExceedsLimitSamePath(package_name="", name="")
-    SeedExceedsLimitAndPathChanged(package_name="", name="")
-    SeedExceedsLimitChecksumChanged(package_name="", name="", checksum_name="")
-    UnusedTables(unused_tables=[])
-    WrongResourceSchemaFile(patch_name="", resource_type="", file_path="", plural_resource_type="")
-    NoNodeForYamlKey(patch_name="", yaml_key="", file_path="")
-    MacroPatchNotFound(patch_name="")
-    NodeNotFoundOrDisabled(
-        original_file_path="",
-        unique_id="",
-        resource_type_title="",
-        target_name="",
-        target_kind="",
-        target_package="",
-        disabled="",
-    )
-
-    # M - Deps generation ======================
-
-    GitSparseCheckoutSubdirectory(subdir="")
-    GitProgressCheckoutRevision(revision="")
-    GitProgressUpdatingExistingDependency(dir="")
-    GitProgressPullingNewDependency(dir="")
-    GitNothingToDo(sha="")
-    GitProgressUpdatedCheckoutRange(start_sha="", end_sha="")
-    GitProgressCheckedOutAt(end_sha="")
-    RegistryProgressGETRequest(url="")
-    RegistryProgressGETResponse(url="", resp_code=1234)
-    SelectorReportInvalidSelector(valid_selectors="", spec_method="", raw_spec="")
-    MacroEventInfo(msg="")
-    MacroEventDebug(msg="")
-    DepsNoPackagesFound()
-    DepsStartPackageInstall(package_name="")
-    DepsInstallInfo(version_name="")
-    DepsUpdateAvailable(version_latest="")
-    DepsUpToDate()
-    DepsListSubdirectory(subdirectory="")
-    DepsNotifyUpdatesAvailable(packages=ListOfStrings())
-    RetryExternalCall(attempt=0, max=0)
-    RecordRetryException(exc="")
-    RegistryIndexProgressGETRequest(url="")
-    RegistryIndexProgressGETResponse(url="", resp_code=1234)
-    RegistryResponseUnexpectedType(response=""),
-    RegistryResponseMissingTopKeys(response=""),
-    RegistryResponseMissingNestedKeys(response=""),
-    RegistryResponseExtraNestedKeys(response=""),
-    DepsSetDownloadDirectory(path="")
-
-    # Q - Node execution ======================
-
-    RunningOperationCaughtError(exc="")
-    CompileComplete()
-    FreshnessCheckComplete()
-    SeedHeader(header="")
-    SeedHeaderSeparator(len_header=0)
-    SQLRunnerException(exc="")
-    PrintErrorTestResult(
-        name="",
-        index=0,
-        num_models=0,
-        execution_time=0,
-    )
-    PrintPassTestResult(
-        name="",
-        index=0,
-        num_models=0,
-        execution_time=0,
-    )
-    PrintWarnTestResult(
-        name="",
-        index=0,
-        num_models=0,
-        execution_time=0,
-        num_failures=0,
-    )
-    PrintFailureTestResult(
-        name="",
-        index=0,
-        num_models=0,
-        execution_time=0,
-        num_failures=0,
-    )
-    PrintStartLine(description="", index=0, total=0, node_info=NodeInfo())
-    PrintModelResultLine(
-        description="",
-        status="",
-        index=0,
-        total=0,
-        execution_time=0,
-    )
-    PrintModelErrorResultLine(
-        description="",
-        status="",
-        index=0,
-        total=0,
-        execution_time=0,
-    )
-    PrintSnapshotErrorResultLine(
-        status="",
-        description="",
-        cfg={},
-        index=0,
-        total=0,
-        execution_time=0,
-    )
-    PrintSnapshotResultLine(
-        status="",
-        description="",
-        cfg={},
-        index=0,
-        total=0,
-        execution_time=0,
-    )
-    PrintSeedErrorResultLine(
-        status="",
-        index=0,
-        total=0,
-        execution_time=0,
-        schema="",
-        relation="",
-    )
-    PrintSeedResultLine(
-        status="",
-        index=0,
-        total=0,
-        execution_time=0,
-        schema="",
-        relation="",
-    )
-    PrintFreshnessErrorLine(
-        source_name="",
-        table_name="",
-        index=0,
-        total=0,
-        execution_time=0,
-    )
-    PrintFreshnessErrorStaleLine(
-        source_name="",
-        table_name="",
-        index=0,
-        total=0,
-        execution_time=0,
-    )
-    PrintFreshnessWarnLine(
-        source_name="",
-        table_name="",
-        index=0,
-        total=0,
-        execution_time=0,
-    )
-    PrintFreshnessPassLine(
-        source_name="",
-        table_name="",
-        index=0,
-        total=0,
-        execution_time=0,
-    )
-    PrintCancelLine(conn_name="")
-    DefaultSelector(name="")
-    NodeStart(unique_id="")
-    NodeFinished(unique_id="")
-    QueryCancelationUnsupported(type="")
-    ConcurrencyLine(num_threads=0, target_name="")
-    CompilingNode(unique_id="")
-    WritingInjectedSQLForNode(unique_id="")
-    NodeCompiling(unique_id="")
-    NodeExecuting(unique_id="")
-    PrintHookStartLine(
-        statement="",
-        index=0,
-        total=0,
-    )
-    PrintHookEndLine(
-        statement="",
-        status="",
-        index=0,
-        total=0,
-        execution_time=0,
-    )
-    SkippingDetails(
-        resource_type="",
-        schema="",
-        node_name="",
-        index=0,
-        total=0,
-    )
-    NothingToDo()
-    RunningOperationUncaughtError(exc="")
-    EndRunResult()
-    NoNodesSelected()
-    DepsUnpinned(revision="", git="")
-    NoNodesForSelectionCriteria(spec_raw="")
-
-    # W - Node testing ======================
-
-    CatchableExceptionOnRun(exc="")
-    InternalExceptionOnRun(build_path="", exc="")
-    GenericExceptionOnRun(build_path="", unique_id="", exc="")
-    NodeConnectionReleaseError(node_name="", exc="")
-    FoundStats(stat_line="")
-
-    # Z - misc ======================
-
-    MainKeyboardInterrupt()
-    MainEncounteredError(exc="")
-    MainStackTrace(stack_trace="")
-    SystemErrorRetrievingModTime(path="")
-    SystemCouldNotWrite(path="", reason="", exc="")
-    SystemExecutingCmd(cmd=[""])
-    SystemStdOutMsg(bmsg=b"")
-    SystemStdErrMsg(bmsg=b"")
-    SystemReportReturnCode(returncode=0)
-    TimingInfoCollected()
-    PrintDebugStackTrace()
-    CheckCleanPath(path="")
-    ConfirmCleanPath(path="")
-    ProtectedCleanPath(path="")
-    FinishedCleanPaths()
-    OpenCommand(open_cmd="", profiles_dir="")
-    EmptyLine()
-    ServingDocsPort(address="", port=0)
-    ServingDocsAccessInfo(port="")
-    ServingDocsExitInfo()
-    RunResultWarning(resource_type="", node_name="", path="")
-    RunResultFailure(resource_type="", node_name="", path="")
-    StatsLine(stats={})
-    RunResultError(msg="")
-    RunResultErrorNoMessage(status="")
-    SQLCompiledPath(path="")
-    CheckNodeTestFailure(relation_name="")
-    FirstRunResultError(msg="")
-    AfterFirstRunResultError(msg="")
-    EndOfRunSummary(num_errors=0, num_warnings=0, keyboard_interrupt=False)
-    PrintSkipBecauseError(schema="", relation="", index=0, total=0)
-    EnsureGitInstalled()
-    DepsCreatingLocalSymlink()
-    DepsSymlinkNotAvailable()
-    DisableTracking()
-    SendingEvent(kwargs="")
-    SendEventFailure()
-    FlushEvents()
-    FlushEventsFailure()
-    TrackingInitializeFailure()
-    EventBufferFull()

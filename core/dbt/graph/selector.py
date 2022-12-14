@@ -12,7 +12,7 @@ from dbt.exceptions import (
     InternalException,
     InvalidSelectorException,
 )
-from dbt.contracts.graph.compiled import GraphMemberNode
+from dbt.contracts.graph.nodes import GraphMemberNode
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.state import PreviousState
 
@@ -136,7 +136,7 @@ class NodeSelector(MethodManager):
 
             direct_nodes = self.incorporate_indirect_nodes(initial_direct, indirect_nodes)
 
-            if spec.expect_exists:
+            if spec.expect_exists and len(direct_nodes) == 0:
                 warn_or_error(NoNodesForSelectionCriteria(spec_raw=str(spec.raw)))
 
         return direct_nodes, indirect_nodes
@@ -217,7 +217,7 @@ class NodeSelector(MethodManager):
                 if can_select_indirectly(node):
                     # should we add it in directly?
                     if indirect_selection == IndirectSelection.Eager or set(
-                        node.depends_on.nodes
+                        node.depends_on_nodes
                     ) <= set(selected):
                         direct_nodes.add(unique_id)
                     # if not:
@@ -241,7 +241,7 @@ class NodeSelector(MethodManager):
         for unique_id in indirect_nodes:
             if unique_id in self.manifest.nodes:
                 node = self.manifest.nodes[unique_id]
-                if set(node.depends_on.nodes) <= set(selected):
+                if set(node.depends_on_nodes) <= set(selected):
                     selected.add(unique_id)
 
         return selected

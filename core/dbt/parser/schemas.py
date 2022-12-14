@@ -27,14 +27,14 @@ from dbt.context.providers import (
 from dbt.context.macro_resolver import MacroResolver
 from dbt.contracts.files import FileHash, SchemaSourceFile
 from dbt.contracts.graph.model_config import MetricConfig, ExposureConfig
-from dbt.contracts.graph.parsed import (
+from dbt.contracts.graph.nodes import (
     ParsedNodePatch,
     ColumnInfo,
-    ParsedGenericTestNode,
+    GenericTestNode,
     ParsedMacroPatch,
     UnpatchedSourceDefinition,
-    ParsedExposure,
-    ParsedMetric,
+    Exposure,
+    Metric,
 )
 from dbt.contracts.graph.unparsed import (
     HasColumnDocs,
@@ -168,7 +168,7 @@ def _trimmed(inp: str) -> str:
     return inp[:44] + "..." + inp[-3:]
 
 
-class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
+class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
     def __init__(
         self,
         project,
@@ -195,10 +195,10 @@ class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
     def resource_type(self) -> NodeType:
         return NodeType.Test
 
-    def parse_from_dict(self, dct, validate=True) -> ParsedGenericTestNode:
+    def parse_from_dict(self, dct, validate=True) -> GenericTestNode:
         if validate:
-            ParsedGenericTestNode.validate(dct)
-        return ParsedGenericTestNode.from_dict(dct)
+            GenericTestNode.validate(dct)
+        return GenericTestNode.from_dict(dct)
 
     def parse_column_tests(self, block: TestBlock, column: UnparsedColumn) -> None:
         if not column.tests:
@@ -219,7 +219,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
         test_metadata: Dict[str, Any],
         file_key_name: str,
         column_name: Optional[str],
-    ) -> ParsedGenericTestNode:
+    ) -> GenericTestNode:
 
         HASH_LENGTH = 10
 
@@ -244,7 +244,6 @@ class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
             "database": self.default_database,
             "fqn": fqn,
             "name": name,
-            "root_path": self.project.project_root,
             "resource_type": self.resource_type,
             "tags": tags,
             "path": path,
@@ -260,8 +259,8 @@ class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
             "file_key_name": file_key_name,
         }
         try:
-            ParsedGenericTestNode.validate(dct)
-            return ParsedGenericTestNode.from_dict(dct)
+            GenericTestNode.validate(dct)
+            return GenericTestNode.from_dict(dct)
         except ValidationError as exc:
             msg = validator_error_message(exc)
             # this is a bit silly, but build an UnparsedNode just for error
@@ -282,7 +281,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
         tags: List[str],
         column_name: Optional[str],
         schema_file_id: str,
-    ) -> ParsedGenericTestNode:
+    ) -> GenericTestNode:
         try:
             builder = TestBuilder(
                 test=test,
@@ -417,7 +416,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
                 msg = validator_error_message(exc)
                 raise ParsingException(msg, node=node) from exc
 
-    def parse_node(self, block: GenericTestBlock) -> ParsedGenericTestNode:
+    def parse_node(self, block: GenericTestBlock) -> GenericTestNode:
         """In schema parsing, we rewrite most of the part of parse_node that
         builds the initial node to be parsed, but rendering is basically the
         same
@@ -432,7 +431,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
         self.add_test_node(block, node)
         return node
 
-    def add_test_node(self, block: GenericTestBlock, node: ParsedGenericTestNode):
+    def add_test_node(self, block: GenericTestBlock, node: GenericTestNode):
         test_from = {"key": block.target.yaml_key, "name": block.target.name}
         if node.config.enabled:
             self.manifest.add_node(block.file, node, test_from)
@@ -441,7 +440,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, ParsedGenericTestNode]):
 
     def render_with_context(
         self,
-        node: ParsedGenericTestNode,
+        node: GenericTestNode,
         config: ContextConfig,
     ) -> None:
         """Given the parsed node and a ContextConfig to use during
@@ -728,11 +727,11 @@ class SourceParser(YamlDocsReader):
                 table=table,
                 path=original_file_path,
                 original_file_path=original_file_path,
-                root_path=self.project.project_root,
                 package_name=package_name,
                 unique_id=unique_id,
                 resource_type=NodeType.Source,
                 fqn=fqn,
+                name=f"{source.name}_{table.name}",
             )
             self.manifest.add_source(self.yaml.file, source_def)
 
@@ -1029,9 +1028,9 @@ class ExposureParser(YamlReader):
                 f"Calculated a {type(config)} for an exposure, but expected an ExposureConfig"
             )
 
-        parsed = ParsedExposure(
+        parsed = Exposure(
+            resource_type=NodeType.Exposure,
             package_name=package_name,
-            root_path=self.project.project_root,
             path=path,
             original_file_path=self.yaml.path.original_file_path,
             unique_id=unique_id,
@@ -1056,7 +1055,7 @@ class ExposureParser(YamlReader):
         )
         depends_on_jinja = "\n".join("{{ " + line + "}}" for line in unparsed.depends_on)
         get_rendered(depends_on_jinja, ctx, parsed, capture_macros=True)
-        # parsed now has a populated refs/sources
+        # parsed now has a populated refs/sources/metrics
 
         if parsed.config.enabled:
             self.manifest.add_exposure(self.yaml.file, parsed)
@@ -1133,9 +1132,9 @@ class MetricParser(YamlReader):
                 f"Calculated a {type(config)} for a metric, but expected a MetricConfig"
             )
 
-        parsed = ParsedMetric(
+        parsed = Metric(
+            resource_type=NodeType.Metric,
             package_name=package_name,
-            root_path=self.project.project_root,
             path=path,
             original_file_path=self.yaml.path.original_file_path,
             unique_id=unique_id,

@@ -1,6 +1,5 @@
 import os
-from dbt.config.project import Project
-from dbt.config.renderer import DbtProjectYamlRenderer
+from typing import Optional
 from dbt.contracts.results import RunningStatus, collect_timing_info
 from dbt.events.functions import fire_event
 from dbt.events.types import NodeCompiling, NodeExecuting
@@ -8,6 +7,7 @@ from dbt.exceptions import RuntimeException
 from dbt import flags
 from dbt.task.sql import SqlCompileRunner
 from dataclasses import dataclass
+from dbt.config.runtime import load_profile, load_project
 
 
 @dataclass
@@ -17,6 +17,7 @@ class RuntimeArgs:
     single_threaded: bool
     profile: str
     target: str
+    threads: Optional[int] = None
 
 
 class SqlCompileRunnerNoIntrospection(SqlCompileRunner):
@@ -61,6 +62,12 @@ class SqlCompileRunnerNoIntrospection(SqlCompileRunner):
         return result
 
 
+def load_profile_project(project_dir, profile):
+    profile = load_profile(project_dir, {}, profile)
+    project = load_project(project_dir, False, profile, {})
+    return profile, project
+
+
 def get_dbt_config(project_dir, args=None, single_threaded=False):
     from dbt.config.runtime import RuntimeConfig
     import dbt.adapters.factory
@@ -71,22 +78,16 @@ def get_dbt_config(project_dir, args=None, single_threaded=False):
     else:
         profiles_dir = flags.DEFAULT_PROFILES_DIR
 
-    profile_name = getattr(args, "profile", None)
-
     runtime_args = RuntimeArgs(
         project_dir=project_dir,
         profiles_dir=profiles_dir,
         single_threaded=single_threaded,
-        profile=profile_name,
+        profile=getattr(args, "profile", None),
         target=getattr(args, "target", None),
     )
 
-    profile = RuntimeConfig.collect_profile(args=runtime_args, profile_name=profile_name)
-    project_renderer = DbtProjectYamlRenderer(profile, None)
-    project = RuntimeConfig.collect_project(args=runtime_args, project_renderer=project_renderer)
-    assert type(project) is Project
-
-    config = RuntimeConfig.from_parts(project, profile, runtime_args)
+    # Construct a RuntimeConfig from phony args
+    config = RuntimeConfig.from_args(runtime_args)
 
     # Set global flags from arguments
     flags.set_from_args(args, config)

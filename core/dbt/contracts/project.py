@@ -169,9 +169,25 @@ class PruneModelsAction(StrEnum):
 
 @dataclass
 class SchemaManagementConfiguration(HyphenatedDbtClassMixin, Replaceable):
+    # TODOs:
+    # (1)   Do uniqueness validation here, to ensure that we don't get the same 'database' + 'schema' combo twice.
+    # (2)   Support adapter-specific aliases for 'database' + 'schema'
+    #       (e.g. 'project' + 'dataset' for BigQuery, 'catalog' for Spark/Databricks)
+    #       There is a 'translate_aliases' method defined on adapters for this purpose.
     database: Optional[str] = None
     schema: Optional[str] = None
     prune_models: Optional[PruneModelsAction] = None
+
+    @classmethod
+    def validate(cls, data):
+        super().validate(data)
+        # (1) validate uniqueness
+
+    @classmethod
+    def __pre_deserialize__(cls, data):
+        data = super().__pre_deserialize__(data)
+        # (2) data = cls.translate_aliases(data)
+        return data
 
 
 @dataclass

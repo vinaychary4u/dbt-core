@@ -449,6 +449,7 @@ def _build_debug_subparser(subparsers, base_subparser):
     return sub
 
 
+# TODO: create in new CLI after rebasing against 'main'
 def _build_manage_subparser(subparsers, base_subparser):
     sub = subparsers.add_parser(
         "manage",

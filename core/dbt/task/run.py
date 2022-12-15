@@ -400,7 +400,7 @@ class RunTask(CompileTask):
                     thread_id="main",
                     timing=[],
                     message=f"{hook_type.value} failed, error:\n {exc.msg}",
-                    adapter_response=exc.msg,
+                    adapter_response={},
                     execution_time=0,
                     failures=1,
                 )

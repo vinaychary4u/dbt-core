@@ -1,8 +1,9 @@
 import builtins
 import json
 import re
-from typing import Any, Mapping, NoReturn, Optional
+from typing import Any, Dict, List, Mapping, NoReturn, Optional
 
+# from dbt.contracts.graph import ManifestNode # or ParsedNode?
 from dbt.dataclass_schema import ValidationError
 from dbt.events.functions import warn_or_error
 from dbt.events.helpers import env_secrets, scrub_secrets
@@ -38,8 +39,8 @@ class Exception(builtins.Exception):
 
 
 class InternalException(Exception):
-    def __init__(self, msg):
-        self.stack = []
+    def __init__(self, msg: str):
+        self.stack: List = []
         self.msg = scrub_secrets(msg, env_secrets())
 
     @property
@@ -82,8 +83,8 @@ class RuntimeException(RuntimeError, Exception):
     CODE = 10001
     MESSAGE = "Runtime error"
 
-    def __init__(self, msg, node=None):
-        self.stack = []
+    def __init__(self, msg: str, node=None):
+        self.stack: List = []
         self.node = node
         self.msg = scrub_secrets(msg, env_secrets())
 
@@ -102,14 +103,14 @@ class RuntimeException(RuntimeError, Exception):
             return "<Unknown>"
         if not hasattr(node, "name"):
             # we probably failed to parse a block, so we can't know the name
-            return "{} ({})".format(node.resource_type, node.original_file_path)
+            return f"{node.resource_type} ({node.original_file_path})"
 
         if hasattr(node, "contents"):
             # handle FileBlocks. They aren't really nodes but we want to render
             # out the path we know at least. This indicates an error during
             # block parsing.
-            return "{}".format(node.path.original_file_path)
-        return "{} {} ({})".format(node.resource_type, node.name, node.original_file_path)
+            return f"{node.path.original_file_path}"
+        return f"{node.resource_type} {node.name} ({node.original_file_path})"
 
     def process_stack(self):
         lines = []
@@ -126,24 +127,24 @@ class RuntimeException(RuntimeError, Exception):
                     msg = "in"
                     first = False
 
-                lines.append("> {} {}".format(msg, self.node_to_string(item)))
+                lines.append(f"> {msg} {self.node_to_string(item)}")
 
         return lines
 
-    def validator_error_message(self, exc):
+    def validator_error_message(self, exc: builtins.Exception):
         """Given a dbt.dataclass_schema.ValidationError (which is basically a
         jsonschema.ValidationError), return the relevant parts as a string
         """
         if not isinstance(exc, dbt.dataclass_schema.ValidationError):
             return str(exc)
         path = "[%s]" % "][".join(map(repr, exc.relative_path))
-        return "at path {}: {}".format(path, exc.message)
+        return f"at path {path}: {exc.message}"
 
-    def __str__(self, prefix="! "):
+    def __str__(self, prefix: str = "! "):
         node_string = ""
 
         if self.node is not None:
-            node_string = " in {}".format(self.node_to_string(self.node))
+            node_string = f" in {self.node_to_string(self.node)}"
 
         if hasattr(self.msg, "split"):
             split_msg = self.msg.split("\n")
@@ -180,7 +181,7 @@ class RPCTimeoutException(RuntimeException):
     CODE = 10008
     MESSAGE = "RPC timeout error"
 
-    def __init__(self, timeout):
+    def __init__(self, timeout: Optional[float]):
         super().__init__(self.MESSAGE)
         self.timeout = timeout
 
@@ -189,7 +190,7 @@ class RPCTimeoutException(RuntimeException):
         result.update(
             {
                 "timeout": self.timeout,
-                "message": "RPC timed out after {}s".format(self.timeout),
+                "message": f"RPC timed out after {self.timeout}s",
             }
         )
         return result
@@ -199,7 +200,7 @@ class RPCKilledException(RuntimeException):
     CODE = 10009
     MESSAGE = "RPC process killed"
 
-    def __init__(self, signum):
+    def __init__(self, signum: int):
         self.signum = signum
         self.msg = f"RPC process killed by signal {self.signum}"
         super().__init__(self.msg)
@@ -215,7 +216,7 @@ class RPCCompiling(RuntimeException):
     CODE = 10010
     MESSAGE = 'RPC server is compiling the project, call the "status" method for' " compile status"
 
-    def __init__(self, msg=None, node=None):
+    def __init__(self, msg: str = None, node=None):
         if msg is None:
             msg = "compile in progress"
         super().__init__(msg, node)
@@ -227,7 +228,7 @@ class RPCLoadException(RuntimeException):
         'RPC server failed to compile project, call the "status" method for' " compile status"
     )
 
-    def __init__(self, cause):
+    def __init__(self, cause: Dict[str, Any]):
         self.cause = cause
         self.msg = f'{self.MESSAGE}: {self.cause["message"]}'
         super().__init__(self.msg)
@@ -244,7 +245,7 @@ class DatabaseException(RuntimeException):
         lines = []
 
         if hasattr(self.node, "build_path") and self.node.build_path:
-            lines.append("compiled Code at {}".format(self.node.build_path))
+            lines.append(f"compiled Code at {self.node.build_path}")
 
         return lines + RuntimeException.process_stack(self)
 
@@ -291,14 +292,13 @@ class ParsingException(RuntimeException):
         return "Parsing"
 
 
+# TODO: this isn't raised in the core codebase.  Is it raised elsewhere?
 class JSONValidationException(ValidationException):
     def __init__(self, typename, errors):
         self.typename = typename
         self.errors = errors
         self.errors_message = ", ".join(errors)
-        msg = 'Invalid arguments passed to "{}" instance: {}'.format(
-            self.typename, self.errors_message
-        )
+        msg = f'Invalid arguments passed to "{self.typename}" instance: {self.errors_message}'
         super().__init__(msg)
 
     def __reduce__(self):
@@ -339,7 +339,7 @@ class JinjaRenderingException(CompilationException):
 
 
 class UndefinedMacroException(CompilationException):
-    def __str__(self, prefix="! ") -> str:
+    def __str__(self, prefix: str = "! ") -> str:
         msg = super().__str__(prefix)
         return (
             f"{msg}. This can happen when calling a macro that does "
@@ -356,7 +356,7 @@ class UnknownAsyncIDException(Exception):
         self.task_id = task_id
 
     def __str__(self):
-        return "{}: {}".format(self.MESSAGE, self.task_id)
+        return f"{self.MESSAGE}: {self.task_id}"
 
 
 class AliasException(ValidationException):
@@ -373,7 +373,7 @@ class DbtConfigError(RuntimeException):
     CODE = 10007
     MESSAGE = "DBT Configuration Error"
 
-    def __init__(self, msg, project=None, result_type="invalid_project", path=None):
+    def __init__(self, msg: str, project=None, result_type="invalid_project", path=None):
         self.project = project
         super().__init__(msg)
         self.result_type = result_type
@@ -391,7 +391,7 @@ class FailFastException(RuntimeException):
     CODE = 10013
     MESSAGE = "FailFast Error"
 
-    def __init__(self, msg, result=None, node=None):
+    def __init__(self, msg: str, result=None, node=None):
         super().__init__(msg=msg, node=node)
         self.result = result
 
@@ -413,7 +413,7 @@ class DbtProfileError(DbtConfigError):
 
 
 class SemverException(Exception):
-    def __init__(self, msg=None):
+    def __init__(self, msg: str = None):
         self.msg = msg
         if msg is not None:
             super().__init__(msg)
@@ -426,10 +426,10 @@ class VersionsNotCompatibleException(SemverException):
 
 
 class NotImplementedException(Exception):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         self.msg = msg
         self.formatted_msg = f"ERROR: {self.msg}"
-        super().__init__(msg=self.formatted_msg)
+        super().__init__(self.formatted_msg)
 
 
 class FailedToConnectException(DatabaseException):
@@ -437,7 +437,7 @@ class FailedToConnectException(DatabaseException):
 
 
 class CommandError(RuntimeException):
-    def __init__(self, cwd, cmd, msg="Error running command"):
+    def __init__(self, cwd: str, cmd: List[str], msg: str = "Error running command"):
         cmd_scrubbed = list(scrub_secrets(cmd_txt, env_secrets()) for cmd_txt in cmd)
         super().__init__(msg)
         self.cwd = cwd
@@ -446,25 +446,33 @@ class CommandError(RuntimeException):
 
     def __str__(self):
         if len(self.cmd) == 0:
-            return "{}: No arguments given".format(self.msg)
-        return '{}: "{}"'.format(self.msg, self.cmd[0])
+            return f"{self.msg}: No arguments given"
+        return f'{self.msg}: "{self.cmd[0]}"'
 
 
 class ExecutableError(CommandError):
-    def __init__(self, cwd, cmd, msg):
+    def __init__(self, cwd: str, cmd: List[str], msg: str):
         super().__init__(cwd, cmd, msg)
 
 
 class WorkingDirectoryError(CommandError):
-    def __init__(self, cwd, cmd, msg):
+    def __init__(self, cwd: str, cmd: List[str], msg: str):
         super().__init__(cwd, cmd, msg)
 
     def __str__(self):
-        return '{}: "{}"'.format(self.msg, self.cwd)
+        return f'{self.msg}: "{self.cwd}"'
 
 
 class CommandResultError(CommandError):
-    def __init__(self, cwd, cmd, returncode, stdout, stderr, msg="Got a non-zero returncode"):
+    def __init__(
+        self,
+        cwd: str,
+        cmd: List[str],
+        returncode: str,
+        stdout: bytes,
+        stderr: bytes,
+        msg: str = "Got a non-zero returncode",
+    ):
         super().__init__(cwd, cmd, msg)
         self.returncode = returncode
         self.stdout = scrub_secrets(stdout.decode("utf-8"), env_secrets())
@@ -472,17 +480,15 @@ class CommandResultError(CommandError):
         self.args = (cwd, self.cmd, returncode, self.stdout, self.stderr, msg)
 
     def __str__(self):
-        return "{} running: {}".format(self.msg, self.cmd)
+        return f"{self.msg} running: {self.cmd}"
 
 
 class InvalidConnectionException(RuntimeException):
-    def __init__(self, thread_id, known, node=None):
+    def __init__(self, thread_id, known: List):
         self.thread_id = thread_id
         self.known = known
         super().__init__(
-            msg="connection never acquired for thread {}, have {}".format(
-                self.thread_id, self.known
-            )
+            msg="connection never acquired for thread {self.thread_id}, have {self.known}"
         )
 
 
@@ -507,7 +513,7 @@ class ConnectionException(Exception):
 
 # event level exception
 class EventCompilationException(CompilationException):
-    def __init__(self, msg, node):
+    def __init__(self, msg: str, node):
         self.msg = scrub_secrets(msg, env_secrets())
         self.node = node
         super().__init__(msg=self.msg)
@@ -515,7 +521,7 @@ class EventCompilationException(CompilationException):
 
 # compilation level exceptions
 class GraphDependencyNotFound(CompilationException):
-    def __init__(self, node, dependency):
+    def __init__(self, node, dependency: str):
         self.node = node
         self.dependency = dependency
         super().__init__(msg=self.get_message())
@@ -543,7 +549,7 @@ class MaterializtionMacroNotUsed(CompilationException):
 
 
 class UndefinedCompilation(CompilationException):
-    def __init__(self, name, node):
+    def __init__(self, name: str, node):
         self.name = name
         self.node = node
         self.msg = f"{self.name} is undefined"
@@ -551,14 +557,14 @@ class UndefinedCompilation(CompilationException):
 
 
 class CaughtMacroExceptionWithNode(CompilationException):
-    def __init__(self, exc, node):
+    def __init__(self, exc: Exception, node):
         self.exc = exc
         self.node = node
         super().__init__(msg=str(exc))
 
 
 class CaughtMacroException(CompilationException):
-    def __init__(self, exc):
+    def __init__(self, exc: Exception):
         self.exc = exc
         super().__init__(msg=str(exc))
 
@@ -577,7 +583,7 @@ class MacroNameNotString(CompilationException):
 
 
 class MissingControlFlowStartTag(CompilationException):
-    def __init__(self, tag, expected_tag, tag_parser):
+    def __init__(self, tag, expected_tag: str, tag_parser):
         self.tag = tag
         self.expected_tag = expected_tag
         self.tag_parser = tag_parser
@@ -593,7 +599,7 @@ class MissingControlFlowStartTag(CompilationException):
 
 
 class UnexpectedControlFlowEndTag(CompilationException):
-    def __init__(self, tag, expected_tag, tag_parser):
+    def __init__(self, tag, expected_tag: str, tag_parser):
         self.tag = tag
         self.expected_tag = expected_tag
         self.tag_parser = tag_parser
@@ -609,7 +615,7 @@ class UnexpectedControlFlowEndTag(CompilationException):
 
 
 class UnexpectedMacroEOF(CompilationException):
-    def __init__(self, expected_name, actual_name):
+    def __init__(self, expected_name: str, actual_name: str):
         self.expected_name = expected_name
         self.actual_name = actual_name
         super().__init__(msg=self.get_message())
@@ -620,7 +626,7 @@ class UnexpectedMacroEOF(CompilationException):
 
 
 class MacroNamespaceNotString(CompilationException):
-    def __init__(self, kwarg_type):
+    def __init__(self, kwarg_type: Any):
         self.kwarg_type = kwarg_type
         super().__init__(msg=self.get_message())
 
@@ -663,7 +669,7 @@ class BlockDefinitionNotAtTop(CompilationException):
 
 
 class MissingCloseTag(CompilationException):
-    def __init__(self, block_type_name, linecount):
+    def __init__(self, block_type_name: str, linecount: int):
         self.block_type_name = block_type_name
         self.linecount = linecount
         super().__init__(msg=self.get_message())
@@ -674,7 +680,7 @@ class MissingCloseTag(CompilationException):
 
 
 class GitCloningProblem(RuntimeException):
-    def __init__(self, repo):
+    def __init__(self, repo: str):
         self.repo = scrub_secrets(repo, env_secrets())
         super().__init__(msg=self.get_message())
 
@@ -687,7 +693,7 @@ class GitCloningProblem(RuntimeException):
 
 
 class GitCloningError(InternalException):
-    def __init__(self, repo, revision, error):
+    def __init__(self, repo: str, revision: str, error: CommandResultError):
         self.repo = repo
         self.revision = revision
         self.error = error
@@ -698,7 +704,7 @@ class GitCloningError(InternalException):
         if "usage: git" in stderr:
             stderr = stderr.split("\nusage: git")[0]
         if re.match("fatal: destination path '(.+)' already exists", stderr):
-            self.error.cmd = scrub_secrets(str(self.error.cmd), env_secrets())
+            self.error.cmd = list(scrub_secrets(str(self.error.cmd), env_secrets()))
             raise self.error
 
         msg = f"Error checking out spec='{self.revision}' for repo {self.repo}\n{stderr}"
@@ -706,7 +712,7 @@ class GitCloningError(InternalException):
 
 
 class GitCheckoutError(InternalException):
-    def __init__(self, repo, revision, error):
+    def __init__(self, repo: str, revision: str, error: CommandResultError):
         self.repo = repo
         self.revision = revision
         self.stderr = error.stderr.strip()
@@ -718,7 +724,7 @@ class GitCheckoutError(InternalException):
 
 
 class InvalidMaterializationArg(CompilationException):
-    def __init__(self, name, argument):
+    def __init__(self, name: str, argument: str):
         self.name = name
         self.argument = argument
         super().__init__(msg=self.get_message())
@@ -746,7 +752,7 @@ class SymbolicLinkError(CompilationException):
 
 
 class LoadAgateTableValueError(CompilationException):
-    def __init__(self, exc, node):
+    def __init__(self, exc: ValueError, node):
         self.exc = exc
         self.node = node
         msg = str(self.exc)
@@ -769,7 +775,7 @@ class MacrosSourcesUnWriteable(CompilationException):
 
 
 class PackageNotInDeps(CompilationException):
-    def __init__(self, package_name, node):
+    def __init__(self, package_name: str, node):
         self.package_name = package_name
         self.node = node
         msg = f"Node package named {self.package_name} not found!"
@@ -777,7 +783,7 @@ class PackageNotInDeps(CompilationException):
 
 
 class OperationsCannotRefEphemeralNodes(CompilationException):
-    def __init__(self, target_name, node):
+    def __init__(self, target_name: str, node):
         self.target_name = target_name
         self.node = node
         msg = f"Operations can not ref() ephemeral nodes, but {target_name} is ephemeral"
@@ -785,7 +791,7 @@ class OperationsCannotRefEphemeralNodes(CompilationException):
 
 
 class InvalidPersistDocsValueType(CompilationException):
-    def __init__(self, persist_docs):
+    def __init__(self, persist_docs: Any):
         self.persist_docs = persist_docs
         msg = (
             "Invalid value provided for 'persist_docs'. Expected dict "
@@ -802,7 +808,7 @@ class InvalidInlineModelConfig(CompilationException):
 
 
 class ConflictingConfigKeys(CompilationException):
-    def __init__(self, oldkey, newkey, node):
+    def __init__(self, oldkey: str, newkey: str, node):
         self.oldkey = oldkey
         self.newkey = newkey
         self.node = node
@@ -819,7 +825,7 @@ class InvalidNumberSourceArgs(CompilationException):
 
 
 class RequiredVarNotFound(CompilationException):
-    def __init__(self, var_name, merged, node):
+    def __init__(self, var_name: str, merged: Dict, node):
         self.var_name = var_name
         self.merged = merged
         self.node = node
@@ -839,14 +845,14 @@ class RequiredVarNotFound(CompilationException):
 
 
 class PackageNotFoundForMacro(CompilationException):
-    def __init__(self, package_name):
+    def __init__(self, package_name: str):
         self.package_name = package_name
         msg = f"Could not find package '{self.package_name}'"
         super().__init__(msg=msg)
 
 
 class DisallowSecretEnvVar(ParsingException):
-    def __init__(self, env_var_name):
+    def __init__(self, env_var_name: str):
         self.env_var_name = env_var_name
         super().__init__(msg=self.get_message())
 
@@ -859,7 +865,9 @@ class DisallowSecretEnvVar(ParsingException):
 
 
 class InvalidMacroArgType(CompilationException):
-    def __init__(self, method_name, arg_name, got_value, expected_type, version):
+    def __init__(
+        self, method_name: str, arg_name: str, got_value: Any, expected_type: str, version: str
+    ):
         self.method_name = method_name
         self.arg_name = arg_name
         self.got_value = got_value
@@ -878,7 +886,7 @@ class InvalidMacroArgType(CompilationException):
 
 
 class InvalidBoolean(CompilationException):
-    def __init__(self, return_value, macro_name):
+    def __init__(self, return_value: Any, macro_name: str):
         self.return_value = return_value
         self.macro_name = macro_name
         super().__init__(msg=self.get_message())
@@ -969,7 +977,7 @@ class DocTargetNotFound(CompilationException):
 
 
 class MacroInvalidDispatchArg(CompilationException):
-    def __init__(self, macro_name):
+    def __init__(self, macro_name: str):
         self.macro_name = macro_name
         super().__init__(msg=self.get_message())
 
@@ -988,7 +996,7 @@ class MacroInvalidDispatchArg(CompilationException):
 
 
 class DuplicateMacroName(CompilationException):
-    def __init__(self, node_1, node_2, namespace):
+    def __init__(self, node_1, node_2, namespace: str):
         self.node_1 = node_1
         self.node_2 = node_2
         self.namespace = namespace
@@ -997,9 +1005,7 @@ class DuplicateMacroName(CompilationException):
     def get_message(self) -> str:
         duped_name = self.node_1.name
         if self.node_1.package_name != self.node_2.package_name:
-            extra = ' ("{}" and "{}" are both in the "{}" namespace)'.format(
-                self.node_1.package_name, self.node_2.package_name, self.namespace
-            )
+            extra = f' ("{self.node_1.package_name}" and "{self.node_2.package_name}" are both in the "{self.namespace}" namespace)'
         else:
             extra = ""
 
@@ -1016,7 +1022,7 @@ class DuplicateMacroName(CompilationException):
 
 # parser level exceptions
 class InvalidDictParse(ParsingException):
-    def __init__(self, exc, node):
+    def __init__(self, exc: ValidationError, node):
         self.exc = exc
         self.node = node
         msg = self.validator_error_message(exc)
@@ -1024,7 +1030,7 @@ class InvalidDictParse(ParsingException):
 
 
 class InvalidConfigUpdate(ParsingException):
-    def __init__(self, exc, node):
+    def __init__(self, exc: ValidationError, node):
         self.exc = exc
         self.node = node
         msg = self.validator_error_message(exc)
@@ -1032,7 +1038,7 @@ class InvalidConfigUpdate(ParsingException):
 
 
 class PythonParsingException(ParsingException):
-    def __init__(self, exc, node):
+    def __init__(self, exc: SyntaxError, node):
         self.exc = exc
         self.node = node
         super().__init__(msg=self.get_message())
@@ -1044,13 +1050,13 @@ class PythonParsingException(ParsingException):
 
 
 class PythonLiteralEval(ParsingException):
-    def __init__(self, exc, node):
+    def __init__(self, exc: Exception, node):
         self.exc = exc
         self.node = node
         super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
-        msg = self.validator_error_message(
+        msg = (
             f"Error when trying to literal_eval an arg to dbt.ref(), dbt.source(), dbt.config() or dbt.config.get() \n{self.exc}\n"
             "https://docs.python.org/3/library/ast.html#ast.literal_eval\n"
             "In dbt python model, `dbt.ref`, `dbt.source`, `dbt.config`, `dbt.config.get` function args only support Python literal structures"
@@ -1060,7 +1066,7 @@ class PythonLiteralEval(ParsingException):
 
 
 class InvalidModelConfig(ParsingException):
-    def __init__(self, exc, node):
+    def __init__(self, exc: ValidationError, node):
         self.msg = self.validator_error_message(exc)
         self.node = node
         super().__init__(msg=self.msg)
@@ -1069,9 +1075,9 @@ class InvalidModelConfig(ParsingException):
 class YamlParseFailure(ParsingException):
     def __init__(
         self,
-        path,
-        key,
-        yaml_data,
+        path: str,
+        key: str,
+        yaml_data: List,
         cause,
     ):
         self.path = path
@@ -1092,7 +1098,7 @@ class YamlParseFailure(ParsingException):
 
 
 class YamlLoadFailure(ParsingException):
-    def __init__(self, project_name, path, exc):
+    def __init__(self, project_name: str, path: str, exc: ValidationException):
         self.project_name = project_name
         self.path = path
         self.exc = exc
@@ -1107,21 +1113,21 @@ class YamlLoadFailure(ParsingException):
 
 
 class InvalidTestConfig(ParsingException):
-    def __init__(self, exc, node):
+    def __init__(self, exc: ValidationError, node):
         self.msg = self.validator_error_message(exc)
         self.node = node
         super().__init__(msg=self.msg)
 
 
 class InvalidSchemaConfig(ParsingException):
-    def __init__(self, exc, node):
+    def __init__(self, exc: ValidationError, node):
         self.msg = self.validator_error_message(exc)
         self.node = node
         super().__init__(msg=self.msg)
 
 
 class InvalidSnapshopConfig(ParsingException):
-    def __init__(self, exc, node):
+    def __init__(self, exc: ValidationError, node):
         self.msg = self.validator_error_message(exc)
         self.node = node
         super().__init__(msg=self.msg)
@@ -1140,14 +1146,14 @@ class TestArgIncludesModel(CompilationException):
 
 
 class UnexpectedTestNamePattern(CompilationException):
-    def __init__(self, test_name):
+    def __init__(self, test_name: str):
         self.test_name = test_name
         msg = f"Test name string did not match expected pattern: {self.test_name}"
         super().__init__(msg=msg)
 
 
 class CustomMacroPopulatingConfigValues(CompilationException):
-    def __init__(self, target_name, column_name, name, key, err_msg):
+    def __init__(self, target_name: str, column_name: str, name: str, key: str, err_msg: str):
         self.target_name = target_name
         self.column_name = column_name
         self.name = name
@@ -1177,21 +1183,21 @@ class CustomMacroPopulatingConfigValues(CompilationException):
 
 
 class TagsNotListOfStrings(CompilationException):
-    def __init__(self, tags):
+    def __init__(self, tags: Any):
         self.tags = tags
         msg = f"got {self.tags} ({type(self.tags)}) for tags, expected a list of strings"
         super().__init__(msg=msg)
 
 
 class TagNotString(CompilationException):
-    def __init__(self, tag):
+    def __init__(self, tag: Any):
         self.tag = tag
         msg = f"got {self.tag} ({type(self.tag)}) for tag, expected a str"
         super().__init__(msg=msg)
 
 
 class TestNameNotString(ParsingException):
-    def __init__(self, test_name):
+    def __init__(self, test_name: Any):
         self.test_name = test_name
         super().__init__(msg=self.get_message())
 
@@ -1202,7 +1208,7 @@ class TestNameNotString(ParsingException):
 
 
 class TestArgsNotDict(ParsingException):
-    def __init__(self, test_args):
+    def __init__(self, test_args: Any):
         self.test_args = test_args
         super().__init__(msg=self.get_message())
 
@@ -1227,7 +1233,7 @@ class TestDefinitionDictLength(ParsingException):
 
 
 class TestInvalidType(ParsingException):
-    def __init__(self, test):
+    def __init__(self, test: Any):
         self.test = test
         super().__init__(msg=self.get_message())
 
@@ -1238,7 +1244,7 @@ class TestInvalidType(ParsingException):
 
 # This is triggered across multiple files
 class EnvVarMissing(ParsingException):
-    def __init__(self, var):
+    def __init__(self, var: str):
         self.var = var
         super().__init__(msg=self.get_message())
 
@@ -1361,7 +1367,7 @@ class UnexpectedDbReference(NotImplementedException):
 
 
 class CrossDbReferenceProhibited(CompilationException):
-    def __init__(self, adapter, exc_msg):
+    def __init__(self, adapter, exc_msg: str):
         self.adapter = adapter
         self.exc_msg = exc_msg
         super().__init__(msg=self.get_message())
@@ -1372,7 +1378,7 @@ class CrossDbReferenceProhibited(CompilationException):
 
 
 class IndexConfigNotDict(CompilationException):
-    def __init__(self, raw_index):
+    def __init__(self, raw_index: Any):
         self.raw_index = raw_index
         super().__init__(msg=self.get_message())
 
@@ -1386,7 +1392,7 @@ class IndexConfigNotDict(CompilationException):
 
 
 class InvalidIndexConfig(CompilationException):
-    def __init__(self, exc):
+    def __init__(self, exc: TypeError):
         self.exc = exc
         super().__init__(msg=self.get_message())
 
@@ -1398,7 +1404,7 @@ class InvalidIndexConfig(CompilationException):
 
 # adapters exceptions
 class InvalidMacroResult(CompilationException):
-    def __init__(self, freshness_macro_name, table):
+    def __init__(self, freshness_macro_name: str, table):
         self.freshness_macro_name = freshness_macro_name
         self.table = table
         super().__init__(msg=self.get_message())
@@ -1410,7 +1416,7 @@ class InvalidMacroResult(CompilationException):
 
 
 class SnapshotTargetNotSnapshotTable(CompilationException):
-    def __init__(self, missing):
+    def __init__(self, missing: List):
         self.missing = missing
         super().__init__(msg=self.get_message())
 
@@ -1422,7 +1428,7 @@ class SnapshotTargetNotSnapshotTable(CompilationException):
 
 
 class SnapshotTargetIncomplete(CompilationException):
-    def __init__(self, extra, missing):
+    def __init__(self, extra: List, missing: List):
         self.extra = extra
         self.missing = missing
         super().__init__(msg=self.get_message())
@@ -1438,7 +1444,7 @@ class SnapshotTargetIncomplete(CompilationException):
 
 
 class RenameToNoneAttempted(CompilationException):
-    def __init__(self, src_name, dst_name, name):
+    def __init__(self, src_name: str, dst_name: str, name: str):
         self.src_name = src_name
         self.dst_name = dst_name
         self.name = name
@@ -1447,21 +1453,21 @@ class RenameToNoneAttempted(CompilationException):
 
 
 class NullRelationDropAttempted(CompilationException):
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.name = name
         self.msg = f"Attempted to drop a null relation for {self.name}"
         super().__init__(msg=self.msg)
 
 
 class NullRelationCacheAttempted(CompilationException):
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.name = name
         self.msg = f"Attempted to cache a null relation for {self.name}"
         super().__init__(msg=self.msg)
 
 
 class InvalidQuoteConfigType(CompilationException):
-    def __init__(self, quote_config):
+    def __init__(self, quote_config: Any):
         self.quote_config = quote_config
         super().__init__(msg=self.get_message())
 
@@ -1491,7 +1497,7 @@ class RelationTypeNull(CompilationException):
 
 
 class MaterializationNotAvailable(CompilationException):
-    def __init__(self, model, adapter_type):
+    def __init__(self, model, adapter_type: str):
         self.model = model
         self.adapter_type = adapter_type
         super().__init__(msg=self.get_message())
@@ -1503,7 +1509,7 @@ class MaterializationNotAvailable(CompilationException):
 
 
 class RelationReturnedMultipleResults(CompilationException):
-    def __init__(self, kwargs, matches):
+    def __init__(self, kwargs: Mapping[str, Any], matches: List):
         self.kwargs = kwargs
         self.matches = matches
         super().__init__(msg=self.get_message())
@@ -1537,7 +1543,7 @@ class ApproximateMatch(CompilationException):
 
 # adapters exceptions
 class UnexpectedNull(DatabaseException):
-    def __init__(self, field_name, source):
+    def __init__(self, field_name: str, source):
         self.field_name = field_name
         self.source = source
         msg = (
@@ -1548,7 +1554,7 @@ class UnexpectedNull(DatabaseException):
 
 
 class UnexpectedNonTimestamp(DatabaseException):
-    def __init__(self, field_name, source, dt):
+    def __init__(self, field_name: str, source, dt: Any):
         self.field_name = field_name
         self.source = source
         self.type_name = type(dt).__name__
@@ -1561,7 +1567,7 @@ class UnexpectedNonTimestamp(DatabaseException):
 
 # deps exceptions
 class MultipleVersionGitDeps(DependencyException):
-    def __init__(self, git, requested):
+    def __init__(self, git: str, requested):
         self.git = git
         self.requested = requested
         msg = (
@@ -1572,7 +1578,7 @@ class MultipleVersionGitDeps(DependencyException):
 
 
 class DuplicateProjectDependency(DependencyException):
-    def __init__(self, project_name):
+    def __init__(self, project_name: str):
         self.project_name = project_name
         msg = (
             f'Found duplicate project "{self.project_name}". This occurs when '
@@ -1582,7 +1588,7 @@ class DuplicateProjectDependency(DependencyException):
 
 
 class DuplicateDependencyToRoot(DependencyException):
-    def __init__(self, project_name):
+    def __init__(self, project_name: str):
         self.project_name = project_name
         msg = (
             "Found a dependency with the same name as the root project "
@@ -1604,7 +1610,13 @@ class MismatchedDependencyTypes(DependencyException):
 
 
 class PackageVersionNotFound(DependencyException):
-    def __init__(self, package_name, version_range, available_versions, should_version_check):
+    def __init__(
+        self,
+        package_name: str,
+        version_range,
+        available_versions: List[str],
+        should_version_check: bool,
+    ):
         self.package_name = package_name
         self.version_range = version_range
         self.available_versions = available_versions
@@ -1634,7 +1646,7 @@ class PackageVersionNotFound(DependencyException):
 
 
 class PackageNotFound(DependencyException):
-    def __init__(self, package_name):
+    def __init__(self, package_name: str):
         self.package_name = package_name
         msg = f"Package {self.package_name} was not found in the package index"
         super().__init__(msg)
@@ -1644,35 +1656,35 @@ class PackageNotFound(DependencyException):
 
 
 class ProfileConfigInvalid(DbtProfileError):
-    def __init__(self, exc):
+    def __init__(self, exc: ValidationError):
         self.exc = exc
         msg = self.validator_error_message(self.exc)
         super().__init__(msg=msg)
 
 
 class ProjectContractInvalid(DbtProjectError):
-    def __init__(self, exc):
+    def __init__(self, exc: ValidationError):
         self.exc = exc
         msg = self.validator_error_message(self.exc)
         super().__init__(msg=msg)
 
 
 class ProjectContractBroken(DbtProjectError):
-    def __init__(self, exc):
+    def __init__(self, exc: ValidationError):
         self.exc = exc
         msg = self.validator_error_message(self.exc)
         super().__init__(msg=msg)
 
 
 class ConfigContractBroken(DbtProjectError):
-    def __init__(self, exc):
+    def __init__(self, exc: ValidationError):
         self.exc = exc
         msg = self.validator_error_message(self.exc)
         super().__init__(msg=msg)
 
 
 class NonUniquePackageName(CompilationException):
-    def __init__(self, project_name):
+    def __init__(self, project_name: str):
         self.project_name = project_name
         super().__init__(msg=self.get_message())
 
@@ -1687,7 +1699,12 @@ class NonUniquePackageName(CompilationException):
 
 
 class UninstalledPackagesFound(CompilationException):
-    def __init__(self, count_packages_specified, count_packages_installed, packages_install_path):
+    def __init__(
+        self,
+        count_packages_specified: int,
+        count_packages_installed: int,
+        packages_install_path: str,
+    ):
         self.count_packages_specified = count_packages_specified
         self.count_packages_installed = count_packages_installed
         self.packages_install_path = packages_install_path
@@ -1712,9 +1729,7 @@ class VarsArgNotYamlDict(CompilationException):
     def get_message(self) -> str:
         type_name = self.var_type.__name__
 
-        msg = "The --vars argument must be a YAML dictionary, but was " "of type '{}'".format(
-            type_name
-        )
+        msg = f"The --vars argument must be a YAML dictionary, but was of type '{type_name}'"
         return msg
 
 
@@ -1722,7 +1737,7 @@ class VarsArgNotYamlDict(CompilationException):
 
 
 class DuplicateMacroInPackage(CompilationException):
-    def __init__(self, macro, macro_mapping):
+    def __init__(self, macro, macro_mapping: Mapping):
         self.macro = macro
         self.macro_mapping = macro_mapping
         super().__init__(msg=self.get_message())
@@ -1771,7 +1786,7 @@ class DuplicateMaterializationName(CompilationException):
 
 # jinja exceptions
 class MissingConfig(CompilationException):
-    def __init__(self, unique_id, name):
+    def __init__(self, unique_id: str, name: str):
         self.unique_id = unique_id
         self.name = name
         msg = (
@@ -1819,32 +1834,25 @@ class AmbiguousAlias(CompilationException):
     def get_message(self) -> str:
 
         msg = (
-            'dbt found two resources with the database representation "{}".\ndbt '
+            f'dbt found two resources with the database representation "{self.duped_name}".\ndbt '
             "cannot create two resources with identical database representations. "
             "To fix this,\nchange the configuration of one of these resources:"
-            "\n- {} ({})\n- {} ({})".format(
-                self.duped_name,
-                self.node_1.unique_id,
-                self.node_1.original_file_path,
-                self.node_2.unique_id,
-                self.node_2.original_file_path,
-            )
+            f"\n- {self.node_1.unique_id} ({self.node_1.original_file_path})\n- {self.node_2.unique_id} ({self.node_2.original_file_path})"
         )
         return msg
 
 
 class AmbiguousCatalogMatch(CompilationException):
-    def __init__(self, unique_id, match_1, match_2):
+    def __init__(self, unique_id: str, match_1, match_2):
         self.unique_id = unique_id
         self.match_1 = match_1
         self.match_2 = match_2
         super().__init__(msg=self.get_message())
 
     def get_match_string(self, match):
-        return "{}.{}".format(
-            match.get("metadata", {}).get("schema"),
-            match.get("metadata", {}).get("name"),
-        )
+        match_schema = match.get("metadata", {}).get("schema")
+        match_name = match.get("metadata", {}).get("name")
+        return f"{match_schema}.{match_name}"
 
     def get_message(self) -> str:
         msg = (
@@ -1859,14 +1867,14 @@ class AmbiguousCatalogMatch(CompilationException):
 
 
 class CacheInconsistency(InternalException):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         self.msg = msg
         formatted_msg = f"Cache inconsistency detected: {self.msg}"
         super().__init__(msg=formatted_msg)
 
 
 class NewNameAlreadyInCache(CacheInconsistency):
-    def __init__(self, old_key, new_key):
+    def __init__(self, old_key: str, new_key: str):
         self.old_key = old_key
         self.new_key = new_key
         msg = (
@@ -1876,21 +1884,21 @@ class NewNameAlreadyInCache(CacheInconsistency):
 
 
 class ReferencedLinkNotCached(CacheInconsistency):
-    def __init__(self, referenced_key):
+    def __init__(self, referenced_key: str):
         self.referenced_key = referenced_key
         msg = f"in add_link, referenced link key {self.referenced_key} not in cache!"
         super().__init__(msg)
 
 
 class DependentLinkNotCached(CacheInconsistency):
-    def __init__(self, dependent_key):
+    def __init__(self, dependent_key: str):
         self.dependent_key = dependent_key
         msg = f"in add_link, dependent link key {self.dependent_key} not in cache!"
         super().__init__(msg)
 
 
 class TruncatedModelNameCausedCollision(CacheInconsistency):
-    def __init__(self, new_key, relations):
+    def __init__(self, new_key, relations: Dict):
         self.new_key = new_key
         self.relations = relations
         super().__init__(self.get_message())
@@ -1905,8 +1913,8 @@ class TruncatedModelNameCausedCollision(CacheInconsistency):
                 "\n\nName collisions can occur when the length of two "
                 "models' names approach your database's builtin limit. "
                 "Try restructuring your project such that no two models "
-                "share the prefix '{}'.".format(truncated_model_name_prefix)
-                + " Then, clean your warehouse of any removed models."
+                f"share the prefix '{truncated_model_name_prefix}'. "
+                "Then, clean your warehouse of any removed models."
             )
         else:
             message_addendum = ""
@@ -1924,7 +1932,7 @@ class NoneRelationFound(CacheInconsistency):
 
 # this is part of the context and also raised in dbt.contracts.relation.py
 class DataclassNotDict(CompilationException):
-    def __init__(self, obj):
+    def __init__(self, obj: Any):
         self.obj = obj
         super().__init__(msg=self.get_message())
 
@@ -2030,7 +2038,7 @@ To fix this, change the name of one of these resources:
 
 
 class InvalidPropertyYML(CompilationException):
-    def __init__(self, path, issue):
+    def __init__(self, path: str, issue: str):
         self.path = path
         self.issue = issue
         super().__init__(msg=self.get_message())
@@ -2045,29 +2053,29 @@ class InvalidPropertyYML(CompilationException):
 
 
 class PropertyYMLMissingVersion(InvalidPropertyYML):
-    def __init__(self, path):
+    def __init__(self, path: str):
         self.path = path
         self.issue = f"the yml property file {self.path} is missing a version tag"
-        super().__init__()
+        super().__init__(self.path, self.issue)
 
 
 class PropertyYMLVersionNotInt(InvalidPropertyYML):
-    def __init__(self, path, version):
+    def __init__(self, path: str, version: Any):
         self.path = path
         self.version = version
         self.issue = (
             "its 'version:' tag must be an integer (e.g. version: 2)."
             f" {self.version} is not an integer"
         )
-        super().__init__()
+        super().__init__(self.path, self.issue)
 
 
 class PropertyYMLInvalidTag(InvalidPropertyYML):
-    def __init__(self, path, version):
+    def __init__(self, path: str, version: int):
         self.path = path
         self.version = version
         self.issue = f"its 'version:' tag is set to {self.version}.  Only 2 is supported"
-        super().__init__()
+        super().__init__(self.path, self.issue)
 
 
 class RelationWrongType(CompilationException):
@@ -2205,12 +2213,12 @@ def invalid_materialization_argument(name, argument):
 
 
 def bad_package_spec(repo, spec, error_message):
-    msg = "Error checking out spec='{}' for repo {}\n{}".format(spec, repo, error_message)
+    msg = f"Error checking out spec='{spec}' for repo {repo}\n{error_message}"
     raise InternalException(scrub_secrets(msg, env_secrets()))
 
 
 def raise_git_cloning_error(error: CommandResultError) -> NoReturn:
-    error.cmd = scrub_secrets(str(error.cmd), env_secrets())
+    error.cmd = list(scrub_secrets(str(error.cmd), env_secrets()))
     raise error
 
 
@@ -2300,8 +2308,7 @@ def raise_unrecognized_credentials_type(typename, supported_types):
 
 def raise_patch_targets_not_found(patches):
     patch_list = "\n\t".join(
-        "model {} (referenced in path {})".format(p.name, p.original_file_path)
-        for p in patches.values()
+        f"model {p.name} (referenced in path {p.original_file_path})" for p in patches.values()
     )
     msg = f"dbt could not find models for the following patches:\n\t{patch_list}"
     raise CompilationException(msg)

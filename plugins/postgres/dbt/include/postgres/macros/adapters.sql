@@ -5,7 +5,7 @@
   {{ sql_header if sql_header is not none }}
 
   {% if config.get('constraints_enabled', False) %}
-    BEGIN;
+    {# BEGIN; #}
     create {% if temporary -%}
       temporary
     {%- elif unlogged -%}
@@ -16,7 +16,7 @@
      (
       {{ sql }}
     );
-    COMMIT;
+    {# COMMIT; #}
   {% else %}
     create {% if temporary -%}
       temporary

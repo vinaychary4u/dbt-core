@@ -6,9 +6,6 @@ from dbt.tests.util import (
 )
 
 
-# Verify global macro is dispatched and can be overridden elegantly in any adapter(I can do this by creating a custom macro in the dbt-postgres equivalent adapter)
-
-# Verify DDL matches as expected for columns, data types, constraints, and checks
 my_model_sql = """
 {{
   config(
@@ -107,7 +104,7 @@ class BaseConstraintsEnabledModelvsProject:
         }
 
 
-class TestConstraintsDDL(BaseConstraintsEnabledModelvsProject):
+class TestConstraints(BaseConstraintsEnabledModelvsProject):
     @pytest.fixture(scope="class")
     def models(self):
         return {
@@ -138,3 +135,32 @@ class TestConstraintsDDL(BaseConstraintsEnabledModelvsProject):
             assert (
                 expected_sql_check == generated_sql_check
             ), f"generated sql did not match expected: {generated_sql}"
+
+    def test__rollback(self, project):
+        results = run_dbt(["run"])
+        assert len(results) == 1
+
+        with open("./models/my_model.sql", "r") as fp:
+            my_model_sql_original = fp.read()
+
+        my_model_sql_error = my_model_sql_original.replace("1 as id", "null as id")
+
+        with open("./models/my_model.sql", "w") as fp:
+            fp.write(my_model_sql_error)
+
+        results = run_dbt(["run"], expect_pass=False)
+        assert len(results) == 1
+
+        with open("./target/manifest.json", "r") as fp:
+            generated_manifest = json.load(fp)
+
+        model_unique_id = 'model.test.my_model'
+        schema_name_generated = (generated_manifest['nodes'][model_unique_id]['schema'])
+
+        # verify the previous table exists
+        sql = """
+            select id from dbt.{0}.my_model where id = 1
+        """.format(schema_name_generated)
+        results = project.run_sql(sql, fetch="all")
+        assert len(results) == 1
+        assert results[0][0] == 1

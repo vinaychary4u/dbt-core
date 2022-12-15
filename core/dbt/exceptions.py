@@ -1,7 +1,7 @@
 import builtins
 import json
 import re
-from typing import Any, Dict, List, Mapping, NoReturn, Optional
+from typing import Any, Dict, List, Mapping, NoReturn, Optional, Union
 
 # from dbt.contracts.graph import ManifestNode # or ParsedNode?
 from dbt.dataclass_schema import ValidationError
@@ -468,7 +468,7 @@ class CommandResultError(CommandError):
         self,
         cwd: str,
         cmd: List[str],
-        returncode: str,
+        returncode: Union[int, Any],
         stdout: bytes,
         stderr: bytes,
         msg: str = "Got a non-zero returncode",
@@ -557,14 +557,14 @@ class UndefinedCompilation(CompilationException):
 
 
 class CaughtMacroExceptionWithNode(CompilationException):
-    def __init__(self, exc: Exception, node):
+    def __init__(self, exc, node):
         self.exc = exc
         self.node = node
         super().__init__(msg=str(exc))
 
 
 class CaughtMacroException(CompilationException):
-    def __init__(self, exc: Exception):
+    def __init__(self, exc):
         self.exc = exc
         super().__init__(msg=str(exc))
 
@@ -751,6 +751,20 @@ class SymbolicLinkError(CompilationException):
 # context level exceptions
 
 
+class ZipStrictWrongType(CompilationException):
+    def __init__(self, exc):
+        self.exc = exc
+        msg = str(self.exc)
+        super().__init__(msg=msg)
+
+
+class SetStrictWrongType(CompilationException):
+    def __init__(self, exc):
+        self.exc = exc
+        msg = str(self.exc)
+        super().__init__(msg=msg)
+
+
 class LoadAgateTableValueError(CompilationException):
     def __init__(self, exc: ValueError, node):
         self.exc = exc
@@ -866,7 +880,7 @@ class DisallowSecretEnvVar(ParsingException):
 
 class InvalidMacroArgType(CompilationException):
     def __init__(
-        self, method_name: str, arg_name: str, got_value: Any, expected_type: str, version: str
+        self, method_name: str, arg_name: str, got_value: Any, expected_type, version: str
     ):
         self.method_name = method_name
         self.arg_name = arg_name
@@ -1072,7 +1086,7 @@ class InvalidModelConfig(ParsingException):
         super().__init__(msg=self.msg)
 
 
-class YamlParseFailure(ParsingException):
+class YamlParseListFailure(ParsingException):
     def __init__(
         self,
         path: str,
@@ -1097,8 +1111,33 @@ class YamlParseFailure(ParsingException):
         return msg
 
 
+class YamlParseDictFailure(ParsingException):
+    def __init__(
+        self,
+        path: str,
+        key: str,
+        yaml_data: Dict[str, Any],
+        cause,
+    ):
+        self.path = path
+        self.key = key
+        self.yaml_data = yaml_data
+        self.cause = cause
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        if isinstance(self.cause, str):
+            reason = self.cause
+        elif isinstance(self.cause, ValidationError):
+            reason = self.validator_error_message(self.cause)
+        else:
+            reason = self.cause.msg
+        msg = f"Invalid {self.key} config given in {self.path} @ {self.key}: {self.yaml_data} - {reason}"
+        return msg
+
+
 class YamlLoadFailure(ParsingException):
-    def __init__(self, project_name: str, path: str, exc: ValidationException):
+    def __init__(self, project_name: Optional[str], path: str, exc: ValidationException):
         self.project_name = project_name
         self.path = path
         self.exc = exc
@@ -1153,7 +1192,9 @@ class UnexpectedTestNamePattern(CompilationException):
 
 
 class CustomMacroPopulatingConfigValues(CompilationException):
-    def __init__(self, target_name: str, column_name: str, name: str, key: str, err_msg: str):
+    def __init__(
+        self, target_name: str, column_name: Optional[str], name: str, key: str, err_msg: str
+    ):
         self.target_name = target_name
         self.column_name = column_name
         self.name = name

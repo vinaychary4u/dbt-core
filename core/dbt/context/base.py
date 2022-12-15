@@ -10,11 +10,12 @@ from dbt.clients.yaml_helper import yaml, safe_load, SafeLoader, Loader, Dumper 
 from dbt.constants import SECRET_ENV_PREFIX, DEFAULT_ENV_PLACEHOLDER
 from dbt.contracts.graph.nodes import Resource
 from dbt.exceptions import (
-    CompilationException,
     DisallowSecretEnvVar,
     EnvVarMissing,
     MacroReturn,
     RequiredVarNotFound,
+    SetStrictWrongType,
+    ZipStrictWrongType,
 )
 from dbt.events.functions import fire_event, get_invocation_id
 from dbt.events.types import JinjaLogInfo, JinjaLogDebug
@@ -492,7 +493,7 @@ class BaseContext(metaclass=ContextMeta):
         try:
             return set(value)
         except TypeError as e:
-            raise CompilationException(e)
+            raise SetStrictWrongType(e)
 
     @contextmember("zip")
     @staticmethod
@@ -536,7 +537,7 @@ class BaseContext(metaclass=ContextMeta):
         try:
             return zip(*args)
         except TypeError as e:
-            raise CompilationException(e)
+            raise ZipStrictWrongType(e)
 
     @contextmember
     @staticmethod

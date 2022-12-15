@@ -64,7 +64,8 @@ from dbt.exceptions import (
     PropertyYMLVersionNotInt,
     ValidationException,
     YamlLoadFailure,
-    YamlParseFailure,
+    YamlParseDictFailure,
+    YamlParseListFailure,
 )
 from dbt.events.functions import warn_or_error
 from dbt.events.types import WrongResourceSchemaFile, NoNodeForYamlKey, MacroPatchNotFound
@@ -606,7 +607,9 @@ class YamlReader(metaclass=ABCMeta):
             # check that entry is a dict and that all dict values
             # are strings
             if coerce_dict_str(entry) is None:
-                raise YamlParseFailure(path, self.key, data, "expected a dict with string keys")
+                raise YamlParseListFailure(
+                    path, self.key, data, "expected a dict with string keys"
+                )
 
             if "name" not in entry:
                 raise ParsingException("Entry did not contain a name")
@@ -653,7 +656,7 @@ class SourceParser(YamlDocsReader):
             cls.validate(data)
             return cls.from_dict(data)
         except (ValidationError, JSONValidationException) as exc:
-            raise YamlParseFailure(path, self.key, data, exc)
+            raise YamlParseDictFailure(path, self.key, data, exc)
 
     # The other parse method returns TestBlocks. This one doesn't.
     # This takes the yaml dictionaries in 'sources' keys and uses them
@@ -778,7 +781,7 @@ class NonSourceParser(YamlDocsReader, Generic[NonSourceTarget, Parsed]):
                     self.normalize_docs_attribute(data, path)
                 node = self._target_type().from_dict(data)
             except (ValidationError, JSONValidationException) as exc:
-                raise YamlParseFailure(path, self.key, data, exc)
+                raise YamlParseDictFailure(path, self.key, data, exc)
             else:
                 yield node
 
@@ -1061,7 +1064,7 @@ class ExposureParser(YamlReader):
                 UnparsedExposure.validate(data)
                 unparsed = UnparsedExposure.from_dict(data)
             except (ValidationError, JSONValidationException) as exc:
-                raise YamlParseFailure(self.yaml.path, self.key, data, exc)
+                raise YamlParseDictFailure(self.yaml.path, self.key, data, exc)
 
             self.parse_exposure(unparsed)
 
@@ -1178,5 +1181,5 @@ class MetricParser(YamlReader):
                 unparsed = UnparsedMetric.from_dict(data)
 
             except (ValidationError, JSONValidationException) as exc:
-                raise YamlParseFailure(self.yaml.path, self.key, data, exc)
+                raise YamlParseDictFailure(self.yaml.path, self.key, data, exc)
             self.parse_metric(unparsed)

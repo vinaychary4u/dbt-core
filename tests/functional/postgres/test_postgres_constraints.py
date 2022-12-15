@@ -1,5 +1,6 @@
 import pytest
 import re
+import json
 from dbt.tests.util import (
     run_dbt,
 )
@@ -41,9 +42,10 @@ models:
         data_type: date
 """
 
+schema_name = "schema_placeholder"
+
 _expected_sql = """
-BEGIN;
-    create  table "dbt"."test16704620304791720959_test_postgres_constraints"."my_model__dbt_tmp"
+    create  table "dbt"."{0}"."my_model__dbt_tmp"
 
   (
 
@@ -64,7 +66,7 @@ BEGIN;
 
   )
  ;
-    insert into "dbt"."test16704620304791720959_test_postgres_constraints"."my_model__dbt_tmp"
+    insert into "dbt"."{0}"."my_model__dbt_tmp"
   (
 
 
@@ -86,9 +88,8 @@ select
   'blue' as color,
   cast('2019-01-01' as date) as date_day
     );
-    COMMIT;
 
-"""
+""".format(schema_name)
 
 
 class BaseConstraintsEnabledModelvsProject:
@@ -124,9 +125,14 @@ class TestConstraintsDDL(BaseConstraintsEnabledModelvsProject):
         with open("./target/run/test/models/my_model.sql", "r") as fp:
             generated_sql = fp.read()
 
+        with open("./target/manifest.json", "r") as fp:
+            generated_manifest = json.load(fp)
+
+        model_unique_id = 'model.test.my_model'
+        schema_name_generated = (generated_manifest['nodes'][model_unique_id]['schema'])
+
         if expected_sql:
-            # print(generated_sql)
-            # x
+            expected_sql = expected_sql.replace(schema_name, schema_name_generated)
             generated_sql_check = re.sub(r"\s+", "", generated_sql).lower()
             expected_sql_check = re.sub(r"\s+", "", expected_sql).lower()
             assert (

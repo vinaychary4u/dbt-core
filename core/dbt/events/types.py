@@ -422,14 +422,14 @@ class FunctionDeprecated(WarnLevel, pt.FunctionDeprecated):
         return "D008"
 
     def message(self):
-        description = f"Call to deprecated function {self.function_name}."
-        if self.reason != "":
-            description += f"\nDetails of deprecation: {self.reason}"
-        if self.suggested_action != "":
-            description += f"\nTo resolve this deprecation: {self.suggested_action}."
-        if self.version != "":
-            description += f"\nThis will be removed in version {self.version}."
-        return warning_tag(f"Deprecated functionality\n\n{description}")
+        extra_reason = ""
+        if self.reason:
+            extra_reason = f"\n{self.reason}"
+        msg = (
+            f"`{self.function_name}` is deprecated and will be removed in dbt-core version {self.version}\n\n"
+            f"Adapter maintainers can resolve this deprecation by {self.suggested_action}. {extra_reason}"
+        )
+        return warning_tag(msg)
 
 
 # =======================================================

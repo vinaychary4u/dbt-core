@@ -294,7 +294,6 @@ class ParsingException(RuntimeException):
         return "Parsing"
 
 
-# TODO: this isn't raised in the core codebase.  Is it raised elsewhere?
 class JSONValidationException(ValidationException):
     def __init__(self, typename, errors):
         self.typename = typename
@@ -1788,6 +1787,17 @@ class VarsArgNotYamlDict(CompilationException):
 
 
 # contracts level
+class UnrecognizedCredentialType(CompilationException):
+    def __init__(self, typename: str, supported_types: List):
+        self.typename = typename
+        self.supported_types = supported_types
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = 'Unrecognized credentials type "{}" - supported types are ({})'.format(
+            self.typename, ", ".join('"{}"'.format(t) for t in self.supported_types)
+        )
+        return msg
 
 
 class DuplicateMacroInPackage(CompilationException):
@@ -1839,6 +1849,29 @@ class DuplicateMaterializationName(CompilationException):
 
 
 # jinja exceptions
+class PatchTargetNotFound(CompilationException):
+    def __init__(self, patches: Dict):
+        self.patches = patches
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        patch_list = "\n\t".join(
+            f"model {p.name} (referenced in path {p.original_file_path})"
+            for p in self.patches.values()
+        )
+        msg = f"dbt could not find models for the following patches:\n\t{patch_list}"
+        return msg
+
+
+class MacroNotFound(CompilationException):
+    def __init__(self, node, target_macro_id: str):
+        self.node = node
+        self.target_macro_id = target_macro_id
+        msg = f"'{self.node.unique_id}' references macro '{self.target_macro_id}' which is not defined!"
+
+        super().__init__(msg=msg)
+
+
 class MissingConfig(CompilationException):
     def __init__(self, unique_id: str, name: str):
         self.unique_id = unique_id
@@ -2405,9 +2438,6 @@ def bad_package_spec(repo, spec, error_message):
     reason=REASON,
 )
 def raise_git_cloning_error(error: CommandResultError) -> NoReturn:
-    error.cmd = list(
-        scrub_secrets(str(error.cmd), env_secrets())
-    )  # TODO: ensure this scrubbing happens in CommandResultError and remove here
     raise error
 
 
@@ -2551,18 +2581,13 @@ def raise_parsing_error(msg, node=None) -> NoReturn:
     raise ParsingException(msg, node)
 
 
-# These are the exceptions functions that were not called within dbt-core but will remain here but deprecated to give a chance to rework
-# TODO: is this valid?  Should I create a special exception class for this?
 @deprecated(
     version=DEPRECATION_VERSION,
     suggested_action=SUGGESTED_ACTION.format(exception="CompilationException"),
     reason=REASON,
 )
 def raise_unrecognized_credentials_type(typename, supported_types):
-    msg = 'Unrecognized credentials type "{}" - supported types are ({})'.format(
-        typename, ", ".join('"{}"'.format(t) for t in supported_types)
-    )
-    raise CompilationException(msg)
+    raise UnrecognizedCredentialType(typename, supported_types)
 
 
 @deprecated(
@@ -2571,11 +2596,7 @@ def raise_unrecognized_credentials_type(typename, supported_types):
     reason=REASON,
 )
 def raise_patch_targets_not_found(patches):
-    patch_list = "\n\t".join(
-        f"model {p.name} (referenced in path {p.original_file_path})" for p in patches.values()
-    )
-    msg = f"dbt could not find models for the following patches:\n\t{patch_list}"
-    raise CompilationException(msg)
+    raise PatchTargetNotFound(patches)
 
 
 @deprecated(
@@ -2587,7 +2608,6 @@ def multiple_matching_relations(kwargs, matches):
     raise RelationReturnedMultipleResults(kwargs, matches)
 
 
-# while this isn't in our code I wouldn't be surpised it's in adapter code
 @deprecated(
     version=DEPRECATION_VERSION,
     suggested_action=SUGGESTED_ACTION.format(exception="MaterializationNotAvailable"),
@@ -2599,9 +2619,8 @@ def materialization_not_available(model, adapter_type):
 
 @deprecated(
     version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="CompilationException"),
+    suggested_action=SUGGESTED_ACTION.format(exception="MacroNotFound"),
     reason=REASON,
 )
 def macro_not_found(model, target_macro_id):
-    msg = f"'{model.unique_id}' references macro '{target_macro_id}' which is not defined!"
-    raise CompilationException(msg=msg, node=model)
+    raise MacroNotFound(node=model, target_macro_id=target_macro_id)

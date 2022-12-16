@@ -538,7 +538,7 @@ class TestDeprecatedExceptionFunctions:
 
     def test_raise_unrecognized_credentials_type(self):
         func = dbt.exceptions.raise_unrecognized_credentials_type
-        exception = dbt.exceptions.CompilationException
+        exception = dbt.exceptions.UnrecognizedCredentialType
         typename = ""
         supported_types = []
 
@@ -550,7 +550,7 @@ class TestDeprecatedExceptionFunctions:
 
     def test_raise_patch_targets_not_found(self):
         func = dbt.exceptions.raise_patch_targets_not_found
-        exception = dbt.exceptions.CompilationException
+        exception = dbt.exceptions.PatchTargetNotFound
         node = argparse.Namespace()
         node.name = ""
         node.original_file_path = ""
@@ -590,7 +590,7 @@ class TestDeprecatedExceptionFunctions:
 
     def test_macro_not_found(self):
         func = dbt.exceptions.macro_not_found
-        exception = dbt.exceptions.CompilationException
+        exception = dbt.exceptions.MacroNotFound
         model = argparse.Namespace()
         model.unique_id = ""
         target_macro_id = ""

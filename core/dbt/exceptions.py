@@ -706,8 +706,23 @@ class BadSpecException(InternalException):
         return msg
 
 
-class GitCloningError(BadSpecException):
-    pass
+class GitCloningError(InternalException):
+    def __init__(self, repo: str, revision: str, error: CommandResultError):
+        self.repo = repo
+        self.revision = revision
+        self.error = error
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        stderr = self.error.stderr.strip()
+        if "usage: git" in stderr:
+            stderr = stderr.split("\nusage: git")[0]
+        if re.match("fatal: destination path '(.+)' already exists", stderr):
+            self.error.cmd = list(scrub_secrets(str(self.error.cmd), env_secrets()))
+            raise self.error
+
+        msg = f"Error checking out spec='{self.revision}' for repo {self.repo}\n{stderr}"
+        return scrub_secrets(msg, env_secrets())
 
 
 class GitCheckoutError(BadSpecException):

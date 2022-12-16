@@ -1106,8 +1106,6 @@ def expected_references_manifest(project):
                 },
                 "config": get_rendered_seed_config(),
                 "constraints_enabled": False,
-                "sources": [],
-                "depends_on": {"macros": [], "nodes": []},
                 "deferred": False,
                 "description": "The test seed",
                 "docs": {"node_color": None, "show": True},

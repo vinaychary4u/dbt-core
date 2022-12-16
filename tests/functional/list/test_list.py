@@ -363,7 +363,6 @@ class TestList:
             "json": {
                 "name": "seed",
                 "package_name": "test",
-                "depends_on": {"nodes": [], "macros": []},
                 "tags": [],
                 "config": {
                     "enabled": True,

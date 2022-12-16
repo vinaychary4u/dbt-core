@@ -737,6 +737,7 @@ class SourceParser(YamlDocsReader):
                 unique_id=unique_id,
                 resource_type=NodeType.Source,
                 fqn=fqn,
+                name=f"{source.name}_{table.name}",
             )
             self.manifest.add_source(self.yaml.file, source_def)
 
@@ -1034,6 +1035,7 @@ class ExposureParser(YamlReader):
             )
 
         parsed = Exposure(
+            resource_type=NodeType.Exposure,
             package_name=package_name,
             path=path,
             original_file_path=self.yaml.path.original_file_path,
@@ -1137,6 +1139,7 @@ class MetricParser(YamlReader):
             )
 
         parsed = Metric(
+            resource_type=NodeType.Metric,
             package_name=package_name,
             path=path,
             original_file_path=self.yaml.path.original_file_path,

@@ -424,30 +424,19 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                 "unrendered_config": unrendered_second_config,
             },
             "seed.test.seed": {
-                "compiled_path": None,
                 "build_path": None,
                 "created_at": ANY,
-                "compiled": True,
-                "compiled_code": "",
                 "config": seed_config,
                 "patch_path": "test://" + seed_schema_yml_path,
                 "path": "seed.csv",
                 "name": "seed",
                 "root_path": project.project_root,
-                "relation_name": relation_name_node_format.format(
-                    project.database, my_schema_name, "seed"
-                ),
                 "resource_type": "seed",
                 "raw_code": "",
-                "language": "sql",
                 "package_name": "test",
                 "original_file_path": seed_path,
-                "refs": [],
-                "sources": [],
-                "depends_on": {"nodes": [], "macros": []},
                 "unique_id": "seed.test.seed",
                 "fqn": ["test", "seed"],
-                "metrics": [],
                 "tags": [],
                 "meta": {},
                 "schema": my_schema_name,
@@ -509,12 +498,11 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                 },
                 "constraints_enabled": False,
                 "docs": {"node_color": None, "show": True},
-                "compiled": True,
-                "compiled_code": "",
-                "extra_ctes_injected": True,
-                "extra_ctes": [],
                 "checksum": checksum_file(seed_path),
                 "unrendered_config": unrendered_seed_config,
+                "relation_name": relation_name_node_format.format(
+                    project.database, my_schema_name, "seed"
+                ),
             },
             "test.test.not_null_model_id.d01cc630e6": {
                 "alias": "not_null_model_id",
@@ -876,9 +864,9 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
             "test.test.unique_model_id.67b76558ff": [],
         },
         "docs": {
-            "dbt.__overview__": ANY,
-            "test.macro_info": ANY,
-            "test.macro_arg_info": ANY,
+            "doc.dbt.__overview__": ANY,
+            "doc.test.macro_info": ANY,
+            "doc.test.macro_arg_info": ANY,
         },
         "disabled": {},
     }
@@ -1062,7 +1050,6 @@ def expected_references_manifest(project):
             },
             "seed.test.seed": {
                 "alias": "seed",
-                "compiled_path": None,
                 "build_path": None,
                 "created_at": ANY,
                 "columns": {
@@ -1125,16 +1112,12 @@ def expected_references_manifest(project):
                 "description": "The test seed",
                 "docs": {"node_color": None, "show": True},
                 "fqn": ["test", "seed"],
-                "metrics": [],
                 "name": "seed",
                 "original_file_path": seed_path,
                 "package_name": "test",
                 "patch_path": "test://" + os.path.join("seeds", "schema.yml"),
                 "path": "seed.csv",
                 "raw_code": "",
-                "language": "sql",
-                "refs": [],
-                "relation_name": '"{0}"."{1}".seed'.format(model_database, my_schema_name),
                 "resource_type": "seed",
                 "root_path": project.project_root,
                 "schema": my_schema_name,
@@ -1142,12 +1125,11 @@ def expected_references_manifest(project):
                 "tags": [],
                 "meta": {},
                 "unique_id": "seed.test.seed",
-                "compiled": True,
-                "compiled_code": "",
-                "extra_ctes_injected": True,
-                "extra_ctes": [],
                 "checksum": checksum_file(seed_path),
                 "unrendered_config": get_unrendered_seed_config(),
+                "relation_name": '"{0}"."{1}".seed'.format(
+                    project.database, my_schema_name
+                ),
             },
             "snapshot.test.snapshot_seed": {
                 "alias": "snapshot_seed",
@@ -1275,88 +1257,98 @@ def expected_references_manifest(project):
         "metrics": {},
         "selectors": {},
         "docs": {
-            "dbt.__overview__": ANY,
-            "test.column_info": {
+            "doc.dbt.__overview__": ANY,
+            "doc.test.column_info": {
                 "block_contents": "An ID field",
+                "resource_type": "doc",
                 "name": "column_info",
                 "original_file_path": docs_path,
                 "package_name": "test",
                 "path": "docs.md",
-                "unique_id": "test.column_info",
+                "unique_id": "doc.test.column_info",
             },
-            "test.ephemeral_summary": {
+            "doc.test.ephemeral_summary": {
                 "block_contents": ("A summmary table of the ephemeral copy of the seed data"),
+                "resource_type": "doc",
                 "name": "ephemeral_summary",
                 "original_file_path": docs_path,
                 "package_name": "test",
                 "path": "docs.md",
-                "unique_id": "test.ephemeral_summary",
+                "unique_id": "doc.test.ephemeral_summary",
             },
-            "test.source_info": {
+            "doc.test.source_info": {
                 "block_contents": "My source",
+                "resource_type": "doc",
                 "name": "source_info",
                 "original_file_path": docs_path,
                 "package_name": "test",
                 "path": "docs.md",
-                "unique_id": "test.source_info",
+                "unique_id": "doc.test.source_info",
             },
-            "test.summary_count": {
+            "doc.test.summary_count": {
                 "block_contents": "The number of instances of the first name",
+                "resource_type": "doc",
                 "name": "summary_count",
                 "original_file_path": docs_path,
                 "package_name": "test",
                 "path": "docs.md",
-                "unique_id": "test.summary_count",
+                "unique_id": "doc.test.summary_count",
             },
-            "test.summary_first_name": {
+            "doc.test.summary_first_name": {
                 "block_contents": "The first name being summarized",
+                "resource_type": "doc",
                 "name": "summary_first_name",
                 "original_file_path": docs_path,
                 "package_name": "test",
                 "path": "docs.md",
-                "unique_id": "test.summary_first_name",
+                "unique_id": "doc.test.summary_first_name",
             },
-            "test.table_info": {
+            "doc.test.table_info": {
                 "block_contents": "My table",
+                "resource_type": "doc",
                 "name": "table_info",
                 "original_file_path": docs_path,
                 "package_name": "test",
                 "path": "docs.md",
-                "unique_id": "test.table_info",
+                "unique_id": "doc.test.table_info",
             },
-            "test.view_summary": {
+            "doc.test.view_summary": {
                 "block_contents": (
                     "A view of the summary of the ephemeral copy of the seed data"
                 ),
+                "resource_type": "doc",
                 "name": "view_summary",
                 "original_file_path": docs_path,
                 "package_name": "test",
                 "path": "docs.md",
-                "unique_id": "test.view_summary",
+                "unique_id": "doc.test.view_summary",
             },
-            "test.macro_info": {
+            "doc.test.macro_info": {
                 "block_contents": "My custom test that I wrote that does nothing",
+                "resource_type": "doc",
                 "name": "macro_info",
                 "original_file_path": os.path.join("macros", "macro.md"),
                 "package_name": "test",
                 "path": "macro.md",
-                "unique_id": "test.macro_info",
+                "unique_id": "doc.test.macro_info",
             },
-            "test.notebook_info": {
+            "doc.test.notebook_info": {
                 "block_contents": "A description of the complex exposure",
+                "resource_type": "doc",
                 "name": "notebook_info",
                 "original_file_path": docs_path,
                 "package_name": "test",
                 "path": "docs.md",
-                "unique_id": "test.notebook_info",
+                "unique_id": "doc.test.notebook_info",
             },
-            "test.macro_arg_info": {
+            "doc.test.macro_arg_info": {
                 "block_contents": "The model for my custom test",
+                "resource_type": "doc",
                 "name": "macro_arg_info",
                 "original_file_path": os.path.join("macros", "macro.md"),
                 "package_name": "test",
                 "path": "macro.md",
-                "unique_id": "test.macro_arg_info",
+                "unique_id": "doc.test.macro_arg_info",
             },
         },
         "child_map": {
@@ -1395,7 +1387,6 @@ def expected_references_manifest(project):
                 "patch_path": "test://" + os.path.join("macros", "schema.yml"),
                 "resource_type": "macro",
                 "unique_id": "macro.test.test_nothing",
-                "tags": [],
                 "supported_languages": None,
                 "arguments": [
                     {

@@ -1,5 +1,5 @@
 {%- macro get_columns_spec_ddl() -%}
-    {{ adapter.dispatch('get_columns_spec_ddl', 'dbt')() }}
+  {{ adapter.dispatch('get_columns_spec_ddl', 'dbt')() }}
 {%- endmacro -%}
 
 {% macro default__get_columns_spec_ddl() -%}
@@ -9,9 +9,8 @@
 {% macro columns_spec_ddl() %}
   {# loop through user_provided_columns to create DDL with data types and constraints #}
   {% if config.get('constraints_enabled', False) %}
-    {%- set user_provided_columns = model['columns'] -%}
     (
-    {% for i in user_provided_columns %}
+    {% for i in model['columns'] %}
       {% set col = user_provided_columns[i] %}
       {% set constraints = col['constraints'] %}
       {% set check = col['check'] %}

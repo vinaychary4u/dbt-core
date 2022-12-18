@@ -309,8 +309,8 @@ class ConfiguredParser(
 
         # If we have constraints_enabled in the config, copy to node level, for backwards
         # compatibility with earlier node-only config.
-        if "constraints_enabled" in config_dict and config_dict["constraints_enabled"]:
-            parsed_node.constraints_enabled = config_dict["constraints_enabled"]
+        if config_dict.get("constraints_enabled", False):
+            parsed_node.constraints_enabled = True
 
         # unrendered_config is used to compare the original database/schema/alias
         # values and to handle 'same_config' and 'same_contents' calls

@@ -3,6 +3,8 @@ import re
 import json
 from dbt.tests.util import (
     run_dbt,
+    get_manifest,
+    run_dbt_and_capture
 )
 
 
@@ -19,10 +21,38 @@ select
   cast('2019-01-01' as date) as date_day
 """
 
+my_model_error_sql = """
+{{
+  config(
+    materialized = "table"
+  )
+}}
+
+select
+  null as id,
+  'blue' as color,
+  cast('2019-01-01' as date) as date_day
+"""
+
 model_schema_yml = """
 version: 2
 models:
   - name: my_model
+    config:
+      constraints_enabled: true
+    columns:
+      - name: id
+        data_type: integer
+        description: hello
+        constraints: ['not null','primary key']
+        check: (id > 0)
+        tests:
+          - unique
+      - name: color
+        data_type: text
+      - name: date_day
+        data_type: date
+  - name: my_model_error
     config:
       constraints_enabled: true
     columns:
@@ -109,6 +139,7 @@ class TestConstraints(BaseConstraintsEnabledModelvsProject):
     def models(self):
         return {
             "my_model.sql": my_model_sql,
+            "my_model_error.sql": my_model_error_sql,
             "constraints_schema.yml": model_schema_yml,
         }
 
@@ -117,7 +148,7 @@ class TestConstraints(BaseConstraintsEnabledModelvsProject):
         return _expected_sql
 
     def test__model_constraints_DDL(self, project, expected_sql):
-        results = run_dbt(["run"])
+        results = run_dbt(["run", "-s", "my_model"])
         assert len(results) == 1
         with open("./target/run/test/models/my_model.sql", "r") as fp:
             generated_sql = fp.read()
@@ -137,7 +168,7 @@ class TestConstraints(BaseConstraintsEnabledModelvsProject):
             ), f"generated sql did not match expected: {generated_sql}"
 
     def test__rollback(self, project):
-        results = run_dbt(["run"])
+        results = run_dbt(["run", "-s", "my_model"])
         assert len(results) == 1
 
         with open("./models/my_model.sql", "r") as fp:
@@ -148,7 +179,7 @@ class TestConstraints(BaseConstraintsEnabledModelvsProject):
         with open("./models/my_model.sql", "w") as fp:
             fp.write(my_model_sql_error)
 
-        results = run_dbt(["run"], expect_pass=False)
+        results = run_dbt(["run", "-s", "my_model"], expect_pass=False)
         assert len(results) == 1
 
         with open("./target/manifest.json", "r") as fp:
@@ -164,3 +195,16 @@ class TestConstraints(BaseConstraintsEnabledModelvsProject):
         results = project.run_sql(sql, fetch="all")
         assert len(results) == 1
         assert results[0][0] == 1
+
+    def test__constraints_enforcement(self, project):
+
+        results, log_output = run_dbt_and_capture(['run', '-s', 'my_model_error'], expect_pass=False)
+        manifest = get_manifest(project.project_root)
+        model_id = "model.test.my_model_error"
+        my_model_config = manifest.nodes[model_id].config
+        constraints_enabled_actual_config = my_model_config.constraints_enabled
+
+        assert constraints_enabled_actual_config is True
+
+        expected_constraints_error = 'null value in column "id" of relation "my_model_error__dbt_tmp" violates not-null constraint'
+        assert expected_constraints_error in log_output

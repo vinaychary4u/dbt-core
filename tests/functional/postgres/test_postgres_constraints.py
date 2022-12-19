@@ -206,5 +206,7 @@ class TestConstraints(BaseConstraintsEnabledModelvsProject):
 
         assert constraints_enabled_actual_config is True
 
-        expected_constraints_error = 'null value in column "id" of relation "my_model_error__dbt_tmp" violates not-null constraint'
+        expected_constraints_error = 'null value in column "id"'
+        expected_violation_error = 'violates not-null constraint'
         assert expected_constraints_error in log_output
+        assert expected_violation_error in log_output

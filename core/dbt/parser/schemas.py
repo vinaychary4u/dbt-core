@@ -133,7 +133,7 @@ class ParserRef:
         description: str,
         data_type: Optional[str],
         constraints: Optional[List[str]],
-        check: Optional[str],
+        constraints_check: Optional[str],
         meta: Dict[str, Any],
     ):
         tags: List[str] = []
@@ -148,7 +148,7 @@ class ParserRef:
             description=description,
             data_type=data_type,
             constraints=constraints,
-            check=check,
+            constraints_check=constraints_check,
             meta=meta,
             tags=tags,
             quote=quote,
@@ -162,9 +162,9 @@ class ParserRef:
             description = column.description
             data_type = column.data_type
             constraints = column.constraints
-            check = column.check
+            constraints_check = column.constraints_check
             meta = column.meta
-            refs.add(column, description, data_type, constraints, check, meta)
+            refs.add(column, description, data_type, constraints, constraints_check, meta)
         return refs
 
 

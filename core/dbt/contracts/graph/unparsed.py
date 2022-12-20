@@ -94,7 +94,7 @@ class HasDocs(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable):
     meta: Dict[str, Any] = field(default_factory=dict)
     data_type: Optional[str] = None
     constraints: Optional[List[str]] = None
-    check: Optional[str] = None
+    constraints_check: Optional[str] = None
     docs: Docs = field(default_factory=Docs)
     _extra: Dict[str, Any] = field(default_factory=dict)
 

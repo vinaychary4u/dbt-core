@@ -278,7 +278,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                     "first_name": {
                         "name": "first_name",
@@ -288,7 +288,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                     "email": {
                         "name": "email",
@@ -298,7 +298,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                     "ip_address": {
                         "name": "ip_address",
@@ -308,7 +308,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                     "updated_at": {
                         "name": "updated_at",
@@ -318,7 +318,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                 },
                 "constraints_enabled": False,
@@ -370,7 +370,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                     "first_name": {
                         "name": "first_name",
@@ -380,7 +380,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                     "email": {
                         "name": "email",
@@ -390,7 +390,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                     "ip_address": {
                         "name": "ip_address",
@@ -400,7 +400,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                     "updated_at": {
                         "name": "updated_at",
@@ -410,7 +410,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                 },
                 "constraints_enabled": False,
@@ -453,7 +453,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                     "first_name": {
                         "name": "first_name",
@@ -463,7 +463,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                     "email": {
                         "name": "email",
@@ -473,7 +473,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                     "ip_address": {
                         "name": "ip_address",
@@ -483,7 +483,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                     "updated_at": {
                         "name": "updated_at",
@@ -493,7 +493,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     },
                 },
                 "constraints_enabled": False,
@@ -718,7 +718,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                         "quote": None,
                         "tags": [],
                         "constraints": None,
-                        "check": None,
+                        "constraints_check": None,
                     }
                 },
                 "config": {
@@ -943,7 +943,7 @@ def expected_references_manifest(project):
                         "meta": {},
                         "quote": None,
                         "tags": [],
-                        "check": None,
+                        "constraints_check": None,
                         "constraints": None,
                     },
                     "ct": {
@@ -953,7 +953,7 @@ def expected_references_manifest(project):
                         "meta": {},
                         "quote": None,
                         "tags": [],
-                        "check": None,
+                        "constraints_check": None,
                         "constraints": None,
                     },
                 },
@@ -1003,7 +1003,7 @@ def expected_references_manifest(project):
                         "meta": {},
                         "quote": None,
                         "tags": [],
-                        "check": None,
+                        "constraints_check": None,
                         "constraints": None,
                     },
                     "ct": {
@@ -1013,7 +1013,7 @@ def expected_references_manifest(project):
                         "meta": {},
                         "quote": None,
                         "tags": [],
-                        "check": None,
+                        "constraints_check": None,
                         "constraints": None,
                     },
                 },
@@ -1060,7 +1060,7 @@ def expected_references_manifest(project):
                         "meta": {},
                         "quote": None,
                         "tags": [],
-                        "check": None,
+                        "constraints_check": None,
                         "constraints": None,
                     },
                     "first_name": {
@@ -1070,7 +1070,7 @@ def expected_references_manifest(project):
                         "meta": {},
                         "quote": None,
                         "tags": [],
-                        "check": None,
+                        "constraints_check": None,
                         "constraints": None,
                     },
                     "email": {
@@ -1080,7 +1080,7 @@ def expected_references_manifest(project):
                         "meta": {},
                         "quote": None,
                         "tags": [],
-                        "check": None,
+                        "constraints_check": None,
                         "constraints": None,
                     },
                     "ip_address": {
@@ -1090,7 +1090,7 @@ def expected_references_manifest(project):
                         "meta": {},
                         "quote": None,
                         "tags": [],
-                        "check": None,
+                        "constraints_check": None,
                         "constraints": None,
                     },
                     "updated_at": {
@@ -1100,7 +1100,7 @@ def expected_references_manifest(project):
                         "meta": {},
                         "quote": None,
                         "tags": [],
-                        "check": None,
+                        "constraints_check": None,
                         "constraints": None,
                     },
                 },
@@ -1181,7 +1181,7 @@ def expected_references_manifest(project):
                         "meta": {},
                         "quote": None,
                         "tags": [],
-                        "check": None,
+                        "constraints_check": None,
                         "constraints": None,
                     }
                 },

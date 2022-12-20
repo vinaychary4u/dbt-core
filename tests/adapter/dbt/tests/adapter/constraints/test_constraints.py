@@ -44,7 +44,7 @@ models:
         data_type: integer
         description: hello
         constraints: ['not null','primary key']
-        check: (id > 0)
+        constraints_check: (id > 0)
         tests:
           - unique
       - name: color
@@ -92,7 +92,7 @@ models:
         data_type: integer
         description: hello
         constraints: ['not null','primary key']
-        check: (id > 0)
+        constraints_check: (id > 0)
         tests:
           - unique
       - name: color
@@ -135,7 +135,7 @@ class TestModelLevelConstraintsEnabledConfigs(BaseConstraintsEnabledModelvsProje
 
         assert constraints_enabled_actual_config is True
 
-        expected_columns = "{'id': ColumnInfo(name='id', description='hello', meta={}, data_type='integer', constraints=['not null', 'primary key'], check='(id > 0)', quote=None, tags=[], _extra={}), 'color': ColumnInfo(name='color', description='', meta={}, data_type='text', constraints=None, check=None, quote=None, tags=[], _extra={}), 'date_day': ColumnInfo(name='date_day', description='', meta={}, data_type='date', constraints=None, check=None, quote=None, tags=[], _extra={})}"
+        expected_columns = "{'id': ColumnInfo(name='id', description='hello', meta={}, data_type='integer', constraints=['not null', 'primary key'], constraints_check='(id > 0)', quote=None, tags=[], _extra={}), 'color': ColumnInfo(name='color', description='', meta={}, data_type='text', constraints=None, constraints_check=None, quote=None, tags=[], _extra={}), 'date_day': ColumnInfo(name='date_day', description='', meta={}, data_type='date', constraints=None, constraints_check=None, quote=None, tags=[], _extra={})}"
 
         assert expected_columns == str(my_model_columns)
 

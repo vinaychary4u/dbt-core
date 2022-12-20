@@ -783,7 +783,7 @@
             }
           ]
         },
-        "check": {
+        "constraints_check": {
           "oneOf": [
             {
               "type": "string"

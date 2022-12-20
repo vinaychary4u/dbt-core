@@ -668,6 +668,10 @@ def args_to_dict(args):
     return dict_args
 
 
+def convert_to_str_dict(in_dict: Dict[str, Any]) -> Dict[str, str]:
+    return {k: str(v) for (k, v) in in_dict.items()}
+
+
 # This is useful for proto generated classes in particular, since
 # the default for protobuf for strings is the empty string, so
 # Optional[str] types don't work for generated Python classes.

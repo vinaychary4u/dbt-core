@@ -42,7 +42,7 @@ from dbt.adapters.factory import reset_adapters, cleanup_connections
 
 import dbt.tracking
 
-from dbt.utils import ExitCodes, args_to_dict
+from dbt.utils import ExitCodes, args_to_dict, convert_to_str_dict
 from dbt.config.profile import read_user_config
 from dbt.exceptions import (
     Exception as dbtException,
@@ -234,7 +234,7 @@ def run_from_args(parsed):
     setup_event_logger(log_path or "logs", level_override)
 
     fire_event(MainReportVersion(version=str(dbt.version.installed), log_version=LOG_VERSION))
-    fire_event(MainReportArgs(args=args_to_dict(parsed)))
+    fire_event(MainReportArgs(args=convert_to_str_dict(args_to_dict(parsed))))
 
     if dbt.tracking.active_user is not None:  # mypy appeasement, always true
         fire_event(MainTrackingUserState(user_state=dbt.tracking.active_user.state()))

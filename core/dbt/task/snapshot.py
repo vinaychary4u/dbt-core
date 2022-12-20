@@ -5,6 +5,7 @@ from dbt.events.functions import fire_event, info
 from dbt.events.types import LogSnapshotResult
 from dbt.graph import ResourceTypeSelector
 from dbt.node_types import NodeType
+from dbt.utils import convert_to_str_dict
 from dbt.contracts.results import NodeStatus
 
 
@@ -21,7 +22,7 @@ class SnapshotRunner(ModelRunner):
                 info=info(level=level),
                 status=result.status,
                 description=self.get_node_representation(),
-                cfg=cfg,
+                cfg=convert_to_str_dict(cfg),
                 index=self.node_index,
                 total=self.num_nodes,
                 execution_time=result.execution_time,

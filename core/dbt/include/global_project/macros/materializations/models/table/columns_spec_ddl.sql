@@ -11,7 +11,7 @@
   {% if config.get('constraints_enabled', False) %}
     (
     {% for i in model['columns'] %}
-      {% set col = user_provided_columns[i] %}
+      {% set col = model['columns'][i] %}
       {% set constraints = col['constraints'] %}
       {% set check = col['check'] %}
       {{ col['name'] }} {{ col['data_type'] }} {% for x in constraints %} {{ x or "" }} {% endfor %} {% if check -%} check {{ check or "" }} {%- endif %} {{ "," if not loop.last }}

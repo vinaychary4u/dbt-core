@@ -704,7 +704,7 @@ class ManifestLoader:
         vars_hash = FileHash.from_contents(
             "\x00".join(
                 [
-                    getattr(config.args, "vars", "{}") or "{}",
+                    str(getattr(config.args, "vars", "{}") or "{}"),
                     getattr(config.args, "profile", "") or "",
                     getattr(config.args, "target", "") or "",
                     __version__,

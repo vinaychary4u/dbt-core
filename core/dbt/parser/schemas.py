@@ -100,8 +100,11 @@ schema_file_keys = (
 def yaml_from_file(source_file: SchemaSourceFile) -> Dict[str, Any]:
     """If loading the yaml fails, raise an exception."""
     path = source_file.path.relative_path
+    # File contents filed is Optional, and is sometimes None, so ensure
+    # we are not passing in None to load_yaml_text.
+    contents = source_file.contents if source_file.contents else ""
     try:
-        return load_yaml_text(source_file.contents, source_file.path)
+        return load_yaml_text(contents, source_file.path)
     except ValidationException as e:
         raise YamlLoadFailure(source_file.project_name, path, e)
 

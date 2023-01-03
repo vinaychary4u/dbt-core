@@ -1,6 +1,7 @@
 # Do not import the os package because we expose this package in jinja
 from os import name as os_name, path as os_path, getcwd as os_getcwd, getenv as os_getenv
 import multiprocessing
+from argparse import Namespace
 
 if os_name != "nt":
     # https://bugs.python.org/issue41567
@@ -246,3 +247,17 @@ def get_flag_dict():
         "target_path": TARGET_PATH,
         "log_path": LOG_PATH,
     }
+
+
+# This is used by core/dbt/context/base.py to return a flag object
+# in Jinja.
+def get_flag_obj():
+    new_flags = Namespace()
+    for k, v in get_flag_dict().items():
+        setattr(new_flags, k.upper(), v)
+    # The following 3 are CLI arguments only so they're not full-fledged flags,
+    # but we put in flags for users.
+    setattr(new_flags, "FULL_REFRESH", FULL_REFRESH)
+    setattr(new_flags, "STORE_FAILURES", STORE_FAILURES)
+    setattr(new_flags, "WHICH", WHICH)
+    return new_flags

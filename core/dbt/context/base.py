@@ -28,7 +28,6 @@ import pytz
 import datetime
 import re
 import itertools
-from argparse import Namespace
 
 # See the `contexts` module README for more information on how contexts work
 
@@ -635,17 +634,8 @@ class BaseContext(metaclass=ContextMeta):
             {% endif %}
 
         This supports all flags defined in flags submodule (core/dbt/flags.py)
-        TODO: Replace with object that provides read-only access to flag values
         """
-        new_flags = Namespace()
-        for k, v in flags.get_flag_dict().items():
-            setattr(new_flags, k.upper(), v)
-        # The following 3 are CLI arguments only so they're not full-fledged flags,
-        # but we put in flags for users.
-        setattr(new_flags, "FULL_REFRESH", flags.FULL_REFRESH)
-        setattr(new_flags, "STORE_FAILURES", flags.STORE_FAILURES)
-        setattr(new_flags, "WHICH", flags.WHICH)
-        return new_flags
+        return flags.get_flag_obj()
 
     @contextmember
     @staticmethod

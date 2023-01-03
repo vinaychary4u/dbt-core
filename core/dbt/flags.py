@@ -1,7 +1,8 @@
-import os
+# Do not import the os package because we expose this package in jinja
+from os import name as os_name, path as os_path, getcwd as os_getcwd, getenv as os_getenv
 import multiprocessing
 
-if os.name != "nt":
+if os_name != "nt":
     # https://bugs.python.org/issue41567
     import multiprocessing.popen_spawn_posix  # type: ignore
 from pathlib import Path
@@ -10,14 +11,14 @@ from typing import Optional
 # PROFILES_DIR must be set before the other flags
 # It also gets set in main.py and in set_from_args because the rpc server
 # doesn't go through exactly the same main arg processing.
-GLOBAL_PROFILES_DIR = os.path.join(os.path.expanduser("~"), ".dbt")
-LOCAL_PROFILES_DIR = os.getcwd()
+GLOBAL_PROFILES_DIR = os_path.join(os_path.expanduser("~"), ".dbt")
+LOCAL_PROFILES_DIR = os_getcwd()
 # Use the current working directory if there is a profiles.yml file present there
-if os.path.exists(Path(LOCAL_PROFILES_DIR) / Path("profiles.yml")):
+if os_path.exists(Path(LOCAL_PROFILES_DIR) / Path("profiles.yml")):
     DEFAULT_PROFILES_DIR = LOCAL_PROFILES_DIR
 else:
     DEFAULT_PROFILES_DIR = GLOBAL_PROFILES_DIR
-PROFILES_DIR = os.path.expanduser(os.getenv("DBT_PROFILES_DIR", DEFAULT_PROFILES_DIR))
+PROFILES_DIR = os_path.expanduser(os_getenv("DBT_PROFILES_DIR", DEFAULT_PROFILES_DIR))
 
 STRICT_MODE = False  # Only here for backwards compatibility
 FULL_REFRESH = False  # subcommand
@@ -88,7 +89,7 @@ def env_set_truthy(key: str) -> Optional[str]:
     """Return the value if it was set to a "truthy" string value or None
     otherwise.
     """
-    value = os.getenv(key)
+    value = os_getenv(key)
     if not value or value.lower() in ("0", "false", "f"):
         return None
     return value
@@ -101,7 +102,7 @@ def env_set_bool(env_value):
 
 
 def env_set_path(key: str) -> Optional[Path]:
-    value = os.getenv(key)
+    value = os_getenv(key)
     if value is None:
         return value
     else:
@@ -181,7 +182,7 @@ def get_flag_value(flag, args, user_config):
     if flag == "PRINTER_WIDTH":  # must be ints
         flag_value = int(flag_value)
     if flag == "PROFILES_DIR":
-        flag_value = os.path.abspath(flag_value)
+        flag_value = os_path.abspath(flag_value)
 
     return flag_value
 
@@ -205,7 +206,7 @@ def _load_flag_value(flag, args, user_config):
 def _get_flag_value_from_env(flag):
     # Environment variables use pattern 'DBT_{flag name}'
     env_flag = _get_env_flag(flag)
-    env_value = os.getenv(env_flag)
+    env_value = os_getenv(env_flag)
     if env_value is None or env_value == "":
         return None
 

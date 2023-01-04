@@ -15,7 +15,6 @@ from typing import (
 
 from dbt.dataclass_schema import dbtClassMixin, ExtensibleDbtClassMixin
 
-from dbt.exceptions import CompilationException
 from dbt.clients.system import write_file
 from dbt.contracts.files import FileHash
 from dbt.contracts.graph.unparsed import (
@@ -245,77 +244,10 @@ class ParsedNode(NodeInfoMixin, ParsedNodeMandatory, SerializableType):
     unrendered_config: Dict[str, Any] = field(default_factory=dict)
     created_at: float = field(default_factory=lambda: time.time())
     config_call_dict: Dict[str, Any] = field(default_factory=dict)
-    constraints_enabled: bool = False
     relation_name: Optional[str] = None
     raw_code: str = ""
 
-    def constraints_validator_handler(self):
-        error_messages = []
-        if self.resource_type == "model" and self.config.constraints_enabled is True:
-            validators = [
-                self.constraints_schema_validator(),
-                self.constraints_materialization_validator(),
-                self.constraints_language_validator(),
-                self.constraints_data_type_validator(),
-            ]
-            error_messages = [validator for validator in validators if validator != "None"]
-
-        if error_messages:
-            raise CompilationException(
-                f"Constraints must be defined in a `yml` schema configuration file like `schema.yml`.\nOnly the SQL table materialization is supported for constraints. \n`data_type` values must be defined for all columns and NOT be null or blank.{self.convert_errors_to_string(error_messages)}"
-            )
-
-    def convert_errors_to_string(self, error_messages):
-        n = len(error_messages)
-        if not n:
-            return ""
-        if n == 1:
-            return error_messages[0]
-        error_messages_string = "".join(error_messages[:-1]) + f"{error_messages[-1]}"
-        return error_messages_string
-
-    def constraints_schema_validator(self):
-        schema_error = False
-        if self.columns == {}:
-            schema_error = True
-        schema_error_msg = "\n    Schema Error: `yml` configuration does NOT exist"
-        schema_error_msg_payload = f"{schema_error_msg if schema_error else None}"
-        return schema_error_msg_payload
-
-    def constraints_materialization_validator(self):
-        materialization_error = {}
-        if self.config.materialized != "table":
-            materialization_error = {"materialization": self.config.materialized}
-        materialization_error_msg = f"\n    Materialization Error: {materialization_error}"
-        materialization_error_msg_payload = (
-            f"{materialization_error_msg if materialization_error else None}"
-        )
-        return materialization_error_msg_payload
-
-    def constraints_language_validator(self):
-        language_error = {}
-        language = str(self.language)
-        if language != "sql":
-            language_error = {"language": language}
-        language_error_msg = f"\n    Language Error: {language_error}"
-        language_error_msg_payload = f"{language_error_msg if language_error else None}"
-        return language_error_msg_payload
-
-    def constraints_data_type_validator(self):
-        data_type_errors = set()
-        for column, column_info in self.columns.items():
-            if column_info.data_type is None:
-                data_type_error = {column}
-                data_type_errors.update(data_type_error)
-        data_type_errors_msg = (
-            f"\n    Columns with `data_type` Blank/Null Errors: {data_type_errors}"
-        )
-        data_type_errors_msg_payload = f"{data_type_errors_msg if data_type_errors else None}"
-        return data_type_errors_msg_payload
-
     def write_node(self, target_path: str, subdirectory: str, payload: str):
-        self.constraints_validator_handler()
-
         if os.path.basename(self.path) == os.path.basename(self.original_file_path):
             # One-to-one relationship of nodes to files.
             path = self.original_file_path
@@ -466,6 +398,7 @@ class CompiledNode(ParsedNode):
     extra_ctes_injected: bool = False
     extra_ctes: List[InjectedCTE] = field(default_factory=list)
     _pre_injected_sql: Optional[str] = None
+    constraints_enabled: bool = False
 
     @property
     def empty(self):

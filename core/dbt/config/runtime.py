@@ -39,6 +39,24 @@ from .profile import Profile
 from .project import Project
 from .renderer import DbtProjectYamlRenderer, ProfileRenderer
 
+from dbt.config.utils import parse_cli_vars
+
+
+def get_project_and_cli_vars_from_args(args, project_dir: str) -> Tuple[Project, Dict[str, Any]]:
+    profile = UnsetProfile()
+    # The profile (for warehouse connection) is not needed, but we want
+    # to get the UserConfig, which is also in profiles.yml
+    user_config = read_user_config(flags.PROFILES_DIR)
+    profile.user_config = user_config
+
+    # parse_cli_vars is embedded into the param when using click.
+    # replace this with cli_vars: Dict[str, Any] = getattr(args, "vars", {})
+    # when tasks are refactored for click
+    cli_vars: Dict[str, Any] = parse_cli_vars(getattr(args, "vars", "{}"))
+    project_root: str = args.project_dir or project_dir
+    project = load_project(project_root, args.version_check, profile, cli_vars)
+    return project, cli_vars
+
 
 def load_project(
     project_root: str,
@@ -107,9 +125,9 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
         return load_profile(
             project_root,
             cli_vars,
-            args.profile,
-            args.target,
-            args.threads,
+            getattr(args, "profile", None),
+            getattr(args, "target", None),
+            getattr(args, "threads", None),
         )
 
     # Called by 'new_project' and 'from_args'
@@ -134,7 +152,7 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
             .replace_dict(_project_quoting_dict(project, profile))
         ).to_dict(omit_none=True)
 
-        cli_vars: Dict[str, Any] = getattr(args, "vars", {})
+        cli_vars: Dict[str, Any] = parse_cli_vars(getattr(args, "vars", "{}"))
 
         return cls(
             project_name=project.project_name,
@@ -243,7 +261,7 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
     def collect_parts(cls: Type["RuntimeConfig"], args: Any) -> Tuple[Project, Profile]:
         # profile_name from the project
         project_root = args.project_dir if args.project_dir else os.getcwd()
-        cli_vars: Dict[str, Any] = getattr(args, "vars", {})
+        cli_vars: Dict[str, Any] = parse_cli_vars(getattr(args, "vars", "{}"))
         profile = cls.get_profile(
             project_root,
             cli_vars,

@@ -256,9 +256,9 @@ class DebugTask(BaseTask):
                 profile: Profile = Profile.render(
                     renderer,
                     profile_name,
-                    self.args.profile,
-                    self.args.target,
-                    self.args.threads,
+                    getattr(self.args, "threads", None),
+                    getattr(self.args, "target", None),
+                    getattr(self.args, "profile", None),
                 )
             except dbt.exceptions.DbtConfigError as exc:
                 profile_errors.append(str(exc))

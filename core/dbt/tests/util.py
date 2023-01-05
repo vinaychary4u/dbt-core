@@ -9,7 +9,6 @@ from typing import Dict, List
 from contextlib import contextmanager
 from dbt.adapters.factory import Adapter
 
-from dbt.cli.main import dbtRunner
 from dbt.logger import log_manager
 from dbt.contracts.graph.manifest import Manifest
 from dbt.events.functions import fire_event, capture_stdout_logs, stop_capture_stdout_logs, reset_metadata_vars
@@ -74,8 +73,8 @@ def run_dbt(args: List[str] = None, expect_pass=True):
         args = ["run"]
 
     print("\n\nInvoking dbt with {}".format(args))
-    dbt = dbtRunner()
-    res, success = dbt.invoke(args)
+    from dbt.main import handle_and_check
+    res, success = handle_and_check(args)
 
     if expect_pass is not None:
         assert success == expect_pass, "dbt exit state did not match expected"

@@ -63,9 +63,9 @@ def get_project_config(
         profile = Profile.render(
             ProfileRenderer(cli_vars),
             profile_name,
-            args.THREADS,
-            args.TARGET,
-            args.PROFILE,
+            getattr(args, "threads", None),
+            getattr(args, "target", None),
+            getattr(args, "profile", None),
         )
     # Generate a project
     project = Project.from_project_root(

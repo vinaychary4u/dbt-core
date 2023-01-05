@@ -143,16 +143,16 @@ class GraphRunnableTask(ManifestTask):
         # Doing that is actually a little tricky, so I'm punting it to a new ticket GH #6397
         indirect_selection = getattr(self.args, "INDIRECT_SELECTION", "eager")
 
-        if self.args.selector:
+        if self.args.selector_name:
             # use pre-defined selector (--selector)
-            spec = self.config.get_selector(self.args.selector)
+            spec = self.config.get_selector(self.args.selector_name)
         elif not (self.selection_arg or self.exclusion_arg) and default_selector_name:
             # use pre-defined selector (--selector) with default: true
             fire_event(DefaultSelector(name=default_selector_name))
             spec = self.config.get_selector(default_selector_name)
         else:
             # use --select and --exclude args
-            spec = parse_difference(self.selection_arg, self.exclusion_arg, indirect_selection)
+            spec = parse_difference(self.selection_arg, self.exclusion_arg, flags.INDIRECT_SELECTION)
         return spec
 
     @abstractmethod

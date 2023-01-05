@@ -152,7 +152,9 @@ class GraphRunnableTask(ManifestTask):
             spec = self.config.get_selector(default_selector_name)
         else:
             # use --select and --exclude args
-            spec = parse_difference(self.selection_arg, self.exclusion_arg, flags.INDIRECT_SELECTION)
+            spec = parse_difference(
+                self.selection_arg, self.exclusion_arg, flags.INDIRECT_SELECTION
+            )
         return spec
 
     @abstractmethod

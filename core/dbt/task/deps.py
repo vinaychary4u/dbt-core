@@ -62,8 +62,8 @@ class DepsTask(BaseTask):
             version = dbt.utils.md5(version)
 
         dbt.tracking.track_package_install(
-            self.config,
-            self.config.args,
+            "deps",
+            self.project.hashed_name(),
             {"name": package_name, "source": source_type, "version": version},
         )
 

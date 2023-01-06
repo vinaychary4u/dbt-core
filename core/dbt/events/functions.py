@@ -31,7 +31,8 @@ def setup_event_logger(log_path: str, log_format: str, use_colors: bool, debug: 
         if _CAPTURE_STREAM:
             # Create second stdout logger to support test which want to know what's
             # being sent to stdout.
-            capture_config = _get_stdout_config(log_format, debug, use_colors)
+            # debug here is true because we need to capture debug events, and we pass in false in main
+            capture_config = _get_stdout_config(log_format, True, use_colors)
             capture_config.output_stream = _CAPTURE_STREAM
             EVENT_MANAGER.add_logger(capture_config)
 
@@ -119,9 +120,11 @@ def cleanup_event_logger():
 # currently fire before logs can be configured by setup_event_logger(), we
 # create a default configuration with default settings and no file output.
 EVENT_MANAGER: EventManager = EventManager()
-if flags.ENABLE_LEGACY_LOGGER:
-    EVENT_MANAGER.add_logger(_get_logbook_log_config(bool(flags.DEBUG)))
-
+EVENT_MANAGER.add_logger(
+    _get_logbook_log_config(flags.DEBUG)  # type: ignore
+    if flags.ENABLE_LEGACY_LOGGER
+    else _get_stdout_config(flags.LOG_FORMAT, flags.DEBUG, flags.USE_COLORS)  # type: ignore
+)
 
 # This global, and the following two functions for capturing stdout logs are
 # an unpleasant hack we intend to remove as part of API-ification. The GitHub

@@ -211,7 +211,8 @@ def run_from_args(parsed):
     if task.config is not None:
         log_path = getattr(task.config, "log_path", None)
     log_manager.set_path(log_path)
-    setup_event_logger(log_path or "logs", "json", False, True)
+    # WHY WE SET DEBUG TO BE TRUE HERE previously?
+    setup_event_logger(log_path or "logs", "json", False, False)
 
     fire_event(MainReportVersion(version=str(dbt.version.installed), log_version=LOG_VERSION))
     fire_event(MainReportArgs(args=args_to_dict(parsed)))

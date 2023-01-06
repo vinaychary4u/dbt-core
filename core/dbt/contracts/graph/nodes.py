@@ -11,6 +11,7 @@ from typing import (
     Sequence,
     Tuple,
     Iterator,
+    Set,
 )
 
 from dbt.dataclass_schema import dbtClassMixin, ExtensibleDbtClassMixin
@@ -170,21 +171,24 @@ class HasRelationMetadata(dbtClassMixin, Replaceable):
 class MacroDependsOn(dbtClassMixin, Replaceable):
     """Used only in the Macro class"""
 
-    macros: List[str] = field(default_factory=list)
+    # this would be cool!
+    # but dbtClassMixin (via hologram) doesn't currently support Set as a JSON-serializable type
+    # yielding:
+    #     Parsing Error
+    #       at path []: Unable to create schema for 'Set'
+    macros: Set[str] = field(default_factory=lambda: set())
 
-    # 'in' on lists is O(n) so this is O(n^2) for # of macros
+    # this should be O(1): https://wiki.python.org/moin/TimeComplexity
     def add_macro(self, value: str):
-        if value not in self.macros:
-            self.macros.append(value)
+        self.macros.add(value)
 
 
 @dataclass
 class DependsOn(MacroDependsOn):
-    nodes: List[str] = field(default_factory=list)
+    nodes: Set[str] = field(default_factory=lambda: set())
 
     def add_node(self, value: str):
-        if value not in self.nodes:
-            self.nodes.append(value)
+        self.nodes.add(value)
 
 
 @dataclass

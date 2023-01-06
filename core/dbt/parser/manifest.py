@@ -950,7 +950,7 @@ class ManifestLoader:
                         if not self.manifest.disabled[node.unique_id]:
                             self.manifest.disabled.pop(node.unique_id)
 
-                    self.manifest.add_node_nofile(node)
+                    self.manifest.add_nofile(node)
 
         self.manifest.rebuild_ref_lookup()
 
@@ -1138,7 +1138,7 @@ def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposur
 
         target_model_id = target_model.unique_id
 
-        exposure.depends_on.nodes.append(target_model_id)
+        exposure.depends_on.nodes.add(target_model_id)
         manifest.update_exposure(exposure)
 
 
@@ -1180,7 +1180,7 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: M
 
         target_model_id = target_model.unique_id
 
-        metric.depends_on.nodes.append(target_model_id)
+        metric.depends_on.nodes.add(target_model_id)
         manifest.update_metric(metric)
 
 
@@ -1230,7 +1230,7 @@ def _process_metrics_for_node(
 
         target_metric_id = target_metric.unique_id
 
-        node.depends_on.nodes.append(target_metric_id)
+        node.depends_on.nodes.add(target_metric_id)
 
 
 def _process_refs_for_node(manifest: Manifest, current_project: str, node: ManifestNode):
@@ -1275,7 +1275,7 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
 
         target_model_id = target_model.unique_id
 
-        node.depends_on.nodes.append(target_model_id)
+        node.depends_on.nodes.add(target_model_id)
         # TODO: I think this is extraneous, node should already be the same
         # as manifest.nodes[node.unique_id] (we're mutating node here, not
         # making a new one)
@@ -1302,7 +1302,7 @@ def _process_sources_for_exposure(manifest: Manifest, current_project: str, expo
             )
             continue
         target_source_id = target_source.unique_id
-        exposure.depends_on.nodes.append(target_source_id)
+        exposure.depends_on.nodes.add(target_source_id)
         manifest.update_exposure(exposure)
 
 
@@ -1325,7 +1325,7 @@ def _process_sources_for_metric(manifest: Manifest, current_project: str, metric
             )
             continue
         target_source_id = target_source.unique_id
-        metric.depends_on.nodes.append(target_source_id)
+        metric.depends_on.nodes.add(target_source_id)
         manifest.update_metric(metric)
 
 
@@ -1354,7 +1354,7 @@ def _process_sources_for_node(manifest: Manifest, current_project: str, node: Ma
             )
             continue
         target_source_id = target_source.unique_id
-        node.depends_on.nodes.append(target_source_id)
+        node.depends_on.nodes.add(target_source_id)
         manifest.update_node(node)
 
 

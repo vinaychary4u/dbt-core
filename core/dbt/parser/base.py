@@ -319,7 +319,7 @@ class ConfiguredParser(
             parser_name = type(self).__name__
             if parser_name == "ModelParser":
                 original_file_path = parsed_node.original_file_path
-                error_message = "\n    `constraints_enabled=true` can only be configured within a `schema.yml` or `dbt_project.yml` files\n      NOT within a model file(ex: .sql, .py)."
+                error_message = "\n    `constraints_enabled=true` can only be configured within `schema.yml` files\n      NOT within a model file(ex: .sql, .py) or `dbt_project.yml`."
                 raise CompilationException(
                     f"Original File Path: ({original_file_path})\nConstraints must be defined in a `yml` schema configuration file like `schema.yml`.\nOnly the SQL table materialization is supported for constraints. \n`data_type` values must be defined for all columns and NOT be null or blank.{error_message}"
                 )

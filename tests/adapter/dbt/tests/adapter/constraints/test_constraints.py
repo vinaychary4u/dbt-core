@@ -1,4 +1,5 @@
 import pytest
+from dbt.exceptions import CompilationException
 from dbt.tests.util import (
     run_dbt,
     get_manifest,
@@ -10,6 +11,20 @@ my_model_sql = """
 {{
   config(
     materialized = "table"
+  )
+}}
+
+select
+  1 as id,
+  'blue' as color,
+  cast('2019-01-01' as date) as date_day
+"""
+
+my_model_constraints_enabled_sql = """
+{{
+  config(
+    materialized = "table",
+    constraints_enabled = true
   )
 }}
 
@@ -74,7 +89,6 @@ def model(dbt, _):
     dbt.config(
         materialized="table",
         packages=["holidays", "s3fs"],  # how to import python libraries in dbt's context
-        constraints_enabled=True,
     )
     df = dbt.ref("my_model")
     df_describe = df.describe()  # basic statistics profiling
@@ -98,7 +112,45 @@ models:
       - name: color
         data_type: text
       - name: date_day
+  - name: python_model
+    config:
+      constraints_enabled: true
+    columns:
+      - name: id
+        data_type: integer
+        description: hello
+        constraints: ['not null','primary key']
+        constraints_check: (id > 0)
+        tests:
+          - unique
+      - name: color
+        data_type: text
+      - name: date_day
+        data_type: date
 """
+
+model_schema_blank_yml = """
+version: 2
+models:
+  - name: my_model
+    config:
+      constraints_enabled: true
+"""
+
+
+class BaseConstraintsDisabledModelvsProject:
+    @pytest.fixture(scope="class")
+    def project_config_update(self):
+        return {
+            "models": {
+                "test": {
+                    "+constraints_enabled": False,
+                    "subdirectory": {
+                        "+constraints_enabled": False,
+                    },
+                }
+            }
+        }
 
 
 class BaseConstraintsEnabledModelvsProject:
@@ -116,7 +168,7 @@ class BaseConstraintsEnabledModelvsProject:
         }
 
 
-class TestModelLevelConstraintsEnabledConfigs(BaseConstraintsEnabledModelvsProject):
+class TestModelLevelConstraintsEnabledConfigs(BaseConstraintsDisabledModelvsProject):
     @pytest.fixture(scope="class")
     def models(self):
         return {
@@ -140,7 +192,7 @@ class TestModelLevelConstraintsEnabledConfigs(BaseConstraintsEnabledModelvsProje
         assert expected_columns == str(my_model_columns)
 
 
-class TestModelLevelConstraintsDisabledConfigs(BaseConstraintsEnabledModelvsProject):
+class TestModelLevelConstraintsDisabledConfigs(BaseConstraintsDisabledModelvsProject):
     @pytest.fixture(scope="class")
     def models(self):
         return {
@@ -159,52 +211,81 @@ class TestModelLevelConstraintsDisabledConfigs(BaseConstraintsEnabledModelvsProj
         assert constraints_enabled_actual_config is False
 
 
-class TestSchemaConstraintsEnabledConfigs(BaseConstraintsEnabledModelvsProject):
+class TestProjectConstraintsEnabledConfigs(BaseConstraintsEnabledModelvsProject):
     @pytest.fixture(scope="class")
     def models(self):
         return {
             "my_model.sql": my_model_sql,
         }
 
+    def test__project_error(self, project):
+        with pytest.raises(CompilationException) as err_info:
+            run_dbt_and_capture(['run'], expect_pass=False)
+
+        error_message_expected = "NOT within a model file(ex: .sql, .py) or `dbt_project.yml`."
+        assert error_message_expected in str(err_info)
+
+
+class TestModelConstraintsEnabledConfigs(BaseConstraintsDisabledModelvsProject):
+    @pytest.fixture(scope="class")
+    def models(self):
+        return {
+            "my_model.sql": my_model_constraints_enabled_sql,
+        }
+
+    def test__model_error(self, project):
+        with pytest.raises(CompilationException) as err_info:
+            run_dbt_and_capture(['run'], expect_pass=False)
+
+        error_message_expected = "NOT within a model file(ex: .sql, .py) or `dbt_project.yml`."
+        assert error_message_expected in str(err_info)
+
+
+class TestSchemaConstraintsEnabledConfigs(BaseConstraintsDisabledModelvsProject):
+    @pytest.fixture(scope="class")
+    def models(self):
+        return {
+            "my_model.sql": my_model_sql,
+            "constraints_schema.yml": model_schema_blank_yml,
+        }
+
     def test__schema_error(self, project):
+        with pytest.raises(CompilationException) as err_info:
+            run_dbt_and_capture(['run'], expect_pass=False)
+
         schema_error_expected = "Schema Error: `yml` configuration does NOT exist"
-        results, log_output = run_dbt_and_capture(['run'], expect_pass=False)
-        assert schema_error_expected in log_output
+        assert schema_error_expected in str(err_info)
 
 
-class TestModelLevelConstraintsErrorMessages(BaseConstraintsEnabledModelvsProject):
+class TestModelLevelConstraintsErrorMessages(BaseConstraintsDisabledModelvsProject):
     @pytest.fixture(scope="class")
     def models(self):
         return {
             "my_model.sql": my_model_error_sql,
-            "python_model.py": my_model_python_error,
             "constraints_schema.yml": model_schema_errors_yml,
         }
 
     def test__config_errors(self, project):
-
-        results, log_output = run_dbt_and_capture(['run', '-s', 'my_model'], expect_pass=False)
-        manifest = get_manifest(project.project_root)
-        model_id = "model.test.my_model"
-        my_model_config = manifest.nodes[model_id].config
-        constraints_enabled_actual_config = my_model_config.constraints_enabled
-
-        assert constraints_enabled_actual_config is True
+        with pytest.raises(CompilationException) as err_info:
+            run_dbt_and_capture(['run', '-s', 'my_model'], expect_pass=False)
 
         expected_materialization_error = "Materialization Error: {'materialization': 'view'}"
         expected_empty_data_type_error = "Columns with `data_type` Blank/Null Errors: {'date_day'}"
-        assert expected_materialization_error in log_output
-        assert expected_empty_data_type_error in log_output
+        assert expected_materialization_error in str(err_info)
+        assert expected_empty_data_type_error in str(err_info)
+
+
+class TestPythonModelLevelConstraintsErrorMessages(BaseConstraintsDisabledModelvsProject):
+    @pytest.fixture(scope="class")
+    def models(self):
+        return {
+            "python_model.py": my_model_python_error,
+            "constraints_schema.yml": model_schema_errors_yml,
+        }
 
     def test__python_errors(self, project):
-
-        results, log_output = run_dbt_and_capture(['run', '-s', 'python_model'], expect_pass=False)
-        manifest = get_manifest(project.project_root)
-        model_id = "model.test.python_model"
-        my_model_config = manifest.nodes[model_id].config
-        constraints_enabled_actual_config = my_model_config.constraints_enabled
-
-        assert constraints_enabled_actual_config is True
+        with pytest.raises(CompilationException) as err_info:
+            run_dbt_and_capture(['run', '-s', 'python_model'], expect_pass=False)
 
         expected_python_error = "Language Error: {'language': 'python'}"
-        assert expected_python_error in log_output
+        assert expected_python_error in str(err_info)

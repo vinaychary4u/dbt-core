@@ -938,7 +938,7 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
 
         if error_messages:
             original_file_path = patched_node.original_file_path
-            raise CompilationException(
+            raise ParsingException(
                 f"Original File Path: ({original_file_path})\nConstraints must be defined in a `yml` schema configuration file like `schema.yml`.\nOnly the SQL table materialization is supported for constraints. \n`data_type` values must be defined for all columns and NOT be null or blank.{self.convert_errors_to_string(error_messages)}"
             )
 

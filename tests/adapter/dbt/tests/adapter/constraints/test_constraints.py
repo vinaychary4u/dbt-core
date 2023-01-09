@@ -1,5 +1,5 @@
 import pytest
-from dbt.exceptions import CompilationException
+from dbt.exceptions import ParsingException
 from dbt.tests.util import (
     run_dbt,
     get_manifest,
@@ -219,7 +219,7 @@ class TestProjectConstraintsEnabledConfigs(BaseConstraintsEnabledModelvsProject)
         }
 
     def test__project_error(self, project):
-        with pytest.raises(CompilationException) as err_info:
+        with pytest.raises(ParsingException) as err_info:
             run_dbt_and_capture(['run'], expect_pass=False)
 
         error_message_expected = "NOT within a model file(ex: .sql, .py) or `dbt_project.yml`."
@@ -234,7 +234,7 @@ class TestModelConstraintsEnabledConfigs(BaseConstraintsDisabledModelvsProject):
         }
 
     def test__model_error(self, project):
-        with pytest.raises(CompilationException) as err_info:
+        with pytest.raises(ParsingException) as err_info:
             run_dbt_and_capture(['run'], expect_pass=False)
 
         error_message_expected = "NOT within a model file(ex: .sql, .py) or `dbt_project.yml`."
@@ -250,7 +250,7 @@ class TestSchemaConstraintsEnabledConfigs(BaseConstraintsDisabledModelvsProject)
         }
 
     def test__schema_error(self, project):
-        with pytest.raises(CompilationException) as err_info:
+        with pytest.raises(ParsingException) as err_info:
             run_dbt_and_capture(['run'], expect_pass=False)
 
         schema_error_expected = "Schema Error: `yml` configuration does NOT exist"
@@ -266,7 +266,7 @@ class TestModelLevelConstraintsErrorMessages(BaseConstraintsDisabledModelvsProje
         }
 
     def test__config_errors(self, project):
-        with pytest.raises(CompilationException) as err_info:
+        with pytest.raises(ParsingException) as err_info:
             run_dbt_and_capture(['run', '-s', 'my_model'], expect_pass=False)
 
         expected_materialization_error = "Materialization Error: {'materialization': 'view'}"
@@ -284,7 +284,7 @@ class TestPythonModelLevelConstraintsErrorMessages(BaseConstraintsDisabledModelv
         }
 
     def test__python_errors(self, project):
-        with pytest.raises(CompilationException) as err_info:
+        with pytest.raises(ParsingException) as err_info:
             run_dbt_and_capture(['run', '-s', 'python_model'], expect_pass=False)
 
         expected_python_error = "Language Error: {'language': 'python'}"

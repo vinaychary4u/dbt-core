@@ -198,7 +198,7 @@ class TestConstraints(BaseConstraintsEnabledModelvsProject):
 
     def test__constraints_enforcement(self, project):
 
-        results, log_output = run_dbt_and_capture(['run', '-s', 'my_model_error'], expect_pass=False)
+        results, log_output = run_dbt_and_capture(['--log-format', 'json', 'run', '-s', 'my_model_error'], expect_pass=False)
         manifest = get_manifest(project.project_root)
         model_id = "model.test.my_model_error"
         my_model_config = manifest.nodes[model_id].config
@@ -206,7 +206,7 @@ class TestConstraints(BaseConstraintsEnabledModelvsProject):
 
         assert constraints_enabled_actual_config is True
 
-        expected_constraints_error = 'null value in column "id"'
+        expected_constraints_error = 'null value in column \\"id\\"'
         expected_violation_error = 'violates not-null constraint'
         assert expected_constraints_error in log_output
         assert expected_violation_error in log_output

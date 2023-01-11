@@ -19,6 +19,7 @@ pytest-mock
 pytest-xdist
 pytz
 sphinx
+sphinx-markdown-builder
 tox>=3.13
 twine
 types-colorama

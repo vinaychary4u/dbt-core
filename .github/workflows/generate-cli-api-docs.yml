@@ -145,6 +145,7 @@ jobs:
 
           echo "creating docs"
           make html
+          make markdown
 
       - name: debug
         run: |

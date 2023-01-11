@@ -20,10 +20,10 @@ author = "dbt Labs"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["dbt_click"]
+extensions = ["dbt_click", "sphinx_markdown_builder"]
 
 templates_path = ["_templates"]
-exclude_patterns: t.List[str] = []
+exclude_patterns: t.List[str] = ['build/*']
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

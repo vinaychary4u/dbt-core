@@ -18,12 +18,7 @@ from dbt.context.context_config import ContextConfig
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import ManifestNode, BaseNode
 from dbt.contracts.graph.unparsed import UnparsedNode, Docs
-from dbt.exceptions import (
-    InternalException,
-    InvalidConfigUpdate,
-    InvalidDictParse,
-    ParsingException,
-)
+from dbt.exceptions import DbtInternalError, ConfigUpdateError, DictParseError, ParsingError
 from dbt import hooks
 from dbt.node_types import NodeType, ModelLanguage
 from dbt.parser.search import FileBlock
@@ -81,7 +76,7 @@ class RelationUpdate:
             root_project_name=config.project_name,
         )
         if macro is None:
-            raise InternalException(f"No macro with name generate_{component}_name found")
+            raise DbtInternalError(f"No macro with name generate_{component}_name found")
 
         root_context = generate_generate_name_macro_context(macro, config, manifest)
         self.updater = MacroGenerator(macro, root_context)
@@ -229,7 +224,7 @@ class ConfiguredParser(
                 original_file_path=block.path.original_file_path,
                 raw_code=block.contents,
             )
-            raise InvalidDictParse(exc, node=node)
+            raise DictParseError(exc, node=node)
 
     def _context_for(self, parsed_node: IntermediateNode, config: ContextConfig) -> Dict[str, Any]:
         return generate_parser_model_context(parsed_node, self.root_project, self.manifest, config)
@@ -320,7 +315,7 @@ class ConfiguredParser(
             if parser_name == "ModelParser":
                 original_file_path = parsed_node.original_file_path
                 error_message = "\n    `constraints_enabled=true` can only be configured within `schema.yml` files\n      NOT within a model file(ex: .sql, .py) or `dbt_project.yml`."
-                raise ParsingException(
+                raise ParsingError(
                     f"Original File Path: ({original_file_path})\nConstraints must be defined in a `yml` schema configuration file like `schema.yml`.\nOnly the SQL table materialization is supported for constraints. \n`data_type` values must be defined for all columns and NOT be null or blank.{error_message}"
                 )
 
@@ -363,7 +358,7 @@ class ConfiguredParser(
                 self.project.project_name,
             )
         else:
-            raise InternalException(
+            raise DbtInternalError(
                 f"Got an unexpected project version={config_version}, expected 2"
             )
 
@@ -381,7 +376,7 @@ class ConfiguredParser(
             self.update_parsed_node_config(node, config, context=context)
         except ValidationError as exc:
             # we got a ValidationError - probably bad types in config()
-            raise InvalidConfigUpdate(exc, node=node) from exc
+            raise ConfigUpdateError(exc, node=node) from exc
 
     def add_result_node(self, block: FileBlock, node: ManifestNode):
         if node.config.enabled:

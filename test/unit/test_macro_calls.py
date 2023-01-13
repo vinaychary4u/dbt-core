@@ -27,7 +27,7 @@ class MacroCalls(unittest.TestCase):
             "{% macro some_test(model) -%} {{ return(adapter.dispatch('test_some_kind4', 'foo_utils4')) }} {%- endmacro %}",
             "{% macro some_test(model) -%} {{ return(adapter.dispatch('test_some_kind5', macro_namespace = 'foo_utils5')) }} {%- endmacro %}",
         ]
-        # TODO: do I need to adjust this for `get_columns_spec_ddl`
+
         self.possible_macro_calls = [
             ['nested_macro'],
             ['load_result'],

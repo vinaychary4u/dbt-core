@@ -19,3 +19,28 @@
   )
   {% endif %}
 {% endmacro %}
+
+{%- macro get_assert_columns_equivalent(sql) -%}
+  {{ adapter.dispatch('get_assert_columns_equivalent', 'dbt')(sql) }}
+{%- endmacro -%}
+
+{% macro default__get_assert_columns_equivalent(sql) -%}
+  {{ return(assert_columns_equivalent(sql)) }}
+{%- endmacro %}
+
+{% macro assert_columns_equivalent(sql) %}
+  {# loop through user_provided_columns to get column names #}
+    {%- set user_provided_columns = model['columns'] -%}
+    {% set column_names_config_only = [] %}
+    {% for i in user_provided_columns %}
+      {% set col = user_provided_columns[i] %}
+      {% set col_name = col['name'] %}
+      {% set column_names_config_only = column_names_config_only.append(col_name) %}
+    {% endfor %}
+    {%- set sql_file_provided_columns = get_columns_in_query(sql) -%}
+
+    {% if column_names_config_only != sql_file_provided_columns %}
+      {% do exceptions.raise_compiler_error('Please ensure the name and order of columns in your `yml` file match the columns in your SQL file.\nSchema File Columns: ' ~ column_names_config_only ~ '\nSQL File Columns: ' ~ sql_file_provided_columns ~ ' ' ) %}
+    {% endif %}
+
+{% endmacro %}

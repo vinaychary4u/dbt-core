@@ -47,7 +47,9 @@ class NodeInfo(betterproto.Message):
     node_status: str = betterproto.string_field(6)
     node_started_at: str = betterproto.string_field(7)
     node_finished_at: str = betterproto.string_field(8)
-    meta: str = betterproto.string_field(9)
+    meta: Dict[str, str] = betterproto.map_field(
+        9, betterproto.TYPE_STRING, betterproto.TYPE_STRING
+    )
 
 
 @dataclass
@@ -945,7 +947,7 @@ class HooksRunningMsg(betterproto.Message):
 
 
 @dataclass
-class HookFinished(betterproto.Message):
+class FinishedRunningStats(betterproto.Message):
     """E047"""
 
     stat_line: str = betterproto.string_field(1)
@@ -954,9 +956,9 @@ class HookFinished(betterproto.Message):
 
 
 @dataclass
-class HookFinishedMsg(betterproto.Message):
+class FinishedRunningStatsMsg(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
-    data: "HookFinished" = betterproto.message_field(2)
+    data: "FinishedRunningStats" = betterproto.message_field(2)
 
 
 @dataclass

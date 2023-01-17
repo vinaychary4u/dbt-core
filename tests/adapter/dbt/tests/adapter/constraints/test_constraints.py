@@ -1,10 +1,6 @@
 import pytest
 from dbt.exceptions import ParsingError
-from dbt.tests.util import (
-    run_dbt,
-    get_manifest,
-    run_dbt_and_capture
-)
+from dbt.tests.util import run_dbt, get_manifest, run_dbt_and_capture
 
 
 my_model_sql = """
@@ -292,7 +288,7 @@ class TestProjectConstraintsEnabledConfigs(BaseConstraintsEnabledModelvsProject)
 
     def test__project_error(self, project):
         with pytest.raises(ParsingError) as err_info:
-            run_dbt_and_capture(['run'], expect_pass=False)
+            run_dbt_and_capture(["run"], expect_pass=False)
 
         error_message_expected = "NOT within a model file(ex: .sql, .py) or `dbt_project.yml`."
         assert error_message_expected in str(err_info)
@@ -307,7 +303,7 @@ class TestModelConstraintsEnabledConfigs(BaseConstraintsDisabledModelvsProject):
 
     def test__model_error(self, project):
         with pytest.raises(ParsingError) as err_info:
-            run_dbt_and_capture(['run'], expect_pass=False)
+            run_dbt_and_capture(["run"], expect_pass=False)
 
         error_message_expected = "NOT within a model file(ex: .sql, .py) or `dbt_project.yml`."
         assert error_message_expected in str(err_info)
@@ -323,7 +319,7 @@ class TestSchemaConstraintsEnabledConfigs(BaseConstraintsDisabledModelvsProject)
 
     def test__schema_error(self, project):
         with pytest.raises(ParsingError) as err_info:
-            run_dbt_and_capture(['run'], expect_pass=False)
+            run_dbt_and_capture(["run"], expect_pass=False)
 
         schema_error_expected = "Schema Error: `yml` configuration does NOT exist"
         assert schema_error_expected in str(err_info)
@@ -339,7 +335,7 @@ class TestModelLevelConstraintsErrorMessages(BaseConstraintsDisabledModelvsProje
 
     def test__config_errors(self, project):
         with pytest.raises(ParsingError) as err_info:
-            run_dbt_and_capture(['run', '-s', 'my_model'], expect_pass=False)
+            run_dbt_and_capture(["run", "-s", "my_model"], expect_pass=False)
 
         expected_materialization_error = "Materialization Error: {'materialization': 'view'}"
         expected_empty_data_type_error = "Columns with `data_type` Blank/Null Errors: {'date_day'}"
@@ -357,7 +353,7 @@ class TestPythonModelLevelConstraintsErrorMessages(BaseConstraintsDisabledModelv
 
     def test__python_errors(self, project):
         with pytest.raises(ParsingError) as err_info:
-            run_dbt_and_capture(['run', '-s', 'python_model'], expect_pass=False)
+            run_dbt_and_capture(["run", "-s", "python_model"], expect_pass=False)
 
         expected_python_error = "Language Error: {'language': 'python'}"
         assert expected_python_error in str(err_info)
@@ -374,7 +370,9 @@ class TestColumnsEqual(BaseConstraintsDisabledModelvsProject):
 
     def test__my_model_wrong_order(self, project):
 
-        results, log_output = run_dbt_and_capture(['--log-format', 'json', 'run', '-s', 'my_model_wrong_order'], expect_pass=False)
+        results, log_output = run_dbt_and_capture(
+            ["--log-format", "json", "run", "-s", "my_model_wrong_order"], expect_pass=False
+        )
         manifest = get_manifest(project.project_root)
         model_id = "model.test.my_model_wrong_order"
         my_model_config = manifest.nodes[model_id].config
@@ -392,7 +390,9 @@ class TestColumnsEqual(BaseConstraintsDisabledModelvsProject):
 
     def test__my_model_wrong_name(self, project):
 
-        results, log_output = run_dbt_and_capture(['--log-format', 'json', 'run', '-s', 'my_model_wrong_name'], expect_pass=False)
+        results, log_output = run_dbt_and_capture(
+            ["--log-format", "json", "run", "-s", "my_model_wrong_name"], expect_pass=False
+        )
         manifest = get_manifest(project.project_root)
         model_id = "model.test.my_model_wrong_name"
         my_model_config = manifest.nodes[model_id].config

@@ -1,11 +1,7 @@
 import pytest
 import re
 import json
-from dbt.tests.util import (
-    run_dbt,
-    get_manifest,
-    run_dbt_and_capture
-)
+from dbt.tests.util import run_dbt, get_manifest, run_dbt_and_capture
 
 
 my_model_sql = """
@@ -116,7 +112,9 @@ select
   cast('2019-01-01' as date) as date_day
     );
 
-""".format(schema_name)
+""".format(
+    schema_name
+)
 
 
 class BaseConstraintsEnabledModelvsProject:
@@ -156,8 +154,8 @@ class TestConstraints(BaseConstraintsEnabledModelvsProject):
         with open("./target/manifest.json", "r") as fp:
             generated_manifest = json.load(fp)
 
-        model_unique_id = 'model.test.my_model'
-        schema_name_generated = (generated_manifest['nodes'][model_unique_id]['schema'])
+        model_unique_id = "model.test.my_model"
+        schema_name_generated = generated_manifest["nodes"][model_unique_id]["schema"]
 
         if expected_sql:
             expected_sql = expected_sql.replace(schema_name, schema_name_generated)
@@ -185,20 +183,24 @@ class TestConstraints(BaseConstraintsEnabledModelvsProject):
         with open("./target/manifest.json", "r") as fp:
             generated_manifest = json.load(fp)
 
-        model_unique_id = 'model.test.my_model'
-        schema_name_generated = (generated_manifest['nodes'][model_unique_id]['schema'])
+        model_unique_id = "model.test.my_model"
+        schema_name_generated = generated_manifest["nodes"][model_unique_id]["schema"]
 
         # verify the previous table exists
         sql = """
             select id from dbt.{0}.my_model where id = 1
-        """.format(schema_name_generated)
+        """.format(
+            schema_name_generated
+        )
         results = project.run_sql(sql, fetch="all")
         assert len(results) == 1
         assert results[0][0] == 1
 
     def test__constraints_enforcement(self, project):
 
-        results, log_output = run_dbt_and_capture(['--log-format', 'json', 'run', '-s', 'my_model_error'], expect_pass=False)
+        results, log_output = run_dbt_and_capture(
+            ["--log-format", "json", "run", "-s", "my_model_error"], expect_pass=False
+        )
         manifest = get_manifest(project.project_root)
         model_id = "model.test.my_model_error"
         my_model_config = manifest.nodes[model_id].config
@@ -207,6 +209,6 @@ class TestConstraints(BaseConstraintsEnabledModelvsProject):
         assert constraints_enabled_actual_config is True
 
         expected_constraints_error = 'null value in column \\"id\\"'
-        expected_violation_error = 'violates not-null constraint'
+        expected_violation_error = "violates not-null constraint"
         assert expected_constraints_error in log_output
         assert expected_violation_error in log_output

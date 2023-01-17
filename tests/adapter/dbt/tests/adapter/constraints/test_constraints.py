@@ -15,9 +15,9 @@ my_model_sql = """
 }}
 
 select
-  1 as id,
+  1 as "ID",
   'blue' as color,
-  cast('2019-01-01' as date) as date_day
+  cast('2019-01-01' as date) as "DATE_DAY"
 """
 
 my_model_wrong_order_sql = """
@@ -82,6 +82,7 @@ models:
       constraints_enabled: true
     columns:
       - name: id
+        quote: true
         data_type: integer
         description: hello
         constraints: ['not null','primary key']
@@ -258,7 +259,7 @@ class TestModelLevelConstraintsEnabledConfigs(BaseConstraintsDisabledModelvsProj
 
         assert constraints_enabled_actual_config is True
 
-        expected_columns = "{'id': ColumnInfo(name='id', description='hello', meta={}, data_type='integer', constraints=['not null', 'primary key'], constraints_check='(id > 0)', quote=None, tags=[], _extra={}), 'color': ColumnInfo(name='color', description='', meta={}, data_type='text', constraints=None, constraints_check=None, quote=None, tags=[], _extra={}), 'date_day': ColumnInfo(name='date_day', description='', meta={}, data_type='date', constraints=None, constraints_check=None, quote=None, tags=[], _extra={})}"
+        expected_columns = "{'id': ColumnInfo(name='id', description='hello', meta={}, data_type='integer', constraints=['not null', 'primary key'], constraints_check='(id > 0)', quote=True, tags=[], _extra={}), 'color': ColumnInfo(name='color', description='', meta={}, data_type='text', constraints=None, constraints_check=None, quote=None, tags=[], _extra={}), 'date_day': ColumnInfo(name='date_day', description='', meta={}, data_type='date', constraints=None, constraints_check=None, quote=None, tags=[], _extra={})}"
 
         assert expected_columns == str(my_model_columns)
 
@@ -382,11 +383,11 @@ class TestColumnsEqual(BaseConstraintsDisabledModelvsProject):
         assert constraints_enabled_actual_config is True
 
         expected_compile_error = "Please ensure the name, order, and number of columns in your `yml` file match the columns in your SQL file."
-        expected_schem_file_columns = "Schema File Columns: ['ID', 'COLOR', 'DATE_DAY']"
+        expected_schema_file_columns = "Schema File Columns: ['ID', 'COLOR', 'DATE_DAY']"
         expected_sql_file_columns = "SQL File Columns: ['COLOR', 'ID', 'DATE_DAY']"
 
         assert expected_compile_error in log_output
-        assert expected_schem_file_columns in log_output
+        assert expected_schema_file_columns in log_output
         assert expected_sql_file_columns in log_output
 
     def test__my_model_wrong_name(self, project):
@@ -400,9 +401,9 @@ class TestColumnsEqual(BaseConstraintsDisabledModelvsProject):
         assert constraints_enabled_actual_config is True
 
         expected_compile_error = "Please ensure the name, order, and number of columns in your `yml` file match the columns in your SQL file."
-        expected_schem_file_columns = "Schema File Columns: ['ID', 'COLOR', 'DATE_DAY']"
+        expected_schema_file_columns = "Schema File Columns: ['ID', 'COLOR', 'DATE_DAY']"
         expected_sql_file_columns = "SQL File Columns: ['ERROR', 'COLOR', 'DATE_DAY']"
 
         assert expected_compile_error in log_output
-        assert expected_schem_file_columns in log_output
+        assert expected_schema_file_columns in log_output
         assert expected_sql_file_columns in log_output

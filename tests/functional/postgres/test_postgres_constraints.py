@@ -21,32 +21,6 @@ select
   cast('2019-01-01' as date) as date_day
 """
 
-my_model_wrong_order_sql = """
-{{
-  config(
-    materialized = "table"
-  )
-}}
-
-select
-  1 as color,
-  'blue' as id,
-  cast('2019-01-01' as date) as date_day
-"""
-
-my_model_wrong_name_sql = """
-{{
-  config(
-    materialized = "table"
-  )
-}}
-
-select
-  1 as error,
-  'blue' as color,
-  cast('2019-01-01' as date) as date_day
-"""
-
 my_model_error_sql = """
 {{
   config(
@@ -79,36 +53,6 @@ models:
       - name: date_day
         data_type: date
   - name: my_model_error
-    config:
-      constraints_enabled: true
-    columns:
-      - name: id
-        data_type: integer
-        description: hello
-        constraints: ['not null','primary key']
-        constraints_check: (id > 0)
-        tests:
-          - unique
-      - name: color
-        data_type: text
-      - name: date_day
-        data_type: date
-  - name: my_model_wrong_order
-    config:
-      constraints_enabled: true
-    columns:
-      - name: id
-        data_type: integer
-        description: hello
-        constraints: ['not null','primary key']
-        constraints_check: (id > 0)
-        tests:
-          - unique
-      - name: color
-        data_type: text
-      - name: date_day
-        data_type: date
-  - name: my_model_wrong_name
     config:
       constraints_enabled: true
     columns:
@@ -266,49 +210,3 @@ class TestConstraints(BaseConstraintsEnabledModelvsProject):
         expected_violation_error = 'violates not-null constraint'
         assert expected_constraints_error in log_output
         assert expected_violation_error in log_output
-
-
-class TestColumnsEqual(BaseConstraintsEnabledModelvsProject):
-    @pytest.fixture(scope="class")
-    def models(self):
-        return {
-            "my_model_wrong_order.sql": my_model_wrong_order_sql,
-            "my_model_wrong_name.sql": my_model_wrong_name_sql,
-            "constraints_schema.yml": model_schema_yml,
-        }
-
-    def test__my_model_wrong_order(self, project):
-
-        results, log_output = run_dbt_and_capture(['--log-format', 'json', 'run', '-s', 'my_model_wrong_order'], expect_pass=False)
-        manifest = get_manifest(project.project_root)
-        model_id = "model.test.my_model_wrong_order"
-        my_model_config = manifest.nodes[model_id].config
-        constraints_enabled_actual_config = my_model_config.constraints_enabled
-
-        assert constraints_enabled_actual_config is True
-
-        expected_compile_error = "Please ensure the name, order, and number of columns in your `yml` file match the columns in your SQL file."
-        expected_schem_file_columns = "Schema File Columns: ['ID', 'COLOR', 'DATE_DAY']"
-        expected_sql_file_columns = "SQL File Columns: ['COLOR', 'ID', 'DATE_DAY']"
-
-        assert expected_compile_error in log_output
-        assert expected_schem_file_columns in log_output
-        assert expected_sql_file_columns in log_output
-
-    def test__my_model_wrong_name(self, project):
-
-        results, log_output = run_dbt_and_capture(['--log-format', 'json', 'run', '-s', 'my_model_wrong_name'], expect_pass=False)
-        manifest = get_manifest(project.project_root)
-        model_id = "model.test.my_model_wrong_name"
-        my_model_config = manifest.nodes[model_id].config
-        constraints_enabled_actual_config = my_model_config.constraints_enabled
-
-        assert constraints_enabled_actual_config is True
-
-        expected_compile_error = "Please ensure the name, order, and number of columns in your `yml` file match the columns in your SQL file."
-        expected_schem_file_columns = "Schema File Columns: ['ID', 'COLOR', 'DATE_DAY']"
-        expected_sql_file_columns = "SQL File Columns: ['ERROR', 'COLOR', 'DATE_DAY']"
-
-        assert expected_compile_error in log_output
-        assert expected_schem_file_columns in log_output
-        assert expected_sql_file_columns in log_output

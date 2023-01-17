@@ -38,8 +38,14 @@
     {% endfor %}
     {%- set sql_file_provided_columns = get_columns_in_query(sql) -%}
 
-    {% if column_names_config_only != sql_file_provided_columns %}
-      {% do exceptions.raise_compiler_error('Please ensure the name and order of columns in your `yml` file match the columns in your SQL file.\nSchema File Columns: ' ~ column_names_config_only ~ '\nSQL File Columns: ' ~ sql_file_provided_columns ~ ' ' ) %}
+    {# uppercase both schema and sql file columns #}
+    {% set column_names_config_upper= column_names_config_only|map('upper')|join(',')  %}
+    {% set column_names_config_formatted = column_names_config_upper.split(',')  %}
+    {% set sql_file_provided_columns_upper = sql_file_provided_columns|map('upper')|join(',') %}
+    {% set sql_file_provided_columns_formatted = sql_file_provided_columns_upper.split(',') %}
+
+    {% if column_names_config_formatted != sql_file_provided_columns_formatted %}
+      {% do exceptions.raise_compiler_error('Please ensure the name and order of columns in your `yml` file match the columns in your SQL file.\nSchema File Columns: ' ~ column_names_config_formatted ~ '\nSQL File Columns: ' ~ sql_file_provided_columns_formatted ~ ' ' ) %}
     {% endif %}
 
 {% endmacro %}

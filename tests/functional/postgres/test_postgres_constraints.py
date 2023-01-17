@@ -288,8 +288,8 @@ class TestColumnsEqual(BaseConstraintsEnabledModelvsProject):
         assert constraints_enabled_actual_config is True
 
         expected_compile_error = "Please ensure the name and order of columns in your `yml` file match the columns in your SQL file."
-        expected_schem_file_columns = "Schema File Columns: ['id', 'color', 'date_day']"
-        expected_sql_file_columns = "SQL File Columns: ['color', 'id', 'date_day']"
+        expected_schem_file_columns = "Schema File Columns: ['ID', 'COLOR', 'DATE_DAY']"
+        expected_sql_file_columns = "SQL File Columns: ['COLOR', 'ID', 'DATE_DAY']"
 
         assert expected_compile_error in log_output
         assert expected_schem_file_columns in log_output
@@ -306,8 +306,8 @@ class TestColumnsEqual(BaseConstraintsEnabledModelvsProject):
         assert constraints_enabled_actual_config is True
 
         expected_compile_error = "Please ensure the name and order of columns in your `yml` file match the columns in your SQL file."
-        expected_schem_file_columns = "Schema File Columns: ['id', 'color', 'date_day']"
-        expected_sql_file_columns = "SQL File Columns: ['error', 'color', 'date_day']"
+        expected_schem_file_columns = "Schema File Columns: ['ID', 'COLOR', 'DATE_DAY']"
+        expected_sql_file_columns = "SQL File Columns: ['ERROR', 'COLOR', 'DATE_DAY']"
 
         assert expected_compile_error in log_output
         assert expected_schem_file_columns in log_output

@@ -237,7 +237,8 @@ record_timing_info = click.option(
 )
 
 resource_type = click.option(
-    "--resource-type",
+    "resource-types",
+    "--resource-types",
     envvar=None,
     help="TODO: No current help text",
     type=click.Choice(
@@ -256,6 +257,7 @@ resource_type = click.option(
         case_sensitive=False,
     ),
     default="default",
+    multiple=True,
 )
 
 models = click.option(
@@ -414,11 +416,3 @@ _resource_values: List[str] = [str(s) for s in list_task.ListTask.ALL_RESOURCE_V
     "default",
     "all",
 ]
-
-resource_type = click.option(
-    "resource_types",
-    "--resource-type",
-    type=click.Choice(_resource_values, case_sensitive=False),
-    multiple=True,
-    default=[],
-)

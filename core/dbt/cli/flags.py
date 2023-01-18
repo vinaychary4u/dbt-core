@@ -88,3 +88,10 @@ class Flags:
 
     def __str__(self) -> str:
         return str(pf(self.__dict__))
+
+    def __getitem__(self, name):
+        """Allows flags to be accessed via subscription (dict) notation"""
+        try:
+            return getattr(self, name)
+        except AttributeError:
+            raise KeyError(name)

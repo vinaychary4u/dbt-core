@@ -82,7 +82,9 @@ enable_legacy_logger = click.option(
     hidden=True,
 )
 
-exclude = click.option("--exclude", envvar=None, help="Specify the nodes to exclude.")
+exclude = click.option(
+    "--exclude", envvar=None, help="Specify the nodes to exclude.", multiple=True
+)
 
 fail_fast = click.option(
     "--fail-fast/--no-fail-fast",
@@ -141,7 +143,7 @@ output = click.option(
     envvar=None,
     help="TODO: No current help text",
     type=click.Choice(["json", "name", "path", "selector"], case_sensitive=False),
-    default="name",
+    default="selector",
 )
 
 output_keys = click.option(
@@ -257,6 +259,7 @@ resource_type = click.option(
 )
 
 models = click.option(
+    "models",
     "-m",
     "--models",
     envvar=None,
@@ -268,8 +271,9 @@ models = click.option(
 )
 
 select = click.option(
-    "-s",
     "select",
+    "-s",
+    "--select",
     envvar=None,
     help="Specify the nodes to include.",
     multiple=True,

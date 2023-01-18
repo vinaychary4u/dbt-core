@@ -142,7 +142,6 @@ class GraphRunnableTask(ManifestTask):
         #
         # Doing that is actually a little tricky, so I'm punting it to a new ticket GH #6397
         indirect_selection = getattr(self.args, "INDIRECT_SELECTION", "eager")
-
         if self.args.selector:
             # use pre-defined selector (--selector)
             spec = self.config.get_selector(self.args.selector)

@@ -17,13 +17,16 @@ from dbt.task.test import TestTask
 from dbt.task.list import ListTask
 
 
-# CLI invocation
-def cli_runner():
+def cli_setup():
     # Alias "list" to "ls"
     ls = copy(cli.commands["list"])
     ls.hidden = True
     cli.add_command(ls, "ls")
 
+
+# CLI invocation
+def cli_runner():
+    cli_setup()
     # Run the cli
     cli()
 
@@ -43,6 +46,7 @@ class dbtRunner:
 
     def invoke(self, args: List[str]) -> Tuple[Optional[List], bool]:
         try:
+            cli_setup()
             dbt_ctx = cli.make_context(cli.name, args)
             dbt_ctx.obj = {
                 "project": self.project,

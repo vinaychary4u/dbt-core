@@ -14,6 +14,7 @@ from dbt.task.compile import CompileTask
 from dbt.task.deps import DepsTask
 from dbt.task.run import RunTask
 from dbt.task.test import TestTask
+from dbt.task.list import ListTask
 
 
 # CLI invocation
@@ -284,15 +285,23 @@ def init(ctx, **kwargs):
 @p.project_dir
 @p.resource_type
 @p.select
+@p.models
+@p.resource_type
 @p.selector
 @p.state
 @p.target
 @p.vars
 @requires.preflight
+@requires.profile
+@requires.project
 def list(ctx, **kwargs):
     """List the resources in your project"""
-    click.echo(f"`{inspect.stack()[0][3]}` called\n flags: {ctx.obj['flags']}")
-    return None, True
+    config = RuntimeConfig.from_parts(ctx.obj["project"], ctx.obj["profile"], ctx.obj["flags"])
+    task = ListTask(ctx.obj["flags"], config)
+
+    results = task.run()
+    success = task.interpret_results(results)
+    return results, success
 
 
 # dbt parse

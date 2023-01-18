@@ -1,8 +1,10 @@
 from pathlib import Path, PurePath
+from typing import List
 
 import click
 from dbt.cli.option_types import YAML
 from dbt.cli.resolvers import default_project_dir, default_profiles_dir
+import dbt.task.list as list_task
 
 
 # TODO:  The name (reflected in flags) is a correction!
@@ -254,8 +256,18 @@ resource_type = click.option(
     default="default",
 )
 
-select = click.option(
+models = click.option(
     "-m",
+    "--models",
+    envvar=None,
+    help="""
+        Specify the models to select and set the resource-type to 'model'.
+        Mutually exclusive with '--select' (or '-s') and '--resource-type'
+        """,
+    multiple=True,
+)
+
+select = click.option(
     "-s",
     "select",
     envvar=None,
@@ -391,4 +403,18 @@ write_manifest = click.option(
     envvar=None,
     help="TODO: No help text currently available",
     default=True,
+)
+
+
+_resource_values: List[str] = [str(s) for s in list_task.ListTask.ALL_RESOURCE_VALUES] + [
+    "default",
+    "all",
+]
+
+resource_type = click.option(
+    "resource_types",
+    "--resource-type",
+    type=click.Choice(_resource_values, case_sensitive=False),
+    multiple=True,
+    default=[],
 )

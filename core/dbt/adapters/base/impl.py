@@ -46,7 +46,7 @@ from dbt.exceptions import (
 from dbt.adapters.protocol import AdapterConfig, ConnectionManagerProtocol
 from dbt.clients.agate_helper import empty_table, merge_tables, table_from_rows
 from dbt.clients.jinja import MacroGenerator
-from dbt.contracts.graph.manifest import Manifest, MacroManifest
+from dbt.contracts.graph.manifest import AnyManifest, Manifest, MacroManifest
 from dbt.contracts.graph.nodes import ResultNode
 from dbt.events.functions import fire_event, warn_or_error
 from dbt.events.types import (
@@ -349,10 +349,8 @@ class BaseAdapter(metaclass=AdapterMeta):
                 self.connections.set_query_header,
                 base_macros_only=base_macros_only,
             )
-            # TODO CT-211
-            self._macro_manifest_lazy = manifest  # type: ignore[assignment]
-        # TODO CT-211
-        return self._macro_manifest_lazy  # type: ignore[return-value]
+            self._macro_manifest_lazy = manifest
+        return self._macro_manifest_lazy
 
     def clear_macro_manifest(self):
         if self._macro_manifest_lazy is not None:
@@ -983,7 +981,7 @@ class BaseAdapter(metaclass=AdapterMeta):
     def execute_macro(
         self,
         macro_name: str,
-        manifest: Optional[Manifest] = None,
+        manifest: Optional[AnyManifest] = None,
         project: Optional[str] = None,
         context_override: Optional[Dict[str, Any]] = None,
         kwargs: Dict[str, Any] = None,
@@ -992,7 +990,7 @@ class BaseAdapter(metaclass=AdapterMeta):
         """Look macro_name up in the manifest and execute its results.
 
         :param macro_name: The name of the macro to execute.
-        :param manifest: The manifest to use for generating the base macro
+        :param provided_manifest: The manifest to use for generating the base macro
             execution context. If none is provided, use the internal manifest.
         :param project: The name of the project to search in, or None for the
             first match.
@@ -1004,16 +1002,15 @@ class BaseAdapter(metaclass=AdapterMeta):
 
         if kwargs is None:
             kwargs = {}
+
         if context_override is None:
             context_override = {}
 
         if manifest is None:
-            # TODO CT-211
-            manifest = self._macro_manifest  # type: ignore[assignment]
-        # TODO CT-211
-        macro = manifest.find_macro_by_name(  # type: ignore[union-attr]
-            macro_name, self.config.project_name, project
-        )
+            manifest = self._macro_manifest
+
+        macro = manifest.find_macro_by_name(macro_name, self.config.project_name, project)
+
         if macro is None:
             if project is None:
                 package_name = "any package"
@@ -1036,6 +1033,7 @@ class BaseAdapter(metaclass=AdapterMeta):
             manifest=manifest,  # type: ignore[arg-type]
             package_name=project,
         )
+
         macro_context.update(context_override)
 
         macro_function = MacroGenerator(macro, macro_context)

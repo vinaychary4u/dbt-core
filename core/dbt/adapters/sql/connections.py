@@ -99,22 +99,15 @@ class SQLConnectionManager(BaseConnectionManager):
         )
 
     @classmethod
-    def process_results(
-        cls, column_names: Iterable[str], rows: Iterable[Any]
-    ) -> List[Dict[str, Any]]:
-        # TODO CT-211
-        unique_col_names = dict()  # type: ignore[var-annotated]
-        # TODO CT-211
-        for idx in range(len(column_names)):  # type: ignore[arg-type]
-            # TODO CT-211
-            col_name = column_names[idx]  # type: ignore[index]
+    def process_results(cls, column_names: List[str], rows: Iterable[Any]) -> List[Dict[str, Any]]:
+        unique_col_names: Dict = dict()
+        for idx in range(len(column_names)):
+            col_name = column_names[idx]
             if col_name in unique_col_names:
                 unique_col_names[col_name] += 1
-                # TODO CT-211
-                column_names[idx] = f"{col_name}_{unique_col_names[col_name]}"  # type: ignore[index] # noqa
+                column_names[idx] = f"{col_name}_{unique_col_names[col_name]}"
             else:
-                # TODO CT-211
-                unique_col_names[column_names[idx]] = 1  # type: ignore[index]
+                unique_col_names[column_names[idx]] = 1
         return [dict(zip(column_names, row)) for row in rows]
 
     @classmethod

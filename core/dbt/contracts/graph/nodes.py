@@ -786,6 +786,7 @@ class SeedNode(ParsedNode):  # No SQLDefaults!
     root_path: Optional[str] = None
     depends_on: MacroDependsOn = field(default_factory=MacroDependsOn)
     state_relation: Optional[StateRelation] = None
+    compiled_code = None
 
     def same_seeds(self, other: "SeedNode") -> bool:
         # for seeds, we check the hashes. If the hashes are different types,

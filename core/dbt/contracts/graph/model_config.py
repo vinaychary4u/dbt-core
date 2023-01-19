@@ -563,6 +563,8 @@ class TestConfig(NodeAndTestConfig):
     fail_calc: str = "count(*)"
     warn_if: str = "!= 0"
     error_if: str = "!= 0"
+    pre_hook: List = []
+    post_hook: List = []
 
     @classmethod
     def same_contents(cls, unrendered: Dict[str, Any], other: Dict[str, Any]) -> bool:

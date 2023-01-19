@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import List, Iterator, Dict, Any, TypeVar, Generic
+from typing import List, Iterator, Dict, Any, TypeVar, Generic, Union
 
 from dbt.config import RuntimeConfig, Project, IsFQNResource
 from dbt.contracts.graph.model_config import BaseConfig, get_config_for, _listify
@@ -131,7 +131,7 @@ class BaseContextConfigGenerator(Generic[T]):
         project_name: str,
         base: bool,
         patch_config_dict: Dict[str, Any] = None,
-    ) -> BaseConfig:
+    ) -> T:
         own_config = self.get_node_project(project_name)
 
         result = self.initial_result(resource_type=resource_type, base=base)
@@ -155,8 +155,7 @@ class BaseContextConfigGenerator(Generic[T]):
                 result = self._update_from_config(result, fqn_config)
 
         # this is mostly impactful in the snapshot config case
-        # TODO CT-211
-        return result  # type: ignore[return-value]
+        return result
 
     @abstractmethod
     def calculate_node_config_dict(
@@ -227,7 +226,6 @@ class UnrenderedConfigGenerator(BaseContextConfigGenerator[Dict[str, Any]]):
         base: bool,
         patch_config_dict: dict = None,
     ) -> Dict[str, Any]:
-        # TODO CT-211
         return self.calculate_node_config(
             config_call_dict=config_call_dict,
             fqn=fqn,
@@ -235,7 +233,7 @@ class UnrenderedConfigGenerator(BaseContextConfigGenerator[Dict[str, Any]]):
             project_name=project_name,
             base=base,
             patch_config_dict=patch_config_dict,
-        )  # type: ignore[return-value]
+        )
 
     def initial_result(self, resource_type: NodeType, base: bool) -> Dict[str, Any]:
         return {}
@@ -321,11 +319,11 @@ class ContextConfig:
         self, base: bool = False, *, rendered: bool = True, patch_config_dict: dict = None
     ) -> Dict[str, Any]:
         if rendered:
-            # TODO CT-211
-            src = ContextConfigGenerator(self._active_project)  # type: ignore[var-annotated]
+            src: Union[ContextConfigGenerator, UnrenderedConfigGenerator] = ContextConfigGenerator(
+                self._active_project
+            )
         else:
-            # TODO CT-211
-            src = UnrenderedConfigGenerator(self._active_project)  # type: ignore[assignment]
+            src = UnrenderedConfigGenerator(self._active_project)
 
         return src.calculate_node_config_dict(
             config_call_dict=self._config_call_dict,

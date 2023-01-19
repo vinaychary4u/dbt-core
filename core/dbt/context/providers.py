@@ -28,6 +28,7 @@ from dbt.context.macro_resolver import MacroResolver, TestMacroNamespace
 from dbt.context.macros import MacroNamespaceBuilder, MacroNamespace
 from dbt.context.manifest import ManifestContext
 from dbt.contracts.connection import AdapterResponse
+from dbt.contracts.files import SourceFile, SchemaSourceFile
 from dbt.contracts.graph.manifest import Manifest, Disabled
 from dbt.contracts.graph.nodes import (
     Macro,
@@ -39,6 +40,7 @@ from dbt.contracts.graph.nodes import (
     ManifestNode,
     RefArgs,
     AccessType,
+    GenericTestNode,
 )
 from dbt.contracts.graph.metrics import MetricReference, ResolvedMetricReference
 from dbt.contracts.graph.unparsed import NodeVersion
@@ -1290,9 +1292,8 @@ class ProviderContext(ManifestContext):
                 if self.model.file_id in self.manifest.files:
                     source_file = self.manifest.files[self.model.file_id]
                     # Schema files should never get here
-                    if source_file.parse_file_type != "schema":
-                        # TODO CT-211
-                        source_file.env_vars.append(var)  # type: ignore[union-attr]
+                    if source_file.parse_file_type != "schema" and type(source_file) == SourceFile:
+                        source_file.env_vars.append(var)
             return return_value
         else:
             raise EnvVarMissingError(var)
@@ -1353,36 +1354,28 @@ class ModelContext(ProviderContext):
     def pre_hooks(self) -> List[Dict[str, Any]]:
         if self.model.resource_type in [NodeType.Source, NodeType.Test]:
             return []
-        # TODO CT-211
-        return [
-            h.to_dict(omit_none=True) for h in self.model.config.pre_hook  # type: ignore[union-attr] # noqa
-        ]
+        return [h.to_dict(omit_none=True) for h in self.model.config.pre_hook]
 
     @contextproperty
     def post_hooks(self) -> List[Dict[str, Any]]:
         if self.model.resource_type in [NodeType.Source, NodeType.Test]:
             return []
-        # TODO CT-211
-        return [
-            h.to_dict(omit_none=True) for h in self.model.config.post_hook  # type: ignore[union-attr] # noqa
-        ]
+        return [h.to_dict(omit_none=True) for h in self.model.config.post_hook]
 
     @contextproperty
     def sql(self) -> Optional[str]:
         # only doing this in sql model for backward compatible
         if (
             getattr(self.model, "extra_ctes_injected", None)
-            and self.model.language == ModelLanguage.sql  # type: ignore[union-attr]
+            and self.model.language == ModelLanguage.sql
         ):
-            # TODO CT-211
-            return self.model.compiled_code  # type: ignore[union-attr]
+            return self.model.compiled_code
         return None
 
     @contextproperty
     def compiled_code(self) -> Optional[str]:
         if getattr(self.model, "extra_ctes_injected", None):
-            # TODO CT-211
-            return self.model.compiled_code  # type: ignore[union-attr]
+            return self.model.compiled_code
         return None
 
     @contextproperty
@@ -1652,13 +1645,16 @@ class TestContext(ProviderContext):
                     return_value if var in os.environ else DEFAULT_ENV_PLACEHOLDER
                 )
                 # the "model" should only be test nodes, but just in case, check
-                # TODO CT-211
-                if self.model.resource_type == NodeType.Test and self.model.file_key_name:  # type: ignore[union-attr] # noqa
+                if (
+                    self.model.resource_type == NodeType.Test
+                    and type(self.model) == GenericTestNode
+                    and self.model.file_key_name
+                ):
                     source_file = self.manifest.files[self.model.file_id]
-                    # TODO CT-211
-                    (yaml_key, name) = self.model.file_key_name.split(".")  # type: ignore[union-attr] # noqa
-                    # TODO CT-211
-                    source_file.add_env_var(var, yaml_key, name)  # type: ignore[union-attr]
+
+                    (yaml_key, name) = self.model.file_key_name.split(".")
+                    if type(source_file) == SchemaSourceFile:
+                        source_file.add_env_var(var, yaml_key, name)
             return return_value
         else:
             raise EnvVarMissingError(var)

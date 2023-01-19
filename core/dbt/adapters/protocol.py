@@ -67,11 +67,10 @@ AdapterConfig_T = TypeVar("AdapterConfig_T", bound=AdapterConfig)
 ConnectionManager_T = TypeVar("ConnectionManager_T", bound=ConnectionManagerProtocol)
 Relation_T = TypeVar("Relation_T", bound=RelationProtocol)
 Column_T = TypeVar("Column_T", bound=ColumnProtocol)
-Compiler_T = TypeVar("Compiler_T", bound=CompilerProtocol)
+Compiler_T = TypeVar("Compiler_T", bound=CompilerProtocol, covariant=True)
 
 
-# TODO CT-211
-class AdapterProtocol(  # type: ignore[misc]
+class AdapterProtocol(
     Protocol,
     Generic[
         AdapterConfig_T,

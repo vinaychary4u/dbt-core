@@ -7,6 +7,7 @@ from dbt.exceptions import (
 from dbt.config.runtime import RuntimeConfig
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import Macro, ResultNode
+from dbt.contracts.files import SourceFile
 
 from dbt.context.base import contextmember
 from dbt.context.configured import SchemaYamlContext
@@ -65,8 +66,8 @@ class DocsRuntimeContext(SchemaYamlContext):
             file_id = target_doc.file_id
             if file_id in self.manifest.files:
                 source_file = self.manifest.files[file_id]
-                # TODO CT-211
-                source_file.add_node(self.node.unique_id)  # type: ignore[union-attr]
+                if type(source_file) == SourceFile:
+                    source_file.add_node(self.node.unique_id)
         else:
             raise DocTargetNotFoundError(
                 node=self.node, target_doc_name=doc_name, target_doc_package=doc_package_name

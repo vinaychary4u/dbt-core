@@ -449,7 +449,7 @@ class ConnectionReused(DebugLevel, pt.ConnectionReused):
         return "E006"
 
     def message(self) -> str:
-        return f"Re-using an available connection from the pool (formerly {self.conn_name})"
+        return f"Re-using an available connection from the pool (formerly {self.orig_conn_name}, now {self.conn_name})"
 
 
 @dataclass
@@ -2344,4 +2344,31 @@ class RunResultWarningMessage(WarnLevel, EventStringFunctor, pt.RunResultWarning
 
     def message(self) -> str:
         # This is the message on the result object, cannot be formatted in event
+        return self.msg
+
+
+@dataclass
+class DebugCmdOut(InfoLevel, pt.DebugCmdOut):
+    def code(self):
+        return "Z047"
+
+    def message(self) -> str:
+        return self.msg
+
+
+@dataclass
+class DebugCmdResult(InfoLevel, pt.DebugCmdResult):
+    def code(self):
+        return "Z048"
+
+    def message(self) -> str:
+        return self.msg
+
+
+@dataclass
+class ListCmdOut(InfoLevel, pt.ListCmdOut):
+    def code(self):
+        return "Z049"
+
+    def message(self) -> str:
         return self.msg

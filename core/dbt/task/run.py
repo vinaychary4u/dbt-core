@@ -27,7 +27,7 @@ from dbt.exceptions import (
     DbtRuntimeError,
     DbtValidationError,
 )
-from dbt.events.functions import fire_event, get_invocation_id, info
+from dbt.events.functions import fire_event, get_invocation_id
 from dbt.events.types import (
     DatabaseErrorRunningHook,
     EmptyLine,

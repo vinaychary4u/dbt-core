@@ -9,7 +9,7 @@ from dbt.contracts.results import RunStatus
 from dbt.exceptions import DbtInternalError
 from dbt.graph import ResourceTypeSelector
 from dbt.logger import TextOnly
-from dbt.events.functions import fire_event, info
+from dbt.events.functions import fire_event
 from dbt.events.types import (
     SeedHeader,
     SeedHeaderSeparator,

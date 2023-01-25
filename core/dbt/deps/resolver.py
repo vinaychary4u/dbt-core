@@ -108,7 +108,7 @@ def _check_for_duplicate_project_names(
         project_name = package.get_project_name(project, renderer)
         if project_name in seen:
             raise DuplicateProjectDependencyError(project_name)
-        elif project_name == config.project_name:
+        elif project_name == project.project_name:
             raise DuplicateDependencyToRootError(project_name)
         seen.add(project_name)
 

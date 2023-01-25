@@ -2,7 +2,7 @@ from pathlib import Path, PurePath
 
 import click
 from dbt.cli.options import MultiOption
-from dbt.cli.option_types import YAML, ChoiceTuple
+from dbt.cli.option_types import YAML, ChoiceTuple, WarnErrorOptionsType
 from dbt.cli.resolvers import default_project_dir, default_profiles_dir
 
 
@@ -299,7 +299,7 @@ single_threaded = click.option(
 )
 
 skip_profile_setup = click.option(
-    "--skip-profile-setup", "-s", envvar=None, help="Skip interative profile setup.", is_flag=True
+    "--skip-profile-setup", "-s", envvar=None, help="Skip interactive profile setup.", is_flag=True
 )
 
 # TODO:  The env var and name (reflected in flags) are corrections!
@@ -388,9 +388,20 @@ version_check = click.option(
 )
 
 warn_error = click.option(
-    "--warn-error/--no-warn-error",
+    "--warn-error",
     envvar="DBT_WARN_ERROR",
-    help="If dbt would normally warn, instead raise an exception. Examples include --models that selects nothing, deprecations, configurations with no associated models, invalid test configurations, and missing sources/refs in tests.",
+    help="If dbt would normally warn, instead raise an exception. Examples include --select that selects nothing, deprecations, configurations with no associated models, invalid test configurations, and missing sources/refs in tests.",
+    default=None,
+    flag_value=True,
+)
+
+warn_error_options = click.option(
+    "--warn-error-options",
+    envvar="DBT_WARN_ERROR_OPTIONS",
+    default=None,
+    help="""If dbt would normally warn, instead raise an exception based on include/exclude configuration. Examples include --select that selects nothing, deprecations, configurations with no associated models, invalid test configurations,
+    and missing sources/refs in tests. This argument should be a YAML string, with keys 'include' or 'exclude'. eg. '{"include": "all", "exclude": ["NoNodesForSelectionCriteria"]}'""",
+    type=WarnErrorOptionsType(),
 )
 
 write_json = click.option(

@@ -8,7 +8,7 @@ from .runnable import ManifestTask
 import dbt.exceptions
 from dbt.adapters.factory import get_adapter
 from dbt.contracts.results import RunOperationResultsArtifact
-from dbt.exceptions import InternalException
+from dbt.exceptions import DbtInternalError
 from dbt.events.functions import fire_event
 from dbt.events.types import (
     RunningOperationCaughtError,
@@ -29,7 +29,7 @@ class RunOperationTask(ManifestTask):
 
     def compile_manifest(self) -> None:
         if self.manifest is None:
-            raise InternalException("manifest was None in compile_manifest")
+            raise DbtInternalError("manifest was None in compile_manifest")
 
     def _run_unsafe(self) -> agate.Table:
         adapter = get_adapter(self.config)

@@ -44,10 +44,7 @@ import dbt.tracking
 
 from dbt.utils import ExitCodes, args_to_dict
 from dbt.config.profile import read_user_config
-from dbt.exceptions import (
-    Exception as dbtException,
-    InternalException,
-)
+from dbt.exceptions import Exception as dbtException, DbtInternalError
 
 
 class DBTVersion(argparse.Action):
@@ -90,7 +87,7 @@ class DBTArgumentParser(argparse.ArgumentParser):
     ):
         mutex_group = self.add_mutually_exclusive_group()
         if not name.startswith("--"):
-            raise InternalException(
+            raise DbtInternalError(
                 'cannot handle optional argument without "--" prefix: ' f'got "{name}"'
             )
         if dest is None:
@@ -202,7 +199,7 @@ def handle_and_check(args):
 def run_from_args(parsed):
     log_cache_events(getattr(parsed, "log_cache_events", False))
 
-    # this will convert DbtConfigErrors into RuntimeExceptions
+    # this will convert DbtConfigErrors into DbtRuntimeError
     # task could be any one of the task objects
     task = parsed.cls.from_args(args=parsed)
 
@@ -333,7 +330,7 @@ def _build_init_subparser(subparsers, base_subparser):
         dest="skip_profile_setup",
         action="store_true",
         help="""
-        Skip interative profile setup.
+        Skip interactive profile setup.
         """,
     )
     sub.set_defaults(cls=init_task.InitTask, which="init", rpc_method=None)
@@ -367,7 +364,7 @@ def _build_build_subparser(subparsers, base_subparser):
     )
     sub.add_argument(
         "--indirect-selection",
-        choices=["eager", "cautious"],
+        choices=["eager", "cautious", "buildable"],
         default="eager",
         dest="indirect_selection",
         help="""
@@ -468,7 +465,7 @@ def _build_snapshot_subparser(subparsers, base_subparser):
     return sub
 
 
-def _add_defer_argument(*subparsers):
+def _add_defer_arguments(*subparsers):
     for sub in subparsers:
         sub.add_optional_argument_inverse(
             "--defer",
@@ -481,9 +478,19 @@ def _add_defer_argument(*subparsers):
             """,
             default=flags.DEFER_MODE,
         )
+        sub.add_optional_argument_inverse(
+            "--favor-state",
+            enable_help="""
+            If set, defer to the state variable for resolving unselected nodes, even if node exist as a database object in the current environment.
+            """,
+            disable_help="""
+            If defer is set, expect standard defer behaviour.
+            """,
+            default=flags.FAVOR_STATE_MODE,
+        )
 
 
-def _add_favor_state_argument(*subparsers):
+def _add_favor_state_arguments(*subparsers):
     for sub in subparsers:
         sub.add_optional_argument_inverse(
             "--favor-state",
@@ -562,7 +569,7 @@ def _build_docs_generate_subparser(subparsers, base_subparser):
         Do not run "dbt compile" as part of docs generation
         """,
     )
-    _add_defer_argument(generate_sub)
+    _add_defer_arguments(generate_sub)
     return generate_sub
 
 
@@ -745,7 +752,7 @@ def _build_test_subparser(subparsers, base_subparser):
     )
     sub.add_argument(
         "--indirect-selection",
-        choices=["eager", "cautious"],
+        choices=["eager", "cautious", "buildable"],
         default="eager",
         dest="indirect_selection",
         help="""
@@ -851,7 +858,7 @@ def _build_list_subparser(subparsers, base_subparser):
     )
     sub.add_argument(
         "--indirect-selection",
-        choices=["eager", "cautious"],
+        choices=["eager", "cautious", "buildable"],
         default="eager",
         dest="indirect_selection",
         help="""
@@ -988,15 +995,29 @@ def parse_args(args, cls=DBTArgumentParser):
         """,
     )
 
-    p.add_argument(
+    warn_error_flag = p.add_mutually_exclusive_group()
+    warn_error_flag.add_argument(
         "--warn-error",
         action="store_true",
         default=None,
         help="""
         If dbt would normally warn, instead raise an exception. Examples
-        include --models that selects nothing, deprecations, configurations
+        include --select that selects nothing, deprecations, configurations
         with no associated models, invalid test configurations, and missing
         sources/refs in tests.
+        """,
+    )
+
+    warn_error_flag.add_argument(
+        "--warn-error-options",
+        default=None,
+        help="""
+        If dbt would normally warn, instead raise an exception based on
+        include/exclude configuration. Examples include --select that selects
+        nothing, deprecations, configurations with no associated models,
+        invalid test configurations, and missing sources/refs in tests.
+        This argument should be a YAML string, with keys 'include' or 'exclude'.
+        eg. '{"include": "all", "exclude": ["NoNodesForSelectionCriteria"]}'
         """,
     )
 
@@ -1160,9 +1181,9 @@ def parse_args(args, cls=DBTArgumentParser):
     # list_sub sets up its own arguments.
     _add_selection_arguments(run_sub, compile_sub, generate_sub, test_sub, snapshot_sub, seed_sub)
     # --defer
-    _add_defer_argument(run_sub, test_sub, build_sub, snapshot_sub, compile_sub)
+    _add_defer_arguments(run_sub, test_sub, build_sub, snapshot_sub, compile_sub)
     # --favor-state
-    _add_favor_state_argument(run_sub, test_sub, build_sub, snapshot_sub)
+    _add_favor_state_arguments(run_sub, test_sub, build_sub, snapshot_sub)
     # --full-refresh
     _add_table_mutability_arguments(run_sub, compile_sub, build_sub)
 

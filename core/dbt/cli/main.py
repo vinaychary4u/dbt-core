@@ -226,6 +226,8 @@ def docs_serve(ctx, **kwargs):
 @p.vars
 @p.version_check
 @requires.preflight
+@requires.profile
+@requires.project
 def compile(ctx, **kwargs):
     """Generates executable SQL from source, model, test, and analysis files. Compiled SQL files are written to the
     target/ directory."""

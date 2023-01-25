@@ -1,4 +1,6 @@
 # special support for CLI argument parsing.
+# TODO: Remove as part of https://github.com/dbt-labs/dbt-core/issues/6701
+from dbt import flags
 from copy import deepcopy
 import itertools
 from dbt.clients.yaml_helper import yaml, Loader, Dumper  # noqa: F401

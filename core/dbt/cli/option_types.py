@@ -1,7 +1,7 @@
 from click import ParamType, Choice
 
 from dbt.config.utils import parse_cli_vars
-from dbt.exceptions import ValidationException
+from dbt.exceptions import ValidationError
 
 from dbt.helper_types import WarnErrorOptions
 
@@ -17,7 +17,7 @@ class YAML(ParamType):
             self.fail(f"Cannot load YAML from type {type(value)}", param, ctx)
         try:
             return parse_cli_vars(value)
-        except ValidationException:
+        except ValidationError:
             self.fail(f"String '{value}' is not valid YAML", param, ctx)
 
 

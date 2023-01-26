@@ -75,6 +75,13 @@ defer = click.option(
     help="If set, defer to the state variable for resolving unselected nodes.",
 )
 
+favor_defer_state = click.option(
+    "--favor-state/--no-favor-state",
+    envvar="DBT_FAVOR_STATE",
+    help="If favor state, defer to the state variable for resolving unselected nodes, even if node exist as a database object in the current environment. Otherwise expect standard defer behavior",
+)
+
+
 enable_legacy_logger = click.option(
     "--enable-legacy-logger/--no-enable-legacy-logger",
     envvar="DBT_ENABLE_LEGACY_LOGGER",

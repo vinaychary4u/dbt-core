@@ -18,79 +18,85 @@ LOG_VERSION = 3
 metadata_vars: Optional[Dict[str, str]] = None
 
 
-def setup_event_logger(log_path: str, level_override: Optional[EventLevel] = None):
+def setup_event_logger(log_path: str, log_format: str, use_colors: bool, debug: bool):
     cleanup_event_logger()
     make_log_dir_if_missing(log_path)
+
     if flags.ENABLE_LEGACY_LOGGER:
-        EVENT_MANAGER.add_logger(_get_logbook_log_config(level_override))
+        EVENT_MANAGER.add_logger(_get_logbook_log_config(debug))
     else:
-        EVENT_MANAGER.add_logger(_get_stdout_config(level_override))
+        EVENT_MANAGER.add_logger(_get_stdout_config(log_format, debug, use_colors))
 
         if _CAPTURE_STREAM:
             # Create second stdout logger to support test which want to know what's
             # being sent to stdout.
-            capture_config = _get_stdout_config(level_override)
+            # debug here is true because we need to capture debug events, and we pass in false in main
+            capture_config = _get_stdout_config(log_format, True, use_colors)
             capture_config.output_stream = _CAPTURE_STREAM
             EVENT_MANAGER.add_logger(capture_config)
 
         # create and add the file logger to the event manager
-        EVENT_MANAGER.add_logger(_get_logfile_config(os.path.join(log_path, "dbt.log")))
+        EVENT_MANAGER.add_logger(
+            _get_logfile_config(os.path.join(log_path, "dbt.log"), use_colors, log_format)
+        )
 
 
-def _get_stdout_config(level: Optional[EventLevel] = None) -> LoggerConfig:
+def _get_stdout_config(log_format: str, debug: bool, use_colors: bool) -> LoggerConfig:
     fmt = LineFormat.PlainText
-    if flags.LOG_FORMAT == "json":
+    if log_format == "json":
         fmt = LineFormat.Json
-    elif flags.DEBUG:
+    elif debug:
         fmt = LineFormat.DebugText
+    level = EventLevel.DEBUG if debug else EventLevel.INFO
 
     return LoggerConfig(
         name="stdout_log",
-        level=level or (EventLevel.DEBUG if flags.DEBUG else EventLevel.INFO),
-        use_colors=bool(flags.USE_COLORS),
+        level=level,
+        use_colors=use_colors,
         line_format=fmt,
         scrubber=env_scrubber,
         filter=partial(
-            _stdout_filter, bool(flags.LOG_CACHE_EVENTS), bool(flags.DEBUG), bool(flags.QUIET)
+            _stdout_filter, bool(flags.LOG_CACHE_EVENTS), debug, bool(flags.QUIET), log_format
         ),
         output_stream=sys.stdout,
     )
 
 
 def _stdout_filter(
-    log_cache_events: bool, debug_mode: bool, quiet_mode: bool, msg: EventMsg
+    log_cache_events: bool, debug_mode: bool, quiet_mode: bool, log_format: str, msg: EventMsg
 ) -> bool:
     return (
         not isinstance(msg.data, NoStdOut)
         and (not isinstance(msg.data, Cache) or log_cache_events)
         and (EventLevel(msg.info.level) != EventLevel.DEBUG or debug_mode)
         and (EventLevel(msg.info.level) == EventLevel.ERROR or not quiet_mode)
-        and not (flags.LOG_FORMAT == "json" and type(msg.data) == EmptyLine)
+        and not (log_format == "json" and type(msg.data) == EmptyLine)
     )
 
 
-def _get_logfile_config(log_path: str) -> LoggerConfig:
+def _get_logfile_config(log_path: str, use_colors: bool, log_format: str) -> LoggerConfig:
     return LoggerConfig(
         name="file_log",
-        line_format=LineFormat.Json if flags.LOG_FORMAT == "json" else LineFormat.DebugText,
-        use_colors=bool(flags.USE_COLORS),
+        line_format=LineFormat.Json if log_format == "json" else LineFormat.DebugText,
+        use_colors=use_colors,
         level=EventLevel.DEBUG,  # File log is *always* debug level
         scrubber=env_scrubber,
-        filter=partial(_logfile_filter, bool(flags.LOG_CACHE_EVENTS)),
+        filter=partial(_logfile_filter, bool(flags.LOG_CACHE_EVENTS), log_format),
         output_file_name=log_path,
     )
 
 
-def _logfile_filter(log_cache_events: bool, msg: EventMsg) -> bool:
+def _logfile_filter(log_cache_events: bool, log_format: str, msg: EventMsg) -> bool:
     return (
         not isinstance(msg.data, NoFile)
         and not (isinstance(msg.data, Cache) and not log_cache_events)
-        and not (flags.LOG_FORMAT == "json" and type(msg.data) == EmptyLine)
+        and not (log_format == "json" and type(msg.data) == EmptyLine)
     )
 
 
-def _get_logbook_log_config(level: Optional[EventLevel] = None) -> LoggerConfig:
-    config = _get_stdout_config(level)
+def _get_logbook_log_config(debug: bool) -> LoggerConfig:
+    # use the default one since this code should be removed when we remove logbook
+    config = _get_stdout_config("", debug, bool(flags.USE_COLORS))
     config.name = "logbook_log"
     config.filter = NoFilter if flags.LOG_CACHE_EVENTS else lambda e: not isinstance(e.data, Cache)
     config.logger = GLOBAL_LOGGER
@@ -114,9 +120,10 @@ def cleanup_event_logger():
 # create a default configuration with default settings and no file output.
 EVENT_MANAGER: EventManager = EventManager()
 EVENT_MANAGER.add_logger(
-    _get_logbook_log_config() if flags.ENABLE_LEGACY_LOGGER else _get_stdout_config()
+    _get_logbook_log_config(flags.DEBUG)  # type: ignore
+    if flags.ENABLE_LEGACY_LOGGER
+    else _get_stdout_config(flags.LOG_FORMAT, flags.DEBUG, flags.USE_COLORS)  # type: ignore
 )
-
 
 # This global, and the following two functions for capturing stdout logs are
 # an unpleasant hack we intend to remove as part of API-ification. The GitHub

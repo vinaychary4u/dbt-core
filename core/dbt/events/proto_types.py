@@ -1055,6 +1055,23 @@ class UnableToPartialParseMsg(betterproto.Message):
 
 
 @dataclass
+class StateCheckVarsHash(betterproto.Message):
+    """I025"""
+
+    checksum: str = betterproto.string_field(1)
+    vars: str = betterproto.string_field(2)
+    profile: str = betterproto.string_field(3)
+    target: str = betterproto.string_field(4)
+    version: str = betterproto.string_field(5)
+
+
+@dataclass
+class StateCheckVarsHashMsg(betterproto.Message):
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "StateCheckVarsHash" = betterproto.message_field(2)
+
+
+@dataclass
 class PartialParsingNotEnabled(betterproto.Message):
     """I028"""
 
@@ -2844,6 +2861,19 @@ class RunResultWarningMessage(betterproto.Message):
 class RunResultWarningMessageMsg(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
     data: "RunResultWarningMessage" = betterproto.message_field(2)
+
+
+@dataclass
+class Note(betterproto.Message):
+    """Z050"""
+
+    msg: str = betterproto.string_field(1)
+
+
+@dataclass
+class NoteMsg(betterproto.Message):
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "Note" = betterproto.message_field(2)
 
 
 @dataclass

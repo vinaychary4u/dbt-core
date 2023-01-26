@@ -16,20 +16,20 @@ LOGS_DIR := ./logs
 USE_DEFAULT_CI_FLAGS ?= true
 
 DEFAULT_CI_FLAGS =\
-		DBT_TEST_USER_1=dbt_test_user_1\
-		DBT_TEST_USER_2=dbt_test_user_2\
-		DBT_TEST_USER_3=dbt_test_user_3\
-		RUSTFLAGS="-D warnings"\
-		LOG_DIR =./logs\
-		DBT_LOG_FORMAT=json
+	DBT_TEST_USER_1=dbt_test_user_1\
+	DBT_TEST_USER_2=dbt_test_user_2\
+	DBT_TEST_USER_3=dbt_test_user_3\
+	RUSTFLAGS="-D warnings"\
+	LOG_DIR =./logs\
+	DBT_LOG_FORMAT=json
 
 # CUSTOM_CI_FLAGS =\
-# 		DBT_TEST_USER_1=\
-# 		DBT_TEST_USER_2=\
-# 		DBT_TEST_USER_3=\
-# 		RUSTFLAGS=\
-# 		LOG_DIR =\
-# 		DBT_LOG_FORMAT=
+	DBT_TEST_USER_1=\
+	DBT_TEST_USER_2=\
+	DBT_TEST_USER_3=\
+	RUSTFLAGS=\
+	LOG_DIR =\
+	DBT_LOG_FORMAT=
 
 
 

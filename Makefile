@@ -20,7 +20,7 @@ DEFAULT_CI_FLAGS =\
 	DBT_TEST_USER_2=dbt_test_user_2\
 	DBT_TEST_USER_3=dbt_test_user_3\
 	RUSTFLAGS="-D warnings"\
-	LOG_DIR =./logs\
+	LOG_DIR=./logs\
 	DBT_LOG_FORMAT=json
 
 # CUSTOM_CI_FLAGS =\
@@ -28,7 +28,7 @@ DEFAULT_CI_FLAGS =\
 	DBT_TEST_USER_2=\
 	DBT_TEST_USER_3=\
 	RUSTFLAGS=\
-	LOG_DIR =\
+	LOG_DIR=\
 	DBT_LOG_FORMAT=
 
 

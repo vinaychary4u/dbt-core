@@ -3,7 +3,7 @@ from dbt.constants import METADATA_ENV_PREFIX
 from dbt.events.base_types import BaseEvent, Cache, EventLevel, NoFile, NoStdOut, EventMsg
 from dbt.events.eventmgr import EventManager, LoggerConfig, LineFormat, NoFilter
 from dbt.events.helpers import env_secrets, scrub_secrets
-from dbt.events.types import EmptyLine
+from dbt.events.types import Formatting
 import dbt.flags as flags
 from dbt.logger import GLOBAL_LOGGER, make_log_dir_if_missing
 from functools import partial
@@ -70,7 +70,7 @@ def _stdout_filter(
         and (not isinstance(msg.data, Cache) or log_cache_events)
         and (EventLevel(msg.info.level) != EventLevel.DEBUG or debug_mode)
         and (EventLevel(msg.info.level) == EventLevel.ERROR or not quiet_mode)
-        and not (log_format == "json" and type(msg.data) == EmptyLine)
+        and not (log_format == "json" and type(msg.data) == Formatting)
     )
 
 
@@ -90,7 +90,7 @@ def _logfile_filter(log_cache_events: bool, log_format: str, msg: EventMsg) -> b
     return (
         not isinstance(msg.data, NoFile)
         and not (isinstance(msg.data, Cache) and not log_cache_events)
-        and not (log_format == "json" and type(msg.data) == EmptyLine)
+        and not (log_format == "json" and type(msg.data) == Formatting)
     )
 
 

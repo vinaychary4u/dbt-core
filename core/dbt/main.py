@@ -210,11 +210,13 @@ def run_from_args(parsed):
     # WHY WE SET DEBUG TO BE TRUE HERE previously?
     setup_event_logger(log_path or "logs", "json", False, False)
 
-    fire_event(MainReportVersion(version=str(dbt.version.installed), log_version=LOG_VERSION))
-    fire_event(MainReportArgs(args=args_to_dict(parsed)))
+    # For the ListTask, filter out system report logs to allow piping ls output to jq, etc
+    if not list_task.ListTask == parsed.cls:
+        fire_event(MainReportVersion(version=str(dbt.version.installed), log_version=LOG_VERSION))
+        fire_event(MainReportArgs(args=args_to_dict(parsed)))
 
-    if dbt.tracking.active_user is not None:  # mypy appeasement, always true
-        fire_event(MainTrackingUserState(user_state=dbt.tracking.active_user.state()))
+        if dbt.tracking.active_user is not None:  # mypy appeasement, always true
+            fire_event(MainTrackingUserState(user_state=dbt.tracking.active_user.state()))
 
     results = None
     # this has been updated with project_id and adapter info removed, these will be added to new cli work

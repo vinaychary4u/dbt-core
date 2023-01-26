@@ -8,16 +8,30 @@ endif
 
 LOGS_DIR := ./logs
 
-# Optional flag to invoke tests using our CI env.
-# But we always want these active for structured
-# log testing.
-CI_FLAGS =\
-	DBT_TEST_USER_1=dbt_test_user_1\
-	DBT_TEST_USER_2=dbt_test_user_2\
-	DBT_TEST_USER_3=dbt_test_user_3\
-	RUSTFLAGS="-D warnings"\
-	LOG_DIR=./logs\
-	DBT_LOG_FORMAT=json
+# Flags that dbt Labs uses in our CI env. To override
+# these, preface the `make` command on your command
+# line with CI_FLAGS=false. Then, uncomment the
+# CUSTOM_CI_FLAGS variable and fill with values that
+# fit your test suite's needs.
+USE_DEFAULT_CI_FLAGS ?= true
+
+DEFAULT_CI_FLAGS =\
+		DBT_TEST_USER_1=dbt_test_user_1\
+		DBT_TEST_USER_2=dbt_test_user_2\
+		DBT_TEST_USER_3=dbt_test_user_3\
+		RUSTFLAGS="-D warnings"\
+		LOG_DIR =./logs\
+		DBT_LOG_FORMAT=json
+
+# CUSTOM_CI_FLAGS =\
+# 		DBT_TEST_USER_1=\
+# 		DBT_TEST_USER_2=\
+# 		DBT_TEST_USER_3=\
+# 		RUSTFLAGS=\
+# 		LOG_DIR =\
+# 		DBT_LOG_FORMAT=
+
+
 
 .PHONY: dev_req
 dev_req: ## Installs dbt-* packages in develop mode along with only development dependencies.
@@ -66,7 +80,7 @@ test: .env ## Runs unit tests with py and code checks against staged changes.
 .PHONY: integration
 integration: .env ## Runs postgres integration tests with py-integration
 	@\
-	$(if $(USE_CI_FLAGS), $(CI_FLAGS)) $(DOCKER_CMD) tox -e py-integration -- -nauto
+	$(if $(filter true,$(USE_DEFAULT_CI_FLAGS)), $(DEFAULT_CI_FLAGS), $(CUSTOM_CI_FLAGS))  $(DOCKER_CMD) tox -e py-integration -- -nauto
 
 .PHONY: integration-fail-fast
 integration-fail-fast: .env ## Runs postgres integration tests with py-integration in "fail fast" mode.
@@ -77,7 +91,7 @@ integration-fail-fast: .env ## Runs postgres integration tests with py-integrati
 interop: clean
 	@\
 	mkdir $(LOGS_DIR) && \
-	$(CI_FLAGS) $(DOCKER_CMD) tox -e py-integration -- -nauto && \
+	$(DEFAULT_CI_FLAGS) $(DOCKER_CMD) tox -e py-integration -- -nauto && \
 	LOG_DIR=$(LOGS_DIR) cargo run --manifest-path test/interop/log_parsing/Cargo.toml
 
 .PHONY: setup-db

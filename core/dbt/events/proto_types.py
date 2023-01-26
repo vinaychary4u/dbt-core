@@ -447,65 +447,6 @@ class InternalDeprecationMsg(betterproto.Message):
 
 
 @dataclass
-class PackageRedirectDeprecation(betterproto.Message):
-    """D001"""
-
-    info: "EventInfo" = betterproto.message_field(1)
-    old_name: str = betterproto.string_field(2)
-    new_name: str = betterproto.string_field(3)
-
-
-@dataclass
-class PackageInstallPathDeprecation(betterproto.Message):
-    """D002"""
-
-    info: "EventInfo" = betterproto.message_field(1)
-
-
-@dataclass
-class ConfigSourcePathDeprecation(betterproto.Message):
-    """D003"""
-
-    info: "EventInfo" = betterproto.message_field(1)
-    deprecated_path: str = betterproto.string_field(2)
-    exp_path: str = betterproto.string_field(3)
-
-
-@dataclass
-class ConfigDataPathDeprecation(betterproto.Message):
-    """D004"""
-
-    info: "EventInfo" = betterproto.message_field(1)
-    deprecated_path: str = betterproto.string_field(2)
-    exp_path: str = betterproto.string_field(3)
-
-
-@dataclass
-class AdapterDeprecationWarning(betterproto.Message):
-    """D005"""
-
-    info: "EventInfo" = betterproto.message_field(1)
-    old_name: str = betterproto.string_field(2)
-    new_name: str = betterproto.string_field(3)
-
-
-@dataclass
-class MetricAttributesRenamed(betterproto.Message):
-    """D006"""
-
-    info: "EventInfo" = betterproto.message_field(1)
-    metric_name: str = betterproto.string_field(2)
-
-
-@dataclass
-class ExposureNameDeprecation(betterproto.Message):
-    """D007"""
-
-    info: "EventInfo" = betterproto.message_field(1)
-    exposure: str = betterproto.string_field(2)
-
-
-@dataclass
 class AdapterEventDebug(betterproto.Message):
     """E001"""
 
@@ -928,14 +869,6 @@ class CatalogGenerationErrorMsg(betterproto.Message):
 
 
 @dataclass
-class CatalogGenerationError(betterproto.Message):
-    """E040"""
-
-    info: "EventInfo" = betterproto.message_field(1)
-    exc: str = betterproto.string_field(2)
-
-
-@dataclass
 class WriteCatalogFailure(betterproto.Message):
     """E041"""
 
@@ -1043,6 +976,14 @@ class ParseCmdOutMsg(betterproto.Message):
 
 
 @dataclass
+class ParseCmdPerfInfoPath(betterproto.Message):
+    """I010"""
+
+    info: "EventInfo" = betterproto.message_field(1)
+    path: str = betterproto.string_field(2)
+
+
+@dataclass
 class GenericTestFileParse(betterproto.Message):
     """I011"""
 
@@ -1123,6 +1064,23 @@ class UnableToPartialParseMsg(betterproto.Message):
 
 
 @dataclass
+class StateCheckVarsHash(betterproto.Message):
+    """I025"""
+
+    checksum: str = betterproto.string_field(1)
+    vars: str = betterproto.string_field(2)
+    profile: str = betterproto.string_field(3)
+    target: str = betterproto.string_field(4)
+    version: str = betterproto.string_field(5)
+
+
+@dataclass
+class StateCheckVarsHashMsg(betterproto.Message):
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "StateCheckVarsHash" = betterproto.message_field(2)
+
+
+@dataclass
 class PartialParsingNotEnabled(betterproto.Message):
     """I028"""
 
@@ -1148,123 +1106,6 @@ class ParsedFileLoadFailed(betterproto.Message):
 class ParsedFileLoadFailedMsg(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
     data: "ParsedFileLoadFailed" = betterproto.message_field(2)
-
-
-@dataclass
-class StaticParserCausedJinjaRendering(betterproto.Message):
-    """I031"""
-
-    path: str = betterproto.string_field(1)
-
-
-@dataclass
-class StaticParserCausedJinjaRenderingMsg(betterproto.Message):
-    info: "EventInfo" = betterproto.message_field(1)
-    data: "StaticParserCausedJinjaRendering" = betterproto.message_field(2)
-
-
-@dataclass
-class UsingExperimentalParser(betterproto.Message):
-    """I032"""
-
-    path: str = betterproto.string_field(1)
-
-
-@dataclass
-class UsingExperimentalParserMsg(betterproto.Message):
-    info: "EventInfo" = betterproto.message_field(1)
-    data: "UsingExperimentalParser" = betterproto.message_field(2)
-
-
-@dataclass
-class SampleFullJinjaRendering(betterproto.Message):
-    """I033"""
-
-    path: str = betterproto.string_field(1)
-
-
-@dataclass
-class SampleFullJinjaRenderingMsg(betterproto.Message):
-    info: "EventInfo" = betterproto.message_field(1)
-    data: "SampleFullJinjaRendering" = betterproto.message_field(2)
-
-
-@dataclass
-class StaticParserFallbackJinjaRendering(betterproto.Message):
-    """I034"""
-
-    path: str = betterproto.string_field(1)
-
-
-@dataclass
-class StaticParserFallbackJinjaRenderingMsg(betterproto.Message):
-    info: "EventInfo" = betterproto.message_field(1)
-    data: "StaticParserFallbackJinjaRendering" = betterproto.message_field(2)
-
-
-@dataclass
-class StaticParsingMacroOverrideDetected(betterproto.Message):
-    """I035"""
-
-    path: str = betterproto.string_field(1)
-
-
-@dataclass
-class StaticParsingMacroOverrideDetectedMsg(betterproto.Message):
-    info: "EventInfo" = betterproto.message_field(1)
-    data: "StaticParsingMacroOverrideDetected" = betterproto.message_field(2)
-
-
-@dataclass
-class StaticParserSuccess(betterproto.Message):
-    """I036"""
-
-    path: str = betterproto.string_field(1)
-
-
-@dataclass
-class StaticParserSuccessMsg(betterproto.Message):
-    info: "EventInfo" = betterproto.message_field(1)
-    data: "StaticParserSuccess" = betterproto.message_field(2)
-
-
-@dataclass
-class StaticParserFailure(betterproto.Message):
-    """I037"""
-
-    path: str = betterproto.string_field(1)
-
-
-@dataclass
-class StaticParserFailureMsg(betterproto.Message):
-    info: "EventInfo" = betterproto.message_field(1)
-    data: "StaticParserFailure" = betterproto.message_field(2)
-
-
-@dataclass
-class ExperimentalParserSuccess(betterproto.Message):
-    """I038"""
-
-    path: str = betterproto.string_field(1)
-
-
-@dataclass
-class ExperimentalParserSuccessMsg(betterproto.Message):
-    info: "EventInfo" = betterproto.message_field(1)
-    data: "ExperimentalParserSuccess" = betterproto.message_field(2)
-
-
-@dataclass
-class ExperimentalParserFailure(betterproto.Message):
-    """I039"""
-
-    path: str = betterproto.string_field(1)
-
-
-@dataclass
-class ExperimentalParserFailureMsg(betterproto.Message):
-    info: "EventInfo" = betterproto.message_field(1)
-    data: "ExperimentalParserFailure" = betterproto.message_field(2)
 
 
 @dataclass
@@ -1430,14 +1271,6 @@ class NoNodeForYamlKeyMsg(betterproto.Message):
 
 
 @dataclass
-class MacroPatchNotFound(betterproto.Message):
-    """I059"""
-
-    info: "EventInfo" = betterproto.message_field(1)
-    patch_name: str = betterproto.string_field(2)
-
-
-@dataclass
 class MacroNotFoundForPatch(betterproto.Message):
     """I059"""
 
@@ -1481,6 +1314,34 @@ class JinjaLogWarning(betterproto.Message):
 class JinjaLogWarningMsg(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
     data: "JinjaLogWarning" = betterproto.message_field(2)
+
+
+@dataclass
+class JinjaLogInfo(betterproto.Message):
+    """I062"""
+
+    node_info: "NodeInfo" = betterproto.message_field(1)
+    msg: str = betterproto.string_field(2)
+
+
+@dataclass
+class JinjaLogInfoMsg(betterproto.Message):
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "JinjaLogInfo" = betterproto.message_field(2)
+
+
+@dataclass
+class JinjaLogDebug(betterproto.Message):
+    """I063"""
+
+    node_info: "NodeInfo" = betterproto.message_field(1)
+    msg: str = betterproto.string_field(2)
+
+
+@dataclass
+class JinjaLogDebugMsg(betterproto.Message):
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "JinjaLogDebug" = betterproto.message_field(2)
 
 
 @dataclass
@@ -1615,34 +1476,6 @@ class SelectorReportInvalidSelector(betterproto.Message):
 class SelectorReportInvalidSelectorMsg(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
     data: "SelectorReportInvalidSelector" = betterproto.message_field(2)
-
-
-@dataclass
-class JinjaLogInfo(betterproto.Message):
-    """M011"""
-
-    node_info: "NodeInfo" = betterproto.message_field(1)
-    msg: str = betterproto.string_field(2)
-
-
-@dataclass
-class JinjaLogInfoMsg(betterproto.Message):
-    info: "EventInfo" = betterproto.message_field(1)
-    data: "JinjaLogInfo" = betterproto.message_field(2)
-
-
-@dataclass
-class JinjaLogDebug(betterproto.Message):
-    """M012"""
-
-    node_info: "NodeInfo" = betterproto.message_field(1)
-    msg: str = betterproto.string_field(2)
-
-
-@dataclass
-class JinjaLogDebugMsg(betterproto.Message):
-    info: "EventInfo" = betterproto.message_field(1)
-    data: "JinjaLogDebug" = betterproto.message_field(2)
 
 
 @dataclass
@@ -1883,23 +1716,6 @@ class NoNodesForSelectionCriteriaMsg(betterproto.Message):
 
 
 @dataclass
-class DepsUnpinned(betterproto.Message):
-    """M029"""
-
-    info: "EventInfo" = betterproto.message_field(1)
-    revision: str = betterproto.string_field(2)
-    git: str = betterproto.string_field(3)
-
-
-@dataclass
-class NoNodesForSelectionCriteria(betterproto.Message):
-    """M030"""
-
-    info: "EventInfo" = betterproto.message_field(1)
-    spec_raw: str = betterproto.string_field(2)
-
-
-@dataclass
 class RunningOperationCaughtError(betterproto.Message):
     """Q001"""
 
@@ -1949,19 +1765,6 @@ class SeedHeader(betterproto.Message):
 class SeedHeaderMsg(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
     data: "SeedHeader" = betterproto.message_field(2)
-
-
-@dataclass
-class SeedHeaderSeparator(betterproto.Message):
-    """Q005"""
-
-    len_header: int = betterproto.int32_field(1)
-
-
-@dataclass
-class SeedHeaderSeparatorMsg(betterproto.Message):
-    info: "EventInfo" = betterproto.message_field(1)
-    data: "SeedHeaderSeparator" = betterproto.message_field(2)
 
 
 @dataclass
@@ -2319,13 +2122,6 @@ class NoNodesSelectedMsg(betterproto.Message):
 
 
 @dataclass
-class NoNodesSelected(betterproto.Message):
-    """Q038"""
-
-    info: "EventInfo" = betterproto.message_field(1)
-
-
-@dataclass
 class CatchableExceptionOnRun(betterproto.Message):
     """W002"""
 
@@ -2610,16 +2406,16 @@ class OpenCommandMsg(betterproto.Message):
 
 
 @dataclass
-class EmptyLine(betterproto.Message):
+class Formatting(betterproto.Message):
     """Z017"""
 
-    pass
+    msg: str = betterproto.string_field(1)
 
 
 @dataclass
-class EmptyLineMsg(betterproto.Message):
+class FormattingMsg(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
-    data: "EmptyLine" = betterproto.message_field(2)
+    data: "Formatting" = betterproto.message_field(2)
 
 
 @dataclass
@@ -2944,6 +2740,58 @@ class RunResultWarningMessage(betterproto.Message):
 class RunResultWarningMessageMsg(betterproto.Message):
     info: "EventInfo" = betterproto.message_field(1)
     data: "RunResultWarningMessage" = betterproto.message_field(2)
+
+
+@dataclass
+class DebugCmdOut(betterproto.Message):
+    """Z047"""
+
+    msg: str = betterproto.string_field(1)
+
+
+@dataclass
+class DebugCmdOutMsg(betterproto.Message):
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "DebugCmdOut" = betterproto.message_field(2)
+
+
+@dataclass
+class DebugCmdResult(betterproto.Message):
+    """Z048"""
+
+    msg: str = betterproto.string_field(1)
+
+
+@dataclass
+class DebugCmdResultMsg(betterproto.Message):
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "DebugCmdResult" = betterproto.message_field(2)
+
+
+@dataclass
+class ListCmdOut(betterproto.Message):
+    """Z049"""
+
+    msg: str = betterproto.string_field(1)
+
+
+@dataclass
+class ListCmdOutMsg(betterproto.Message):
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "ListCmdOut" = betterproto.message_field(2)
+
+
+@dataclass
+class Note(betterproto.Message):
+    """Z050"""
+
+    msg: str = betterproto.string_field(1)
+
+
+@dataclass
+class NoteMsg(betterproto.Message):
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "Note" = betterproto.message_field(2)
 
 
 @dataclass

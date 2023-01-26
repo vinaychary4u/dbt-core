@@ -10,8 +10,8 @@ LOGS_DIR := ./logs
 
 # Flags that dbt Labs uses in our CI env. To override
 # these, preface the `make` command on your command
-# line with CI_FLAGS=false. Then, uncomment the
-# CUSTOM_CI_FLAGS variable and fill with values that
+# line with USE_DEFAULT_CI_FLAGS=false. Then, uncomment
+# the CUSTOM_CI_FLAGS variable and fill with values that
 # fit your test suite's needs.
 USE_DEFAULT_CI_FLAGS ?= true
 

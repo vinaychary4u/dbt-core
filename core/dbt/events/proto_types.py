@@ -984,6 +984,14 @@ class ParseCmdPerfInfoPath(betterproto.Message):
 
 
 @dataclass
+class ParseCmdPerfInfoPathMsg(betterproto.Message):
+    """I010"""
+
+    info: "EventInfo" = betterproto.message_field(1)
+    data: "ParseCmdPerfInfoPath" = betterproto.message_field(2)
+
+
+@dataclass
 class GenericTestFileParse(betterproto.Message):
     """I011"""
 

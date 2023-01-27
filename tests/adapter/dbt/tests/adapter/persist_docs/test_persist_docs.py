@@ -2,11 +2,9 @@ import json
 import os
 import pytest
 
-from dbt.tests.util import (
-    run_dbt,
-)
+from dbt.tests.util import run_dbt
 
-from tests.functional.persist_docs_tests.fixtures import (
+from dbt.tests.adapter.persist_docs.fixtures import (
     _DOCS__MY_FUN_DOCS,
     _MODELS__MISSING_COLUMN,
     _MODELS__MODEL_USING_QUOTE_UTIL,
@@ -90,7 +88,7 @@ class BasePersistDocsTest:
         assert view_name_comment is None
 
 
-class TestPersistDocs(BasePersistDocsTest):
+class BasePersistDocs(BasePersistDocsTest):
     @pytest.fixture(scope="class")
     def project_config_update(self):
         return {
@@ -120,7 +118,7 @@ class TestPersistDocs(BasePersistDocsTest):
         self._assert_has_view_comments(no_docs_node, False, False)
 
 
-class TestPersistDocsColumnMissing(BasePersistDocsTest):
+class BasePersistDocsColumnMissing(BasePersistDocsTest):
     @pytest.fixture(scope="class")
     def project_config_update(self):
         return {
@@ -152,7 +150,10 @@ class TestPersistDocsColumnMissing(BasePersistDocsTest):
         assert table_id_comment.startswith("test id column description")
 
 
-class TestPersistDocsColumnComment:
+class BasePersistDocsCommentOnQuotedColumn:
+    """Covers edge case where column with comment must be quoted.
+    We set this using the `quote:` tag in the property file."""
+
     @pytest.fixture(scope="class")
     def models(self):
         return {"quote_model.sql": _MODELS__MODEL_USING_QUOTE_UTIL}
@@ -192,3 +193,15 @@ class TestPersistDocsColumnComment:
 
     def test_postgres_comments(self, run_has_comments):
         run_has_comments()
+
+
+class TestPersistDocs(BasePersistDocs):
+    pass
+
+
+class TestPersistDocsColumnMissing(BasePersistDocsColumnMissing):
+    pass
+
+
+class TestPersistDocsCommentOnQuotedColumn(BasePersistDocsCommentOnQuotedColumn):
+    pass

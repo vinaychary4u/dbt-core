@@ -6,31 +6,28 @@ ifeq ($(USE_DOCKER),true)
 	DOCKER_CMD := docker-compose run --rm test
 endif
 
-LOGS_DIR := ./logs
+#
+# Set or override CI flags
+#
+ifeq (./makefile.test.env,$(wildcard ./makefile.test.env))
+	include ./makefile.test.env
+endif
 
-# Flags that dbt Labs uses in our CI env. To override
-# these, preface the `make` command on your command
-# line with USE_DEFAULT_CI_FLAGS=false. Then, uncomment
-# the CUSTOM_CI_FLAGS variable and fill with values that
-# fit your test suite's needs.
-USE_DEFAULT_CI_FLAGS ?= true
+# DO NOT edit. Override in a makefile.test.env. See CONTRIBUTING.md
+DBT_TEST_USER_1 := $(if $(DBT_TEST_USER_1),$(DBT_TEST_USER_1),dbt_test_user_1)
+DBT_TEST_USER_2 := $(if $(DBT_TEST_USER_2),$(DBT_TEST_USER_2),dbt_test_user_2)
+DBT_TEST_USER_3 := $(if $(DBT_TEST_USER_3),$(DBT_TEST_USER_3),dbt_test_user_3)
+RUSTFLAGS	:= $(if $(RUSTFLAGS),$(RUSTFLAGS),\"-D warnings\")
+LOG_DIR		:= $(if $(LOG_DIR),$(LOG_DIR),./logs)
+DBT_LOG_FORMAT  := $(if $(DBT_LOG_FORMAT),$(DBT_LOG_FORMAT),json)
 
-DEFAULT_CI_FLAGS =\
-	DBT_TEST_USER_1=dbt_test_user_1\
-	DBT_TEST_USER_2=dbt_test_user_2\
-	DBT_TEST_USER_3=dbt_test_user_3\
-	RUSTFLAGS="-D warnings"\
-	LOG_DIR=./logs\
-	DBT_LOG_FORMAT=json
-
-# CUSTOM_CI_FLAGS =\
-	DBT_TEST_USER_1=\
-	DBT_TEST_USER_2=\
-	DBT_TEST_USER_3=\
-	RUSTFLAGS=\
-	LOG_DIR=\
-	DBT_LOG_FORMAT=
-
+CI_FLAGS =\
+	DBT_TEST_USER_1=$(DBT_TEST_USER_1)\
+	DBT_TEST_USER_2=$(DBT_TEST_USER_2)\
+	DBT_TEST_USER_3=$(DBT_TEST_USER_3)\
+	RUSTFLAGS=$(RUSTFLAGS)\
+	LOG_DIR=$(LOG_DIR)\
+	DBT_LOG_FORMAT=$(DBT_LOG_FORMAT)
 
 
 .PHONY: dev_req
@@ -80,7 +77,7 @@ test: .env ## Runs unit tests with py and code checks against staged changes.
 .PHONY: integration
 integration: .env ## Runs postgres integration tests with py-integration
 	@\
-	$(if $(filter true,$(USE_DEFAULT_CI_FLAGS)), $(DEFAULT_CI_FLAGS), $(CUSTOM_CI_FLAGS))  $(DOCKER_CMD) tox -e py-integration -- -nauto
+	$(CI_FLAGS) $(DOCKER_CMD) tox -e py-integration -- -nauto
 
 .PHONY: integration-fail-fast
 integration-fail-fast: .env ## Runs postgres integration tests with py-integration in "fail fast" mode.
@@ -90,9 +87,9 @@ integration-fail-fast: .env ## Runs postgres integration tests with py-integrati
 .PHONY: interop
 interop: clean
 	@\
-	mkdir $(LOGS_DIR) && \
-	$(DEFAULT_CI_FLAGS) $(DOCKER_CMD) tox -e py-integration -- -nauto && \
-	LOG_DIR=$(LOGS_DIR) cargo run --manifest-path test/interop/log_parsing/Cargo.toml
+	mkdir $(LOG_DIR) && \
+	$(CI_FLAGS) $(DOCKER_CMD) tox -e py-integration -- -nauto && \
+	LOG_DIR=$(LOG_DIR) cargo run --manifest-path test/interop/log_parsing/Cargo.toml
 
 .PHONY: setup-db
 setup-db: ## Setup Postgres database with docker-compose for system testing.

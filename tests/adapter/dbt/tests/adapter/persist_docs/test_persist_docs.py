@@ -139,7 +139,7 @@ class BasePersistDocsColumnMissing(BasePersistDocsTest):
     def properties(self):
         return {"schema.yml": _PROPERITES__SCHEMA_MISSING_COL}
 
-    def test_postgres_missing_column(self, project):
+    def test_missing_column(self, project):
         run_dbt(["docs", "generate"])
         with open("target/catalog.json") as fp:
             catalog_data = json.load(fp)
@@ -191,7 +191,7 @@ class BasePersistDocsCommentOnQuotedColumn:
 
         return fixt
 
-    def test_postgres_comments(self, run_has_comments):
+    def test_quoted_column_comments(self, run_has_comments):
         run_has_comments()
 
 

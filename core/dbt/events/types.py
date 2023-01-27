@@ -843,6 +843,15 @@ class UnableToPartialParse(InfoLevel, pt.UnableToPartialParse):
         return f"Unable to do partial parsing because {self.reason}"
 
 
+@dataclass
+class StateCheckVarsHash(DebugLevel, pt.StateCheckVarsHash):
+    def code(self):
+        return "I025"
+
+    def message(self) -> str:
+        return f"checksum: {self.checksum}, vars: {self.vars}, profile: {self.profile}, target: {self.target}, version: {self.version}"
+
+
 # Skipped I025, I026, I026, I027
 
 
@@ -864,90 +873,7 @@ class ParsedFileLoadFailed(DebugLevel, pt.ParsedFileLoadFailed):  # noqa
         return f"Failed to load parsed file from disk at {self.path}: {self.exc}"
 
 
-# Skipped I030
-
-
-@dataclass
-class StaticParserCausedJinjaRendering(DebugLevel, pt.StaticParserCausedJinjaRendering):
-    def code(self):
-        return "I031"
-
-    def message(self) -> str:
-        return f"1605: jinja rendering because of STATIC_PARSER flag. file: {self.path}"
-
-
-# TODO: Experimental/static parser uses these for testing and some may be a good use case for
-#       the `TestLevel` logger once we implement it.  Some will probably stay `DebugLevel`.
-@dataclass
-class UsingExperimentalParser(DebugLevel, pt.UsingExperimentalParser):
-    def code(self):
-        return "I032"
-
-    def message(self) -> str:
-        return f"1610: conducting experimental parser sample on {self.path}"
-
-
-@dataclass
-class SampleFullJinjaRendering(DebugLevel, pt.SampleFullJinjaRendering):
-    def code(self):
-        return "I033"
-
-    def message(self) -> str:
-        return f"1611: conducting full jinja rendering sample on {self.path}"
-
-
-@dataclass
-class StaticParserFallbackJinjaRendering(DebugLevel, pt.StaticParserFallbackJinjaRendering):
-    def code(self):
-        return "I034"
-
-    def message(self) -> str:
-        return f"1602: parser fallback to jinja rendering on {self.path}"
-
-
-@dataclass
-class StaticParsingMacroOverrideDetected(DebugLevel, pt.StaticParsingMacroOverrideDetected):
-    def code(self):
-        return "I035"
-
-    def message(self) -> str:
-        return f"1601: detected macro override of ref/source/config in the scope of {self.path}"
-
-
-@dataclass
-class StaticParserSuccess(DebugLevel, pt.StaticParserSuccess):
-    def code(self):
-        return "I036"
-
-    def message(self) -> str:
-        return f"1699: static parser successfully parsed {self.path}"
-
-
-@dataclass
-class StaticParserFailure(DebugLevel, pt.StaticParserFailure):
-    def code(self):
-        return "I037"
-
-    def message(self) -> str:
-        return f"1603: static parser failed on {self.path}"
-
-
-@dataclass
-class ExperimentalParserSuccess(DebugLevel, pt.ExperimentalParserSuccess):
-    def code(self):
-        return "I038"
-
-    def message(self) -> str:
-        return f"1698: experimental parser successfully parsed {self.path}"
-
-
-@dataclass
-class ExperimentalParserFailure(DebugLevel, pt.ExperimentalParserFailure):
-    def code(self):
-        return "I039"
-
-    def message(self) -> str:
-        return f"1604: experimental parser failed on {self.path}"
+# Skipped I030-I039
 
 
 @dataclass
@@ -1162,6 +1088,26 @@ class JinjaLogWarning(WarnLevel, pt.JinjaLogWarning):
         return self.msg
 
 
+@dataclass
+class JinjaLogInfo(InfoLevel, EventStringFunctor, pt.JinjaLogInfo):
+    def code(self):
+        return "I062"
+
+    def message(self) -> str:
+        # This is for the log method used in macros so msg cannot be built here
+        return self.msg
+
+
+@dataclass
+class JinjaLogDebug(DebugLevel, EventStringFunctor, pt.JinjaLogDebug):
+    def code(self):
+        return "I063"
+
+    def message(self) -> str:
+        # This is for the log method used in macros so msg cannot be built here
+        return self.msg
+
+
 # =======================================================
 # M - Deps generation
 # =======================================================
@@ -1173,7 +1119,7 @@ class GitSparseCheckoutSubdirectory(DebugLevel, pt.GitSparseCheckoutSubdirectory
         return "M001"
 
     def message(self) -> str:
-        return f"  Subdirectory specified: {self.subdir}, using sparse checkout."
+        return f"Subdirectory specified: {self.subdir}, using sparse checkout."
 
 
 @dataclass
@@ -1182,7 +1128,7 @@ class GitProgressCheckoutRevision(DebugLevel, pt.GitProgressCheckoutRevision):
         return "M002"
 
     def message(self) -> str:
-        return f"  Checking out revision {self.revision}."
+        return f"Checking out revision {self.revision}."
 
 
 @dataclass
@@ -1218,7 +1164,7 @@ class GitProgressUpdatedCheckoutRange(DebugLevel, pt.GitProgressUpdatedCheckoutR
         return "M006"
 
     def message(self) -> str:
-        return f"  Updated checkout from {self.start_sha} to {self.end_sha}."
+        return f"Updated checkout from {self.start_sha} to {self.end_sha}."
 
 
 @dataclass
@@ -1227,7 +1173,7 @@ class GitProgressCheckedOutAt(DebugLevel, pt.GitProgressCheckedOutAt):
         return "M007"
 
     def message(self) -> str:
-        return f"  Checked out at {self.end_sha}."
+        return f"Checked out at {self.end_sha}."
 
 
 @dataclass
@@ -1261,26 +1207,6 @@ class SelectorReportInvalidSelector(InfoLevel, pt.SelectorReportInvalidSelector)
 
 
 @dataclass
-class JinjaLogInfo(InfoLevel, EventStringFunctor, pt.JinjaLogInfo):
-    def code(self):
-        return "M011"
-
-    def message(self) -> str:
-        # This is for the log method used in macros so msg cannot be built here
-        return self.msg
-
-
-@dataclass
-class JinjaLogDebug(DebugLevel, EventStringFunctor, pt.JinjaLogDebug):
-    def code(self):
-        return "M012"
-
-    def message(self) -> str:
-        # This is for the log method used in macros so msg cannot be built here
-        return self.msg
-
-
-@dataclass
 class DepsNoPackagesFound(InfoLevel, pt.DepsNoPackagesFound):
     def code(self):
         return "M013"
@@ -1304,7 +1230,7 @@ class DepsInstallInfo(InfoLevel, pt.DepsInstallInfo):
         return "M015"
 
     def message(self) -> str:
-        return f"  Installed from {self.version_name}"
+        return f"Installed from {self.version_name}"
 
 
 @dataclass
@@ -1313,7 +1239,7 @@ class DepsUpdateAvailable(InfoLevel, pt.DepsUpdateAvailable):
         return "M016"
 
     def message(self) -> str:
-        return f"  Updated version available: {self.version_latest}"
+        return f"Updated version available: {self.version_latest}"
 
 
 @dataclass
@@ -1322,7 +1248,7 @@ class DepsUpToDate(InfoLevel, pt.DepsUpToDate):
         return "M017"
 
     def message(self) -> str:
-        return "  Up to date!"
+        return "Up to date!"
 
 
 @dataclass
@@ -1331,7 +1257,7 @@ class DepsListSubdirectory(InfoLevel, pt.DepsListSubdirectory):
         return "M018"
 
     def message(self) -> str:
-        return f"   and subdirectory {self.subdirectory}"
+        return f"and subdirectory {self.subdirectory}"
 
 
 @dataclass
@@ -1496,15 +1422,6 @@ class SeedHeader(InfoLevel, pt.SeedHeader):
 
     def message(self) -> str:
         return self.header
-
-
-@dataclass
-class SeedHeaderSeparator(InfoLevel, pt.SeedHeaderSeparator):
-    def code(self):
-        return "Q005"
-
-    def message(self) -> str:
-        return "-" * self.len_header
 
 
 @dataclass
@@ -2084,13 +2001,18 @@ class OpenCommand(InfoLevel, pt.OpenCommand):
         return msg
 
 
+# We use events to create console output, but also think of them as a sequence of important and
+# meaningful occurrences to be used for debugging and monitoring. The Formatting event helps eases
+# the tension between these two goals by allowing empty lines, heading separators, and other
+# formatting to be written to the console, while they can be ignored for other purposes. For
+# general information that isn't simple formatting, the Note event should be used instead.
 @dataclass
-class EmptyLine(InfoLevel, pt.EmptyLine):
+class Formatting(InfoLevel, pt.Formatting):
     def code(self):
         return "Z017"
 
     def message(self) -> str:
-        return ""
+        return self.msg
 
 
 @dataclass
@@ -2266,7 +2188,7 @@ class DepsCreatingLocalSymlink(DebugLevel, pt.DepsCreatingLocalSymlink):
         return "Z037"
 
     def message(self) -> str:
-        return "  Creating symlink to local dependency."
+        return "Creating symlink to local dependency."
 
 
 @dataclass
@@ -2275,7 +2197,7 @@ class DepsSymlinkNotAvailable(DebugLevel, pt.DepsSymlinkNotAvailable):
         return "Z038"
 
     def message(self) -> str:
-        return "  Symlinks are not available on this OS, copying dependency."
+        return "Symlinks are not available on this OS, copying dependency."
 
 
 @dataclass
@@ -2344,4 +2266,42 @@ class RunResultWarningMessage(WarnLevel, EventStringFunctor, pt.RunResultWarning
 
     def message(self) -> str:
         # This is the message on the result object, cannot be formatted in event
+        return self.msg
+
+
+@dataclass
+class DebugCmdOut(InfoLevel, pt.DebugCmdOut):
+    def code(self):
+        return "Z047"
+
+    def message(self) -> str:
+        return self.msg
+
+
+@dataclass
+class DebugCmdResult(InfoLevel, pt.DebugCmdResult):
+    def code(self):
+        return "Z048"
+
+    def message(self) -> str:
+        return self.msg
+
+
+@dataclass
+class ListCmdOut(InfoLevel, pt.ListCmdOut):
+    def code(self):
+        return "Z049"
+
+    def message(self) -> str:
+        return self.msg
+
+
+# The Note event provides a way to log messages which aren't likely to be useful as more structured events.
+# For conslole formatting text like empty lines and separator bars, use the Formatting event instead.
+@dataclass
+class Note(InfoLevel, pt.Note):
+    def code(self):
+        return "Z050"
+
+    def message(self) -> str:
         return self.msg

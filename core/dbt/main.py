@@ -229,15 +229,15 @@ def run_from_args(parsed):
     if task.config is not None:
         log_path = getattr(task.config, "log_path", None)
     log_manager.set_path(log_path)
-    # if 'list' task: set stdout to WARN instead of INFO
-    level_override = parsed.cls.pre_init_hook(parsed)
-    setup_event_logger(log_path or "logs", level_override)
+    setup_event_logger(log_path or "logs")
 
-    fire_event(MainReportVersion(version=str(dbt.version.installed), log_version=LOG_VERSION))
-    fire_event(MainReportArgs(args=args_to_dict(parsed)))
+    # For the ListTask, filter out system report logs to allow piping ls output to jq, etc
+    if not list_task.ListTask == parsed.cls:
+        fire_event(MainReportVersion(version=str(dbt.version.installed), log_version=LOG_VERSION))
+        fire_event(MainReportArgs(args=args_to_dict(parsed)))
 
-    if dbt.tracking.active_user is not None:  # mypy appeasement, always true
-        fire_event(MainTrackingUserState(user_state=dbt.tracking.active_user.state()))
+        if dbt.tracking.active_user is not None:  # mypy appeasement, always true
+            fire_event(MainTrackingUserState(user_state=dbt.tracking.active_user.state()))
 
     results = None
 
@@ -486,7 +486,7 @@ def _build_snapshot_subparser(subparsers, base_subparser):
     return sub
 
 
-def _add_defer_argument(*subparsers):
+def _add_defer_arguments(*subparsers):
     for sub in subparsers:
         sub.add_optional_argument_inverse(
             "--defer",
@@ -499,10 +499,6 @@ def _add_defer_argument(*subparsers):
             """,
             default=flags.DEFER_MODE,
         )
-
-
-def _add_favor_state_argument(*subparsers):
-    for sub in subparsers:
         sub.add_optional_argument_inverse(
             "--favor-state",
             enable_help="""
@@ -580,7 +576,7 @@ def _build_docs_generate_subparser(subparsers, base_subparser):
         Do not run "dbt compile" as part of docs generation
         """,
     )
-    _add_defer_argument(generate_sub)
+    _add_defer_arguments(generate_sub)
     return generate_sub
 
 
@@ -1192,9 +1188,7 @@ def parse_args(args, cls=DBTArgumentParser):
     # list_sub sets up its own arguments.
     _add_selection_arguments(run_sub, compile_sub, generate_sub, test_sub, snapshot_sub, seed_sub)
     # --defer
-    _add_defer_argument(run_sub, test_sub, build_sub, snapshot_sub, compile_sub)
-    # --favor-state
-    _add_favor_state_argument(run_sub, test_sub, build_sub, snapshot_sub)
+    _add_defer_arguments(run_sub, test_sub, build_sub, snapshot_sub, compile_sub)
     # --full-refresh
     _add_table_mutability_arguments(run_sub, compile_sub, build_sub)
 

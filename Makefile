@@ -7,27 +7,19 @@ ifeq ($(USE_DOCKER),true)
 endif
 
 #
-# Set or override CI flags
+# Set CI flags. Do not edit. Override in a makefile.text.env. See CONTRIBUTING.md
 #
 ifeq (./makefile.test.env,$(wildcard ./makefile.test.env))
 	include ./makefile.test.env
 endif
 
-# DO NOT edit. Override in a makefile.test.env. See CONTRIBUTING.md
-DBT_TEST_USER_1 := $(if $(DBT_TEST_USER_1),$(DBT_TEST_USER_1),dbt_test_user_1)
-DBT_TEST_USER_2 := $(if $(DBT_TEST_USER_2),$(DBT_TEST_USER_2),dbt_test_user_2)
-DBT_TEST_USER_3 := $(if $(DBT_TEST_USER_3),$(DBT_TEST_USER_3),dbt_test_user_3)
-RUSTFLAGS	:= $(if $(RUSTFLAGS),$(RUSTFLAGS),-D warnings)
-LOG_DIR		:= $(if $(LOG_DIR),$(LOG_DIR),./logs)
-DBT_LOG_FORMAT  := $(if $(DBT_LOG_FORMAT),$(DBT_LOG_FORMAT),json)
-
 CI_FLAGS =\
-	DBT_TEST_USER_1=$(DBT_TEST_USER_1)\
-	DBT_TEST_USER_2=$(DBT_TEST_USER_2)\
-	DBT_TEST_USER_3=$(DBT_TEST_USER_3)\
-	RUSTFLAGS="$(RUSTFLAGS)"\
-	LOG_DIR=$(LOG_DIR)\
-	DBT_LOG_FORMAT=$(DBT_LOG_FORMAT)
+	DBT_TEST_USER_1=$(if $(DBT_TEST_USER_1),$(DBT_TEST_USER_1),dbt_test_user_1)\
+	DBT_TEST_USER_2=$(if $(DBT_TEST_USER_2),$(DBT_TEST_USER_2),dbt_test_user_2)\
+	DBT_TEST_USER_3=$(if $(DBT_TEST_USER_3),$(DBT_TEST_USER_3),dbt_test_user_3)\
+	RUSTFLAGS=$(if $(RUSTFLAGS),$(RUSTFLAGS),"-D warnings")\
+	LOG_DIR=$(if $(LOG_DIR),$(LOG_DIR),./logs)\
+	DBT_LOG_FORMAT=$(if $(DBT_LOG_FORMAT),$(DBT_LOG_FORMAT),json)
 
 
 .PHONY: dev_req

@@ -18,7 +18,7 @@ from dbt.tests.adapter.persist_docs.fixtures import (
 )
 
 
-class BasePersistDocsTest:
+class BasePersistDocsBase:
     @pytest.fixture(scope="class", autouse=True)
     def setUp(self, project):
         run_dbt(["seed"])
@@ -88,7 +88,7 @@ class BasePersistDocsTest:
         assert view_name_comment is None
 
 
-class BasePersistDocs(BasePersistDocsTest):
+class BasePersistDocs(BasePersistDocsBase):
     @pytest.fixture(scope="class")
     def project_config_update(self):
         return {
@@ -118,7 +118,7 @@ class BasePersistDocs(BasePersistDocsTest):
         self._assert_has_view_comments(no_docs_node, False, False)
 
 
-class BasePersistDocsColumnMissing(BasePersistDocsTest):
+class BasePersistDocsColumnMissing(BasePersistDocsBase):
     @pytest.fixture(scope="class")
     def project_config_update(self):
         return {

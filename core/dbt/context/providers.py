@@ -1316,7 +1316,7 @@ class ModelContext(ProviderContext):
         # only doing this in sql model for backward compatible
         if (
             getattr(self.model, "extra_ctes_injected", None)
-            and self.model.language == ModelLanguage.sql  # type: ignore[union-attr]
+            and self.model.compiled_language == ModelLanguage.sql  # type: ignore[union-attr]
         ):
             # TODO CT-211
             return self.model.compiled_code  # type: ignore[union-attr]

@@ -171,11 +171,15 @@ def read_files(project, files, parser_files, saved_files):
         dbt_ignore_spec,
     )
 
+    from dbt.parser.languages import get_file_extensions
+
+    model_extensions = get_file_extensions()
+
     project_files["ModelParser"] = read_files_for_parser(
         project,
         files,
         project.model_paths,
-        [".sql", ".py", ".ibis"],
+        model_extensions,
         ParseFileType.Model,
         saved_files,
         dbt_ignore_spec,

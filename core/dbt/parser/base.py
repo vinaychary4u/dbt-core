@@ -23,6 +23,8 @@ from dbt import hooks
 from dbt.node_types import NodeType, ModelLanguage
 from dbt.parser.search import FileBlock
 
+from dbt.parser.languages import get_language_providers, get_language_provider_by_name
+
 # internally, the parser may store a less-restrictive type that will be
 # transformed into the final type. But it will have to be derived from
 # ParsedNode to be operable.
@@ -189,13 +191,14 @@ class ConfiguredParser(
         """
         if name is None:
             name = block.name
-        if block.path.relative_path.endswith(".ibis"):
-            language = ModelLanguage.ibis
-        elif block.path.relative_path.endswith(".py"):
-            language = ModelLanguage.python
-        else:
-            # this is not ideal but we have a lot of tests to adjust if don't do it
-            language = ModelLanguage.sql
+
+        # this is pretty silly, but we need "sql" to be the default
+        # even for seeds etc (.csv)
+        # otherwise this breaks a lot of tests
+        language = ModelLanguage.sql
+        for provider in get_language_providers():
+            if block.path.relative_path.endswith(provider.file_ext()):
+                language = ModelLanguage[provider.name()]
 
         dct = {
             "alias": name,
@@ -231,17 +234,6 @@ class ConfiguredParser(
 
     def _context_for(self, parsed_node: IntermediateNode, config: ContextConfig) -> Dict[str, Any]:
         return generate_parser_model_context(parsed_node, self.root_project, self.manifest, config)
-
-    def render_with_context(self, parsed_node: IntermediateNode, config: ContextConfig):
-        # Given the parsed node and a ContextConfig to use during parsing,
-        # render the node's sql with macro capture enabled.
-        # Note: this mutates the config object when config calls are rendered.
-        context = self._context_for(parsed_node, config)
-
-        # this goes through the process of rendering, but just throws away
-        # the rendered result. The "macro capture" is the point?
-        get_rendered(parsed_node.raw_code, context, parsed_node, capture_macros=True)
-        return context
 
     # This is taking the original config for the node, converting it to a dict,
     # updating the config with new config passed in, then re-creating the
@@ -361,7 +353,10 @@ class ConfiguredParser(
 
     def render_update(self, node: IntermediateNode, config: ContextConfig) -> None:
         try:
-            context = self.render_with_context(node, config)
+            provider = get_language_provider_by_name(node.language)
+            provider.validate_raw_code(node)
+            context = self._context_for(node, config)
+            context = provider.update_context(node, config, context)
             self.update_parsed_node_config(node, config, context=context)
         except ValidationError as exc:
             # we got a ValidationError - probably bad types in config()
@@ -406,6 +401,18 @@ class SimpleParser(
 ):
     def transform(self, node):
         return node
+
+
+# TODO: rename these to be more generic (not just SQL)
+# The full inheritance order for models is:
+#  dbt.parser.models.ModelParser,
+#  dbt.parser.base.SimpleSQLParser,
+#  dbt.parser.base.SQLParser,
+#  dbt.parser.base.ConfiguredParser,
+#  dbt.parser.base.Parser,
+#  dbt.parser.base.BaseParser,
+# These fine-grained class distinctions exist to support other parsers
+# e.g. SnapshotParser overrides both 'parse_file' + 'transform'
 
 
 class SQLParser(

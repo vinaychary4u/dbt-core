@@ -66,6 +66,8 @@ class RunHookType(StrEnum):
 
 
 class ModelLanguage(StrEnum):
+    # TODO: how to make this dynamic?
     python = "python"
     sql = "sql"
     ibis = "ibis"
+    prql = "prql"

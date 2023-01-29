@@ -42,6 +42,7 @@ class CompiledNodeMixin(dbtClassMixin):
 @dataclass
 class CompiledNode(ParsedNode, CompiledNodeMixin):
     compiled_code: Optional[str] = None
+    compiled_language: Optional[str] = None  # TODO: ModelLanguage
     extra_ctes_injected: bool = False
     extra_ctes: List[InjectedCTE] = field(default_factory=list)
     relation_name: Optional[str] = None

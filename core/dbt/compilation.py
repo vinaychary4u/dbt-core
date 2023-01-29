@@ -29,11 +29,11 @@ from dbt.exceptions import (
 from dbt.graph import Graph
 from dbt.events.functions import fire_event
 from dbt.events.types import FoundStats, CompilingNode, WritingInjectedSQLForNode
-from dbt.node_types import NodeType, ModelLanguage
+from dbt.node_types import NodeType
 from dbt.events.format import pluralize
 import dbt.tracking
 
-from .language_provider import IbisProvider
+from dbt.parser.languages import get_language_provider_by_name
 
 graph_file_name = "graph.gpickle"
 
@@ -365,59 +365,19 @@ class Compiler:
             {
                 "compiled": False,
                 "compiled_code": None,
+                "compiled_language": None,
                 "extra_ctes_injected": False,
                 "extra_ctes": [],
             }
         )
         compiled_node = _compiled_type_for(node).from_dict(data)
 
-        compiled_node.was_ibis = False
-        if compiled_node.language == ModelLanguage.ibis:
+        context = self._create_node_context(compiled_node, manifest, extra_context)
+        provider = get_language_provider_by_name(node.language)
 
-            provider = IbisProvider()
-            context = self._create_node_context(compiled_node, manifest, extra_context)
-            sql = provider.compile(node.raw_code, context)
-
-            # lol
-            compiled_node.compiled_code = sql
-            compiled_node.language = ModelLanguage.sql
-
-            # efficiency hack?
-            # doesn't seem to help much, if at all
-            compiled_node.was_ibis = True
-
-        elif compiled_node.language == ModelLanguage.python:
-
-            # TODO could we also 'minify' this code at all? just aesthetic, not functional
-
-            # quoating seems like something very specific to sql so far
-            # for all python implementations we are seeing there's no quating.
-            # TODO try to find better way to do this, given that
-            original_quoting = self.config.quoting
-            self.config.quoting = {key: False for key in original_quoting.keys()}
-            context = self._create_node_context(compiled_node, manifest, extra_context)
-
-            postfix = jinja.get_rendered(
-                "{{ py_script_postfix(model) }}",
-                context,
-                node,
-            )
-            # we should NOT jinja render the python model's 'raw code'
-            compiled_node.compiled_code = f"{node.raw_code}\n\n{postfix}"
-            # restore quoting settings in the end since context is lazy evaluated
-            self.config.quoting = original_quoting
-
-        else:
-            if not compiled_node.was_ibis:
-                context = self._create_node_context(compiled_node, manifest, extra_context)
-                compiled_node.compiled_code = jinja.get_rendered(
-                    node.raw_code,
-                    context,
-                    node,
-                )
-
+        compiled_node.compiled_code = provider.get_compiled_code(node, context)
         compiled_node.relation_name = self._get_relation_name(node)
-
+        compiled_node.compiled_language = provider.compiled_language()
         compiled_node.compiled = True
 
         return compiled_node
@@ -533,6 +493,8 @@ class Compiler:
         fire_event(WritingInjectedSQLForNode(unique_id=node.unique_id))
 
         if node.compiled_code:
+            # TODO: should compiled_path depend on the compiled_language?
+            # e.g. "model.prql" (source) -> "model.sql" (compiled)
             node.compiled_path = node.write_node(
                 self.config.target_path, "compiled", node.compiled_code
             )

@@ -159,6 +159,9 @@ def _validate_materialization_relations_dict(inp: Dict[Any, Any], model) -> List
 
 
 class ModelRunner(CompileRunner):
+    def needs_connection(self):
+        return True
+
     def get_node_representation(self):
         display_quote_policy = {"database": False, "schema": False, "identifier": False}
         relation = self.adapter.Relation.create_from(
@@ -262,12 +265,12 @@ class ModelRunner(CompileRunner):
         context_config = context["config"]
 
         mat_has_supported_langs = hasattr(materialization_macro, "supported_languages")
-        model_lang_supported = model.language in materialization_macro.supported_languages
+        model_lang_supported = model.compiled_language in materialization_macro.supported_languages
         if mat_has_supported_langs and not model_lang_supported:
             str_langs = [str(lang) for lang in materialization_macro.supported_languages]
             raise ValidationException(
                 f'Materialization "{materialization_macro.name}" only supports languages {str_langs}; '
-                f'got "{model.language}"'
+                f'got "{model.language}" which compiles to "{model.compiled_language}"'
             )
 
         hook_ctx = self.adapter.pre_model_hook(context_config)

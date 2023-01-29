@@ -309,9 +309,16 @@ class BaseRunner(metaclass=ABCMeta):
             failures=None,
         )
 
+    # some modeling languages don't need database connections for compilation,
+    # only for runtime (materialization)
+    def needs_connection(self):
+        return True
+
     def compile_and_execute(self, manifest, ctx):
+        from contextlib import nullcontext
+
         result = None
-        with self.adapter.connection_for(self.node):
+        with self.adapter.connection_for(self.node) if self.needs_connection() else nullcontext():
             ctx.node._event_status["node_status"] = RunningStatus.Compiling
             fire_event(
                 NodeCompiling(

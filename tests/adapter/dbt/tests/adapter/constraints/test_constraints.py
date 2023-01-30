@@ -102,6 +102,10 @@ class BaseConstraintsRuntimeEnforcement:
     def expected_sql(self, project):
         return _expected_sql.format(project.database, project.test_schema)
 
+    @pytest.fixture(scope="class")
+    def expected_error_messages(self):
+        return ['null value in column "id"', "violates not-null constraint"]
+
     def test__constraints_ddl(self, project, expected_sql):
         results = run_dbt(["run", "-s", "my_model"])
         assert len(results) == 1
@@ -115,7 +119,7 @@ class BaseConstraintsRuntimeEnforcement:
             expected_sql_check == generated_sql_check
         ), f"generated sql did not match expected: \n{generated_sql} \n{expected_sql}"
 
-    def test__constraints_enforcement_rollback(self, project, unique_schema):
+    def test__constraints_enforcement_rollback(self, project, expected_error_messages):
         results = run_dbt(["run", "-s", "my_model"])
         assert len(results) == 1
 
@@ -144,11 +148,8 @@ class BaseConstraintsRuntimeEnforcement:
         constraints_enabled_actual_config = my_model_config.constraints_enabled
         assert constraints_enabled_actual_config is True
 
-        # Its result includes this error message
-        expected_constraints_error = 'null value in column "id"'
-        expected_violation_error = "violates not-null constraint"
-        assert expected_constraints_error in failing_results[0].message
-        assert expected_violation_error in failing_results[0].message
+        # Its result includes the expected error messages
+        assert all(err in failing_results[0].message for err in expected_error_messages)
 
 
 class TestConstraintsColumnsEqual(BaseConstraintsColumnsEqual):

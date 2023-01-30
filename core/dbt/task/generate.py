@@ -1,7 +1,7 @@
 import os
 import shutil
 from datetime import datetime
-from typing import Dict, List, Any, Optional, Tuple, Set
+from typing import Dict, List, Any, Optional, Tuple, Set, AbstractSet
 
 from dbt.dataclass_schema import ValidationError
 
@@ -229,6 +229,13 @@ class GenerateTask(CompileTask):
 
         adapter = get_adapter(self.config)
         with adapter.connection_named("generate_catalog"):
+            if self.args.defer:
+                # Look up catalog entries only on the basis of whether they exist in the
+                # target schema, ignoring selection logic passed to `docs generate` -> `compile`
+                # Unfortunately, this requires running caching queries again,
+                # even though we may have just run them during CompileTask.run()
+                self.populate_adapter_cache(adapter)
+                self.defer_to_manifest(adapter, selected_uids=set())
             fire_event(BuildingCatalog())
             catalog_table, exceptions = adapter.get_catalog(self.manifest)
 

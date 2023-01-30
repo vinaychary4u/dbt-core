@@ -128,9 +128,9 @@ class BaseConstraintsRuntimeEnforcement:
 
         # Verify the previous table still exists
         old_model_exists_sql = """
-            select id from dbt.{0}.my_model where id = 1
+            select id from {0}.{1}.my_model where id = 1
         """.format(
-            unique_schema
+            project.database, project.test_schema
         )
         old_model_exists = project.run_sql(old_model_exists_sql, fetch="all")
         assert len(old_model_exists) == 1

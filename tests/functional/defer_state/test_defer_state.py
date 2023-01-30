@@ -150,7 +150,7 @@ class TestRunDeferState(BaseDeferState):
 
         # defer test, it succeeds
         results = run_dbt(
-            ["test", "-m", "view_model+", "--state", "state", "--defer", "--target", "otherschema"]
+            ["test", "-s", "view_model+", "--state", "state", "--defer", "--target", "otherschema"]
         )
 
         # defer docs generate with state, catalog refers schema from the happy times
@@ -158,7 +158,7 @@ class TestRunDeferState(BaseDeferState):
             [
                 "docs",
                 "generate",
-                "-m",
+                "-s",
                 "view_model+",
                 "--state",
                 "state",
@@ -172,7 +172,7 @@ class TestRunDeferState(BaseDeferState):
 
         # with state it should work though
         results = run_dbt(
-            ["run", "-m", "view_model", "--state", "state", "--defer", "--target", "otherschema"]
+            ["run", "-s", "view_model", "--state", "state", "--defer", "--target", "otherschema"]
         )
         assert other_schema not in results[0].node.compiled_code
         assert unique_schema in results[0].node.compiled_code
@@ -193,12 +193,12 @@ class TestRunDeferStateChangedModel(BaseDeferState):
 
         # the sql here is just wrong, so it should fail
         run_dbt(
-            ["run", "-m", "view_model", "--state", "state", "--defer", "--target", "otherschema"],
+            ["run", "-s", "view_model", "--state", "state", "--defer", "--target", "otherschema"],
             expect_pass=False,
         )
         # but this should work since we just use the old happy model
         run_dbt(
-            ["run", "-m", "table_model", "--state", "state", "--defer", "--target", "otherschema"],
+            ["run", "-s", "table_model", "--state", "state", "--defer", "--target", "otherschema"],
             expect_pass=True,
         )
 
@@ -207,7 +207,7 @@ class TestRunDeferStateChangedModel(BaseDeferState):
         # this should fail because the table model refs a broken ephemeral
         # model, which it should see
         run_dbt(
-            ["run", "-m", "table_model", "--state", "state", "--defer", "--target", "otherschema"],
+            ["run", "-s", "table_model", "--state", "state", "--defer", "--target", "otherschema"],
             expect_pass=False,
         )
 
@@ -247,7 +247,7 @@ class TestDeferStateDeletedUpstream(BaseDeferState):
         # ephemeral_model is now gone. previously this caused a
         # keyerror (dbt#2875), now it should pass
         run_dbt(
-            ["run", "-m", "view_model", "--state", "state", "--defer", "--target", "otherschema"],
+            ["run", "-s", "view_model", "--state", "state", "--defer", "--target", "otherschema"],
             expect_pass=True,
         )
 
@@ -259,7 +259,7 @@ class TestDeferStateDeletedUpstream(BaseDeferState):
         run_dbt(
             [
                 "run",
-                "-m",
+                "-s",
                 "view_model",
                 "--state",
                 "state",

@@ -133,6 +133,7 @@ models:
       constraints_enabled: true
 """
 
+
 class TestModelLevelConstraintsEnabledConfigs:
     @pytest.fixture(scope="class")
     def models(self):
@@ -154,6 +155,7 @@ class TestModelLevelConstraintsEnabledConfigs:
         expected_columns = "{'id': ColumnInfo(name='id', description='hello', meta={}, data_type='integer', constraints=['not null', 'primary key'], constraints_check='(id > 0)', quote=True, tags=[], _extra={}), 'color': ColumnInfo(name='color', description='', meta={}, data_type='text', constraints=None, constraints_check=None, quote=None, tags=[], _extra={}), 'date_day': ColumnInfo(name='date_day', description='', meta={}, data_type='date', constraints=None, constraints_check=None, quote=None, tags=[], _extra={})}"
 
         assert expected_columns == str(my_model_columns)
+
 
 class TestProjectConstraintsEnabledConfigs:
     @pytest.fixture(scope="class")

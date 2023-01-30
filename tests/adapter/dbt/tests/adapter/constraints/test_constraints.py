@@ -3,124 +3,12 @@ import re
 
 from dbt.tests.util import run_dbt, get_manifest, run_dbt_and_capture, write_file
 
-
-my_model_sql = """
-{{
-  config(
-    materialized = "table"
-  )
-}}
-
-select
-  1 as id,
-  'blue' as color,
-  cast('2019-01-01' as date) as date_day
-"""
-
-my_model_wrong_order_sql = """
-{{
-  config(
-    materialized = "table"
-  )
-}}
-
-select
-  1 as color,
-  'blue' as id,
-  cast('2019-01-01' as date) as date_day
-"""
-
-my_model_wrong_name_sql = """
-{{
-  config(
-    materialized = "table"
-  )
-}}
-
-select
-  1 as error,
-  'blue' as color,
-  cast('2019-01-01' as date) as date_day
-"""
-
-my_model_error_sql = """
-{{
-  config(
-    materialized = "table"
-  )
-}}
-
-select
-  1 as id,
-  'blue' as color,
-  cast('2019-01-01' as date) as date_day
-"""
-
-model_schema_yml = """
-version: 2
-models:
-  - name: my_model
-    config:
-      constraints_enabled: true
-    columns:
-      - name: id
-        quote: true
-        data_type: integer
-        description: hello
-        constraints: ['not null','primary key']
-        constraints_check: (id > 0)
-        tests:
-          - unique
-      - name: color
-        data_type: text
-      - name: date_day
-        data_type: date
-  - name: my_model_error
-    config:
-      constraints_enabled: true
-    columns:
-      - name: id
-        data_type: integer
-        description: hello
-        constraints: ['not null','primary key']
-        constraints_check: (id > 0)
-        tests:
-          - unique
-      - name: color
-        data_type: text
-      - name: date_day
-        data_type: date
-  - name: my_model_wrong_order
-    config:
-      constraints_enabled: true
-    columns:
-      - name: id
-        data_type: integer
-        description: hello
-        constraints: ['not null','primary key']
-        constraints_check: (id > 0)
-        tests:
-          - unique
-      - name: color
-        data_type: text
-      - name: date_day
-        data_type: date
-  - name: my_model_wrong_name
-    config:
-      constraints_enabled: true
-    columns:
-      - name: id
-        data_type: integer
-        description: hello
-        constraints: ['not null','primary key']
-        constraints_check: (id > 0)
-        tests:
-          - unique
-      - name: color
-        data_type: text
-      - name: date_day
-        data_type: date
-"""
+from dbt.tests.adapter.constraints.fixtures import (
+    my_model_sql,
+    my_model_wrong_order_sql,
+    my_model_wrong_name_sql,
+    model_schema_yml,
+)
 
 
 class BaseConstraintsColumnsEqual:
@@ -179,12 +67,12 @@ class BaseConstraintsColumnsEqual:
 # This is SUPER specific to Postgres, and will need replacing on other adapters
 # TODO: make more generic
 _expected_sql = """
-create table "dbt"."{0}"."my_model__dbt_tmp" (
+create table "{0}"."{1}"."my_model__dbt_tmp" (
     id integer not null primary key check (id > 0) ,
     color text ,
     date_day date
 ) ;
-insert into "dbt"."{0}"."my_model__dbt_tmp" (
+insert into "{0}"."{1}"."my_model__dbt_tmp" (
     id ,
     color ,
     date_day
@@ -207,13 +95,12 @@ class BaseConstraintsRuntimeEnforcement:
     def models(self):
         return {
             "my_model.sql": my_model_sql,
-            "my_model_error.sql": my_model_error_sql,
             "constraints_schema.yml": model_schema_yml,
         }
 
     @pytest.fixture(scope="class")
-    def expected_sql(self, unique_schema):
-        return _expected_sql.format(unique_schema)
+    def expected_sql(self, project):
+        return _expected_sql.format(project.database, project.test_schema)
 
     def test__constraints_ddl(self, project, expected_sql):
         results = run_dbt(["run", "-s", "my_model"])
@@ -252,12 +139,12 @@ class BaseConstraintsRuntimeEnforcement:
         # Confirm this model was contracted
         # TODO: is this step really necessary?
         manifest = get_manifest(project.project_root)
-        model_id = "model.test.my_model_error"
+        model_id = "model.test.my_model"
         my_model_config = manifest.nodes[model_id].config
         constraints_enabled_actual_config = my_model_config.constraints_enabled
         assert constraints_enabled_actual_config is True
 
-        # its result includes this error
+        # Its result includes this error message
         expected_constraints_error = 'null value in column "id"'
         expected_violation_error = "violates not-null constraint"
         assert expected_constraints_error in failing_results[0].message

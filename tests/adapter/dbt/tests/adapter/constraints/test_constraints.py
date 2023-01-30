@@ -1,6 +1,7 @@
 import pytest
-from dbt.exceptions import ParsingError
-from dbt.tests.util import run_dbt, get_manifest, run_dbt_and_capture
+import re
+
+from dbt.tests.util import run_dbt, get_manifest, run_dbt_and_capture, write_file
 
 
 my_model_sql = """
@@ -11,9 +12,9 @@ my_model_sql = """
 }}
 
 select
-  1 as "ID",
+  1 as id,
   'blue' as color,
-  cast('2019-01-01' as date) as "DATE_DAY"
+  cast('2019-01-01' as date) as date_day
 """
 
 my_model_wrong_order_sql = """
@@ -42,25 +43,10 @@ select
   cast('2019-01-01' as date) as date_day
 """
 
-my_model_constraints_enabled_sql = """
+my_model_error_sql = """
 {{
   config(
-    materialized = "table",
-    constraints_enabled = true
-  )
-}}
-
-select
-  1 as id,
-  'blue' as color,
-  cast('2019-01-01' as date) as date_day
-"""
-
-my_model_constraints_disabled_sql = """
-{{
-  config(
-    materialized = "table",
-    constraints_enabled = false
+    materialized = "table"
   )
 }}
 
@@ -136,230 +122,12 @@ models:
         data_type: date
 """
 
-my_model_error_sql = """
-{{
-  config(
-    materialized = "view"
-  )
-}}
 
-select
-  1 as id,
-  'blue' as color,
-  cast('2019-01-01' as date) as date_day
-"""
+class BaseConstraintsColumnsEqual:
+    """
+    dbt should catch these mismatches during its "preflight" checks.
+    """
 
-my_model_python_error = """
-import holidays, s3fs
-
-
-def model(dbt, _):
-    dbt.config(
-        materialized="table",
-        packages=["holidays", "s3fs"],  # how to import python libraries in dbt's context
-    )
-    df = dbt.ref("my_model")
-    df_describe = df.describe()  # basic statistics profiling
-    return df_describe
-"""
-
-model_schema_errors_yml = """
-version: 2
-models:
-  - name: my_model
-    config:
-      constraints_enabled: true
-    columns:
-      - name: id
-        data_type: integer
-        description: hello
-        constraints: ['not null','primary key']
-        constraints_check: (id > 0)
-        tests:
-          - unique
-      - name: color
-        data_type: text
-      - name: date_day
-  - name: python_model
-    config:
-      constraints_enabled: true
-    columns:
-      - name: id
-        data_type: integer
-        description: hello
-        constraints: ['not null','primary key']
-        constraints_check: (id > 0)
-        tests:
-          - unique
-      - name: color
-        data_type: text
-      - name: date_day
-        data_type: date
-"""
-
-model_schema_blank_yml = """
-version: 2
-models:
-  - name: my_model
-    config:
-      constraints_enabled: true
-"""
-
-
-class BaseConstraintsDisabledModelvsProject:
-    @pytest.fixture(scope="class")
-    def project_config_update(self):
-        return {
-            "models": {
-                "test": {
-                    "+constraints_enabled": False,
-                    "subdirectory": {
-                        "+constraints_enabled": False,
-                    },
-                }
-            }
-        }
-
-
-class BaseConstraintsEnabledModelvsProject:
-    @pytest.fixture(scope="class")
-    def project_config_update(self):
-        return {
-            "models": {
-                "test": {
-                    "+constraints_enabled": True,
-                    "subdirectory": {
-                        "+constraints_enabled": False,
-                    },
-                }
-            }
-        }
-
-
-class TestModelLevelConstraintsEnabledConfigs(BaseConstraintsDisabledModelvsProject):
-    @pytest.fixture(scope="class")
-    def models(self):
-        return {
-            "my_model.sql": my_model_sql,
-            "constraints_schema.yml": model_schema_yml,
-        }
-
-    def test__model_constraints_enabled_true(self, project):
-
-        run_dbt(["run"])
-        manifest = get_manifest(project.project_root)
-        model_id = "model.test.my_model"
-        my_model_columns = manifest.nodes[model_id].columns
-        my_model_config = manifest.nodes[model_id].config
-        constraints_enabled_actual_config = my_model_config.constraints_enabled
-
-        assert constraints_enabled_actual_config is True
-
-        expected_columns = "{'id': ColumnInfo(name='id', description='hello', meta={}, data_type='integer', constraints=['not null', 'primary key'], constraints_check='(id > 0)', quote=True, tags=[], _extra={}), 'color': ColumnInfo(name='color', description='', meta={}, data_type='text', constraints=None, constraints_check=None, quote=None, tags=[], _extra={}), 'date_day': ColumnInfo(name='date_day', description='', meta={}, data_type='date', constraints=None, constraints_check=None, quote=None, tags=[], _extra={})}"
-
-        assert expected_columns == str(my_model_columns)
-
-
-class TestModelLevelConstraintsDisabledConfigs(BaseConstraintsDisabledModelvsProject):
-    @pytest.fixture(scope="class")
-    def models(self):
-        return {
-            "my_model.sql": my_model_constraints_disabled_sql,
-            "constraints_schema.yml": model_schema_yml,
-        }
-
-    def test__model_constraints_enabled_false(self, project):
-
-        run_dbt(["run"])
-        manifest = get_manifest(project.project_root)
-        model_id = "model.test.my_model"
-        my_model_config = manifest.nodes[model_id].config
-        constraints_enabled_actual_config = my_model_config.constraints_enabled
-
-        assert constraints_enabled_actual_config is False
-
-
-class TestProjectConstraintsEnabledConfigs(BaseConstraintsEnabledModelvsProject):
-    @pytest.fixture(scope="class")
-    def models(self):
-        return {
-            "my_model.sql": my_model_sql,
-        }
-
-    def test__project_error(self, project):
-        with pytest.raises(ParsingError) as err_info:
-            run_dbt_and_capture(["run"], expect_pass=False)
-
-        error_message_expected = "NOT within a model file(ex: .sql, .py) or `dbt_project.yml`."
-        assert error_message_expected in str(err_info)
-
-
-class TestModelConstraintsEnabledConfigs(BaseConstraintsDisabledModelvsProject):
-    @pytest.fixture(scope="class")
-    def models(self):
-        return {
-            "my_model.sql": my_model_constraints_enabled_sql,
-        }
-
-    def test__model_error(self, project):
-        with pytest.raises(ParsingError) as err_info:
-            run_dbt_and_capture(["run"], expect_pass=False)
-
-        error_message_expected = "NOT within a model file(ex: .sql, .py) or `dbt_project.yml`."
-        assert error_message_expected in str(err_info)
-
-
-class TestSchemaConstraintsEnabledConfigs(BaseConstraintsDisabledModelvsProject):
-    @pytest.fixture(scope="class")
-    def models(self):
-        return {
-            "my_model.sql": my_model_sql,
-            "constraints_schema.yml": model_schema_blank_yml,
-        }
-
-    def test__schema_error(self, project):
-        with pytest.raises(ParsingError) as err_info:
-            run_dbt_and_capture(["run"], expect_pass=False)
-
-        schema_error_expected = "Schema Error: `yml` configuration does NOT exist"
-        assert schema_error_expected in str(err_info)
-
-
-class TestModelLevelConstraintsErrorMessages(BaseConstraintsDisabledModelvsProject):
-    @pytest.fixture(scope="class")
-    def models(self):
-        return {
-            "my_model.sql": my_model_error_sql,
-            "constraints_schema.yml": model_schema_errors_yml,
-        }
-
-    def test__config_errors(self, project):
-        with pytest.raises(ParsingError) as err_info:
-            run_dbt_and_capture(["run", "-s", "my_model"], expect_pass=False)
-
-        expected_materialization_error = "Materialization Error: {'materialization': 'view'}"
-        expected_empty_data_type_error = "Columns with `data_type` Blank/Null Errors: {'date_day'}"
-        assert expected_materialization_error in str(err_info)
-        assert expected_empty_data_type_error in str(err_info)
-
-
-class TestPythonModelLevelConstraintsErrorMessages(BaseConstraintsDisabledModelvsProject):
-    @pytest.fixture(scope="class")
-    def models(self):
-        return {
-            "python_model.py": my_model_python_error,
-            "constraints_schema.yml": model_schema_errors_yml,
-        }
-
-    def test__python_errors(self, project):
-        with pytest.raises(ParsingError) as err_info:
-            run_dbt_and_capture(["run", "-s", "python_model"], expect_pass=False)
-
-        expected_python_error = "Language Error: {'language': 'python'}"
-        assert expected_python_error in str(err_info)
-
-
-class TestColumnsEqual(BaseConstraintsDisabledModelvsProject):
     @pytest.fixture(scope="class")
     def models(self):
         return {
@@ -368,10 +136,10 @@ class TestColumnsEqual(BaseConstraintsDisabledModelvsProject):
             "constraints_schema.yml": model_schema_yml,
         }
 
-    def test__my_model_wrong_order(self, project):
+    def test__constraints_wrong_column_order(self, project):
 
         results, log_output = run_dbt_and_capture(
-            ["--log-format", "json", "run", "-s", "my_model_wrong_order"], expect_pass=False
+            ["run", "-s", "my_model_wrong_order"], expect_pass=False
         )
         manifest = get_manifest(project.project_root)
         model_id = "model.test.my_model_wrong_order"
@@ -388,10 +156,9 @@ class TestColumnsEqual(BaseConstraintsDisabledModelvsProject):
         assert expected_schema_file_columns in log_output
         assert expected_sql_file_columns in log_output
 
-    def test__my_model_wrong_name(self, project):
-
+    def test__constraints_wrong_column_names(self, project):
         results, log_output = run_dbt_and_capture(
-            ["--log-format", "json", "run", "-s", "my_model_wrong_name"], expect_pass=False
+            ["run", "-s", "my_model_wrong_name"], expect_pass=False
         )
         manifest = get_manifest(project.project_root)
         model_id = "model.test.my_model_wrong_name"
@@ -407,3 +174,99 @@ class TestColumnsEqual(BaseConstraintsDisabledModelvsProject):
         assert expected_compile_error in log_output
         assert expected_schema_file_columns in log_output
         assert expected_sql_file_columns in log_output
+
+
+# This is SUPER specific to Postgres, and will need replacing on other adapters
+# TODO: make more generic
+_expected_sql = """
+create table "dbt"."{0}"."my_model__dbt_tmp" (
+    id integer not null primary key check (id > 0) ,
+    color text ,
+    date_day date
+) ;
+insert into "dbt"."{0}"."my_model__dbt_tmp" (
+    id ,
+    color ,
+    date_day
+) (
+    select 1 as id,
+    'blue' as color,
+    cast('2019-01-01' as date) as date_day
+);
+"""
+
+
+class BaseConstraintsRuntimeEnforcement:
+    """
+    These constraints pass muster for dbt's preflight checks. Make sure they're
+    passed into the DDL statement. If they don't match up with the underlying data,
+    the data platform should raise an error at runtime.
+    """
+
+    @pytest.fixture(scope="class")
+    def models(self):
+        return {
+            "my_model.sql": my_model_sql,
+            "my_model_error.sql": my_model_error_sql,
+            "constraints_schema.yml": model_schema_yml,
+        }
+
+    @pytest.fixture(scope="class")
+    def expected_sql(self, unique_schema):
+        return _expected_sql.format(unique_schema)
+
+    def test__constraints_ddl(self, project, expected_sql):
+        results = run_dbt(["run", "-s", "my_model"])
+        assert len(results) == 1
+        # TODO: consider refactoring this to introspect logs instead
+        with open("./target/run/test/models/my_model.sql", "r") as fp:
+            generated_sql = fp.read()
+
+        generated_sql_check = re.sub(r"\s+", " ", generated_sql).lower().strip()
+        expected_sql_check = re.sub(r"\s+", " ", expected_sql).lower().strip()
+        assert (
+            expected_sql_check == generated_sql_check
+        ), f"generated sql did not match expected: \n{generated_sql} \n{expected_sql}"
+
+    def test__constraints_enforcement_rollback(self, project, unique_schema):
+        results = run_dbt(["run", "-s", "my_model"])
+        assert len(results) == 1
+
+        # Make a contract-breaking change to the model
+        my_model_with_nulls = my_model_sql.replace("1 as id", "null as id")
+        write_file(my_model_with_nulls, "models", "my_model.sql")
+
+        failing_results = run_dbt(["run", "-s", "my_model"], expect_pass=False)
+        assert len(failing_results) == 1
+
+        # Verify the previous table still exists
+        old_model_exists_sql = """
+            select id from dbt.{0}.my_model where id = 1
+        """.format(
+            unique_schema
+        )
+        old_model_exists = project.run_sql(old_model_exists_sql, fetch="all")
+        assert len(old_model_exists) == 1
+        assert old_model_exists[0][0] == 1
+
+        # Confirm this model was contracted
+        # TODO: is this step really necessary?
+        manifest = get_manifest(project.project_root)
+        model_id = "model.test.my_model_error"
+        my_model_config = manifest.nodes[model_id].config
+        constraints_enabled_actual_config = my_model_config.constraints_enabled
+        assert constraints_enabled_actual_config is True
+
+        # its result includes this error
+        expected_constraints_error = 'null value in column "id"'
+        expected_violation_error = "violates not-null constraint"
+        assert expected_constraints_error in failing_results[0].message
+        assert expected_violation_error in failing_results[0].message
+
+
+class TestConstraintsColumnsEqual(BaseConstraintsColumnsEqual):
+    pass
+
+
+class TestConstraintsRuntimeEnforcement(BaseConstraintsRuntimeEnforcement):
+    pass

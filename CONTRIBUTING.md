@@ -155,21 +155,6 @@ make integration
 > These make targets assume you have a local installation of a recent version of [`tox`](https://tox.readthedocs.io/en/latest/) for unit/integration testing and pre-commit for code quality checks,
 > unless you use choose a Docker container to run tests. Run `make help` for more info.
 
-To override variables used in Makefile targets, create `makefile.test.env` and
-define any (or each) variable as your test suite requires:
-```
-cat > makefile.test.env << EOF
-DBT_TEST_USER_1=
-DBT_TEST_USER_2=
-DBT_TEST_USER_3=
-RUSTFLAGS=
-LOG_DIR=
-DBT_LOG_FORMAT=
-EOF
-```
-
-Note: This `makefile.test.env` file is git-ignored, but do not check this into the repo.
-
 Check out the other targets in the Makefile to see other commonly used test
 suites.
 

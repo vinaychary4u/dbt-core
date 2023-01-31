@@ -7,7 +7,12 @@ ifeq ($(USE_DOCKER),true)
 endif
 
 #
-# Set CI flags. Do not edit. Override in a makefile.text.env. See CONTRIBUTING.md
+# To override CI_flags, create a file at this repo's root dir named `makefile.test.env`. Fill it
+# with any ENV_VAR overrides required by your test environment, e.g.
+#    DBT_TEST_USER_1=user
+#    LOG_DIR="dir with a space in it"
+#
+# Warn: Restrict each line to one variable only.
 #
 ifeq (./makefile.test.env,$(wildcard ./makefile.test.env))
 	include ./makefile.test.env

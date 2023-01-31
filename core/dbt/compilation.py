@@ -48,6 +48,7 @@ def print_compile_stats(stats):
         NodeType.Source: "source",
         NodeType.Exposure: "exposure",
         NodeType.Metric: "metric",
+        NodeType.Entity: "entity",
     }
 
     results = {k: 0 for k in names.keys()}
@@ -83,6 +84,8 @@ def _generate_stats(manifest: Manifest):
         stats[exposure.resource_type] += 1
     for metric in manifest.metrics.values():
         stats[metric.resource_type] += 1
+    for entity in manifest.entities.values():
+        stats[entity.resource_type] += 1
     for macro in manifest.macros.values():
         stats[macro.resource_type] += 1
     return stats
@@ -398,6 +401,8 @@ class Compiler:
                 linker.dependency(node.unique_id, (manifest.sources[dependency].unique_id))
             elif dependency in manifest.metrics:
                 linker.dependency(node.unique_id, (manifest.metrics[dependency].unique_id))
+            elif dependency in manifest.entities:
+                linker.dependency(node.unique_id, (manifest.entities[dependency].unique_id))
             else:
                 raise GraphDependencyNotFoundError(node, dependency)
 
@@ -410,6 +415,8 @@ class Compiler:
             self.link_node(linker, exposure, manifest)
         for metric in manifest.metrics.values():
             self.link_node(linker, metric, manifest)
+        for entity in manifest.entities.values():
+            self.link_node(linker, entity, manifest)
 
         cycle = linker.find_cycles()
 

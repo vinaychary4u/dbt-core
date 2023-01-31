@@ -70,6 +70,13 @@ class Flags:
         object.__setattr__(self, "WHICH", invoked_subcommand_name or ctx.info_name)
         object.__setattr__(self, "MP_CONTEXT", get_context("spawn"))
 
+        # If USE_COLORS is set to False, but USE_COLORS_FILE was not set at all, we set USE_COLORS_FILE to False.
+        if (
+            getattr(self, "USE_COLORS") is False
+            and "use_colors_file" in params_assigned_from_default
+        ):
+            object.__setattr__(self, "USE_COLORS_FILE", False)
+
         # Support console DO NOT TRACK initiave
         object.__setattr__(
             self,

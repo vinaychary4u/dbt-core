@@ -122,6 +122,30 @@ log_format = click.option(
     default="default",
 )
 
+log_format_file = click.option(
+    "--log-format-file",
+    envvar="DBT_LOG_FORMAT_FILE",
+    help="",
+    type=click.Choice(["text", "debug", "json"], case_sensitive=False),
+    default="debug",
+)
+
+log_level = click.option(
+    "--log-level",
+    envvar="DBT_LOG_LEVEL",
+    help="",
+    type=click.Choice(["debug", "info", "warn", "error", "none"], case_sensitive=False),
+    default="info",
+)
+
+log_level_file = click.option(
+    "--log-level-file",
+    envvar="DBT_LOG_LEVEL_FILE",
+    help="",
+    type=click.Choice(["debug", "info", "warn", "error", "none"], case_sensitive=False),
+    default="debug",
+)
+
 log_path = click.option(
     "--log-path",
     envvar="DBT_LOG_PATH",
@@ -356,6 +380,13 @@ use_colors = click.option(
     "--use-colors/--no-use-colors",
     envvar="DBT_USE_COLORS",
     help="Output is colorized by default and may also be set in a profile or at the command line.",
+    default=True,
+)
+
+use_colors_file = click.option(
+    "--use-colors-file/--no-use-colors-file",
+    envvar="DBT_USE_COLORS_FILE",
+    help="",
     default=True,
 )
 

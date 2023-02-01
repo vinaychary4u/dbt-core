@@ -1,0 +1,588 @@
+syntax = "proto3";
+
+package proto_nodes;
+
+
+message ListOfStrings {
+   repeated string value = 1;
+}
+
+message Hook {
+    string sql = 1;
+    bool transaction = 2;
+    optional int index = 3;
+}
+
+message Docs {
+    bool show = 1;
+    optional string node_color = 2;
+}
+
+message MacroDependsOn {
+    repeated string macros = 1;
+}
+
+message DependsOn {
+    repeated string macros = 1;
+    repeated string nodes = 2;
+}
+
+message MacroArgument {
+    string name = 1;
+    optional string type = 2;
+    string description = 3;
+}
+
+message Quoting {
+    optional string database = 1;
+    optional string schema = 2;
+    optional string identifier = 3;
+    optional string column = 4;
+}
+
+message Time {
+    optional int32 count = 1;
+    optional string period = 2;
+}
+
+message FreshnessThreshold {
+    optional Time warn_after = 1;
+    optional Time error_after = 2;
+    optional string filter = 3;
+}
+
+message ExposureOwner {
+    string email = 1;
+    optional string name = 2;
+}
+
+message MetricFilter {
+    string field = 1;
+    string operator = 2;
+    string value = 3;
+}
+
+message MetricTime {
+    optional int32 count = 1;
+    optional string period = 2;
+}
+
+message NodeConfig {
+    bool enabled = 1;
+    optional string alias = 2;
+    optional string schema = 3;
+    optional string database = 4;
+    repeated string tags = 5;
+    map<string, string> meta = 6;
+    string materialized = 7;
+    optional string incremental_strategy = 8;
+    map<string, string> persist_docs = 9;
+    Hook post_hook = 10;
+    Hook pre_hook = 11;
+    map<string, string> quoting = 12;
+    map<string, string> column_types = 13;
+    optional bool full_refresh = 14;
+    optional string unique_key = 15;
+    string on_schema_change = 16;
+    map<string, string> grants = 17;
+    repeated string packages = 18;
+    Docs docs = 19;
+}
+
+message SeedConfig {
+    bool enabled = 1;
+    optional string alias = 2;
+    optional string schema = 3;
+    optional string database = 4;
+    repeated string tags = 5;
+    map<string, string> meta = 6;
+    string materialized = 7;
+    optional string incremental_strategy = 8;
+    map<string, string> persist_docs = 9;
+    // post_hook = 10;
+    // pre_hook = 11;
+    map<string, string> quoting = 12;
+    map<string, string> column_types = 13;
+    optional bool full_refresh = 14;
+    optional string unique_key = 15;
+    string on_schema_change = 16;
+    map<string, string> grants = 17;
+    repeated string packages = 18;
+    Docs docs = 19;
+    optional bool quote_columns = 20;
+}
+
+message TestConfig {
+    bool enabled = 1;
+    optional string alias = 2;
+    optional string schema = 3;
+    optional string database = 4;
+    repeated string tags = 5;
+    map<string, string> meta = 6;
+    string materialized = 8;
+    string severity = 9;
+    optional bool store_failures = 10;
+    optional string where = 11;
+    optional int32 limit = 12;
+    string fail_calc = 13;
+    string warn_if = 14;
+    string error_if = 15;
+}
+
+// NodeConfig plus strategy, target_schema, target_database, check_cols
+message SnapshotConfig {
+    bool enabled = 1;
+    optional string alias = 2;
+    optional string schema = 3;
+    optional string database = 4;
+    repeated string tags = 5;
+    map<string, string> meta = 6;
+    string materialized = 7;
+    optional string incremental_strategy = 8;
+    map<string, string> persist_docs = 9;
+    // post_hook = 10;
+    // pre_hook = 11;
+    map<string, string> quoting = 12;
+    map<string, string> column_types = 13;
+    optional bool full_refresh = 14;
+    optional string unique_key = 15;
+    string on_schema_change = 16;
+    map<string, string> grants = 17;
+    repeated string packages = 18;
+    Docs docs = 19;
+    optional string strategy = 20;
+    optional string target_schema = 21;
+    optional string target_database = 22;
+    repeated string check_cols = 23;
+}
+
+message SourceConfig {
+    bool enabled = 1;
+}
+
+message ExposureConfig {
+    bool enabled = 1;
+}
+
+message MetricConfig {
+    bool enabled = 1;
+}
+
+message ColumnInfo {
+    string name = 1;
+    string description = 2;
+    map <string, string> meta = 3;
+    optional string data_type = 4;
+    optional bool quote = 5;
+    repeated string tags = 6;
+    map <string, string> _extra = 7;
+}
+
+
+// There are three nodes that are exactly the same as this one (AnalysisNode, RPCNode, and
+// SqlNOde), and one with only one additional attribute (HookNode). Making separate messages
+// for now, but we can revisit later. If we clean up the config classes, some of those
+// nodes might end up with different config classes, which would require separate node messages.
+message ModelNode {
+    string name = 1;
+    string resource_type = 2;
+    string package_name = 3;
+    string path = 4;
+    string original_file_path = 5;
+    string unique_id = 6;
+    repeated string fqn = 7;
+    optional string database = 8;
+    string schema = 9;
+    string alias = 10;
+    NodeConfig config = 11;
+    repeated string tags = 12;
+    string description = 13;
+    map <string, ColumnInfo> columns = 14;
+    map<string, string> meta = 15;
+    Docs docs = 16;
+    string patch_path = 17;
+    bool deferred = 18;
+    map<string, string> unrendered_config = 19;
+    string relation_name  = 20;
+    string raw_code = 21;
+    string language = 22;
+    repeated ListOfStrings refs = 23;
+    repeated ListOfStrings sources = 24;
+    repeated ListOfStrings metrics = 25;
+    DependsOn depends_on = 26;
+    bool compiled = 27;
+    string compiled_code = 28;
+}
+
+// This should be exactly the same as ModelNode
+message AnalysisNode {
+    string name = 1;
+    string resource_type = 2;
+    string package_name = 3;
+    string path = 4;
+    string original_file_path = 5;
+    string unique_id = 6;
+    repeated string fqn = 7;
+    optional string database = 8;
+    string schema = 9;
+    string alias = 10;
+    NodeConfig config = 11;
+    repeated string tags = 12;
+    string description = 13;
+    map <string, ColumnInfo> columns = 14;
+    map<string, string> meta = 15;
+    Docs docs = 16;
+    string patch_path = 17;
+    bool deferred = 18;
+    map<string, string> unrendered_config = 19;
+    string relation_name  = 20;
+    string raw_code = 21;
+    string language = 22;
+    repeated ListOfStrings refs = 23;
+    repeated ListOfStrings sources = 24;
+    repeated ListOfStrings metrics = 25;
+    DependsOn depends_on = 26;
+    bool compiled = 27;
+    string compiled_code = 28;
+}
+
+// This should be exactly the same as ModelNode
+message RPCNode {
+    string name = 1;
+    string resource_type = 2;
+    string package_name = 3;
+    string path = 4;
+    string original_file_path = 5;
+    string unique_id = 6;
+    repeated string fqn = 7;
+    optional string database = 8;
+    string schema = 9;
+    string alias = 10;
+    NodeConfig config = 11;
+    repeated string tags = 12;
+    string description = 13;
+    map <string, ColumnInfo> columns = 14;
+    map<string, string> meta = 15;
+    Docs docs = 16;
+    string patch_path = 17;
+    bool deferred = 18;
+    map<string, string> unrendered_config = 19;
+    string relation_name  = 20;
+    string raw_code = 21;
+    string language = 22;
+    repeated ListOfStrings refs = 23;
+    repeated ListOfStrings sources = 24;
+    repeated ListOfStrings metrics = 25;
+    DependsOn depends_on = 26;
+    bool compiled = 27;
+    string compiled_code = 28;
+}
+
+
+// This should be exactly the same as ModelNode
+message SqlNode {
+    string name = 1;
+    string resource_type = 2;
+    string package_name = 3;
+    string path = 4;
+    string original_file_path = 5;
+    string unique_id = 6;
+    repeated string fqn = 7;
+    optional string database = 8;
+    string schema = 9;
+    string alias = 10;
+    NodeConfig config = 11;
+    repeated string tags = 12;
+    string description = 13;
+    map <string, ColumnInfo> columns = 14;
+    map<string, string> meta = 15;
+    Docs docs = 16;
+    string patch_path = 17;
+    bool deferred = 18;
+    map<string, string> unrendered_config = 19;
+    string relation_name  = 20;
+    string raw_code = 21;
+    string language = 22;
+    repeated ListOfStrings refs = 23;
+    repeated ListOfStrings sources = 24;
+    repeated ListOfStrings metrics = 25;
+    DependsOn depends_on = 26;
+    bool compiled = 27;
+    string compiled_code = 28;
+}
+
+// This should be the same as ModelNode plus additional "index" attribute
+message HookNode {
+    string name = 1;
+    string resource_type = 2;
+    string package_name = 3;
+    string path = 4;
+    string original_file_path = 5;
+    string unique_id = 6;
+    repeated string fqn = 7;
+    optional string database = 8;
+    string schema = 9;
+    string alias = 10;
+    NodeConfig config = 11;
+    repeated string tags = 12;
+    string description = 13;
+    map <string, ColumnInfo> columns = 14;
+    map<string, string> meta = 15;
+    Docs docs = 16;
+    string patch_path = 17;
+    bool deferred = 18;
+    map<string, string> unrendered_config = 19;
+    string relation_name  = 20;
+    string raw_code = 21;
+    string language = 22;
+    repeated ListOfStrings refs = 23;
+    repeated ListOfStrings sources = 24;
+    repeated ListOfStrings metrics = 25;
+    DependsOn depends_on = 26;
+    bool compiled = 27;
+    string compiled_code = 28;
+    optional int32 index = 29;
+}
+
+
+message SeedNode {
+    string name = 1;
+    string resource_type = 2;
+    string package_name = 3;
+    string path = 4;
+    string original_file_path = 5;
+    string unique_id = 6;
+    repeated string fqn = 7;
+    optional string database = 8;
+    string schema = 9;
+    string alias = 10;
+    SeedConfig config = 11;
+    repeated string tags = 12;
+    string description = 13;
+    map <string, ColumnInfo> columns = 14;
+    map<string, string> meta = 15;
+    Docs docs = 16;
+    string patch_path = 17;
+    bool deferred = 18;
+    map<string, string> unrendered_config = 19;
+    string relation_name  = 20;
+    string raw_code = 21;
+    string root_path = 22;
+}
+
+
+// Same as ModelNode except config is TestConfig
+message SingularTestNode {
+    string name = 1;
+    string resource_type = 2;
+    string package_name = 3;
+    string path = 4;
+    string original_file_path = 5;
+    string unique_id = 6;
+    repeated string fqn = 7;
+    optional string database = 8;
+    string schema = 9;
+    string alias = 10;
+    TestConfig config = 11;
+    repeated string tags = 12;
+    string description = 13;
+    map <string, ColumnInfo> columns = 14;
+    map<string, string> meta = 15;
+    Docs docs = 16;
+    string patch_path = 17;
+    bool deferred = 18;
+    map<string, string> unrendered_config = 19;
+    string relation_name  = 20;
+    string raw_code = 21;
+    string language = 22;
+    repeated ListOfStrings refs = 23;
+    repeated ListOfStrings sources = 24;
+    repeated ListOfStrings metrics = 25;
+    DependsOn depends_on = 26;
+    bool compiled = 27;
+    string compiled_code = 28;
+}
+
+message TestMetadata {
+    string name = 1;
+    map<string, string> kwargs = 2;
+    optional string namespace = 3;
+}
+
+// Same as ModelNode except config is TestConfig, and has test_metadata
+// and column_name attributes.
+message GenericTestNode {
+    string name = 1;
+    string resource_type = 2;
+    string package_name = 3;
+    string path = 4;
+    string original_file_path = 5;
+    string unique_id = 6;
+    repeated string fqn = 7;
+    optional string database = 8;
+    string schema = 9;
+    string alias = 10;
+    TestConfig config = 11;
+    repeated string tags = 12;
+    string description = 13;
+    map <string, ColumnInfo> columns = 14;
+    map<string, string> meta = 15;
+    Docs docs = 16;
+    string patch_path = 17;
+    bool deferred = 18;
+    map<string, string> unrendered_config = 19;
+    string relation_name  = 20;
+    string raw_code = 21;
+    string language = 22;
+    repeated ListOfStrings refs = 23;
+    repeated ListOfStrings sources = 24;
+    repeated ListOfStrings metrics = 25;
+    DependsOn depends_on = 26;
+    bool compiled = 27;
+    string compiled_code = 28;
+    TestMetadata test_metadata = 29;
+    optional string column_name = 30;
+}
+
+// SnapshotNode - Sames as ModelNode except with SnapshotConfig
+message SnapshotNode {
+    string name = 1;
+    string resource_type = 2;
+    string package_name = 3;
+    string path = 4;
+    string original_file_path = 5;
+    string unique_id = 6;
+    repeated string fqn = 7;
+    optional string database = 8;
+    string schema = 9;
+    string alias = 10;
+    SnapshotConfig config = 11;
+    repeated string tags = 12;
+    string description = 13;
+    map <string, ColumnInfo> columns = 14;
+    map<string, string> meta = 15;
+    Docs docs = 16;
+    string patch_path = 17;
+    bool deferred = 18;
+    map<string, string> unrendered_config = 19;
+    string relation_name  = 20;
+    string raw_code = 21;
+    string language = 22;
+    repeated ListOfStrings refs = 23;
+    repeated ListOfStrings sources = 24;
+    repeated ListOfStrings metrics = 25;
+    DependsOn depends_on = 26;
+    bool compiled = 27;
+    string compiled_code = 28;
+}
+
+// Macro - BaseNode plus additional attributes
+message Macro {
+    string name = 1;
+    string resource_type = 2;
+    string package_name = 3;
+    string path = 4;
+    string original_file_path = 5;
+    string unique_id = 6;
+    string macro_sql = 7;
+    MacroDependsOn depends_on = 8;
+    string description = 9;
+    map<string, string> meta = 10;
+    Docs docs = 11;
+    optional string patch_path = 12;
+    repeated MacroArgument arguments = 13;
+    repeated string supported_languages = 14;
+}
+
+// Documentation - BaseNode plus block_contents
+message Documentation {
+    string name = 1;
+    string resource_type = 2;
+    string package_name = 3;
+    string path = 4;
+    string original_file_path = 5;
+    string unique_id = 6;
+    string block_contents = 7;
+}
+
+message SourceDefinition {
+    string name = 1;
+    string resource_type = 2;
+    string package_name = 3;
+    string path = 4;
+    string original_file_path = 5;
+    string unique_id = 6;
+    repeated string fqn = 7;
+    optional string database = 8;
+    string schema = 9;
+    string source_name = 10;
+    string source_description = 11;
+    string loader = 12;
+    string identifier = 13;
+    Quoting quoting = 14;
+    optional string loaded_at_field = 15;
+    optional FreshnessThreshold freshness = 16;
+    // optional ExternalTable external = 17;
+    string description = 18;
+    map<string, ColumnInfo> columns = 19;
+    map<string, string> meta = 20;
+    map<string, string> source_meta = 21;
+    repeated string tags = 22;
+    SourceConfig config = 23;
+    optional string patch_path = 24;
+    map<string, string> unrendered_config = 25;
+    optional string relation_name = 26;
+}
+
+message Exposure {
+    string name = 1;
+    string resource_type = 2;
+    string package_name = 3;
+    string path = 4;
+    string original_file_path = 5;
+    string unique_id = 6;
+    repeated string fqn = 7;
+    string type = 8;
+    ExposureOwner owner = 9;
+    string description = 10;
+    optional string label = 11;
+    optional string maturity = 12;
+    map<string, string> meta = 13;
+    repeated string tags = 14;
+    ExposureConfig config = 15;
+    map<string, string> unrendered_config = 16;
+    optional string url = 17;
+    DependsOn depends_on = 18;
+    repeated ListOfStrings refs = 24;
+    repeated ListOfStrings sources = 25;
+    repeated ListOfStrings metrics = 26;
+}
+
+message Metric {
+    string name = 1;
+    string resource_type = 2;
+    string package_name = 3;
+    string path = 4;
+    string original_file_path = 5;
+    string unique_id = 6;
+    repeated string fqn = 7;
+    string description = 8;
+    string label = 9;
+    string calculation_method = 10;
+    string expression = 11;
+    repeated MetricFilter filters = 12;
+    repeated string time_grains = 13;
+    repeated string dimensions = 14;
+    optional string timestamp = 15;
+    optional MetricTime window = 16;
+    optional string model = 17;
+    optional string model_unique_id = 18;
+    map<string, string> meta = 19;
+    repeated string tags = 20;
+    MetricConfig config = 21;
+    map<string, string> unrendered_config = 22;
+    repeated ListOfStrings refs = 24;
+    repeated ListOfStrings sources = 25;
+    repeated ListOfStrings metrics = 26;
+    DependsOn depends_on = 27;
+}

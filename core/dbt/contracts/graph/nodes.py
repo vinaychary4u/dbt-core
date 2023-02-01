@@ -35,6 +35,7 @@ from dbt.contracts.graph.unparsed import (
     MetricTime,
 )
 from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
+from dbt.contracts.graph.utils import get_msg_attribute_value
 from dbt.events.proto_types import NodeInfo
 from dbt.events.functions import warn_or_error
 from dbt.exceptions import ParsingError
@@ -49,6 +50,7 @@ from dbt.flags import get_flags
 from dbt.node_types import ModelLanguage, NodeType
 from dbt.utils import cast_dict_to_dict_of_strings
 
+from dbt.contracts.graph import proto_nodes
 
 from .model_config import (
     NodeConfig,
@@ -95,6 +97,18 @@ class BaseNode(dbtClassMixin, Replaceable):
     original_file_path: str
     unique_id: str
 
+    @classmethod
+    def msg_attributes(self):
+        """Attributes of this class that are included in protobuf definitions"""
+        return [
+            "name",
+            "resource_type",
+            "package_name",
+            "path",
+            "original_file_path",
+            "unique_id",
+        ]
+
     @property
     def search_name(self):
         return self.name
@@ -134,6 +148,10 @@ class GraphNode(BaseNode):
 
     fqn: List[str]
 
+    @classmethod
+    def msg_attributes(self):
+        return ["fqn"]
+
     def same_fqn(self, other) -> bool:
         return self.fqn == other.fqn
 
@@ -149,6 +167,18 @@ class ColumnInfo(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable
     quote: Optional[bool] = None
     tags: List[str] = field(default_factory=list)
     _extra: Dict[str, Any] = field(default_factory=dict)
+
+    def to_msg(self):
+        column_info_msg = proto_nodes.ColumnInfo(
+            name=self.name,
+            description=self.description,
+            meta=cast_dict_to_dict_of_strings(self.meta),
+            data_type=self.data_type,
+            quote=self.quote,
+            tags=self.tags,
+            _extra=cast_dict_to_dict_of_strings(self._extra),
+        )
+        return column_info_msg
 
 
 # Metrics, exposures,
@@ -179,6 +209,9 @@ class MacroDependsOn(dbtClassMixin, Replaceable):
         if value not in self.macros:
             self.macros.append(value)
 
+    def to_msg(self):
+        return proto_nodes.MacroDependsOn(macros=self.macros)
+
 
 @dataclass
 class DependsOn(MacroDependsOn):
@@ -188,12 +221,19 @@ class DependsOn(MacroDependsOn):
         if value not in self.nodes:
             self.nodes.append(value)
 
+    def to_msg(self):
+        return proto_nodes.DependsOn(nodes=self.nodes, macros=self.macros)
+
 
 @dataclass
 class ParsedNodeMandatory(GraphNode, HasRelationMetadata, Replaceable):
     alias: str
-    checksum: FileHash
+    checksum: FileHash  # not included in protobuf messages
     config: NodeConfig = field(default_factory=NodeConfig)
+
+    @classmethod
+    def msg_attributes(self):
+        return ["fqn", "database", "schema", "alias", "config"]
 
     @property
     def identifier(self):
@@ -248,6 +288,22 @@ class ParsedNode(NodeInfoMixin, ParsedNodeMandatory, SerializableType):
     config_call_dict: Dict[str, Any] = field(default_factory=dict)
     relation_name: Optional[str] = None
     raw_code: str = ""
+
+    @classmethod
+    def msg_attributes(self):
+        # Does not included created_at, config_call_dict, build_path
+        return [
+            "tags",
+            "description",
+            "columns",
+            "meta",
+            "docs",
+            "patch_path",
+            "deferred",
+            "unrendered_config",
+            "relation_name",
+            "raw_code",
+        ]
 
     def write_node(self, target_path: str, subdirectory: str, payload: str):
         if os.path.basename(self.path) == os.path.basename(self.original_file_path):
@@ -401,6 +457,19 @@ class CompiledNode(ParsedNode):
     extra_ctes: List[InjectedCTE] = field(default_factory=list)
     _pre_injected_sql: Optional[str] = None
 
+    @classmethod
+    def msg_attributes(self):
+        # Does not include extra_ctes_injected, extra_ctes, _pre_injected_sql, compiled_path
+        return [
+            "language",
+            "refs",
+            "sources",
+            "metrics",
+            "depends_on",
+            "compiled",
+            "compiled_code",
+        ]
+
     @property
     def empty(self):
         return not self.raw_code.strip()
@@ -438,6 +507,19 @@ class CompiledNode(ParsedNode):
     def depends_on_macros(self):
         return self.depends_on.macros
 
+    def to_msg(self):
+
+        # Get matching msg node class
+        node_name = type(self).__name__
+        msg_cls = getattr(proto_nodes, node_name)
+        msg_node = msg_cls()
+
+        for cls in [BaseNode, GraphNode, ParsedNodeMandatory, ParsedNode, CompiledNode]:
+            for attribute in cls.msg_attributes():
+                value = get_msg_attribute_value(self, attribute)
+                setattr(msg_node, attribute, value)
+        return msg_node
+
 
 # ====================================
 # CompiledNode subclasses
@@ -454,13 +536,18 @@ class HookNode(CompiledNode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Operation]})
     index: Optional[int] = None
 
+    def to_msg(self):
+        msg = super().to_msg()
+        msg.index = self.index
+        return msg
+
 
 @dataclass
 class ModelNode(CompiledNode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Model]})
 
 
-# TODO: rm?
+# TODO: this node type should probably be removed when the rpc server is no longer supported
 @dataclass
 class RPCNode(CompiledNode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.RPCCall]})
@@ -484,6 +571,15 @@ class SeedNode(ParsedNode):  # No SQLDefaults!
     # and we need the root_path to load the seed later
     root_path: Optional[str] = None
     depends_on: MacroDependsOn = field(default_factory=MacroDependsOn)
+
+    def to_msg(self):
+        seed_node = proto_nodes.SeedNode()
+        for cls in [BaseNode, ParsedNodeMandatory, ParsedNode]:
+            for attribute in cls.msg_attributes():
+                value = get_msg_attribute_value(self, attribute)
+                setattr(seed_node, attribute, value)
+        seed_node.root_path = self.root_path
+        return seed_node
 
     def same_seeds(self, other: "SeedNode") -> bool:
         # for seeds, we check the hashes. If the hashes are different types,
@@ -608,6 +704,8 @@ class SingularTestNode(TestShouldStoreFailures, CompiledNode):
     # refactor the various configs.
     config: TestConfig = field(default_factory=TestConfig)  # type: ignore
 
+    # no to_msg method because the CompiledNode default works fine
+
     @property
     def test_node_type(self):
         return "singular"
@@ -620,6 +718,7 @@ class SingularTestNode(TestShouldStoreFailures, CompiledNode):
 
 @dataclass
 class TestMetadata(dbtClassMixin, Replaceable):
+    __test__ = False
     name: str
     # kwargs are the args that are left in the test builder after
     # removing configs. They are set from the test builder when
@@ -639,10 +738,15 @@ class HasTestMetadata(dbtClassMixin):
 class GenericTestNode(TestShouldStoreFailures, CompiledNode, HasTestMetadata):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Test]})
     column_name: Optional[str] = None
-    file_key_name: Optional[str] = None
+    file_key_name: Optional[str] = None  # Not included in protobuf message
     # Was not able to make mypy happy and keep the code working. We need to
     # refactor the various configs.
     config: TestConfig = field(default_factory=TestConfig)  # type: ignore
+
+    def to_msg(self):
+        msg = super().to_msg()
+        msg.column_name = self.column_name
+        return msg
 
     def same_contents(self, other) -> bool:
         if other is None:
@@ -697,6 +801,29 @@ class Macro(BaseNode):
     created_at: float = field(default_factory=lambda: time.time())
     supported_languages: Optional[List[ModelLanguage]] = None
 
+    @classmethod
+    def msg_attributes(self):
+        return ["macro_sql", "depends_on", "description", "meta", "docs", "patch_path"]
+
+    def to_msg(self):
+        msg = proto_nodes.Macro()
+        for cls in [BaseNode, Macro]:
+            for attribute in cls.msg_attributes():
+                value = getattr(self, attribute)
+                if value is None:
+                    continue
+                setattr(msg, attribute, value)
+        arguments = [
+            proto_nodes.MacroArgument(name=ma.name, description=ma.description, type=ma.type)
+            for ma in self.arguments
+        ]
+        msg.arguments = arguments
+        supported_languages = []
+        if isinstance(self.supported_languages, list):
+            supported_languages = [ml.value for ml in self.supported_languages]
+        msg.supported_languages = supported_languages
+        return msg
+
     def patch(self, patch: "ParsedMacroPatch"):
         self.patch_path: Optional[str] = patch.file_id
         self.description = patch.description
@@ -726,6 +853,15 @@ class Macro(BaseNode):
 class Documentation(BaseNode):
     block_contents: str
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Documentation]})
+
+    def to_msg(self):
+        msg = proto_nodes.Documentation()
+        for cls in [BaseNode]:
+            for attribute in cls.msg_attributes():
+                value = getattr(self, attribute)
+                setattr(msg, attribute, value)
+        msg.block_contents = self.block_contents
+        return msg
 
     @property
     def search_name(self):
@@ -820,6 +956,39 @@ class SourceDefinition(NodeInfoMixin, ParsedSourceMandatory):
     unrendered_config: Dict[str, Any] = field(default_factory=dict)
     relation_name: Optional[str] = None
     created_at: float = field(default_factory=lambda: time.time())
+
+    @classmethod
+    def msg_attributes(self):
+        return [
+            "source_name",
+            "source_description",
+            "loader",
+            "identifier",
+            "resource_type",
+            "quoting",
+            "loaded_at_field",
+            "freshness",
+            "external",
+            "description",
+            "columns",
+            "meta",
+            "source_meta",
+            "tags",
+            "config",
+            "patch_path",
+            "unrendered_config",
+            "relation_name",
+            "database",
+            "schema",
+        ]
+
+    def to_msg(self):
+        msg = proto_nodes.SourceDefinition()
+        for cls in [BaseNode, GraphNode, SourceDefinition]:
+            for attribute in cls.msg_attributes():
+                value = get_msg_attribute_value(self, attribute)
+                setattr(msg, attribute, value)
+        return msg
 
     def __post_serialize__(self, dct):
         if "_event_status" in dct:
@@ -943,6 +1112,32 @@ class Exposure(GraphNode):
     metrics: List[List[str]] = field(default_factory=list)
     created_at: float = field(default_factory=lambda: time.time())
 
+    @classmethod
+    def msg_attributes(self):
+        return [
+            "type",
+            "description",
+            "label",
+            "maturity",
+            "meta",
+            "tags",
+            "config",
+            "unrendered_config",
+            "url",
+            "depends_on",
+            "refs",
+            "sources",
+            "metrics",
+        ]
+
+    def to_msg(self):
+        msg = proto_nodes.Exposure()
+        for cls in [BaseNode, GraphNode, Exposure]:
+            for attribute in cls.msg_attributes():
+                value = get_msg_attribute_value(self, attribute)
+                setattr(msg, attribute, value)
+        return msg
+
     @property
     def depends_on_nodes(self):
         return self.depends_on.nodes
@@ -1004,14 +1199,7 @@ class Exposure(GraphNode):
 
 
 @dataclass
-class MetricReference(dbtClassMixin, Replaceable):
-    sql: Optional[Union[str, int]]
-    unique_id: Optional[str]
-
-
-@dataclass
 class Metric(GraphNode):
-    name: str
     description: str
     label: str
     calculation_method: str
@@ -1028,11 +1216,43 @@ class Metric(GraphNode):
     tags: List[str] = field(default_factory=list)
     config: MetricConfig = field(default_factory=MetricConfig)
     unrendered_config: Dict[str, Any] = field(default_factory=dict)
-    sources: List[List[str]] = field(default_factory=list)
-    depends_on: DependsOn = field(default_factory=DependsOn)
     refs: List[List[str]] = field(default_factory=list)
+    sources: List[List[str]] = field(default_factory=list)
     metrics: List[List[str]] = field(default_factory=list)
+    depends_on: DependsOn = field(default_factory=DependsOn)
     created_at: float = field(default_factory=lambda: time.time())
+
+    @classmethod
+    def msg_attributes(self):
+        return [
+            "description",
+            "label",
+            "calculation_method",
+            "expression",
+            "time_grains",
+            "dimensions",
+            "timestamp",
+            "window",
+            "model",
+            "model_unique_id",
+            "meta",
+            "tags",
+            "config",
+            "unrendered_config",
+            "refs",
+            "sources",
+            "metrics",
+            "depends_on",
+        ]
+
+    def to_msg(self):
+        msg = proto_nodes.Metric()
+        for cls in [BaseNode, GraphNode, Metric]:
+            for attribute in cls.msg_attributes():
+                value = get_msg_attribute_value(self, attribute)
+                setattr(msg, attribute, value)
+        msg.filters = [mf.to_msg() for mf in self.filters]
+        return msg
 
     @property
     def depends_on_nodes(self):

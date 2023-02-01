@@ -8,6 +8,7 @@ from dbt.contracts.util import (
     Replaceable,
     rename_metric_attr,
 )
+from dbt.contracts.graph import proto_nodes
 
 # trigger the PathEncoder
 import dbt.helper_types  # noqa:F401
@@ -86,6 +87,12 @@ class Docs(dbtClassMixin, Replaceable):
     show: bool = True
     node_color: Optional[str] = None
 
+    def to_msg(self):
+        return proto_nodes.Docs(
+            show=self.show,
+            node_color=self.node_color,
+        )
+
 
 @dataclass
 class HasDocs(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable):
@@ -157,6 +164,11 @@ class MacroArgument(dbtClassMixin):
     type: Optional[str] = None
     description: str = ""
 
+    def to_msg(self):
+        return proto_nodes.MacroArgument(
+            name=self.name, type=self.type, description=self.description
+        )
+
 
 @dataclass
 class UnparsedMacroUpdate(HasConfig, HasDocs, HasYamlMetadata):
@@ -177,6 +189,12 @@ class Time(dbtClassMixin, Mergeable):
     count: Optional[int] = None
     period: Optional[TimePeriod] = None
 
+    def to_msg(self):
+        return proto_nodes.Time(
+            count=self.count,
+            period=(None if not self.period else self.period.value),
+        )
+
     def exceeded(self, actual_age: float) -> bool:
         if self.period is None or self.count is None:
             return False
@@ -193,6 +211,14 @@ class FreshnessThreshold(dbtClassMixin, Mergeable):
     warn_after: Optional[Time] = field(default_factory=Time)
     error_after: Optional[Time] = field(default_factory=Time)
     filter: Optional[str] = None
+
+    def to_msg(self):
+        msg = proto_nodes.FreshnessThreshold(filter=self.filter)
+        if self.warn_after:
+            msg.warn_after = self.warn_after.to_msg()
+        if self.error_after:
+            msg.error_after = self.error_after.to_msg()
+        return msg
 
     def status(self, age: float) -> "dbt.contracts.results.FreshnessStatus":
         from dbt.contracts.results import FreshnessStatus
@@ -243,6 +269,14 @@ class Quoting(dbtClassMixin, Mergeable):
     schema: Optional[bool] = None
     identifier: Optional[bool] = None
     column: Optional[bool] = None
+
+    def to_msg(self):
+        return proto_nodes.Quoting(
+            database=self.database,
+            schema=self.schema,
+            identifier=self.identifier,
+            column=self.column,
+        )
 
 
 @dataclass
@@ -428,6 +462,12 @@ class ExposureOwner(dbtClassMixin, Replaceable):
     email: str
     name: Optional[str] = None
 
+    def to_msg(self):
+        return proto_nodes.ExposureOwner(
+            email=self.email,
+            name=self.name,
+        )
+
 
 @dataclass
 class UnparsedExposure(dbtClassMixin, Replaceable):
@@ -459,6 +499,9 @@ class MetricFilter(dbtClassMixin, Replaceable):
     # TODO : Can we make this Any?
     value: str
 
+    def to_msg(self):
+        return proto_nodes.MetricFilter(field=self.field, operator=self.operator, value=self.value)
+
 
 class MetricTimePeriod(StrEnum):
     day = "day"
@@ -474,6 +517,11 @@ class MetricTimePeriod(StrEnum):
 class MetricTime(dbtClassMixin, Mergeable):
     count: Optional[int] = None
     period: Optional[MetricTimePeriod] = None
+
+    def to_msg(self):
+        return proto_nodes.MetricTime(
+            count=self.count, period=(self.period.value if self.period else None)
+        )
 
     def __bool__(self):
         return self.count is not None and self.period is not None

@@ -1,4 +1,23 @@
 import re
+import enum
+from dbt.utils import cast_dict_to_dict_of_strings
+
+
+def get_msg_attribute_value(obj, attribute):
+    orig_value = getattr(obj, attribute)
+    value = orig_value
+    if isinstance(orig_value, enum.Enum):
+        value = orig_value.value
+    elif hasattr(value, "to_msg"):
+        value = value.to_msg()
+    elif attribute == "columns":
+        value = {}
+        for k, v in orig_value:
+            value[k] = orig_value.to_msg()
+    elif isinstance(orig_value, dict):
+        value = cast_dict_to_dict_of_strings(value)
+    return value
+
 
 HTML_COLORS = [
     "aliceblue",

@@ -694,3 +694,10 @@ def cast_dict_to_dict_of_strings(dct):
     for k, v in dct.items():
         new_dct[str(k)] = str(v)
     return new_dct
+
+
+def cast_to_bool(bool_value: Optional[bool]) -> bool:
+    if bool_value is None:
+        return False
+    else:
+        return True

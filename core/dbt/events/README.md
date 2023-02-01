@@ -51,3 +51,7 @@ logger = AdapterLogger("<database name>")
 ## Compiling types.proto
 
 After adding a new message in types.proto, in the core/dbt/events directory: ```protoc --python_betterproto_out . types.proto```
+
+After switching to the 2.0.0b5 release of betterproto, there is now a bug where it generates incorrectly named python classes when the names have acronyms like SQL or YAML in them. For now, I'm renaming these. The bug has been fixed in the repo, so hopefully there will be a new release at some point. (SQL, YAML, GET get turned int Sql, Yaml, Get).
+
+In addition, betterproto now puts the generated file in proto_types/__init__.py. I'm moving it to proto_types.py

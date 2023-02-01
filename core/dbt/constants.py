@@ -8,3 +8,5 @@ MAXIMUM_SEED_SIZE_NAME = "1MB"
 PIN_PACKAGE_URL = (
     "https://docs.getdbt.com/docs/package-management#section-specifying-package-versions"
 )
+
+MANIFEST_FILE_NAME = "manifest.json"

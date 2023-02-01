@@ -1,0 +1,6 @@
+kind: Features
+body: Crate protobuf representation of nodes
+time: 2023-01-31T21:27:02.209758-05:00
+custom:
+  Author: gshank
+  Issue: "6391"

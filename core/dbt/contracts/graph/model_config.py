@@ -8,11 +8,12 @@ from dbt.dataclass_schema import (
     register_pattern,
 )
 from dbt.contracts.graph.unparsed import AdditionalPropertiesAllowed, Docs
-from dbt.contracts.graph.utils import validate_color
+from dbt.contracts.graph.utils import validate_color, get_msg_attribute_value
 from dbt.exceptions import DbtInternalError, CompilationError
 from dbt.contracts.util import Replaceable, list_str
 from dbt import hooks
 from dbt.node_types import NodeType
+from dbt.contracts.graph import proto_nodes
 
 
 M = TypeVar("M", bound="Metadata")
@@ -194,6 +195,9 @@ class Hook(dbtClassMixin, Replaceable):
     sql: str
     transaction: bool = True
     index: Optional[int] = None
+
+    def to_msg(self):
+        return proto_nodes.Hook(sql=self.sql, transaction=self.transaction, index=self.index)
 
 
 T = TypeVar("T", bound="BaseConfig")
@@ -404,9 +408,15 @@ class NodeAndTestConfig(BaseConfig):
         metadata=MergeBehavior.Update.meta(),
     )
 
+    @classmethod
+    def msg_attributes(self):
+        return ["enabled", "alias", "schema", "database", "tags", "meta"]
+
 
 @dataclass
 class NodeConfig(NodeAndTestConfig):
+    """This config is used by ModelNode, AnalysisNode, RPCNode, SqlNode, HookNode"""
+
     # Note: if any new fields are added with MergeBehavior, also update the
     # 'mergebehavior' dictionary
     materialized: str = "view"
@@ -446,6 +456,35 @@ class NodeConfig(NodeAndTestConfig):
         default_factory=Docs,
         metadata=MergeBehavior.Update.meta(),
     )
+
+    @classmethod
+    def msg_attributes(self):
+        return [
+            "materialized",
+            "incremental_strategy",
+            "persist_docs",
+            "quoting",
+            "full_refresh",
+            "unique_key",
+            "on_schema_change",
+            "grants",
+            "packages",
+            "docs",
+        ]
+
+    def to_msg(self):
+        # Get matching msg config class
+        config_name = type(self).__name__
+        msg_cls = getattr(proto_nodes, config_name)
+        msg_config = msg_cls()
+
+        for cls in [NodeAndTestConfig, NodeConfig]:
+            for attribute in cls.msg_attributes():
+                value = get_msg_attribute_value(self, attribute)
+                setattr(msg_config, attribute, value)
+        msg_config.post_hook = [hk.to_msg() for hk in self.post_hook]
+        msg_config.pre_hook = [hk.to_msg() for hk in self.pre_hook]
+        return msg_config
 
     # we validate that node_color has a suitable value to prevent dbt-docs from crashing
     def __post_init__(self):
@@ -495,6 +534,11 @@ class SeedConfig(NodeConfig):
     materialized: str = "seed"
     quote_columns: Optional[bool] = None
 
+    def to_msg(self):
+        msg = super().to_msg()
+        msg.quote_columns = self.quote_columns
+        return msg
+
     @classmethod
     def validate(cls, data):
         super().validate(data)
@@ -502,8 +546,11 @@ class SeedConfig(NodeConfig):
             raise ValidationError("A seed must have a materialized value of 'seed'")
 
 
+# This is used in both GenericTestNode and SingularTestNode, but some
+# of these attributes seem specific to GenericTestNode.
 @dataclass
 class TestConfig(NodeAndTestConfig):
+    __test__ = False
     # this is repeated because of a different default
     schema: Optional[str] = field(
         default="dbt_test__audit",
@@ -517,6 +564,27 @@ class TestConfig(NodeAndTestConfig):
     fail_calc: str = "count(*)"
     warn_if: str = "!= 0"
     error_if: str = "!= 0"
+
+    @classmethod
+    def msg_attributes(self):
+        return [
+            "materialized",
+            "severity",
+            "store_failures",
+            "where",
+            "limit",
+            "fail_calc",
+            "warn_if",
+            "error_if",
+        ]
+
+    def to_msg(self):
+        msg_config = proto_nodes.TestConfig()
+        for cls in [NodeAndTestConfig, TestConfig]:
+            for attribute in cls.msg_attributes():
+                value = get_msg_attribute_value(self, attribute)
+                setattr(msg_config, attribute, value)
+        return msg_config
 
     @classmethod
     def same_contents(cls, unrendered: Dict[str, Any], other: Dict[str, Any]) -> bool:
@@ -562,6 +630,27 @@ class SnapshotConfig(EmptySnapshotConfig):
     updated_at: Optional[str] = None
     # Not using Optional because of serialization issues with a Union of str and List[str]
     check_cols: Union[str, List[str], None] = None
+
+    @classmethod
+    def msg_attributes(self):
+        return ["strategy", "unique_key", "target_schema", "target_database"]
+
+    def to_msg(self):
+        msg_config = super().to_msg()  # Uses NodeConfig to_msg
+        for attribute in self.msg_attributes():
+            value = get_msg_attribute_value(self, attribute)
+            setattr(msg_config, attribute, value)
+        msg_config.check_cols = self.normalize_check_cols()
+        return msg_config
+
+    def normalize_check_cols(self):
+        """Ensure that check_cols is always a list"""
+        if self.check_cols is None:
+            return []
+        elif isinstance(self.check_cols, str):
+            return [self.check_cols]
+        else:
+            return self.check_cols
 
     @classmethod
     def validate(cls, data):

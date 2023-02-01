@@ -1,7 +1,7 @@
 import pytest
 import re
 
-from dbt.tests.util import run_dbt, get_manifest, run_dbt_and_capture, write_file
+from dbt.tests.util import run_dbt, get_manifest, run_dbt_and_capture, write_file, read_file
 
 from dbt.tests.adapter.constraints.fixtures import (
     my_model_sql,
@@ -25,7 +25,6 @@ class BaseConstraintsColumnsEqual:
         }
 
     def test__constraints_wrong_column_order(self, project):
-
         results, log_output = run_dbt_and_capture(
             ["run", "-s", "my_model_wrong_order"], expect_pass=False
         )
@@ -77,9 +76,10 @@ insert into "{0}"."{1}"."my_model__dbt_tmp" (
     color ,
     date_day
 ) (
-    select 1 as id,
-    'blue' as color,
-    cast('2019-01-01' as date) as date_day
+    select
+        1 as id,
+        'blue' as color,
+        cast('2019-01-01' as date) as date_day
 );
 """
 
@@ -110,14 +110,19 @@ class BaseConstraintsRuntimeEnforcement:
         results = run_dbt(["run", "-s", "my_model"])
         assert len(results) == 1
         # TODO: consider refactoring this to introspect logs instead
-        with open("./target/run/test/models/my_model.sql", "r") as fp:
-            generated_sql = fp.read()
+        generated_sql = read_file("target", "run", "test", "models", "my_model.sql")
 
         generated_sql_check = re.sub(r"\s+", " ", generated_sql).lower().strip()
         expected_sql_check = re.sub(r"\s+", " ", expected_sql).lower().strip()
         assert (
             expected_sql_check == generated_sql_check
-        ), f"generated sql did not match expected: \n{generated_sql} \n{expected_sql}"
+        ), f"""
+-- GENERATED SQL
+{generated_sql}
+
+-- EXPECTED SQL
+{expected_sql}
+"""
 
     def test__constraints_enforcement_rollback(self, project, expected_error_messages):
         results = run_dbt(["run", "-s", "my_model"])

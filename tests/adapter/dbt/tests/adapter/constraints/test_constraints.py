@@ -120,6 +120,9 @@ class BaseConstraintsRuntimeEnforcement:
     def expected_error_messages(self):
         return ['null value in column "id"', "violates not-null constraint"]
 
+    def assert_expected_error_messages(self, error_message, expected_error_messages):
+        assert all(msg in error_message for msg in expected_error_messages)
+
     def test__constraints_ddl(self, project, expected_sql):
         results = run_dbt(["run", "-s", "my_model"])
         assert len(results) == 1
@@ -166,7 +169,7 @@ class BaseConstraintsRuntimeEnforcement:
         assert constraints_enabled_actual_config is True
 
         # Its result includes the expected error messages
-        assert all(err in failing_results[0].message for err in expected_error_messages)
+        self.assert_expected_error_messages(failing_results[0].message, expected_error_messages)
 
 
 class TestConstraintsColumnsEqual(BaseConstraintsColumnsEqual):

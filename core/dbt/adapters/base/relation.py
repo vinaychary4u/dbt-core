@@ -12,7 +12,6 @@ from dbt.contracts.relation import (
     Path,
 )
 from dbt.exceptions import (
-    ApproximateMatchError,
     DbtInternalError,
     MultipleDatabasesNotAllowedError,
 )
@@ -77,36 +76,24 @@ class BaseRelation(FakeAPIObject, Hashable):
         schema: Optional[str] = None,
         identifier: Optional[str] = None,
     ) -> bool:
-        search = filter_null_values(
-            {
-                ComponentName.Database: database,
-                ComponentName.Schema: schema,
-                ComponentName.Identifier: identifier,
-            }
-        )
 
-        if not search:
-            # nothing was passed in
+        if identifier is not None and not self._is_exactish_match(
+            ComponentName.Identifier, identifier
+        ):
+            return False
+
+        if schema is not None and not self._is_exactish_match(ComponentName.Schema, schema):
+            return False
+
+        if database is not None and not self._is_exactish_match(ComponentName.Database, database):
+            return False
+
+        if database is None and schema is None and identifier is None:
             raise dbt.exceptions.DbtRuntimeError(
                 "Tried to match relation, but no search path was passed!"
             )
 
-        exact_match = True
-        approximate_match = True
-
-        for k, v in search.items():
-            if not self._is_exactish_match(k, v):
-                exact_match = False
-            if str(self.path.get_lowered_part(k)).strip(self.quote_character) != v.lower().strip(
-                self.quote_character
-            ):
-                approximate_match = False  # type: ignore[union-attr]
-
-        if approximate_match and not exact_match:
-            target = self.create(database=database, schema=schema, identifier=identifier)
-            raise ApproximateMatchError(target, self)
-
-        return exact_match
+        return True
 
     def replace_path(self, **kwargs):
         return self.replace(path=self.path.replace(**kwargs))

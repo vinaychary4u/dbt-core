@@ -1,12 +1,20 @@
 import pytest
 import re
 
-from dbt.tests.util import run_dbt, get_manifest, run_dbt_and_capture, write_file, read_file
+from dbt.tests.util import (
+    run_dbt,
+    get_manifest,
+    run_dbt_and_capture,
+    write_file,
+    read_file,
+    relation_from_name,
+)
 
 from dbt.tests.adapter.constraints.fixtures import (
     my_model_sql,
     my_model_wrong_order_sql,
     my_model_wrong_name_sql,
+    my_model_with_nulls_sql,
     model_schema_yml,
 )
 
@@ -66,12 +74,12 @@ class BaseConstraintsColumnsEqual:
 # This is SUPER specific to Postgres, and will need replacing on other adapters
 # TODO: make more generic
 _expected_sql = """
-create table "{0}"."{1}"."my_model__dbt_tmp" (
+create table {0} (
     id integer not null primary key check (id > 0) ,
     color text ,
     date_day date
 ) ;
-insert into "{0}"."{1}"."my_model__dbt_tmp" (
+insert into {0} (
     id ,
     color ,
     date_day
@@ -100,7 +108,13 @@ class BaseConstraintsRuntimeEnforcement:
 
     @pytest.fixture(scope="class")
     def expected_sql(self, project):
-        return _expected_sql.format(project.database, project.test_schema)
+        relation = relation_from_name(project.adapter, "my_model")
+        tmp_relation = relation.incorporate(path={"identifier": relation.identifier + "__dbt_tmp"})
+        return _expected_sql.format(tmp_relation)
+
+    @pytest.fixture(scope="class")
+    def expected_color(self):
+        return "blue"
 
     @pytest.fixture(scope="class")
     def expected_error_messages(self):
@@ -124,26 +138,24 @@ class BaseConstraintsRuntimeEnforcement:
 {expected_sql}
 """
 
-    def test__constraints_enforcement_rollback(self, project, expected_error_messages):
+    def test__constraints_enforcement_rollback(
+        self, project, expected_color, expected_error_messages
+    ):
         results = run_dbt(["run", "-s", "my_model"])
         assert len(results) == 1
 
         # Make a contract-breaking change to the model
-        my_model_with_nulls = my_model_sql.replace("1 as id", "null as id")
-        write_file(my_model_with_nulls, "models", "my_model.sql")
+        write_file(my_model_with_nulls_sql, "models", "my_model.sql")
 
         failing_results = run_dbt(["run", "-s", "my_model"], expect_pass=False)
         assert len(failing_results) == 1
 
         # Verify the previous table still exists
-        old_model_exists_sql = """
-            select id from {0}.{1}.my_model where id = 1
-        """.format(
-            project.database, project.test_schema
-        )
+        relation = relation_from_name(project.adapter, "my_model")
+        old_model_exists_sql = f"select * from {relation}"
         old_model_exists = project.run_sql(old_model_exists_sql, fetch="all")
         assert len(old_model_exists) == 1
-        assert old_model_exists[0][0] == 1
+        assert old_model_exists[0][1] == expected_color
 
         # Confirm this model was contracted
         # TODO: is this step really necessary?

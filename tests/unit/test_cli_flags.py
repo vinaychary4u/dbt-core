@@ -9,6 +9,7 @@ from dbt.contracts.project import UserConfig
 from dbt.cli.flags import Flags
 from dbt.helper_types import WarnErrorOptions
 from dbt.cli.resolvers import default_project_dir
+import dbt.cli.params as params
 
 
 class TestFlags:
@@ -178,3 +179,10 @@ class TestFlags:
     def test_get_default(self, param_name, expected_default):
         assert Flags.get_default(param_name) == expected_default
         assert Flags.get_default(param_name.upper()) == expected_default
+
+    def test_safe_access(self):
+        # default flags
+        flags = Flags()
+        for param_name, decorator in params.__dict__.items():
+            if hasattr(decorator, "__mod__") and decorator.__mod__ == "click.decorators":
+                getattr(flags, param_name)

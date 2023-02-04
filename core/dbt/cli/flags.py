@@ -24,11 +24,17 @@ class Flags:
     def __init__(self, ctx: Context = None, user_config: UserConfig = None) -> None:
 
         if ctx is None:
-            ctx = get_current_context()
+            try:
+                ctx = get_current_context()
+            except Exception:
+                return None
 
         def assign_params(ctx, params_assigned_from_default):
             """Recursively adds all click params to flag object"""
             for param_name, param_value in ctx.params.items():
+                # N.B. You have to use the base MRO method (object.__setattr__) to set attributes
+                # when using frozen dataclasses.
+                # https://docs.python.org/3/library/dataclasses.html#frozen-instances
                 object.__setattr__(self, param_name.upper(), param_value)
                 if ctx.get_parameter_source(param_name) == ParameterSource.DEFAULT:
                     params_assigned_from_default.add(param_name)

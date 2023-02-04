@@ -8,6 +8,7 @@ from dbt.cli.main import cli
 from dbt.contracts.project import UserConfig
 from dbt.cli.flags import Flags
 from dbt.helper_types import WarnErrorOptions
+from dbt.cli.resolvers import default_project_dir
 
 
 class TestFlags:
@@ -161,3 +162,19 @@ class TestFlags:
 
         with pytest.raises(click.BadOptionUsage):
             Flags(context, user_config)
+
+    @pytest.mark.parametrize(
+        "param_name,expected_default",
+        [
+            ("port", 8080),
+            ("warn_error", False),
+            ("warn_error_options", WarnErrorOptions(include=[], exclude=[])),
+            ("vars", {}),
+            ("threads", 1),
+            ("state", None),
+            ("project_dir", default_project_dir()),
+        ],
+    )
+    def test_get_default(self, param_name, expected_default):
+        assert Flags.get_default(param_name) == expected_default
+        assert Flags.get_default(param_name.upper()) == expected_default

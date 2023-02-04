@@ -7,11 +7,12 @@ from multiprocessing import get_context
 from pprint import pformat as pf
 from typing import Set, List
 
-from click import Context, get_current_context, BadOptionUsage
+from click import Context, get_current_context, BadOptionUsage, Command
 from click.core import ParameterSource
 
 from dbt.config.profile import read_user_config
 from dbt.contracts.project import UserConfig
+import dbt.cli.params as p
 
 if os.name != "nt":
     # https://bugs.python.org/issue41567
@@ -28,11 +29,6 @@ class Flags:
         def assign_params(ctx, params_assigned_from_default):
             """Recursively adds all click params to flag object"""
             for param_name, param_value in ctx.params.items():
-                # N.B. You have to use the base MRO method (object.__setattr__) to set attributes
-                # when using frozen dataclasses.
-                # https://docs.python.org/3/library/dataclasses.html#frozen-instances
-                if hasattr(self, param_name):
-                    raise Exception(f"Duplicate flag names found in click command: {param_name}")
                 object.__setattr__(self, param_name.upper(), param_value)
                 if ctx.get_parameter_source(param_name) == ParameterSource.DEFAULT:
                     params_assigned_from_default.add(param_name)
@@ -96,6 +92,12 @@ class Flags:
     def __str__(self) -> str:
         return str(pf(self.__dict__))
 
+    def __getattribute__(self, name):
+        try:
+            return object.__getattribute__(self, name)
+        except AttributeError:
+            self.get_default(name)
+
     def _assert_mutually_exclusive(
         self, params_assigned_from_default: Set[str], group: List[str]
     ) -> None:
@@ -112,3 +114,25 @@ class Flags:
                 )
             elif flag_set_by_user:
                 set_flag = flag
+
+    @staticmethod
+    def get_default(param_name: str):
+        param_name = param_name.lower()
+
+        try:
+            param_decorator = getattr(p, param_name)
+        except ImportError:
+            raise AttributeError
+
+        command = param_decorator(Command(None))
+        param = command.params[0]
+        default = param.default
+        if callable(default):
+            return default()
+        else:
+            if param.type:
+                try:
+                    return param.type.convert(default, param, None)
+                except TypeError:
+                    return default
+            return default

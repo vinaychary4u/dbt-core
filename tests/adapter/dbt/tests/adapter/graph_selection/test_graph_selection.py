@@ -3,7 +3,7 @@ import json
 import pytest
 
 from dbt.tests.util import run_dbt, check_result_nodes_by_name
-from tests.functional.graph_selection.fixtures import SelectionFixtures
+from dbt.tests.adapter.graph_selection.fixtures import SelectionFixtures
 
 
 selectors_yml = """

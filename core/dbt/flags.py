@@ -50,11 +50,10 @@ def set_from_args(args: Namespace, user_config):
 
     # make a dummy context to get the flags, totally arbitrary
     ctx = cli.make_context("run", ["run"])
-    flags = Flags(ctx, user_config)
     for arg_name, args_param_value in vars(args).items():
         args_param_value = convert_config(arg_name, args_param_value)
-        object.__setattr__(flags, arg_name.upper(), args_param_value)
-        object.__setattr__(flags, arg_name.lower(), args_param_value)
+        ctx.params[arg_name.lower()] = args_param_value
+    flags = Flags(ctx, user_config)
     GLOBAL_FLAGS = flags  # type: ignore
 
 

@@ -317,18 +317,18 @@ class TestProfileEnvVars:
             "dbname": "dbt",
         }
 
-    def test_profile_env_vars(self, project):
+    def test_profile_env_vars(self, project, monkeypatch):
 
         # Initial run
-        os.environ["ENV_VAR_USER"] = "root"
-        os.environ["ENV_VAR_PASS"] = "password"
+        monkeypatch.setenv("ENV_VAR_USER", "root")
+        monkeypatch.setenv("ENV_VAR_PASS", "password")
 
         run_dbt(["run"])
         manifest = get_manifest(project.project_root)
         env_vars_checksum = manifest.state_check.profile_env_vars_hash.checksum
 
         # Change env_vars, the user doesn't exist, this should fail
-        os.environ["ENV_VAR_USER"] = "fake_user"
+        monkeypatch.setenv("ENV_VAR_USER", "fake_user")
 
         # N.B. run_dbt_and_capture won't work here because FailedToConnectError ends the test entirely
         with pytest.raises(FailedToConnectError):

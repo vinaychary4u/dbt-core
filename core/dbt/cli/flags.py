@@ -15,6 +15,8 @@ from dbt.contracts.project import UserConfig
 from dbt.helper_types import WarnErrorOptions
 from dbt.config.project import PartialProject
 from dbt.exceptions import DbtProjectError
+from dbt.cli.resolvers import default_project_dir
+from pathlib import Path
 
 if os.name != "nt":
     # https://bugs.python.org/issue41567
@@ -132,8 +134,8 @@ class Flags:
 
         # Default LOG_PATH from PROJECT_DIR, if available.
         if getattr(self, "LOG_PATH", None) is None:
+            project_dir = getattr(self, "PROJECT_DIR", default_project_dir())
             log_path = "logs"
-            project_dir = getattr(self, "PROJECT_DIR", None)
             # If available, set LOG_PATH from log-path in dbt_project.yml
             # Known limitations:
             #  1. Using PartialProject here, so no jinja rendering of log-path.
@@ -147,8 +149,8 @@ class Flags:
                     log_path = str(partial.project_dict.get("log-path", log_path))
                 except DbtProjectError:
                     pass
-
-            object.__setattr__(self, "LOG_PATH", log_path)
+            # TODO should concatenation go here or on line 138?
+            object.__setattr__(self, "LOG_PATH", Path(project_dir) / log_path)
 
         # Support console DO NOT TRACK initiave
         object.__setattr__(

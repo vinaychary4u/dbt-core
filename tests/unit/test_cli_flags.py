@@ -9,7 +9,6 @@ from dbt.contracts.project import UserConfig
 from dbt.cli.flags import Flags
 from dbt.helper_types import WarnErrorOptions
 from dbt.cli.resolvers import default_project_dir
-import dbt.cli.params as params
 
 
 class TestFlags:
@@ -46,6 +45,12 @@ class TestFlags:
             assert getattr(flags, param.name.upper()) == "logs"
         else:
             assert getattr(flags, param.name.upper()) == run_context.params[param.name.lower()]
+
+    def test_expected_duplicate_params_precedence(self):
+        # default flags
+        context = self.make_dbt_context("run", ["--version-check", "deps", "--no-version_check"])
+        flags = Flags(context)
+        assert flags.VERSION_CHECK
 
     @pytest.mark.parametrize(
         "do_not_track,expected_anonymous_usage_stats",
@@ -186,12 +191,12 @@ class TestFlags:
         assert Flags.get_default(param_name) == expected_default
         assert Flags.get_default(param_name.upper()) == expected_default
 
-    def test_safe_access(self):
+    @pytest.mark.parametrize("param", cli.params)
+    def test_safe_access(self, param):
         # default flags
         flags = Flags()
-        for param_name, decorator in params.__dict__.items():
-            if hasattr(decorator, "__mod__") and decorator.__mod__ == "click.decorators":
-                getattr(flags, param_name)
+        getattr(flags, param.name)
+        getattr(flags, param.name.upper())
 
     def test_access_invalid_param(self):
         # default flags

@@ -123,9 +123,16 @@ def resolve_packages(
     while pending:
         next_pending = PackageListing()
         # resolve the dependency in question
+        import pdb
+
+        pdb.set_trace()
         for package in pending:
             final.incorporate(package)
             target = final[package].resolved().fetch_metadata(config, renderer)
+            for parent_package in target.packages:
+                parent_unpinned_package = RegistryUnpinnedPackage.from_contract(parent_package)
+                test_msg = f"{parent_package.package} requested by {package.name} with version(s) {parent_package.version}"
+                final[parent_unpinned_package].add_package_request(test_msg)
             next_pending.update_from(target.packages)
         pending = next_pending
 

@@ -68,13 +68,29 @@ class RegistryUnpinnedPackage(RegistryPackageMixin, UnpinnedPackage[RegistryPinn
         self.versions = versions
         self.install_prerelease = install_prerelease
 
+    def __repr__(self) -> str:
+        version_list = []
+        for version in self.versions:
+            version_list.append(version.to_version_string())
+        return f"{self.name} : {version_list}"
+
     def _check_in_index(self):
         index = registry.index_cached()
         if self.package not in index:
             raise PackageNotFoundError(self.package)
 
+    def package_requests(self) -> List[str]:
+        return [
+            f"{self.name} requested with version(s) {[version.to_version_string() for version in self.versions]}"
+        ]
+
+    def add_package_request(self, request: str):
+        self.package_requests().append(request)
+
     @classmethod
-    def from_contract(cls, contract: RegistryPackage) -> "RegistryUnpinnedPackage":
+    def from_contract(
+        cls, contract: RegistryPackage, request: str = None
+    ) -> "RegistryUnpinnedPackage":
         raw_version = contract.get_versions()
 
         versions = [semver.VersionSpecifier.from_version_string(v) for v in raw_version]
@@ -93,10 +109,11 @@ class RegistryUnpinnedPackage(RegistryPackageMixin, UnpinnedPackage[RegistryPinn
 
     def resolved(self) -> RegistryPinnedPackage:
         self._check_in_index()
+        # raise Exception("dave, check this shit out")
         try:
             range_ = semver.reduce_versions(*self.versions)
         except VersionsNotCompatibleError as e:
-            new_msg = "Version error for package {}: {}".format(self.name, e)
+            new_msg = "Version error for package {}: {}".format(self.name, self.package_requests())
             raise DependencyError(new_msg) from e
 
         should_version_check = bool(flags.VERSION_CHECK)

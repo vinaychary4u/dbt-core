@@ -107,7 +107,6 @@ class RegistryUnpinnedPackage(RegistryPackageMixin, UnpinnedPackage[RegistryPinn
 
     def resolved(self) -> RegistryPinnedPackage:
         self._check_in_index()
-        # raise Exception("dave, check this shit out")
         try:
             range_ = semver.reduce_versions(*self.versions)
         except VersionsNotCompatibleError as e:

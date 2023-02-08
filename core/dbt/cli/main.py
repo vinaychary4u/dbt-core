@@ -66,7 +66,6 @@ class dbtRunner:
     epilog="Specify one of these sub-commands and you can find more help from there.",
 )
 @click.pass_context
-@p.anonymous_usage_stats
 @p.cache_selected_only
 @p.debug
 @p.enable_legacy_logger
@@ -80,6 +79,7 @@ class dbtRunner:
 @p.printer_width
 @p.quiet
 @p.record_timing_info
+@p.send_anonymous_usage_stats
 @p.single_threaded
 @p.static_parser
 @p.use_colors

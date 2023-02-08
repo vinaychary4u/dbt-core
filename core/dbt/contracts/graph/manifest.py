@@ -303,7 +303,8 @@ class ManifestMetadata(BaseArtifactMetadata):
             self.user_id = tracking.active_user.id
 
         if self.send_anonymous_usage_stats is None:
-            self.send_anonymous_usage_stats = get_flags().ANONYMOUS_USAGE_STATS
+            # TODO: this is called before Flags is actually resolved!!
+            self.send_anonymous_usage_stats = get_flags().SEND_ANONYMOUS_USAGE_STATS
 
     @classmethod
     def default(cls):

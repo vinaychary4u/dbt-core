@@ -6,17 +6,6 @@ from dbt.cli.option_types import YAML, ChoiceTuple, WarnErrorOptionsType
 from dbt.cli.resolvers import default_project_dir, default_profiles_dir
 from dbt.version import get_version_information
 
-# TODO:  The name (reflected in flags) is a correction!
-# The original name was `SEND_ANONYMOUS_USAGE_STATS` and used an env var called "DBT_SEND_ANONYMOUS_USAGE_STATS"
-# Both of which break existing naming conventions (doesn't match param flag).
-# This will need to be fixed before use in the main codebase and communicated as a change to the community!
-anonymous_usage_stats = click.option(
-    "--anonymous-usage-stats/--no-anonymous-usage-stats",
-    envvar="DBT_ANONYMOUS_USAGE_STATS",
-    help="Send anonymous usage stats to dbt Labs.",
-    default=True,
-)
-
 args = click.option(
     "--args",
     envvar=None,
@@ -210,6 +199,7 @@ profile = click.option(
     help="Which profile to load. Overrides setting in dbt_project.yml.",
 )
 
+# For tests, the 'DBT_PROFILES_DIR' env var is not set early enough to correctly resolve this
 profiles_dir = click.option(
     "--profiles-dir",
     envvar="DBT_PROFILES_DIR",
@@ -283,6 +273,15 @@ select = click.option(*select_decls, *model_decls, **select_attrs)
 
 selector = click.option(
     "--selector", envvar=None, help="The selector name to use, as defined in selectors.yml"
+)
+
+# This is a breaking change for the CLI flag only: --no-anonymous-usage-stats is now --no-send-anonymous-usage-stats
+# Preserve the existing name of the env var and UserConfig
+send_anonymous_usage_stats = click.option(
+    "--send-anonymous-usage-stats/--no-send-anonymous-usage-stats",
+    envvar="DBT_SEND_ANONYMOUS_USAGE_STATS",
+    help="Share anonymous usage stats with dbt Labs to help us improve dbt-core!",
+    default=True,
 )
 
 show = click.option(

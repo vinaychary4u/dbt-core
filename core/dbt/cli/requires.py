@@ -25,7 +25,20 @@ def preflight(func):
         set_flags(flags)
 
         # Tracking
-        initialize_from_flags(flags.ANONYMOUS_USAGE_STATS, flags.PROFILES_DIR)
+        # TODO: This is not working correctly!
+        # It seems like an issue with parent-level vs. subcommand-level flags
+        # Drop a breakpoint here
+        # import ipdb; ipdb.set_trace()
+        # Then try:
+        #    $ python3 -m dbt.cli.main --no-send-anonymous-usage-stats run
+        #    $ SEND_ANONYMOUS_USAGE_STATS=False python3 -m dbt.cli.main run
+        # ipdb> flags.SEND_ANONYMOUS_USAGE_STATS
+        # True
+        # I was also experimenting with version_check, which is supported at both child + parent levels, and is True by default.
+        # $ python3 -m dbt.cli.main --no-version-check run --> flags.version_check returns True (ignored)
+        # $ python3 -m dbt.cli.main run --no-version-check --> flags.version_check returns False (not ignored)
+        # $ python3 -m dbt.cli.main --no-version-check run --version-check --> flags.version_check returns False!! parent is not ignored & wins
+        initialize_from_flags(flags.SEND_ANONYMOUS_USAGE_STATS, flags.PROFILES_DIR)
         ctx.with_resource(track_run(run_command=flags.WHICH))
 
         # Logging

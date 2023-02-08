@@ -501,6 +501,10 @@ class TestVerifyArtifacts(BaseVerifyProject):
     # Test generic "docs generate" command
     def test_run_and_generate(self, project, manifest_schema_path, run_results_schema_path):
         start_time = datetime.utcnow()
+        # Two issues here with send_anonymous_usage_stats:
+        # 1. Our test fixtures don't set an env var / write profiles.yml early enough
+        # 2. Even if I pass in the flag explicitly, it doesn't seem to be working!
+        # results = run_dbt(["--no-send-anonymous-usage-stats", "compile"])
         results = run_dbt(["compile"])
         assert len(results) == 7
 

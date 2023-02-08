@@ -109,7 +109,10 @@ class Flags:
             assign_params(invoked_subcommand_ctx, params_assigned_from_default)
 
         if not user_config:
-            profiles_dir = getattr(self, "PROFILES_DIR", None)
+            # In tests, we don't set this env var / write profiles.yml early enough
+            # See 'profiles_yml' fixture in tests/fixtures/project.py
+            # This is obviously bad
+            profiles_dir = os.getenv("DBT_PROFILES_DIR") or getattr(self, "PROFILES_DIR", None)
             user_config = read_user_config(profiles_dir) if profiles_dir else None
 
         # Overwrite default assignments with user config if available
@@ -153,7 +156,7 @@ class Flags:
         # Support console DO NOT TRACK initiave
         object.__setattr__(
             self,
-            "ANONYMOUS_USAGE_STATS",
+            "SEND_ANONYMOUS_USAGE_STATS",
             False
             if os.getenv("DO_NOT_TRACK", "").lower() in ("1", "t", "true", "y", "yes")
             else True,

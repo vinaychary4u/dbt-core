@@ -95,12 +95,7 @@ class GraphRunnableTask(ConfiguredTask):
 
     def get_selection_spec(self) -> SelectionSpec:
         default_selector_name = self.config.get_default_selector_name()
-        # TODO:  The "eager" string below needs to be replaced with programatic access
-        #  to the default value for the indirect selection parameter in
-        # dbt.cli.params.indirect_selection
-        #
-        # Doing that is actually a little tricky, so I'm punting it to a new ticket GH #6397
-        indirect_selection = getattr(self.args, "INDIRECT_SELECTION", "eager")
+        indirect_selection = self.args.INDIRECT_SELECTION
 
         if self.args.selector:
             # use pre-defined selector (--selector)

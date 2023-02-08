@@ -181,15 +181,7 @@ class Profile(HasCredentials):
         args_profile_name: Optional[str],
         project_profile_name: Optional[str] = None,
     ) -> str:
-        # TODO: Duplicating this method as direct copy of the implementation in dbt.cli.resolvers
-        # dbt.cli.resolvers implementation can't be used because it causes a circular dependency.
-        # This should be removed and use a safe default access on the Flags module when
-        # https://github.com/dbt-labs/dbt-core/issues/6259 is closed.
-        def default_profiles_dir():
-            from pathlib import Path
-
-            return Path.cwd() if (Path.cwd() / "profiles.yml").exists() else Path.home() / ".dbt"
-
+        flags = get_flags()
         profile_name = project_profile_name
         if args_profile_name is not None:
             profile_name = args_profile_name
@@ -206,7 +198,7 @@ defined in your profiles.yml file. You can find profiles.yml here:
 
 {profiles_file}/profiles.yml
 """.format(
-                profiles_file=default_profiles_dir()
+                profiles_file=flags.get_default("PROFILES_DIR")
             )
             raise DbtProjectError(NO_SUPPLIED_PROFILE_ERROR)
         return profile_name

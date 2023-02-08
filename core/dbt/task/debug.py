@@ -256,9 +256,7 @@ class DebugTask(BaseTask):
                     profile_name,
                     self.args.profile,
                     self.args.target,
-                    # TODO: Generalize safe access to flags.THREADS:
-                    # https://github.com/dbt-labs/dbt-core/issues/6259
-                    getattr(self.args, "threads", None),
+                    self.args.threads,
                 )
             except dbt.exceptions.DbtConfigError as exc:
                 profile_errors.append(str(exc))

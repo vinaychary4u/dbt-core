@@ -85,12 +85,10 @@ class RegistryUnpinnedPackage(RegistryPackageMixin, UnpinnedPackage[RegistryPinn
         ]
 
     def add_package_request(self, request: str):
-        self.package_requests().append(request)
+        return self.package_requests().append(request)
 
     @classmethod
-    def from_contract(
-        cls, contract: RegistryPackage, request: str = None
-    ) -> "RegistryUnpinnedPackage":
+    def from_contract(cls, contract: RegistryPackage) -> "RegistryUnpinnedPackage":
         raw_version = contract.get_versions()
 
         versions = [semver.VersionSpecifier.from_version_string(v) for v in raw_version]

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Optional
 
 from dbt import semver
 from dbt import flags
@@ -59,14 +59,27 @@ class RegistryPinnedPackage(RegistryPackageMixin, PinnedPackage):
     def install(self, project, renderer):
         self._install(project, renderer)
 
+    def __repr__(self):
+        return f"{self.package}@{self.version}"
+
 
 class RegistryUnpinnedPackage(RegistryPackageMixin, UnpinnedPackage[RegistryPinnedPackage]):
     def __init__(
-        self, package: str, versions: List[semver.VersionSpecifier], install_prerelease: bool
+        self,
+        package: str,
+        versions: List[semver.VersionSpecifier],
+        install_prerelease: bool,
+        by_whom: str = "user",
+        who_wants_which: Optional[Dict[str, List[semver.VersionSpecifier]]] = None,
     ) -> None:
         super().__init__(package)
         self.versions = versions
         self.install_prerelease = install_prerelease
+        self.by_whom = by_whom
+        self.who_wants_which = who_wants_which
+
+        if not self.who_wants_which:
+            self.who_wants_which = {self.by_whom: self.versions}
 
     def __repr__(self) -> str:
         version_list = []
@@ -79,16 +92,17 @@ class RegistryUnpinnedPackage(RegistryPackageMixin, UnpinnedPackage[RegistryPinn
         if self.package not in index:
             raise PackageNotFoundError(self.package)
 
-    def package_requests(self) -> List[str]:
-        return [
-            f"{self.name} requested with version(s) {[version.to_version_string() for version in self.versions]}"
-        ]
-
-    def add_package_request(self, request: str):
-        return self.package_requests().append(request)
+    def package_requests(self):
+        message = ""
+        for who, which in self.who_wants_which.items():
+            version_list = []
+            for version in which:
+                version_list.append(version.to_version_string())
+            message = message + f"\n    Required by {who}: {version_list}"
+        return message
 
     @classmethod
-    def from_contract(cls, contract: RegistryPackage) -> "RegistryUnpinnedPackage":
+    def from_contract(cls, contract: RegistryPackage, by_whom="user") -> "RegistryUnpinnedPackage":
         raw_version = contract.get_versions()
 
         versions = [semver.VersionSpecifier.from_version_string(v) for v in raw_version]
@@ -96,13 +110,16 @@ class RegistryUnpinnedPackage(RegistryPackageMixin, UnpinnedPackage[RegistryPinn
             package=contract.package,
             versions=versions,
             install_prerelease=bool(contract.install_prerelease),
+            by_whom=by_whom,
         )
 
     def incorporate(self, other: "RegistryUnpinnedPackage") -> "RegistryUnpinnedPackage":
+        who_wants_which = (self.who_wants_which or {}) | (other.who_wants_which or {})
         return RegistryUnpinnedPackage(
             package=self.package,
             install_prerelease=self.install_prerelease,
             versions=self.versions + other.versions,
+            who_wants_which=who_wants_which,
         )
 
     def resolved(self) -> RegistryPinnedPackage:

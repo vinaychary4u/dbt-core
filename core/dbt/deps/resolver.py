@@ -68,7 +68,7 @@ class PackageListing:
         else:
             self.packages[key] = package
 
-    def update_from(self, src: List[PackageContract]) -> None:
+    def update_from(self, src: List[PackageContract], by_whom="user") -> None:
         pkg: UnpinnedPackage
         for contract in src:
             if isinstance(contract, LocalPackage):
@@ -78,7 +78,7 @@ class PackageListing:
             elif isinstance(contract, GitPackage):
                 pkg = GitUnpinnedPackage.from_contract(contract)
             elif isinstance(contract, RegistryPackage):
-                pkg = RegistryUnpinnedPackage.from_contract(contract)
+                pkg = RegistryUnpinnedPackage.from_contract(contract, by_whom)
             else:
                 raise DbtInternalError("Invalid package type {}".format(type(contract)))
             self.incorporate(pkg)
@@ -123,17 +123,11 @@ def resolve_packages(
     while pending:
         next_pending = PackageListing()
         # resolve the dependency in question
-        import pdb
-
-        pdb.set_trace()
         for package in pending:
             final.incorporate(package)
-            target = final[package].resolved().fetch_metadata(config, renderer)
-            for parent_package in target.packages:
-                parent_unpinned_package = RegistryUnpinnedPackage.from_contract(parent_package)
-                test_msg = f"{parent_package.package} requested by {package.name} with version(s) {parent_package.version}"
-                final[parent_unpinned_package].add_package_request(test_msg)
-            next_pending.update_from(target.packages)
+            resolved = final[package].resolved()
+            target = resolved.fetch_metadata(config, renderer)
+            next_pending.update_from(target.packages, by_whom=str(resolved))
         pending = next_pending
 
     resolved = final.resolved()

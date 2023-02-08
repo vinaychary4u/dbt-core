@@ -100,10 +100,11 @@ def _logfile_filter(log_cache_events: bool, log_format: str, msg: EventMsg) -> b
 
 def _get_logbook_log_config(debug: bool) -> LoggerConfig:
     # use the default one since this code should be removed when we remove logbook
-    flags = get_flags()
-    config = _get_stdout_config("", debug, bool(flags.USE_COLORS))
+    config = _get_stdout_config("", debug, bool(flags_module.USE_COLORS))
     config.name = "logbook_log"
-    config.filter = NoFilter if flags.LOG_CACHE_EVENTS else lambda e: not isinstance(e.data, Cache)
+    config.filter = (
+        NoFilter if flags_module.LOG_CACHE_EVENTS else lambda e: not isinstance(e.data, Cache)
+    )
     config.logger = GLOBAL_LOGGER
     return config
 

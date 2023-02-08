@@ -38,8 +38,14 @@ class TestFlags:
         flags = Flags(run_context)
         if param.name.upper() == "VERSION":
             return
+
         assert hasattr(flags, param.name.upper())
-        assert getattr(flags, param.name.upper()) == run_context.params[param.name.lower()]
+
+        # LOG_PATH is set from dbt_project.yml, independently from its param definition
+        if param.name.upper() == "LOG_PATH":
+            assert getattr(flags, param.name.upper()) == "logs"
+        else:
+            assert getattr(flags, param.name.upper()) == run_context.params[param.name.lower()]
 
     @pytest.mark.parametrize(
         "do_not_track,expected_anonymous_usage_stats",
@@ -171,7 +177,7 @@ class TestFlags:
             ("warn_error", False),
             ("warn_error_options", WarnErrorOptions(include=[], exclude=[])),
             ("vars", {}),
-            ("threads", 1),
+            ("threads", None),
             ("state", None),
             ("project_dir", default_project_dir()),
         ],
@@ -186,3 +192,9 @@ class TestFlags:
         for param_name, decorator in params.__dict__.items():
             if hasattr(decorator, "__mod__") and decorator.__mod__ == "click.decorators":
                 getattr(flags, param_name)
+
+    def test_access_invalid_param(self):
+        # default flags
+        flags = Flags()
+        with pytest.raises(AttributeError):
+            flags.INVALID_PARAM

@@ -13,10 +13,25 @@ from click.core import ParameterSource
 from dbt.config.profile import read_user_config
 from dbt.contracts.project import UserConfig
 import dbt.cli.params as p
+from dbt.helper_types import WarnErrorOptions
+from dbt.config.project import PartialProject
+from dbt.exceptions import DbtProjectError
+
 
 if os.name != "nt":
     # https://bugs.python.org/issue41567
     import multiprocessing.popen_spawn_posix  # type: ignore  # noqa: F401
+
+
+def convert_config(config_name, config_value):
+    # This function should take care of converting the values from config and original
+    # set_from_args to the correct type
+    ret = config_value
+    if config_name.lower() == "warn_error_options":
+        ret = WarnErrorOptions(
+            include=config_value.get("include", []), exclude=config_value.get("exclude", [])
+        )
+    return ret
 
 
 @dataclass(frozen=True)
@@ -26,18 +41,22 @@ class Flags:
         if ctx is None:
             try:
                 ctx = get_current_context()
-            except Exception:
+            except RuntimeError:
                 return None
 
         def assign_params(ctx, params_assigned_from_default):
             """Recursively adds all click params to flag object"""
             for param_name, param_value in ctx.params.items():
+                # TODO: this is to avoid duplicate params being defined in two places (version_check in run and cli)
+                # However this is a bit of a hack and we should find a better way to do this
+
                 # N.B. You have to use the base MRO method (object.__setattr__) to set attributes
                 # when using frozen dataclasses.
                 # https://docs.python.org/3/library/dataclasses.html#frozen-instances
                 object.__setattr__(self, param_name.upper(), param_value)
                 if ctx.get_parameter_source(param_name) == ParameterSource.DEFAULT:
                     params_assigned_from_default.add(param_name)
+
             if ctx.parent:
                 assign_params(ctx.parent, params_assigned_from_default)
 
@@ -66,7 +85,9 @@ class Flags:
                 user_config_param_value = getattr(user_config, param_assigned_from_default, None)
                 if user_config_param_value is not None:
                     object.__setattr__(
-                        self, param_assigned_from_default.upper(), user_config_param_value
+                        self,
+                        param_assigned_from_default.upper(),
+                        convert_config(param_assigned_from_default, user_config_param_value),
                     )
                     param_assigned_from_default_copy.remove(param_assigned_from_default)
             params_assigned_from_default = param_assigned_from_default_copy
@@ -74,6 +95,26 @@ class Flags:
         # Hard coded flags
         object.__setattr__(self, "WHICH", invoked_subcommand_name or ctx.info_name)
         object.__setattr__(self, "MP_CONTEXT", get_context("spawn"))
+
+        # Default LOG_PATH from PROJECT_DIR, if available.
+        if getattr(self, "LOG_PATH", None) is None:
+            log_path = "logs"
+            project_dir = getattr(self, "PROJECT_DIR", None)
+            # If available, set LOG_PATH from log-path in dbt_project.yml
+            # Known limitations:
+            #  1. Using PartialProject here, so no jinja rendering of log-path.
+            #  2. Programmatic invocations of the cli via dbtRunner may pass a Project object directly,
+            #     which is not being used here to extract log-path.
+            if project_dir:
+                try:
+                    partial = PartialProject.from_project_root(
+                        project_dir, verify_version=getattr(self, "VERSION_CHECK", True)
+                    )
+                    log_path = str(partial.project_dict.get("log-path", log_path))
+                except DbtProjectError:
+                    pass
+
+            object.__setattr__(self, "LOG_PATH", log_path)
 
         # Support console DO NOT TRACK initiave
         object.__setattr__(
@@ -102,7 +143,7 @@ class Flags:
         try:
             return object.__getattribute__(self, name)
         except AttributeError:
-            self.get_default(name)
+            return self.get_default(name)
 
     def _assert_mutually_exclusive(
         self, params_assigned_from_default: Set[str], group: List[str]
@@ -121,14 +162,14 @@ class Flags:
             elif flag_set_by_user:
                 set_flag = flag
 
-    @staticmethod
-    def get_default(param_name: str):
-        param_name = param_name.lower()
+    @classmethod
+    def get_default(cls, param_name: str):
+        param_decorator_name = param_name.lower()
 
         try:
-            param_decorator = getattr(p, param_name)
-        except ImportError:
-            raise AttributeError
+            param_decorator = getattr(p, param_decorator_name)
+        except AttributeError:
+            raise AttributeError(f"'{cls.__name__}' object has no attribute '{param_name}'")
 
         command = param_decorator(Command(None))
         param = command.params[0]

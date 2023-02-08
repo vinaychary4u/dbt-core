@@ -23,12 +23,6 @@ from dbt.task.generate import GenerateTask
 from dbt.task.init import InitTask
 
 
-# CLI invocation
-def cli_runner():
-    # Run the cli
-    cli()
-
-
 class dbtUsageException(Exception):
     pass
 
@@ -496,7 +490,6 @@ def seed(ctx, **kwargs):
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
     )
-
     results = task.run()
     success = task.interpret_results(results)
     return results, success
@@ -620,4 +613,4 @@ def test(ctx, **kwargs):
 
 # Support running as a module
 if __name__ == "__main__":
-    cli_runner()
+    cli()

@@ -1,5 +1,5 @@
 from copy import copy
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union
 
 import click
 from dbt.cli import requires, params as p
@@ -40,7 +40,7 @@ class dbtRunner:
         self.profile = profile
         self.manifest = manifest
 
-    def invoke(self, args: List[str]) -> Tuple[Optional[List], bool]:
+    def invoke(self, args: List[str]) -> Tuple[Union[Manifest, Optional[List]], bool]:
         try:
             dbt_ctx = cli.make_context(cli.name, args)
             dbt_ctx.obj = {
@@ -387,10 +387,10 @@ cli.add_command(ls, "ls")
 @requires.project
 @requires.runtime_config
 @requires.manifest(write_perf_info=True)
-def parse(ctx, **kwargs):
+def parse(ctx, **kwargs) -> Tuple[Manifest, bool]:
     """Parses the project and provides information on performance"""
     # manifest generation and writing happens in @requires.manifest
-    return None, True
+    return ctx.obj["manifest"], True
 
 
 # dbt run

@@ -1,29 +1,35 @@
 import abc
 from itertools import chain
 from pathlib import Path
-from typing import Set, List, Dict, Iterator, Tuple, Any, Union, Type, Optional, Callable
-
-from dbt.dataclass_schema import StrEnum
-
-from .graph import UniqueId
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 
 from dbt.contracts.graph.manifest import Manifest, WritableManifest
 from dbt.contracts.graph.nodes import (
-    SingularTestNode,
     Exposure,
-    Metric,
     GenericTestNode,
-    SourceDefinition,
-    ResultNode,
     ManifestNode,
+    Metric,
+    ResultNode,
+    SingularTestNode,
+    SourceDefinition,
 )
 from dbt.contracts.state import PreviousState
-from dbt.exceptions import (
-    DbtInternalError,
-    DbtRuntimeError,
-)
+from dbt.dataclass_schema import StrEnum
+from dbt.exceptions import DbtInternalError, DbtRuntimeError
 from dbt.node_types import NodeType
 
+from .graph import UniqueId
 
 SELECTOR_GLOB = "*"
 SELECTOR_DELIMITER = ":"
@@ -296,6 +302,12 @@ class PackageSelectorMethod(SelectorMethod):
     def search(self, included_nodes: Set[UniqueId], selector: str) -> Iterator[UniqueId]:
         """Yields nodes from included that have the specified package"""
         for node, real_node in self.all_nodes(included_nodes):
+            if selector == ".":
+                print(
+                    f"project name is: {self.manifest.metadata.project_name}, node packge_name is:{(real_node.package_name)}"
+                )
+                # if real_node.package_name == GLOBAL_PROJECT_NAME:
+                #     yield node
             if real_node.package_name == selector:
                 yield node
 

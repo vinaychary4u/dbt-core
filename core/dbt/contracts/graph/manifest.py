@@ -1,57 +1,61 @@
 import enum
 from dataclasses import dataclass, field
 from itertools import chain, islice
-from mashumaro.mixins.msgpack import DataClassMessagePackMixin
 from multiprocessing.synchronize import Lock
 from typing import (
+    AbstractSet,
+    Any,
+    Callable,
+    ClassVar,
     Dict,
+    Generic,
     List,
-    Optional,
-    Union,
     Mapping,
     MutableMapping,
-    Any,
+    Optional,
     Set,
     Tuple,
     TypeVar,
-    Callable,
-    Generic,
-    AbstractSet,
-    ClassVar,
+    Union,
 )
-from typing_extensions import Protocol
 from uuid import UUID
 
+import dbt.utils
+from dbt import flags, tracking
+from dbt.contracts.files import AnySourceFile, FileHash, SchemaSourceFile, SourceFile
 from dbt.contracts.graph.nodes import (
-    Macro,
-    Documentation,
-    SourceDefinition,
-    GenericTestNode,
-    Exposure,
-    Metric,
-    UnpatchedSourceDefinition,
-    ManifestNode,
-    GraphMemberNode,
-    ResultNode,
     BaseNode,
+    Documentation,
+    Exposure,
+    GenericTestNode,
+    GraphMemberNode,
+    Macro,
+    ManifestNode,
+    Metric,
+    ResultNode,
+    SourceDefinition,
+    UnpatchedSourceDefinition,
 )
 from dbt.contracts.graph.unparsed import SourcePatch
-from dbt.contracts.files import SourceFile, SchemaSourceFile, FileHash, AnySourceFile
-from dbt.contracts.util import BaseArtifactMetadata, SourceKey, ArtifactMixin, schema_version
-from dbt.dataclass_schema import dbtClassMixin
-from dbt.exceptions import (
-    CompilationError,
-    DuplicateResourceNameError,
-    DuplicateMacroInPackageError,
-    DuplicateMaterializationNameError,
+from dbt.contracts.util import (
+    ArtifactMixin,
+    BaseArtifactMetadata,
+    SourceKey,
+    schema_version,
 )
-from dbt.helper_types import PathSet
+from dbt.dataclass_schema import dbtClassMixin
 from dbt.events.functions import fire_event
 from dbt.events.types import MergedFromState
+from dbt.exceptions import (
+    CompilationError,
+    DuplicateMacroInPackageError,
+    DuplicateMaterializationNameError,
+    DuplicateResourceNameError,
+)
+from dbt.helper_types import PathSet
 from dbt.node_types import NodeType
-from dbt import flags
-from dbt import tracking
-import dbt.utils
+from mashumaro.mixins.msgpack import DataClassMessagePackMixin
+from typing_extensions import Protocol
 
 NodeEdgeMap = Dict[str, List[str]]
 PackageName = str
@@ -277,6 +281,9 @@ class ManifestMetadata(BaseArtifactMetadata):
         metadata={
             "description": "A unique identifier for the project",
         },
+    )
+    project_name: Optional[str] = field(
+        default=None, metadata={"description": "The human readable text name of the project"}
     )
     user_id: Optional[UUID] = field(
         default=None,

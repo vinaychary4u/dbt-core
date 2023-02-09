@@ -24,19 +24,19 @@ from dbt.contracts.graph.manifest import ManifestMetadata
 from dbt.contracts.project import Configuration, UserConfig
 from dbt.contracts.relation import ComponentName
 from dbt.dataclass_schema import ValidationError
+from dbt.events.functions import warn_or_error
+from dbt.events.types import UnusedResourceConfigPath
 from dbt.exceptions import (
     ConfigContractBrokenError,
     DbtProjectError,
-    NonUniquePackageNameError,
     DbtRuntimeError,
+    NonUniquePackageNameError,
     UninstalledPackagesFoundError,
 )
-from dbt.events.functions import warn_or_error
-from dbt.events.types import UnusedResourceConfigPath
 from dbt.helper_types import DictDefaultEmptyStr, FQNPath, PathSet
 
 from .profile import Profile
-from .project import Project, PartialProject
+from .project import PartialProject, Project
 from .renderer import DbtProjectYamlRenderer, ProfileRenderer
 from .utils import parse_cli_vars
 
@@ -269,7 +269,11 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
         )
 
     def get_metadata(self) -> ManifestMetadata:
-        return ManifestMetadata(project_id=self.hashed_name(), adapter_type=self.credentials.type)
+        return ManifestMetadata(
+            project_id=self.hashed_name(),
+            project_name=self.project_name,
+            adapter_type=self.credentials.type,
+        )
 
     def _get_v2_config_paths(
         self,

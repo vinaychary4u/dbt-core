@@ -37,6 +37,7 @@ import dbt.task.seed as seed_task
 import dbt.task.serve as serve_task
 import dbt.task.snapshot as snapshot_task
 import dbt.task.test as test_task
+import dbt.task.validate as validate_task
 from dbt.profiler import profiler
 from dbt.adapters.factory import reset_adapters, cleanup_connections
 
@@ -913,6 +914,28 @@ def _build_run_operation_subparser(subparsers, base_subparser):
     return sub
 
 
+def _build_validate_subparser(subparsers, base_subparser):
+    sub = subparsers.add_parser(
+        "validate",
+        parents=[base_subparser],
+        help="""
+        Run the validation arguement with the provided arguements.
+        """,
+    )
+    sub.add_argument(
+        "--args",
+        type=str,
+        default="{}",
+        help="""
+        Filler
+        """,
+    )
+    sub.set_defaults(
+        cls=validate_task.ValidateTask, which="validate", rpc_method="validate"
+    )
+    return sub
+
+
 def parse_args(args, cls=DBTArgumentParser):
     p = cls(
         prog="dbt",
@@ -1201,6 +1224,7 @@ def parse_args(args, cls=DBTArgumentParser):
     _build_docs_serve_subparser(docs_subs, base_subparser)
     _build_source_freshness_subparser(source_subs, base_subparser)
     _build_run_operation_subparser(subs, base_subparser)
+    _build_validate_subparser(subs, base_subparser)
 
     if len(args) == 0:
         p.print_help()

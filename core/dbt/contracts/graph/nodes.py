@@ -13,6 +13,11 @@ from typing import (
     Iterator,
 )
 
+from dbt.semantic.references import (
+    MeasureReference,
+    LinkableElementReference
+)
+
 from dbt.dataclass_schema import dbtClassMixin, ExtensibleDbtClassMixin
 
 from dbt.clients.system import write_file
@@ -31,8 +36,11 @@ from dbt.contracts.graph.unparsed import (
     ExposureOwner,
     ExposureType,
     MaturityType,
-    MetricFilter,
-    MetricTime,
+    EntityDimension,
+    EntityMeasure,
+    EntityIdentifier,
+    MetricType,
+    MetricTypeParams
 )
 from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
 from dbt.events.proto_types import NodeInfo
@@ -981,17 +989,10 @@ class MetricReference(dbtClassMixin, Replaceable):
 class Metric(GraphNode):
     name: str
     description: str
-    label: str
-    calculation_method: str
-    expression: str
-    filters: List[MetricFilter]
-    time_grains: List[str]
-    dimensions: List[str]
+    entity: str
+    type: MetricType
+    type_params: MetricTypeParams
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Metric]})
-    timestamp: Optional[str] = None
-    window: Optional[MetricTime] = None
-    model: Optional[str] = None
-    model_unique_id: Optional[str] = None
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
     config: MetricConfig = field(default_factory=MetricConfig)
@@ -1011,35 +1012,17 @@ class Metric(GraphNode):
     def search_name(self):
         return self.name
 
-    def same_model(self, old: "Metric") -> bool:
-        return self.model == old.model
-
-    def same_window(self, old: "Metric") -> bool:
-        return self.window == old.window
-
-    def same_dimensions(self, old: "Metric") -> bool:
-        return self.dimensions == old.dimensions
-
-    def same_filters(self, old: "Metric") -> bool:
-        return self.filters == old.filters
+    def same_entity(self, old: "Metric") -> bool:
+        return self.entity == old.entity
 
     def same_description(self, old: "Metric") -> bool:
         return self.description == old.description
 
-    def same_label(self, old: "Metric") -> bool:
-        return self.label == old.label
+    def same_type(self, old: "Metric") -> bool:
+        return self.type == old.type
 
-    def same_calculation_method(self, old: "Metric") -> bool:
-        return self.calculation_method == old.calculation_method
-
-    def same_expression(self, old: "Metric") -> bool:
-        return self.expression == old.expression
-
-    def same_timestamp(self, old: "Metric") -> bool:
-        return self.timestamp == old.timestamp
-
-    def same_time_grains(self, old: "Metric") -> bool:
-        return self.time_grains == old.time_grains
+    def same_type_params(self, old: "Metric") -> bool:
+        return self.type_params == old.type_params
 
     def same_config(self, old: "Metric") -> bool:
         return self.config.same_contents(
@@ -1054,16 +1037,10 @@ class Metric(GraphNode):
             return True
 
         return (
-            self.same_model(old)
-            and self.same_window(old)
-            and self.same_dimensions(old)
-            and self.same_filters(old)
-            and self.same_description(old)
-            and self.same_label(old)
-            and self.same_calculation_method(old)
-            and self.same_expression(old)
-            and self.same_timestamp(old)
-            and self.same_time_grains(old)
+            self.same_description(old)
+            and self.same_entity(old)
+            and self.same_type(old)
+            and self.same_type_params(old)
             and self.same_config(old)
             and True
         )
@@ -1074,9 +1051,10 @@ class Entity(GraphNode):
     name: str
     model: str
     description: str
-    dimensions: List[str]
+    identifiers: Optional[Sequence[EntityIdentifier]] = None
+    dimensions: Optional[Sequence[EntityDimension]] = None
+    measures: Optional[Sequence[EntityMeasure]] = None
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Entity]})
-    model_unique_id: Optional[str] = None
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
     config: EntityConfig = field(default_factory=EntityConfig)
@@ -1099,8 +1077,14 @@ class Entity(GraphNode):
     def same_model(self, old: "Entity") -> bool:
         return self.model == old.model
 
+    def same_identifiers(self, old: "Entity") -> bool:
+        return self.identifiers == old.identifiers
+
     def same_dimensions(self, old: "Entity") -> bool:
         return self.dimensions == old.dimensions
+
+    def same_measures(self, old: "Entity") -> bool:
+        return self.measures == old.measures
 
     def same_description(self, old: "Entity") -> bool:
         return self.description == old.description
@@ -1119,11 +1103,48 @@ class Entity(GraphNode):
 
         return (
             self.same_model(old)
+            and self.same_identifiers(old)
             and self.same_dimensions(old)
+            and self.same_measures(old)
             and self.same_description(old)
             and self.same_config(old)
             and True
         )
+
+    @property
+    def identifier_references(self) -> List[LinkableElementReference]:  # noqa: D
+        return [i.reference for i in self.identifiers]
+
+    @property
+    def dimension_references(self) -> List[LinkableElementReference]:  # noqa: D
+        return [i.reference for i in self.dimensions]
+
+    @property
+    def measure_references(self) -> List[MeasureReference]:  # noqa: D
+        return [i.reference for i in self.measures]
+
+    def get_measure(self, measure_reference: MeasureReference) -> EntityMeasure:  # noqa: D
+        for measure in self.measures:
+            if measure.reference == measure_reference:
+                return measure
+
+        raise ValueError(
+            f"No dimension with name ({measure_reference.element_name}) in data source with name ({self.name})"
+        )
+
+    def get_dimension(self, dimension_reference: LinkableElementReference) -> EntityDimension:  # noqa: D
+        for dim in self.dimensions:
+            if dim.reference == dimension_reference:
+                return dim
+
+        raise ValueError(f"No dimension with name ({dimension_reference}) in data source with name ({self.name})")
+
+    def get_identifier(self, identifier_reference: LinkableElementReference) -> EntityIdentifier:  # noqa: D
+        for ident in self.identifiers:
+            if ident.reference == identifier_reference:
+                return ident
+
+        raise ValueError(f"No identifier with name ({identifier_reference}) in data source with name ({self.name})")
 
 
 # ====================================

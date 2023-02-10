@@ -51,6 +51,9 @@ from dbt.contracts.graph.unparsed import (
     UnparsedMetric,
     UnparsedEntity,
     UnparsedSourceDefinition,
+    MetricType,
+    MetricTypeParams,
+    MetricInputMeasure
 )
 from dbt.exceptions import (
     CompilationError,
@@ -84,7 +87,7 @@ from dbt.parser.generic_test_builders import (
     Testable,
 )
 from dbt.utils import get_pseudo_test_path, coerce_dict_str
-
+from dbt.semantic.transformations.proxy_measure import create_proxy_metric
 
 TestDef = Union[str, Dict[str, Any]]
 
@@ -489,7 +492,6 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
             yaml_block = YamlBlock.from_file_block(block, dct)
 
             parser: YamlDocsReader
-
             # There are 7 kinds of parsers:
             # Model, Seed, Snapshot, Source, Macro, Analysis, Exposures
 
@@ -536,15 +538,15 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
                 exp_parser = ExposureParser(self, yaml_block)
                 exp_parser.parse()
 
-            # parse metrics
-            if "metrics" in dct:
-                metric_parser = MetricParser(self, yaml_block)
-                metric_parser.parse()
-
             # parse entities
             if "entities" in dct:
                 entity_parser = EntityParser(self, yaml_block)
                 entity_parser.parse()
+
+            # parse metrics
+            if "metrics" in dct:
+                metric_parser = MetricParser(self, yaml_block)
+                metric_parser.parse()
 
 
 def check_format_version(file_path, yaml_dct) -> None:
@@ -1038,7 +1040,7 @@ class ExposureParser(YamlReader):
         )
         depends_on_jinja = "\n".join("{{ " + line + "}}" for line in unparsed.depends_on)
         get_rendered(depends_on_jinja, ctx, parsed, capture_macros=True)
-        # parsed now has a populated refs/sources/metrics
+        # parsed now has a populated refs/sources/metrics/entities
 
         if parsed.config.enabled:
             self.manifest.add_exposure(self.yaml.file, parsed)
@@ -1114,6 +1116,9 @@ class MetricParser(YamlReader):
                 f"Calculated a {type(config)} for a metric, but expected a MetricConfig"
             )
 
+        # Given that derived metrics now come from type params CM added new way
+        # of defining that relationship to the metrics part that is needed for exposures
+
         parsed = Metric(
             resource_type=NodeType.Metric,
             package_name=package_name,
@@ -1121,17 +1126,12 @@ class MetricParser(YamlReader):
             original_file_path=self.yaml.path.original_file_path,
             unique_id=unique_id,
             fqn=fqn,
-            model=unparsed.model,
             name=unparsed.name,
+            entity=unparsed.entity,
             description=unparsed.description,
-            label=unparsed.label,
-            calculation_method=unparsed.calculation_method,
-            expression=str(unparsed.expression),
-            timestamp=unparsed.timestamp,
-            dimensions=unparsed.dimensions,
-            window=unparsed.window,
-            time_grains=unparsed.time_grains,
-            filters=unparsed.filters,
+            type=unparsed.type,
+            type_params=unparsed.type_params,
+            metrics=[[metric] for metric in unparsed.type_params.metrics],
             meta=unparsed.meta,
             tags=unparsed.tags,
             config=config,
@@ -1145,15 +1145,16 @@ class MetricParser(YamlReader):
             package_name,
         )
 
-        if parsed.model is not None:
-            model_ref = "{{ " + parsed.model + " }}"
-            get_rendered(model_ref, ctx, parsed)
+        if parsed.entity is not None:
+            entity_ref = "{{ " + parsed.entity + " }}"
+            ## The get rendered is the step that adds the dependencies
+            get_rendered(entity_ref, ctx, parsed)
 
-        parsed.expression = get_rendered(
-            parsed.expression,
-            ctx,
-            node=parsed,
-        )
+        # parsed.expression = get_rendered(
+        #     parsed.expression,
+        #     ctx,
+        #     node=parsed,
+        # )
 
         # if the metric is disabled we do not want it included in the manifest, only in the disabled dict
         if parsed.config.enabled:
@@ -1240,7 +1241,9 @@ class EntityParser(YamlReader):
             model=unparsed.model,
             name=unparsed.name,
             description=unparsed.description,
+            identifiers=unparsed.identifiers,
             dimensions=unparsed.dimensions,
+            measures=unparsed.measures,
             meta=unparsed.meta,
             tags=unparsed.tags,
             config=config,
@@ -1248,11 +1251,44 @@ class EntityParser(YamlReader):
         )
 
         ctx = generate_parse_entities(
-            parsed,
-            self.root_project,
-            self.schema_parser.manifest,
-            package_name,
+            entity=parsed,
+            config=self.root_project,
+            manifest=self.schema_parser.manifest,
+            package_name=package_name,
         )
+
+        if parsed.measures:
+            for measure in parsed.measures:
+                if measure.create_metric:
+                    proxy_metric=create_proxy_metric(
+                        parsed_entity=parsed,
+                        measure=measure,
+                        package_name=package_name,
+                        path=path,
+                        unique_id=unique_id,
+                        fqn=fqn,
+                        original_file_path=self.yaml.path.original_file_path,
+                        meta=measure.meta,
+                        tags=measure.tags,
+                        config=config,
+                        unrendered_config=unrendered_config
+                        )
+
+                    proxy_ctx = generate_parse_metrics(
+                        proxy_metric,
+                        self.root_project,
+                        self.schema_parser.manifest,
+                        package_name
+                    )
+
+                    if proxy_metric.entity is not None:
+                        entity_ref = "{{ entity('" + proxy_metric.entity + "') }}"
+                        get_rendered(entity_ref, proxy_ctx, proxy_metric)
+
+                    if parsed.config.enabled:
+                        self.manifest.add_metric(self.yaml.file, proxy_metric)
+                    else:
+                        self.manifest.add_disabled(self.yaml.file, proxy_metric) 
 
         if parsed.model is not None:
             model_ref = "{{ " + parsed.model + " }}"
@@ -1293,6 +1329,7 @@ class EntityParser(YamlReader):
             try:
                 UnparsedEntity.validate(data)
                 unparsed = UnparsedEntity.from_dict(data)
+            
 
             except (ValidationError, JSONValidationError) as exc:
                 raise YamlParseDictError(self.yaml.path, self.key, data, exc)

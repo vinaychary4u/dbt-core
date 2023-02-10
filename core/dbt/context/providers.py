@@ -40,6 +40,7 @@ from dbt.contracts.graph.nodes import (
     ManifestNode,
 )
 from dbt.contracts.graph.metrics import MetricReference, ResolvedMetricReference
+from dbt.contracts.graph.entities import EntityReference, ResolvedEntityReference
 from dbt.events.functions import get_metadata_vars
 from dbt.exceptions import (
     CompilationError,
@@ -55,6 +56,7 @@ from dbt.exceptions import (
     MacroDispatchArgError,
     MacrosSourcesUnWriteableError,
     MetricArgsError,
+    EntityArgsError,
     MissingConfigError,
     OperationsCannotRefEphemeralNodesError,
     PackageNotInDepsError,
@@ -207,7 +209,7 @@ class BaseResolver(metaclass=abc.ABCMeta):
         return self.db_wrapper.Relation
 
     @abc.abstractmethod
-    def __call__(self, *args: str) -> Union[str, RelationProxy, MetricReference]:
+    def __call__(self, *args: str) -> Union[str, RelationProxy, MetricReference, EntityReference]:
         pass
 
 
@@ -302,6 +304,41 @@ class BaseMetricResolver(BaseResolver):
             package, name = args
         else:
             raise MetricArgsError(node=self.model, args=args)
+        self.validate_args(name, package)
+        return self.resolve(name, package)
+
+
+class BaseEntityResolver(BaseResolver):
+    def resolve(self, name: str, package: Optional[str] = None) -> EntityReference:
+        ...
+
+    def _repack_args(self, name: str, package: Optional[str]) -> List[str]:
+        if package is None:
+            return [name]
+        else:
+            return [package, name]
+
+    def validate_args(self, name: str, package: Optional[str]):
+        if not isinstance(name, str):
+            raise CompilationError(
+                f"The name argument to entity() must be a string, got {type(name)}"
+            )
+
+        if package is not None and not isinstance(package, str):
+            raise CompilationError(
+                f"The package argument to entity() must be a string or None, got {type(package)}"
+            )
+
+    def __call__(self, *args: str) -> EntityReference:
+        name: str
+        package: Optional[str] = None
+
+        if len(args) == 1:
+            name = args[0]
+        elif len(args) == 2:
+            package, name = args
+        else:
+            raise EntityArgsError(node=self.model, args=args)
         self.validate_args(name, package)
         return self.resolve(name, package)
 
@@ -566,6 +603,34 @@ class RuntimeMetricResolver(BaseMetricResolver):
         return ResolvedMetricReference(target_metric, self.manifest, self.Relation)
 
 
+# metric` implementations
+class ParseEntityResolver(BaseEntityResolver):
+    def resolve(self, name: str, package: Optional[str] = None) -> EntityReference:
+        self.model.entities.append(self._repack_args(name, package))
+
+        return EntityReference(name, package)
+
+
+class RuntimeEntityResolver(BaseEntityResolver):
+    def resolve(self, target_name: str, target_package: Optional[str] = None) -> EntityReference:
+        target_entity = self.manifest.resolve_entity(
+            target_name,
+            target_package,
+            self.current_project,
+            self.model.package_name,
+        )
+
+        if target_entity is None or isinstance(target_entity, Disabled):
+            raise TargetNotFoundError(
+                node=self.model,
+                target_name=target_name,
+                target_kind="entity",
+                target_package=target_package,
+            )
+
+        return ResolvedEntityReference(target_entity, self.manifest, self.Relation)
+
+
 # `var` implementations.
 class ModelConfiguredVar(Var):
     def __init__(
@@ -644,6 +709,7 @@ class GenerateNameProvider(Provider):
     ref = ParseRefResolver
     source = ParseSourceResolver
     metric = ParseMetricResolver
+    entity = ParseEntityResolver
 
 
 class RuntimeProvider(Provider):
@@ -654,6 +720,7 @@ class RuntimeProvider(Provider):
     ref = RuntimeRefResolver
     source = RuntimeSourceResolver
     metric = RuntimeMetricResolver
+    entity = RuntimeEntityResolver
 
 
 class OperationProvider(RuntimeProvider):
@@ -847,6 +914,10 @@ class ProviderContext(ManifestContext):
     @contextproperty
     def metric(self) -> Callable:
         return self.provider.metric(self.db_wrapper, self.model, self.config, self.manifest)
+
+    @contextproperty
+    def entity(self) -> Callable:
+        return self.provider.entity(self.db_wrapper, self.model, self.config, self.manifest)
 
     @contextproperty("config")
     def ctx_config(self) -> Config:
@@ -1432,6 +1503,14 @@ class ExposureMetricResolver(BaseResolver):
         return ""
 
 
+class ExposureEntityResolver(BaseResolver):
+    def __call__(self, *args) -> str:
+        if len(args) not in (1, 2):
+            raise EntityArgsError(node=self.model, args=args)
+        self.model.entities.append(list(args))
+        return ""
+
+
 def generate_parse_exposure(
     exposure: Exposure,
     config: RuntimeConfig,
@@ -1453,6 +1532,12 @@ def generate_parse_exposure(
             manifest,
         ),
         "metric": ExposureMetricResolver(
+            None,
+            exposure,
+            project,
+            manifest,
+        ),
+        "entity": ExposureEntityResolver(
             None,
             exposure,
             project,
@@ -1502,6 +1587,12 @@ def generate_parse_metrics(
             project,
             manifest,
         ),
+        "entity": ParseEntityResolver(
+            None,
+            metric,
+            project,
+            manifest,
+        ),
     }
 
 
@@ -1540,6 +1631,13 @@ def generate_parse_entities(
             project,
             manifest,
         ),
+        ## An entity cannot reference another entity so we comment out this section
+        # "entity": ParseEntityResolver(
+        #     None,
+        #     entity,
+        #     project,
+        #     manifest,
+        # ),
     }
 
 

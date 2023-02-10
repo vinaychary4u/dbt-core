@@ -407,6 +407,21 @@ def test(ctx, **kwargs):
     click.echo(f"`{inspect.stack()[0][3]}` called\n flags: {flags}")
 
 
+# dbt validate
+@cli.command("validate")
+@click.pass_context
+@p.args
+@p.profile
+@p.profiles_dir
+@p.project_dir
+@p.target
+@p.vars
+def validate(ctx, **kwargs):
+    """Validates teh semantic layer"""
+    flags = Flags()
+    click.echo(f"`{inspect.stack()[0][3]}` called\n flags: {flags}")
+
+
 # Support running as a module
 if __name__ == "__main__":
     cli_runner()

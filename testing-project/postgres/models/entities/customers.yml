@@ -1,14 +1,17 @@
-# version: 2
-# entities:
+version: 2
+entities:
 
-#   - name: customers
-#     model: ref('dim_customers')
-#     description: "Our customers entity"
+  - name: customers
+    model: ref('dim_customers')
+    description: "Our customers entity"
 
-#     dimensions:
-#         - dimension_1
+    identifiers:
+      - name: customer_id
+        type: primary
 
-      # - name: first_name_v3_testing
+    dimensions:
+      - name: first_name_v3_testing
+        type: categorical
       #   description: string
       #   column_name: first_name
       #   date_type: string

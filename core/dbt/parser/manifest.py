@@ -384,8 +384,8 @@ class ManifestLoader:
             self.process_sources(self.root_project.project_name)
             self.process_refs(self.root_project.project_name)
             self.process_docs(self.root_project)
-            self.process_metrics(self.root_project)
             self.process_entities(self.root_project)
+            self.process_metrics(self.root_project)
 
             # update tracking data
             self._perf_info.process_manifest_elapsed = time.perf_counter() - start_process
@@ -836,34 +836,17 @@ class ManifestLoader:
             if exposure.created_at < self.started_at:
                 continue
             _process_refs_for_exposure(self.manifest, current_project, exposure)
-        for metric in self.manifest.metrics.values():
-            if metric.created_at < self.started_at:
-                continue
-            _process_refs_for_metric(self.manifest, current_project, metric)
         for entity in self.manifest.entities.values():
             if entity.created_at < self.started_at:
                 continue
             _process_refs_for_entity(self.manifest, current_project, entity)
+        # Metrics can only be based on entities now
+        # for metric in self.manifest.metrics.values():
+        #     if metric.created_at < self.started_at:
+        #         continue
+        #     _process_refs_for_metric(self.manifest, current_project, metric)
 
-    # Takes references in 'metrics' array of nodes and exposures, finds the target
-    # node, and updates 'depends_on.nodes' with the unique id
-    def process_metrics(self, config: RuntimeConfig):
-        current_project = config.project_name
-        for node in self.manifest.nodes.values():
-            if node.created_at < self.started_at:
-                continue
-            _process_metrics_for_node(self.manifest, current_project, node)
-        for metric in self.manifest.metrics.values():
-            # TODO: Can we do this if the metric is derived & depends on
-            # some other metric for its definition? Maybe....
-            if metric.created_at < self.started_at:
-                continue
-            _process_metrics_for_node(self.manifest, current_project, metric)
-        for exposure in self.manifest.exposures.values():
-            if exposure.created_at < self.started_at:
-                continue
-            _process_metrics_for_node(self.manifest, current_project, exposure)
-
+    # TODO: Get rid of this? Entities can't reference other entities, only identifiers
     # Takes references in 'entities' array of nodes and exposures, finds the target
     # node, and updates 'depends_on.nodes' with the unique id
     def process_entities(self, config: RuntimeConfig):
@@ -876,10 +859,38 @@ class ManifestLoader:
             if entity.created_at < self.started_at:
                 continue
             _process_entities_for_node(self.manifest, current_project, entity)
+        for metric in self.manifest.metrics.values():
+            if metric.created_at < self.started_at:
+                continue
+            _process_entities_for_node(self.manifest, current_project, metric)
         for exposure in self.manifest.exposures.values():
             if exposure.created_at < self.started_at:
                 continue
             _process_entities_for_node(self.manifest, current_project, exposure)
+
+    # Takes references in 'metrics' array of metrics and exposures, finds the target
+    # node, and updates 'depends_on.nodes' with the unique id
+    def process_metrics(self, config: RuntimeConfig):
+        current_project = config.project_name
+        # NOTE: Commenting this out as metrics can now only be built on entities
+        # for node in self.manifest.nodes.values():
+        #     if node.created_at < self.started_at:
+        #         continue
+        #     _process_metrics_for_node(self.manifest, current_project, node)
+        for entity in self.manifest.entities.values():
+            if entity.created_at < self.started_at:
+                continue
+            _process_metrics_for_node(self.manifest, current_project, entity)
+        for metric in self.manifest.metrics.values():
+            # TODO: Can we do this if the metric is derived & depends on
+            # some other metric for its definition? Maybe....
+            if metric.created_at < self.started_at:
+                continue
+            _process_metrics_for_node(self.manifest, current_project, metric)
+        for exposure in self.manifest.exposures.values():
+            if exposure.created_at < self.started_at:
+                continue
+            _process_metrics_for_node(self.manifest, current_project, exposure)
 
     # nodes: node and column descriptions
     # sources: source and table descriptions, column descriptions
@@ -1132,12 +1143,12 @@ def _process_docs_for_exposure(context: Dict[str, Any], exposure: Exposure) -> N
     exposure.description = get_rendered(exposure.description, context)
 
 
-def _process_docs_for_metrics(context: Dict[str, Any], metric: Metric) -> None:
-    metric.description = get_rendered(metric.description, context)
-
-
 def _process_docs_for_entities(context: Dict[str, Any], entity: Entity) -> None:
     entity.description = get_rendered(entity.description, context)
+
+
+def _process_docs_for_metrics(context: Dict[str, Any], metric: Metric) -> None:
+    metric.description = get_rendered(metric.description, context)
 
 
 def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposure: Exposure):
@@ -1272,7 +1283,7 @@ def _process_refs_for_entity(manifest: Manifest, current_project: str, entity: E
 def _process_metrics_for_node(
     manifest: Manifest,
     current_project: str,
-    node: Union[ManifestNode, Metric, Exposure],
+    node: Union[ManifestNode, Metric, Exposure, Entity],
 ):
     """Given a manifest and a node in that manifest, process its metrics"""
 
@@ -1307,7 +1318,7 @@ def _process_metrics_for_node(
             invalid_target_fail_unless_test(
                 node=node,
                 target_name=target_metric_name,
-                target_kind="source",
+                target_kind="metric",
                 target_package=target_metric_package,
                 disabled=(isinstance(target_metric, Disabled)),
             )
@@ -1321,7 +1332,7 @@ def _process_metrics_for_node(
 def _process_entities_for_node(
     manifest: Manifest,
     current_project: str,
-    node: Union[ManifestNode, Entity, Exposure],
+    node: Union[ManifestNode, Entity, Exposure, Metric],
 ):
     """Given a manifest and a node in that manifest, process its entities"""
 
@@ -1356,7 +1367,7 @@ def _process_entities_for_node(
             invalid_target_fail_unless_test(
                 node=node,
                 target_name=target_entity_name,
-                target_kind="source",
+                target_kind="entity",
                 target_package=target_entity_package,
                 disabled=(isinstance(target_entity, Disabled)),
             )

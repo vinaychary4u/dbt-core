@@ -218,6 +218,11 @@ class DbtValidationError(DbtRuntimeError):
     MESSAGE = "Validation Error"
 
 
+class DbtSemanticValidationError(DbtRuntimeError):
+    CODE = 10020
+    MESSAGE = "Semantic Validation Error"
+
+
 class ParsingError(DbtRuntimeError):
     CODE = 10015
     MESSAGE = "Parsing Error"
@@ -872,6 +877,17 @@ class MetricArgsError(CompilationError):
         return msg
 
 
+class EntityArgsError(CompilationError):
+    def __init__(self, node, args):
+        self.node = node
+        self.args = args
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = f"entity() takes at most two arguments ({len(self.args)} given)"
+        return msg
+
+
 class RefBadContextError(CompilationError):
     def __init__(self, node, args):
         self.node = node
@@ -1242,6 +1258,7 @@ class EnvVarMissingError(ParsingError):
 
 
 class TargetNotFoundError(CompilationError):
+    #NOTE: CM Might be what I'm looking for
     def __init__(
         self,
         node,

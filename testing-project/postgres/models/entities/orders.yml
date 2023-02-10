@@ -1,8 +1,61 @@
 version: 2
-entities:
 
+entities:
   - name: orders
     model: ref('fact_orders')
     description: "Our orders entity"
+    identifiers:
+      - name: order_id
+        type: primary
     dimensions:
-      - dimension_1
+      - name: order_location
+        type: categorical
+    measures:
+      - name: order_total
+        description: "The total value of the order"
+        aggregation: sum
+
+      - name: sales
+        description: "The total sale of the order"
+        aggregation: sum
+        expression: order_total
+        create_metric: True
+
+metrics:
+  - name: revenue
+    entity: entity('orders')
+    description: "some description"
+    type: measure_proxy
+    type_params:
+      measure: order_total
+
+  - name: sales_minus_revenue
+    type: derived 
+    type_params:
+      expression: sales - revenue 
+      metrics: 
+        - sales
+        - revenue
+
+  - name: cancellation_rate
+    type: ratio
+    entity:  entity('orders')
+    type_params:
+      numerator: order_total
+      denominator: order_total
+
+  - name: wau_rolling_7
+    type: cumulative
+    entity: entity('orders')
+    type_params:
+      measures:
+        - order_total
+      window: 7 days
+
+  - name: revenue_usd
+    type: expr 
+    entity: entity('orders')
+    type_params:
+      expression: order_total - order_total
+      measures: 
+        - order_total

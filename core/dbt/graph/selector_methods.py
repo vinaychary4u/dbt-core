@@ -306,8 +306,6 @@ class PackageSelectorMethod(SelectorMethod):
                 print(
                     f"project name is: {self.manifest.metadata.project_name}, node packge_name is:{(real_node.package_name)}"
                 )
-                # if real_node.package_name == GLOBAL_PROJECT_NAME:
-                #     yield node
             if real_node.package_name == selector:
                 yield node
 

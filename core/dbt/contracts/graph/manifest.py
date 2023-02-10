@@ -283,7 +283,8 @@ class ManifestMetadata(BaseArtifactMetadata):
         },
     )
     project_name: Optional[str] = field(
-        default=None, metadata={"description": "The human readable text name of the project"}
+        default=None,
+        metadata={"description": "The human readable text name of the project"},
     )
     user_id: Optional[UUID] = field(
         default=None,

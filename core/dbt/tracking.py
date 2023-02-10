@@ -1,33 +1,27 @@
-from typing import Optional
+import os
+import platform
 import traceback
-
-from dbt.clients.yaml_helper import (  # noqa:F401
-    yaml,
-    safe_load,
-    Loader,
-    Dumper,
-)
-from dbt.events.functions import fire_event, get_invocation_id
-from dbt.events.types import (
-    DisableTracking,
-    SendingEvent,
-    SendEventFailure,
-    FlushEvents,
-    FlushEventsFailure,
-    TrackingInitializeFailure,
-)
-from dbt import version as dbt_version
-from dbt import flags
-from snowplow_tracker import Subject, Tracker, Emitter, logger as sp_logger
-from snowplow_tracker import SelfDescribingJson
+import uuid
 from datetime import datetime
+from typing import Optional
 
 import logbook
 import pytz
-import platform
-import uuid
 import requests
-import os
+from dbt import flags
+from dbt import version as dbt_version
+from dbt.clients.yaml_helper import Dumper, Loader, safe_load, yaml  # noqa:F401
+from dbt.events.functions import fire_event, get_invocation_id
+from dbt.events.types import (
+    DisableTracking,
+    FlushEvents,
+    FlushEventsFailure,
+    SendEventFailure,
+    SendingEvent,
+    TrackingInitializeFailure,
+)
+from snowplow_tracker import Emitter, SelfDescribingJson, Subject, Tracker
+from snowplow_tracker import logger as sp_logger
 
 sp_logger.setLevel(100)
 

@@ -1,25 +1,21 @@
-from copy import deepcopy
-from dbt.context.context_config import ContextConfig
-from dbt.contracts.graph.nodes import ModelNode
-from dbt.events.base_types import EventLevel
-from dbt.events.types import Note
-from dbt.events.functions import fire_event
-import dbt.flags as flags
-from dbt.node_types import NodeType, ModelLanguage
-from dbt.parser.base import SimpleSQLParser
-from dbt.parser.search import FileBlock
-from dbt.clients.jinja import get_rendered
-import dbt.tracking as tracking
-from dbt import utils
-from dbt_extractor import ExtractionError, py_extract_from_source  # type: ignore
-from functools import reduce
-from itertools import chain
-import random
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
-
 # New for Python models :p
 import ast
+import random
+from copy import deepcopy
+from functools import reduce
+from itertools import chain
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+
+import dbt.flags as flags
+import dbt.tracking as tracking
+from dbt import utils
+from dbt.clients.jinja import get_rendered
+from dbt.context.context_config import ContextConfig
+from dbt.contracts.graph.nodes import ModelNode
 from dbt.dataclass_schema import ValidationError
+from dbt.events.base_types import EventLevel
+from dbt.events.functions import fire_event
+from dbt.events.types import Note
 from dbt.exceptions import (
     ModelConfigError,
     ParsingError,
@@ -27,6 +23,10 @@ from dbt.exceptions import (
     PythonParsingError,
     UndefinedMacroError,
 )
+from dbt.node_types import ModelLanguage, NodeType
+from dbt.parser.base import SimpleSQLParser
+from dbt.parser.search import FileBlock
+from dbt_extractor import ExtractionError, py_extract_from_source  # type: ignore
 
 dbt_function_key_words = set(["ref", "source", "config", "get"])
 dbt_function_full_names = set(["dbt.ref", "dbt.source", "dbt.config", "dbt.config.get"])

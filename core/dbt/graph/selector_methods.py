@@ -303,10 +303,9 @@ class PackageSelectorMethod(SelectorMethod):
         """Yields nodes from included that have the specified package"""
         for node, real_node in self.all_nodes(included_nodes):
             if selector == ".":
-                print(
-                    f"project name is: {self.manifest.metadata.project_name}, node packge_name is:{(real_node.package_name)}"
-                )
-            if real_node.package_name == selector:
+                if real_node.package_name == self.manifest.metadata.project_name:
+                    yield node
+            elif real_node.package_name == selector:
                 yield node
 
 

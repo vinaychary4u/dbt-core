@@ -1,86 +1,83 @@
-from copy import deepcopy
-from dataclasses import dataclass
-from dataclasses import field
-from datetime import datetime
 import os
-import traceback
-from typing import Dict, Optional, Mapping, Callable, Any, List, Type, Union, Tuple
-from itertools import chain
-import time
-from dbt.events.base_types import EventLevel
 import pprint
+import time
+import traceback
+from copy import deepcopy
+from dataclasses import dataclass, field
+from datetime import datetime
+from itertools import chain
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Type, Union
 
 import dbt.exceptions
-import dbt.tracking
 import dbt.flags as flags
-
+import dbt.tracking
 from dbt.adapters.factory import (
     get_adapter,
-    get_relation_class_by_name,
     get_adapter_package_names,
+    get_relation_class_by_name,
 )
-from dbt.helper_types import PathSet
-from dbt.events.functions import fire_event, get_invocation_id, warn_or_error
-from dbt.events.types import (
-    PartialParsingErrorProcessingFile,
-    PartialParsingError,
-    PartialParsingSkipParsing,
-    UnableToPartialParse,
-    PartialParsingNotEnabled,
-    ParsedFileLoadFailed,
-    InvalidDisabledTargetInTestNode,
-    NodeNotFoundOrDisabled,
-    StateCheckVarsHash,
-    Note,
-)
-from dbt.logger import DbtProcessState
-from dbt.node_types import NodeType
-from dbt.clients.jinja import get_rendered, MacroStack
+from dbt.clients.jinja import MacroStack, get_rendered
 from dbt.clients.jinja_static import statically_extract_macro_calls
 from dbt.clients.system import make_directory
 from dbt.config import Project, RuntimeConfig
+from dbt.context.configured import generate_macro_context
 from dbt.context.docs import generate_runtime_docs_context
 from dbt.context.macro_resolver import MacroResolver, TestMacroNamespace
-from dbt.context.configured import generate_macro_context
 from dbt.context.providers import ParseProvider
 from dbt.contracts.files import FileHash, ParseFileType, SchemaSourceFile
-from dbt.parser.read_files import read_files, load_source_file
-from dbt.parser.partial import PartialParsing, special_override_macros
 from dbt.contracts.graph.manifest import (
-    Manifest,
     Disabled,
     MacroManifest,
+    Manifest,
     ManifestStateCheck,
     ParsingInfo,
 )
 from dbt.contracts.graph.nodes import (
-    SourceDefinition,
-    Macro,
     ColumnInfo,
     Exposure,
-    Metric,
-    SeedNode,
+    Macro,
     ManifestNode,
+    Metric,
     ResultNode,
+    SeedNode,
+    SourceDefinition,
 )
 from dbt.contracts.util import Writable
-from dbt.exceptions import TargetNotFoundError, AmbiguousAliasError
-from dbt.parser.base import Parser
+from dbt.dataclass_schema import StrEnum, dbtClassMixin
+from dbt.events.base_types import EventLevel
+from dbt.events.functions import fire_event, get_invocation_id, warn_or_error
+from dbt.events.types import (
+    InvalidDisabledTargetInTestNode,
+    NodeNotFoundOrDisabled,
+    Note,
+    ParsedFileLoadFailed,
+    PartialParsingError,
+    PartialParsingErrorProcessingFile,
+    PartialParsingNotEnabled,
+    PartialParsingSkipParsing,
+    StateCheckVarsHash,
+    UnableToPartialParse,
+)
+from dbt.exceptions import AmbiguousAliasError, TargetNotFoundError
+from dbt.helper_types import PathSet
+from dbt.logger import DbtProcessState
+from dbt.node_types import NodeType
 from dbt.parser.analysis import AnalysisParser
-from dbt.parser.generic_test import GenericTestParser
-from dbt.parser.singular_test import SingularTestParser
+from dbt.parser.base import Parser
 from dbt.parser.docs import DocumentationParser
+from dbt.parser.generic_test import GenericTestParser
 from dbt.parser.hooks import HookParser
 from dbt.parser.macros import MacroParser
 from dbt.parser.models import ModelParser
+from dbt.parser.partial import PartialParsing, special_override_macros
+from dbt.parser.read_files import load_source_file, read_files
 from dbt.parser.schemas import SchemaParser
 from dbt.parser.search import FileBlock
 from dbt.parser.seeds import SeedParser
+from dbt.parser.singular_test import SingularTestParser
 from dbt.parser.snapshots import SnapshotParser
 from dbt.parser.sources import SourcePatcher
 from dbt.version import __version__
-
-from dbt.dataclass_schema import StrEnum, dbtClassMixin
 
 PARTIAL_PARSE_FILE_NAME = "partial_parse.msgpack"
 PARSING_STATE = DbtProcessState("parsing")

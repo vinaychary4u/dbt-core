@@ -8,7 +8,7 @@ class ConvertCountToSum(ABC):
     """Converts any COUNT measures to SUM equivalent."""
 
     @staticmethod
-    def _convert_count_to_sum(entity: Entity) -> Entity:  # noqa: D
+    def _transform_entity(entity: Entity) -> Entity:  # noqa: D
         if entity.measures:
             for measure in entity.measures:
                 if measure.aggregation == AggregationType.COUNT:

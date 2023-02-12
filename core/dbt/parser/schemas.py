@@ -88,11 +88,12 @@ from dbt.parser.generic_test_builders import (
     Testable,
 )
 from dbt.utils import get_pseudo_test_path, coerce_dict_str
-from dbt.semantic.entity_transformations.proxy_measure import ProxyMeasure
+from dbt.semantic.entity_transformations.boolean_measure_aggregation import BooleanMeasureAggregation
+from dbt.semantic.entity_transformations.composite_identifier_expressions import CompositeIdentifierExpressionRule
 from dbt.semantic.entity_transformations.convert_count import ConvertCountToSum
 from dbt.semantic.entity_transformations.convert_median import ConvertMedianToPercentile
 from dbt.semantic.entity_transformations.lowercase_names import LowerCaseNames
-from dbt.semantic.entity_transformations.composite_identifier_expressions import CompositeIdentifierExpressionRule
+from dbt.semantic.entity_transformations.proxy_measure import ProxyMeasure
 from dbt.semantic.metric_transformations.convert_type_params import ConvertTypeParams
 
 
@@ -1144,11 +1145,12 @@ class EntityParser(YamlReader):
             unrendered_config=unrendered_config,
         )
 
-        parsed=ConvertCountToSum._convert_count_to_sum(entity=parsed)
-        parsed=LowerCaseNames._lowercase_entity_elements(entity=parsed)
-        parsed=CompositeIdentifierExpressionRule._composite_identifier_expressions(entity=parsed)
-        parsed=ConvertMedianToPercentile._convert_median_to_percentile(entity=parsed)
-
+        parsed=ConvertCountToSum._transform_entity(entity=parsed)
+        parsed=LowerCaseNames._transform_entity(entity=parsed)
+        parsed=CompositeIdentifierExpressionRule._transform_entity(entity=parsed)
+        parsed=ConvertMedianToPercentile._transform_entity(entity=parsed)
+        parsed=BooleanMeasureAggregation._transform_entity(entity=parsed)
+        
         ctx = generate_parse_entities(
             entity=parsed,
             config=self.root_project,

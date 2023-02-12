@@ -10,7 +10,7 @@ class ConvertMedianToPercentile(ABC):
     """Converts any MEDIAN measures to percentile equivalent."""
 
     @staticmethod
-    def _convert_median_to_percentile(entity: Entity) -> Entity:  # noqa: D
+    def _transform_entity(entity: Entity) -> Entity:  # noqa: D
         if entity.measures:
             for measure in entity.measures:
                 if measure.aggregation == AggregationType.MEDIAN:

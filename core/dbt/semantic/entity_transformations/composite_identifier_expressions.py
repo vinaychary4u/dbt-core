@@ -8,7 +8,7 @@ class CompositeIdentifierExpressionRule(ABC):
     """
 
     @staticmethod
-    def _composite_identifier_expressions(entity: Entity) -> Entity:  # noqa: D
+    def _transform_entity(entity: Entity) -> Entity:  # noqa: D
         for identifier in entity.identifiers:
             if identifier.identifiers is None or len(identifier.identifiers) == 0:
                 continue

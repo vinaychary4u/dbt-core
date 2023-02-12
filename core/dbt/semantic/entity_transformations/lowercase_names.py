@@ -5,7 +5,7 @@ class LowerCaseNames(ABC):
     """Lowercases the names of both top level objects and entity elements"""
 
     @staticmethod
-    def _lowercase_entity_elements(entity: Entity) -> Entity:
+    def _transform_entity(entity: Entity) -> Entity:
         """Lowercases the names of data source elements."""
         entity.name = entity.name.lower()
         if entity.measures:

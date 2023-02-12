@@ -93,6 +93,7 @@ from dbt.semantic.entity_transformations.composite_identifier_expressions import
 from dbt.semantic.entity_transformations.convert_count import ConvertCountToSum
 from dbt.semantic.entity_transformations.convert_median import ConvertMedianToPercentile
 from dbt.semantic.entity_transformations.lowercase_names import LowerCaseNames
+from dbt.semantic.entity_transformations.measure_aggregation_time_dimension import SetMeasureAggregationTimeDimension
 from dbt.semantic.entity_transformations.proxy_measure import ProxyMeasure
 from dbt.semantic.metric_transformations.convert_type_params import ConvertTypeParams
 
@@ -1150,6 +1151,7 @@ class EntityParser(YamlReader):
         parsed=CompositeIdentifierExpressionRule._transform_entity(entity=parsed)
         parsed=ConvertMedianToPercentile._transform_entity(entity=parsed)
         parsed=BooleanMeasureAggregation._transform_entity(entity=parsed)
+        parsed=SetMeasureAggregationTimeDimension._transform_entity(entity=parsed)
         
         ctx = generate_parse_entities(
             entity=parsed,

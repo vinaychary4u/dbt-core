@@ -17,6 +17,7 @@ from dbt.semantic.references import (
     MeasureReference,
     LinkableElementReference
 )
+from dbt.semantic.time import TimeGranularity
 
 from dbt.dataclass_schema import dbtClassMixin, ExtensibleDbtClassMixin
 
@@ -40,7 +41,9 @@ from dbt.contracts.graph.unparsed import (
     EntityMeasure,
     EntityIdentifier,
     MetricType,
-    MetricTypeParams
+    MetricInputMeasure,
+    MetricTimeWindow,
+    MetricInput
 )
 from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
 from dbt.events.proto_types import NodeInfo
@@ -986,6 +989,29 @@ class MetricReference(dbtClassMixin, Replaceable):
 
 
 @dataclass
+class MetricTypeParams(dbtClassMixin):
+    """Type params add additional context to certain metric types (the context depends on the metric type)"""
+
+    measure: Optional[MetricInputMeasure] = None
+    measures: Optional[List[MetricInputMeasure]] = field(default_factory=list)
+    numerator: Optional[MetricInputMeasure] = None
+    denominator: Optional[MetricInputMeasure] = None
+    expression: Optional[str] = None
+    window: Optional[MetricTimeWindow] = None
+    grain_to_date: Optional[TimeGranularity] = None
+    metrics: Optional[List[MetricInput]] = field(default_factory=list)
+
+    @property
+    def numerator_measure_reference(self) -> Optional[MeasureReference]:
+        """Return the measure reference, if any, associated with the metric input measure defined as the numerator"""
+        return self.numerator.measure_reference if self.numerator else None
+
+    @property
+    def denominator_measure_reference(self) -> Optional[MeasureReference]:
+        """Return the measure reference, if any, associated with the metric input measure defined as the denominator"""
+        return self.denominator.measure_reference if self.denominator else None
+
+@dataclass
 class Metric(GraphNode):
     name: str
     description: str
@@ -1003,6 +1029,40 @@ class Metric(GraphNode):
     metrics: List[List[str]] = field(default_factory=list)
     entities: List[List[str]] = field(default_factory=list)
     created_at: float = field(default_factory=lambda: time.time())
+
+    @property
+    def input_measures(self) -> List[MetricInputMeasure]:
+        """Return the complete list of input measure configurations for this metric"""
+        tp = self.type_params
+        res = tp.measures or []
+        if tp.measure:
+            res.append(tp.measure)
+        if tp.numerator:
+            res.append(tp.numerator)
+        if tp.denominator:
+            res.append(tp.denominator)
+
+        return res
+
+    @property
+    def measure_references(self) -> List[MeasureReference]:
+        """Return the measure references associated with all input measure configurations for this metric"""
+        return [x.measure_reference for x in self.input_measures]
+
+    @property
+    def input_metrics(self) -> List[MetricInput]:
+        """Return the associated input metrics for this metric"""
+        return self.type_params.metrics or []
+
+    # @property
+    # def definition_hash(self) -> str:  # noqa: D
+    #     values: List[str] = [self.name, self.type_params.expression or ""]
+    #     if self.constraint:
+    #         values.append(self.constraint.where)
+    #         if self.constraint.linkable_names:
+    #             values.extend(self.constraint.linkable_names)
+    #     values.extend([m.name for m in self.measure_references])
+    #     return hash_items(values)
 
     @property
     def depends_on_nodes(self):

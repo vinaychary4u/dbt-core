@@ -27,6 +27,7 @@ from dbt.semantic.references import (
 )
 from dbt.semantic.aggregation_types import AggregationType
 from dbt.semantic.time import TimeGranularity
+from dbt.semantic.time import string_to_time_granularity
 
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -494,7 +495,7 @@ class EntityCompositeSubIdentifier(dbtClassMixin):
     @property
     def reference(self) -> CompositeSubIdentifierReference:  # noqa: D
         assert self.name, f"The element name should have been set during model transformation. Got {self}"
-        return CompositeSubIdentifierReference(element_name=self.name)
+        return CompositeSubIdentifierReference(name=self.name)
 
 
 @dataclass
@@ -512,7 +513,7 @@ class EntityIdentifier(dbtClassMixin, Mergeable):
     tags: List[str] = field(default_factory=list)
     config: Dict[str, Any] = field(default_factory=dict)
 
-    # Moved validation down to entity level
+    # Moved validation down to entity level. No more default_entity_value
 
     @property
     def is_primary_time(self) -> bool:  # noqa: D
@@ -524,7 +525,7 @@ class EntityIdentifier(dbtClassMixin, Mergeable):
 
     @property
     def reference(self) -> IdentifierReference:  # noqa: D
-        return IdentifierReference(element_name=self.name)
+        return IdentifierReference(name=self.name)
 
     @property
     def is_linkable_identifier_type(self) -> bool:
@@ -544,12 +545,26 @@ class EntityIdentifier(dbtClassMixin, Mergeable):
 
 
 class EntityDimensionType(StrEnum):
-    categorical = "categorical"
-    time = "time"
+    CATEGORICAL = "categorical"
+    TIME = "time"
 
     def is_time_type(self) -> bool:
         """Checks if this type of dimension is a time type"""
         return self in [EntityDimensionType.time]
+
+
+@dataclass
+class DimensionValidityParams(dbtClassMixin,Mergeable):
+    """Parameters identifying a given dimension as an identifier for validity state
+    This construct is used for supporting SCD Type II tables, such as might be
+    created via dbt's snapshot feature, or generated via periodic loads from external
+    dimension data sources. In either of those cases, there is typically a time dimension
+    associated with the SCD data source that indicates the start and end times of a
+    validity window, where the dimension value is valid for any time within that range.
+    """
+
+    is_start: bool = False
+    is_end: bool = False
 
 
 @dataclass
@@ -568,8 +583,8 @@ class EntityDimensionTypeParameters(dbtClassMixin, Mergeable):
 
     is_primary: bool = False
     time_granularity: TimeGranularity = None
-    is_start: bool = False
-    is_end: bool = False
+    validity_params: Optional[DimensionValidityParams] = None
+
 
 
 @dataclass
@@ -587,29 +602,28 @@ class EntityDimension(dbtClassMixin, Mergeable):
 
     @property
     def is_primary_time(self) -> bool:  # noqa: D
-        if self.type == EntityDimensionType.time and self.type_params is not None:
+        if self.type == EntityDimensionType.TIME and self.type_params is not None:
             return self.type_params.is_primary
         return False
 
     @property
     def reference(self) -> DimensionReference:  # noqa: D
-        return DimensionReference(element_name=self.name)
+        return DimensionReference(name=self.name)
 
     @property
     def time_dimension_reference(self) -> TimeDimensionReference:  # noqa: D
         assert self.type == EntityDimensionType.TIME, f"Got type as {self.type} instead of {EntityDimensionType.TIME}"
-        return TimeDimensionReference(element_name=self.name)
+        return TimeDimensionReference(name=self.name)
 
-    # TODO: Get rid of this section if we can bundle validity params
-    # @property
-    # def validity_params(self) -> Optional[DimensionValidityParams]:
-    #     """Returns the DimensionValidityParams property, if it exists.
-    #     This is to avoid repeatedly checking that type params is not None before doing anything with ValidityParams
-    #     """
-    #     if self.type_params:
-    #         return self.type_params.validity_params
+    @property
+    def validity_params(self) -> Optional[DimensionValidityParams]:
+        """Returns the DimensionValidityParams property, if it exists.
+        This is to avoid repeatedly checking that type params is not None before doing anything with ValidityParams
+        """
+        if self.type_params:
+            return self.type_params.validity_params
 
-    #     return None
+        return None
 
 
 #########################
@@ -670,11 +684,11 @@ class EntityMeasure(dbtClassMixin, Mergeable):
             f"the measure specification in the model, or else defaulted to the primary time dimension in the data "
             f"source containing the measure."
         )
-        return TimeDimensionReference(element_name=self.agg_time_dimension)
+        return TimeDimensionReference(name=self.agg_time_dimension)
 
     @property
     def reference(self) -> MeasureReference:  # noqa: D
-        return MeasureReference(element_name=self.name)
+        return MeasureReference(name=self.name)
 
 
 #########################
@@ -768,7 +782,7 @@ class MetricType(StrEnum):
 MetricInputMeasueValue = Any
 
 @dataclass
-class MetricInputMeasure(dbtClassMixin, Mergeable):
+class MetricInputMeasure(dbtClassMixin, Replaceable):
     """Provides a pointer to a measure along with metric-specific processing directives
     If an alias is set, this will be used as the string name reference for this measure after the aggregation
     phase in the SQL plan.
@@ -778,30 +792,17 @@ class MetricInputMeasure(dbtClassMixin, Mergeable):
     # constraint: Optional[WhereClauseConstraint]
     alias: Optional[str]=None
 
-    @classmethod
-    def _from_yaml_value(cls, input: MetricInputMeasueValue) -> MetricInputMeasure:
-        """Parses a MetricInputMeasure from a string (name only) or object (struct spec) input
-        For user input cases, the original YAML spec for a Metric included measure(s) specified as string names
-        or lists of string names. As such, configs pre-dating the addition of this model type will only provide the
-        base name for this object.
-        """
-        if isinstance(input, str):
-            return MetricInputMeasure(name=input)
-        else:
-            raise ValueError(
-                f"MetricInputMeasure inputs from model configs are expected to be of either type string or "
-                f"object (key/value pairs), but got type {type(input)} with value: {input}"
-            )
+    # Removed _from_yaml_value due to how dbt reads in yml
 
     @property
     def measure_reference(self) -> MeasureReference:
         """Property accessor to get the MeasureReference associated with this metric input measure"""
-        return MeasureReference(element_name=self.name)
+        return MeasureReference(name=self.name)
 
     @property
     def post_aggregation_measure_reference(self) -> MeasureReference:
         """Property accessor to get the MeasureReference with the aliased name, if appropriate"""
-        return MeasureReference(element_name=self.alias or self.name)
+        return MeasureReference(name=self.alias or self.name)
 
 
 @dataclass
@@ -814,61 +815,62 @@ class MetricTimeWindow(dbtClassMixin, Mergeable):
     def to_string(self) -> str:  # noqa: D
         return f"{self.count} {self.granularity.value}"
 
-    # @staticmethod
-    # def parse(window: str) -> MetricTimeWindow:
-    #     """Returns window values if parsing succeeds, None otherwise
-    #     Output of the form: (<time unit count>, <time granularity>, <error message>) - error message is None if window is formatted properly
-    #     """
-    #     parts = window.split(" ")
-    #     if len(parts) != 2:
-    #         raise ParsingError(
-    #             f"Invalid window ({window}) in cumulative metric. Should be of the form `<count> <granularity>`, e.g., `28 days`",
-    #         )
+    @staticmethod
+    def parse(window: str) -> MetricTimeWindow:
+        """Returns window values if parsing succeeds, None otherwise
+        Output of the form: (<time unit count>, <time granularity>, <error message>) - error message is None if window is formatted properly
+        """
+        parts = window.split(" ")
+        if len(parts) != 2:
+            raise ParsingError(
+                f"Invalid window ({window}) in cumulative metric. Should be of the form `<count> <granularity>`, e.g., `28 days`",
+            )
 
-    #     granularity = parts[1]
-    #     # if we switched to python 3.9 this could just be `granularity = parts[0].removesuffix('s')
-    #     if granularity.endswith("s"):
-    #         # months -> month
-    #         granularity = granularity[:-1]
-    #     if granularity not in [item.value for item in TimeGranularity]:
-    #         raise ParsingError(
-    #             f"Invalid time granularity {granularity} in cumulative metric window string: ({window})",
-    #         )
+        granularity = parts[1]
+        # if we switched to python 3.9 this could just be `granularity = parts[0].removesuffix('s')
+        if granularity.endswith("s"):
+            # months -> month
+            granularity = granularity[:-1]
+        if granularity not in [item.value for item in TimeGranularity]:
+            raise ParsingError(
+                f"Invalid time granularity {granularity} in cumulative metric window string: ({window})",
+            )
 
-    #     count = parts[0]
-    #     if not count.isdigit():
-    #         raise ParsingError(f"Invalid count ({count}) in cumulative metric window string: ({window})")
+        count = parts[0]
+        if not count.isdigit():
+            raise ParsingError(f"Invalid count ({count}) in cumulative metric window string: ({window})")
 
-    #     return MetricTimeWindow(
-    #         count=int(count),
-    #         granularity=string_to_time_granularity(granularity),
-    #     )
+        return MetricTimeWindow(
+            count=int(count),
+            granularity=string_to_time_granularity(granularity),
+        )
 
 
 @dataclass
 class MetricInput(dbtClassMixin, Mergeable):
     """Provides a pointer to a metric along with the additional properties used on that metric."""
-    #TODO: Get the pointer to work
 
     name: str
     # constraint: Optional[WhereClauseConstraint]
-    alias: Optional[str]
-    offset_window: Optional[MetricTimeWindow]
-    offset_to_grain: Optional[TimeGranularity]
+    alias: Optional[str] = None
+    offset_window: Optional[MetricTimeWindow] = None
+    offset_to_grain: Optional[TimeGranularity] = None
 
 
 @dataclass
-class MetricTypeParams(dbtClassMixin, Mergeable):
+class UnparsedMetricTypeParams(dbtClassMixin, Mergeable):
     """Type params add additional context to certain metric types (the context depends on the metric type)"""
 
-    measure: Optional[str] = None
-    measures: Optional[List[str]]  = field(default_factory=list)
-    numerator: Optional[str] = None
-    denominator: Optional[str] = None
+    #NOTE: Adding a union to allow for the class or a string. We 
+    # change to prefered class in schemas.py during conversion to Metric
+    measure: Optional[Union[MetricInputMeasure,str]] = None
+    measures: Optional[List[Union[MetricInputMeasure,str]]]  = field(default_factory=list)
+    numerator: Optional[Union[MetricInputMeasure,str]] = None
+    denominator: Optional[Union[MetricInputMeasure,str]] = None
     expression: Optional[str] = None
-    window: Optional[str] = None
-    grain_to_date: Optional[str] = None
-    metrics: Optional[List[str]] = field(default_factory=list)
+    window: Optional[Union[MetricTimeWindow,str]] = None
+    grain_to_date: Optional[TimeGranularity] = None
+    metrics: Optional[List[Union[MetricInput,str]]] = field(default_factory=list)
 
     @property
     def numerator_measure_reference(self) -> Optional[MeasureReference]:
@@ -887,7 +889,7 @@ class UnparsedMetric(dbtClassMixin):
 
     name: str
     type: MetricType
-    type_params: MetricTypeParams
+    type_params: UnparsedMetricTypeParams
     description: Optional[str] = None
     entity: Optional[str] = None
     # constraint: Optional[WhereClauseConstraint]

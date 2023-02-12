@@ -42,24 +42,27 @@ class ValidateTask(GraphRunnableTask):
             metrics=manifest.metrics
         )
 
+        breakpoint()
         print(model)
-        # TODO: Add logic that converts measures to metrics
-        #{ TODO:
-
+        #{ 
         # NOTE: Compile is needed for anything dag related, validate to ensure semantic completeness
 
         # COMPILE LOGIC:
         # 1. DONE: Create the entity() lookup that validates that the entity exists
             # 1a. DONE. Add the BaseEntityResolver in providers
             # 1b. DONE: Add the ResolvedEntityReference a la metrics in graph folder
-            # 1c. Done: Make sure that the entity() lookup outputs to depends_on
+            # 1c. DONE: Make sure that the entity() lookup outputs to depends_on
         # 1b. DONE: Update the metric() lookup for the new metricflow spec
         # 2. DONE: Add a warning if entity field doesn't use lookup 
-        # 3. ISSUE FILED:Fix exposure logic. Referencing a metric that didn't exist raised an error
+        # 3. DONE IN MAIN:Fix exposure logic. Referencing a metric that didn't exist raised an error
         #    for depending on a "source" which not what we want.
         # 3a. DONE: Fix writing to entities in exposures. Unlike refs or metrics, the list of 
         #       lists for entities didn't work
         # 4. ??
+
+        # DOCS LOGIC:
+        # 1. DONE: Add entities to docs
+        # 2. Fix the issue with the lineage graph 
 
         # VALIDATE LOGIC:
         # 1. Add the logic that establishes identifier relationships in entities

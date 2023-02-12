@@ -13,7 +13,7 @@ exposures:
     depends_on:
       - ref('fact_orders')
       - ref('dim_customers')
-      - metric('revenue')
+      # - metric('revenue')
       - entity('orders')
 
     owner:

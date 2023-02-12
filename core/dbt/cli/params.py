@@ -39,7 +39,7 @@ cache_selected_only = click.option(
 compile_docs = click.option(
     "--compile/--no-compile",
     envvar=None,
-    help="Wether or not to run 'dbt compile' as part of docs generation",
+    help="Whether or not to run 'dbt compile' as part of docs generation",
     default=True,
 )
 

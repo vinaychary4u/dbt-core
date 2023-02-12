@@ -21,6 +21,17 @@ entities:
         expression: order_total
         create_metric: True
 
+      - name: median_sales
+        description: "The median sale of the order"
+        aggregation: median
+        expression: order_total
+        create_metric: True
+
+      - name: testing_count
+        description: "Testing count functionality"
+        aggregation: count
+        create_metric: True
+
 metrics:
   - name: revenue
     entity: entity('orders')
@@ -48,14 +59,14 @@ metrics:
     type: cumulative
     entity: entity('orders')
     type_params:
-      measures:
-        - order_total
+      measure: order_total
       window: 7 days
 
   - name: revenue_usd
     type: expr 
     entity: entity('orders')
     type_params:
-      expression: order_total - order_total
+      expression: order_total - sales
       measures: 
         - order_total
+        - sales

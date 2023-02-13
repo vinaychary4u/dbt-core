@@ -1196,47 +1196,48 @@ def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposur
         manifest.update_exposure(exposure)
 
 
-def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: Metric):
-    """Given a manifest and a metric in that manifest, process its refs"""
-    for ref in metric.refs:
-        target_model: Optional[Union[Disabled, ManifestNode]] = None
-        target_model_name: str
-        target_model_package: Optional[str] = None
+# NOTE: commenting out as metrics are based on entities now
+# def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: Metric):
+#     """Given a manifest and a metric in that manifest, process its refs"""
+#     for ref in metric.refs:
+#         target_model: Optional[Union[Disabled, ManifestNode]] = None
+#         target_model_name: str
+#         target_model_package: Optional[str] = None
 
-        if len(ref) == 1:
-            target_model_name = ref[0]
-        elif len(ref) == 2:
-            target_model_package, target_model_name = ref
-        else:
-            raise dbt.exceptions.DbtInternalError(
-                f"Refs should always be 1 or 2 arguments - got {len(ref)}"
-            )
+#         if len(ref) == 1:
+#             target_model_name = ref[0]
+#         elif len(ref) == 2:
+#             target_model_package, target_model_name = ref
+#         else:
+#             raise dbt.exceptions.DbtInternalError(
+#                 f"Refs should always be 1 or 2 arguments - got {len(ref)}"
+#             )
 
-        target_model = manifest.resolve_ref(
-            target_model_name,
-            target_model_package,
-            current_project,
-            metric.package_name,
-        )
+#         target_model = manifest.resolve_ref(
+#             target_model_name,
+#             target_model_package,
+#             current_project,
+#             metric.package_name,
+#         )
 
-        if target_model is None or isinstance(target_model, Disabled):
-            # This may raise. Even if it doesn't, we don't want to add
-            # this metric to the graph b/c there is no destination metric
-            metric.config.enabled = False
-            invalid_target_fail_unless_test(
-                node=metric,
-                target_name=target_model_name,
-                target_kind="node",
-                target_package=target_model_package,
-                disabled=(isinstance(target_model, Disabled)),
-                should_warn_if_disabled=False,
-            )
-            continue
+#         if target_model is None or isinstance(target_model, Disabled):
+#             # This may raise. Even if it doesn't, we don't want to add
+#             # this metric to the graph b/c there is no destination metric
+#             metric.config.enabled = False
+#             invalid_target_fail_unless_test(
+#                 node=metric,
+#                 target_name=target_model_name,
+#                 target_kind="node",
+#                 target_package=target_model_package,
+#                 disabled=(isinstance(target_model, Disabled)),
+#                 should_warn_if_disabled=False,
+#             )
+#             continue
 
-        target_model_id = target_model.unique_id
+#         target_model_id = target_model.unique_id
 
-        metric.depends_on.nodes.append(target_model_id)
-        manifest.update_metric(metric)
+#         metric.depends_on.nodes.append(target_model_id)
+#         manifest.update_metric(metric)
 
 
 def _process_refs_for_entity(manifest: Manifest, current_project: str, entity: Entity):
@@ -1454,27 +1455,27 @@ def _process_sources_for_exposure(manifest: Manifest, current_project: str, expo
 
 
 # TODO: Remove this code because metrics can't be based on sources
-def _process_sources_for_metric(manifest: Manifest, current_project: str, metric: Metric):
-    target_source: Optional[Union[Disabled, SourceDefinition]] = None
-    for source_name, table_name in metric.sources:
-        target_source = manifest.resolve_source(
-            source_name,
-            table_name,
-            current_project,
-            metric.package_name,
-        )
-        if target_source is None or isinstance(target_source, Disabled):
-            metric.config.enabled = False
-            invalid_target_fail_unless_test(
-                node=metric,
-                target_name=f"{source_name}.{table_name}",
-                target_kind="source",
-                disabled=(isinstance(target_source, Disabled)),
-            )
-            continue
-        target_source_id = target_source.unique_id
-        metric.depends_on.nodes.append(target_source_id)
-        manifest.update_metric(metric)
+# def _process_sources_for_metric(manifest: Manifest, current_project: str, metric: Metric):
+#     target_source: Optional[Union[Disabled, SourceDefinition]] = None
+#     for source_name, table_name in metric.sources:
+#         target_source = manifest.resolve_source(
+#             source_name,
+#             table_name,
+#             current_project,
+#             metric.package_name,
+#         )
+#         if target_source is None or isinstance(target_source, Disabled):
+#             metric.config.enabled = False
+#             invalid_target_fail_unless_test(
+#                 node=metric,
+#                 target_name=f"{source_name}.{table_name}",
+#                 target_kind="source",
+#                 disabled=(isinstance(target_source, Disabled)),
+#             )
+#             continue
+#         target_source_id = target_source.unique_id
+#         metric.depends_on.nodes.append(target_source_id)
+#         manifest.update_metric(metric)
 
 
 def _process_sources_for_node(manifest: Manifest, current_project: str, node: ManifestNode):

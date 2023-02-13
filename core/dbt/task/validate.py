@@ -6,7 +6,7 @@ from dbt.node_types import NodeType
 from dbt.events.types import ParseCmdOut
 from dbt.exceptions import DbtInternalError
 from dbt.events.functions import fire_event
-from dbt.semantic.model import UserConfiguredSemanticModel
+from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
 
 
 class ValidateTask(GraphRunnableTask):
@@ -37,7 +37,7 @@ class ValidateTask(GraphRunnableTask):
         ManifestTask._runtime_initialize(self)
         manifest = self.manifest
 
-        model = UserConfiguredSemanticModel(
+        model = UserConfiguredModel(
             entities=manifest.entities,
             metrics=manifest.metrics
         )
@@ -58,7 +58,7 @@ class ValidateTask(GraphRunnableTask):
         #    for depending on a "source" which not what we want.
         # 3a. DONE: Fix writing to entities in exposures. Unlike refs or metrics, the list of 
         #       lists for entities didn't work
-        # 4. ??
+        # 4. DONE: Add all the transformation logic
 
         # DOCS LOGIC:
         # 1. DONE: Add entities to docs

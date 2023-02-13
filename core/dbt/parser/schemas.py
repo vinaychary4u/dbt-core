@@ -36,7 +36,6 @@ from dbt.contracts.graph.nodes import (
     UnpatchedSourceDefinition,
     Exposure,
     Metric,
-    MetricTypeParams,
     Entity,
 )
 from dbt.contracts.graph.unparsed import (
@@ -52,10 +51,11 @@ from dbt.contracts.graph.unparsed import (
     UnparsedMetric,
     UnparsedEntity,
     UnparsedSourceDefinition,
-    EntityMeasure,
-    MetricType,
-    MetricInputMeasure
 )
+from dbt.dbt_semantic.objects.metrics import (
+    MetricTypeParams,
+)
+from dbt.dbt_semantic.objects.measures import Measure
 from dbt.exceptions import (
     CompilationError,
     DuplicateMacroPatchNameError,
@@ -88,14 +88,15 @@ from dbt.parser.generic_test_builders import (
     Testable,
 )
 from dbt.utils import get_pseudo_test_path, coerce_dict_str
-from dbt.semantic.entity_transformations.boolean_measure_aggregation import BooleanMeasureAggregation
-from dbt.semantic.entity_transformations.composite_identifier_expressions import CompositeIdentifierExpressionRule
-from dbt.semantic.entity_transformations.convert_count import ConvertCountToSum
-from dbt.semantic.entity_transformations.convert_median import ConvertMedianToPercentile
-from dbt.semantic.entity_transformations.lowercase_names import LowerCaseNames
-from dbt.semantic.entity_transformations.measure_aggregation_time_dimension import SetMeasureAggregationTimeDimension
-from dbt.semantic.entity_transformations.proxy_measure import ProxyMeasure
-from dbt.semantic.metric_transformations.convert_type_params import ConvertTypeParams
+from dbt.dbt_semantic.transformations.entity_transformations.boolean_measure_aggregation import BooleanMeasureAggregation
+from dbt.dbt_semantic.transformations.entity_transformations.composite_identifier_expressions import CompositeIdentifierExpressionRule
+from dbt.dbt_semantic.transformations.entity_transformations.convert_count import ConvertCountToSum
+from dbt.dbt_semantic.transformations.entity_transformations.convert_median import ConvertMedianToPercentile
+from dbt.dbt_semantic.transformations.entity_transformations.lowercase_names import LowerCaseNames
+from dbt.dbt_semantic.transformations.entity_transformations.measure_aggregation_time_dimension import SetMeasureAggregationTimeDimension
+from dbt.dbt_semantic.transformations.entity_transformations.proxy_measure import ProxyMeasure
+from dbt.dbt_semantic.transformations.metric_transformations.add_input_metric_measures import AddInputMetricMeasures
+from dbt.dbt_semantic.transformations.metric_transformations.convert_type_params import ConvertTypeParams
 
 
 TestDef = Union[str, Dict[str, Any]]
@@ -556,6 +557,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
             if "metrics" in dct:
                 metric_parser = MetricParser(self, yaml_block)
                 metric_parser.parse()
+                metric_parser.validate()
 
 
 def check_format_version(file_path, yaml_dct) -> None:
@@ -1202,7 +1204,7 @@ class EntityParser(YamlReader):
         )
 
     def _generate_proxy_metric_config(
-                self, target: EntityMeasure, fqn: List[str], package_name: str, rendered: bool
+                self, target: Measure, fqn: List[str], package_name: str, rendered: bool
     ):
         generator: BaseContextConfigGenerator
         if rendered:
@@ -1267,16 +1269,7 @@ class MetricParser(YamlReader):
             rendered=False,
         )
 
-        parsed_metric_type_params=MetricTypeParams(
-            measure=ConvertTypeParams._get_parameter(unparsed.type_params.measure),
-            measures=ConvertTypeParams._get_parameters(unparsed.type_params.measures),
-            numerator=ConvertTypeParams._get_parameter(unparsed.type_params.numerator),
-            denominator=ConvertTypeParams._get_parameter(unparsed.type_params.denominator),
-            expression=unparsed.type_params.expression,
-            window=ConvertTypeParams._get_window_parameter(unparsed.type_params.window),
-            grain_to_date=unparsed.type_params.grain_to_date,
-            metrics=ConvertTypeParams._get_metric_parameters(unparsed.type_params.metrics),
-        )
+        parsed_metric_type_params=ConvertTypeParams._get_metric_type_params(unparsed.type_params)
 
         if not isinstance(config, MetricConfig):
             raise DbtInternalError(
@@ -1317,12 +1310,6 @@ class MetricParser(YamlReader):
             ## The get rendered is the step that adds the dependencies
             get_rendered(entity_ref, ctx, parsed)
 
-        # parsed.expression = get_rendered(
-        #     parsed.expression,
-        #     ctx,
-        #     node=parsed,
-        # )
-
         # if the metric is disabled we do not want it included in the manifest, only in the disabled dict
         if parsed.config.enabled:
             self.manifest.add_metric(self.yaml.file, parsed)
@@ -1361,3 +1348,9 @@ class MetricParser(YamlReader):
             except (ValidationError, JSONValidationError) as exc:
                 raise YamlParseDictError(self.yaml.path, self.key, data, exc)
             self.parse_metric(unparsed)
+
+    def validate(self):
+        ##We validate here for the input metric measurs because
+        ## we need all of the metrics to be parsed. This exists for 
+        ## derived metrics 
+        AddInputMetricMeasures.validate_inputs(self.manifest)

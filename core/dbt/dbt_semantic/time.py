@@ -6,7 +6,7 @@ from dbt.dataclass_schema import StrEnum
 
 import pandas as pd
 
-from dbt.semantic.object_utils import assert_values_exhausted
+from dbt.dbt_semantic.object_utils import assert_values_exhausted
 
 
 class TimeGranularity(StrEnum):

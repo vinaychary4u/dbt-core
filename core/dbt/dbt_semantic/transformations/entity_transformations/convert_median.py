@@ -1,7 +1,7 @@
 from abc import ABC
-from dbt.semantic.aggregation_types import AggregationType
+from dbt.dbt_semantic.aggregation_types import AggregationType
 from dbt.contracts.graph.nodes import Entity
-from dbt.contracts.graph.unparsed import MeasureAggregationParameters
+from dbt.dbt_semantic.objects.measures import MeasureAggregationParameters
 from dbt.exceptions import DbtSemanticValidationError
 
 MEDIAN_PERCENTILE = 0.5

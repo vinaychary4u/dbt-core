@@ -13,11 +13,13 @@ from typing import (
     Iterator,
 )
 
-from dbt.semantic.references import (
+from dbt.dbt_semantic.references import (
     MeasureReference,
     LinkableElementReference
 )
-from dbt.semantic.time import TimeGranularity
+from dbt.dbt_semantic.time import TimeGranularity
+from dbt.dbt_semantic.objects.metrics import MetricTypeParams
+from dbt.dbt_semantic.object_utils import hash_items
 
 from dbt.dataclass_schema import dbtClassMixin, ExtensibleDbtClassMixin
 
@@ -37,9 +39,11 @@ from dbt.contracts.graph.unparsed import (
     ExposureOwner,
     ExposureType,
     MaturityType,
-    EntityDimension,
-    EntityMeasure,
-    EntityIdentifier,
+)
+from dbt.dbt_semantic.objects.identifiers import Identifier
+from dbt.dbt_semantic.objects.dimensions import Dimension
+from dbt.dbt_semantic.objects.measures import Measure
+from dbt.dbt_semantic.objects.metrics import (
     MetricType,
     MetricInputMeasure,
     MetricTimeWindow,
@@ -981,36 +985,6 @@ class Exposure(GraphNode):
 # Metric node
 # ====================================
 
-
-@dataclass
-class MetricReference(dbtClassMixin, Replaceable):
-    sql: Optional[Union[str, int]]
-    unique_id: Optional[str]
-
-
-@dataclass
-class MetricTypeParams(dbtClassMixin):
-    """Type params add additional context to certain metric types (the context depends on the metric type)"""
-
-    measure: Optional[MetricInputMeasure] = None
-    measures: Optional[List[MetricInputMeasure]] = field(default_factory=list)
-    numerator: Optional[MetricInputMeasure] = None
-    denominator: Optional[MetricInputMeasure] = None
-    expression: Optional[str] = None
-    window: Optional[MetricTimeWindow] = None
-    grain_to_date: Optional[TimeGranularity] = None
-    metrics: Optional[List[MetricInput]] = field(default_factory=list)
-
-    @property
-    def numerator_measure_reference(self) -> Optional[MeasureReference]:
-        """Return the measure reference, if any, associated with the metric input measure defined as the numerator"""
-        return self.numerator.measure_reference if self.numerator else None
-
-    @property
-    def denominator_measure_reference(self) -> Optional[MeasureReference]:
-        """Return the measure reference, if any, associated with the metric input measure defined as the denominator"""
-        return self.denominator.measure_reference if self.denominator else None
-
 @dataclass
 class Metric(GraphNode):
     name: str
@@ -1054,15 +1028,15 @@ class Metric(GraphNode):
         """Return the associated input metrics for this metric"""
         return self.type_params.metrics or []
 
-    # @property
-    # def definition_hash(self) -> str:  # noqa: D
-    #     values: List[str] = [self.name, self.type_params.expression or ""]
-    #     if self.constraint:
-    #         values.append(self.constraint.where)
-    #         if self.constraint.linkable_names:
-    #             values.extend(self.constraint.linkable_names)
-    #     values.extend([m.name for m in self.measure_references])
-    #     return hash_items(values)
+    @property
+    def definition_hash(self) -> str:  # noqa: D
+        values: List[str] = [self.name, self.type_params.expr or ""]
+        if self.constraint:
+            values.append(self.constraint.where)
+            if self.constraint.linkable_names:
+                values.extend(self.constraint.linkable_names)
+        values.extend([m.name for m in self.measure_references])
+        return hash_items(values)
 
     @property
     def depends_on_nodes(self):
@@ -1111,9 +1085,9 @@ class Entity(GraphNode):
     name: str
     model: str
     description: str
-    identifiers: Optional[Sequence[EntityIdentifier]] = None
-    dimensions: Optional[Sequence[EntityDimension]] = None
-    measures: Optional[Sequence[EntityMeasure]] = None
+    identifiers: Optional[Sequence[Identifier]] = None
+    dimensions: Optional[Sequence[Dimension]] = None
+    measures: Optional[Sequence[Measure]] = None
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Entity]})
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
@@ -1183,23 +1157,23 @@ class Entity(GraphNode):
     def measure_references(self) -> List[MeasureReference]:  # noqa: D
         return [i.reference for i in self.measures]
 
-    def get_measure(self, measure_reference: MeasureReference) -> EntityMeasure:  # noqa: D
+    def get_measure(self, measure_reference: MeasureReference) -> Measure:  # noqa: D
         for measure in self.measures:
             if measure.reference == measure_reference:
                 return measure
 
         raise ValueError(
-            f"No dimension with name ({measure_reference.element_name}) in data source with name ({self.name})"
+            f"No dimension with name ({measure_reference.name}) in data source with name ({self.name})"
         )
 
-    def get_dimension(self, dimension_reference: LinkableElementReference) -> EntityDimension:  # noqa: D
+    def get_dimension(self, dimension_reference: LinkableElementReference) -> Dimension:  # noqa: D
         for dim in self.dimensions:
             if dim.reference == dimension_reference:
                 return dim
 
         raise ValueError(f"No dimension with name ({dimension_reference}) in data source with name ({self.name})")
 
-    def get_identifier(self, identifier_reference: LinkableElementReference) -> EntityIdentifier:  # noqa: D
+    def get_identifier(self, identifier_reference: LinkableElementReference) -> Identifier:  # noqa: D
         for ident in self.identifiers:
             if ident.reference == identifier_reference:
                 return ident

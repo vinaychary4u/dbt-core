@@ -5,7 +5,7 @@ from typing import List
 
 
 @dataclass
-class UserConfiguredSemanticModel(dbtClassMixin):
+class UserConfiguredModel(dbtClassMixin):
     """Model holds all the information the SemanticLayer needs to render a query"""
 
     entities: List[Entity] = field(default_factory=list)

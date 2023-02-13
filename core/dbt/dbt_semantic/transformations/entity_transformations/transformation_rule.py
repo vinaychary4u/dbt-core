@@ -1,8 +1,6 @@
 
 from abc import ABC, abstractmethod
 
-from dbt.semantic.model import UserConfiguredSemanticModel
-
 
 ##TODO: GET RID OF THIS FILE
 # We'll be doing this transformation at compile time

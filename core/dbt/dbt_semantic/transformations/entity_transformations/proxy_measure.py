@@ -1,11 +1,11 @@
-from dbt.contracts.graph.unparsed import (
+from dbt.dbt_semantic.objects.metrics import (
     MetricType, 
     MetricInputMeasure,
+    MetricTypeParams
 )
 from dbt.node_types import NodeType
 from dbt.contracts.graph.nodes import (
     Metric,
-    MetricTypeParams,
     Entity
 )
 from dbt.clients.jinja import get_rendered
@@ -55,6 +55,11 @@ class ProxyMeasure(ABC):
                         rendered=False,
                     )
 
+                    if measure.expr:
+                        measure_expr=measure.expr
+                    else: 
+                        measure_expr=measure.name
+
                     if add_metric:
                         proxy_metric = Metric(
                             resource_type=NodeType.Metric,
@@ -69,7 +74,7 @@ class ProxyMeasure(ABC):
                             type=MetricType.MEASURE_PROXY,
                             type_params=MetricTypeParams(
                                 measure=MetricInputMeasure(name=measure.name),
-                                expression=measure.name,
+                                expr=measure_expr,
                             ),
                             meta=measure.meta,
                             tags=measure.tags,

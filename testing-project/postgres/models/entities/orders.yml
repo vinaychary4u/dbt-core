@@ -19,23 +19,23 @@ entities:
     measures:
       - name: order_total
         description: "The total value of the order"
-        aggregation: sum
+        agg: sum
 
       - name: sales
         description: "The total sale of the order"
-        aggregation: sum
+        agg: sum
         expr: order_total
         create_metric: True
 
       - name: median_sales
         description: "The median sale of the order"
-        aggregation: median
+        agg: median
         expr: order_total
         create_metric: True
 
       - name: testing_count
         description: "Testing count functionality"
-        aggregation: count
+        agg: count
         create_metric: True
 
 metrics:

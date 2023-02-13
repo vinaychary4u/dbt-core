@@ -13,8 +13,8 @@ class ConvertMedianToPercentile(ABC):
     def _transform_entity(entity: Entity) -> Entity:  # noqa: D
         if entity.measures:
             for measure in entity.measures:
-                if measure.aggregation == AggregationType.MEDIAN:
-                    measure.aggregation = AggregationType.PERCENTILE
+                if measure.agg == AggregationType.MEDIAN:
+                    measure.agg = AggregationType.PERCENTILE
 
                     if not measure.agg_params:
                         measure.agg_params = MeasureAggregationParameters()

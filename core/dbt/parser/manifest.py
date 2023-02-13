@@ -546,7 +546,6 @@ class ManifestLoader:
                     UnableToPartialParse(reason="saved manifest contained the wrong version")
                 )
                 self.manifest.metadata.dbt_version = __version__
-            breakpoint()
             manifest_msgpack = self.manifest.to_msgpack()
             make_directory(os.path.dirname(path))
             with open(path, "wb") as fp:

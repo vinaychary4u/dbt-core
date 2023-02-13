@@ -10,12 +10,12 @@ class BooleanMeasureAggregation(ABC):
     def _transform_entity(entity: Entity) -> Entity:  # noqa: D
         if entity.measures:
             for measure in entity.measures:
-                if measure.aggregation == AggregationType.SUM_BOOLEAN:
+                if measure.agg == AggregationType.SUM_BOOLEAN:
                     if measure.expr:
                         measure.expr = f"case when {measure.expr} then 1 else 0 end"
                     else:
                         measure.expr = f"case when {measure.name} then 1 else 0 end"
 
-                    measure.aggregation = AggregationType.SUM
+                    measure.agg = AggregationType.SUM
 
         return entity

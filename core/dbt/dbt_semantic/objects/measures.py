@@ -32,7 +32,7 @@ class MeasureNonAdditiveDimensionParameters(dbtClassMixin, Replaceable):
 class Measure(dbtClassMixin, Mergeable):
     """Describes a measure"""
     name: str
-    aggregation: AggregationType
+    agg: AggregationType
     description: str = ""
     expr: Optional[str] = None
     create_metric: Optional[bool] = None

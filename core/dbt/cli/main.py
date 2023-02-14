@@ -58,6 +58,16 @@ class dbtRunner:
             raise dbtUsageException(e.message)
 
 
+def handle(args):
+    res, _ = handle_and_check(args)
+    return res
+
+
+def handle_and_check(args):
+    dbt = dbtRunner()
+    return dbt.invoke(args)
+
+
 # dbt
 @click.group(
     context_settings={"help_option_names": ["-h", "--help"]},
@@ -66,7 +76,7 @@ class dbtRunner:
     epilog="Specify one of these sub-commands and you can find more help from there.",
 )
 @click.pass_context
-@p.anonymous_usage_stats
+@p.send_anonymous_usage_stats
 @p.cache_selected_only
 @p.debug
 @p.enable_legacy_logger
@@ -185,7 +195,7 @@ def docs(ctx, **kwargs):
 @requires.profile
 @requires.project
 @requires.runtime_config
-@requires.manifest
+@requires.manifest(write=False)
 def docs_generate(ctx, **kwargs):
     """Generate the documentation website for your project"""
     task = GenerateTask(
@@ -270,7 +280,7 @@ def compile(ctx, **kwargs):
 @click.pass_context
 @p.config_dir
 @p.profile
-@p.profiles_dir
+@p.profiles_dir_exists_false
 @p.project_dir
 @p.target
 @p.vars

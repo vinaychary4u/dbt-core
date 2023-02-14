@@ -80,7 +80,7 @@ class TestFlags(TestCase):
         os.environ.pop('DBT_WARN_ERROR_OPTIONS')
         delattr(self.args, 'warn_error_options')
         self.user_config.warn_error_options = None
-    
+
         # write_json
         self.user_config.write_json = True
         flags.set_from_args(self.args, self.user_config)
@@ -292,7 +292,7 @@ class TestFlags(TestCase):
         #cleanup
         self.user_config.warn_error = None
         self.user_config.warn_error_options = None
-        
+
         # options from args
         setattr(self.args, 'warn_error', False)
         setattr(self.args, 'warn_error_options', '{"include":"all"}')
@@ -319,7 +319,7 @@ class TestFlags(TestCase):
         # cleanup
         self.user_config.warn_error = None
         delattr(self.args, 'warn_error_options')
-        
+
         # options from user config + environ
         self.user_config.warn_error = False
         os.environ['DBT_WARN_ERROR_OPTIONS'] = '{"include": []}'

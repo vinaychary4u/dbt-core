@@ -2,6 +2,7 @@ import pytest
 
 import click
 from multiprocessing import get_context
+from pathlib import Path
 from typing import List
 
 from dbt.cli.main import cli
@@ -37,12 +38,11 @@ class TestFlags:
         flags = Flags(run_context)
         if param.name.upper() == "VERSION":
             return
-
         assert hasattr(flags, param.name.upper())
 
         # LOG_PATH is set from dbt_project.yml, independently from its param definition
         if param.name.upper() == "LOG_PATH":
-            assert getattr(flags, param.name.upper()) == "logs"
+            assert getattr(flags, param.name.upper()) == Path("logs")
         else:
             assert getattr(flags, param.name.upper()) == run_context.params[param.name.lower()]
 

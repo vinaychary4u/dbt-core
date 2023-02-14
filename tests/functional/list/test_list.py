@@ -387,6 +387,7 @@ class TestList:
                     "docs": {"node_color": None, "show": True},
                     "constraints_enabled": False,
                 },
+                "depends_on": {"macros": []},
                 "unique_id": "seed.test.seed",
                 "original_file_path": normalize("seeds/seed.csv"),
                 "alias": "seed",

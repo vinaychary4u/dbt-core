@@ -7,7 +7,7 @@ import sqlparse
 from collections import defaultdict
 from typing import List, Dict, Any, Tuple, Optional
 
-from dbt import flags
+from dbt.flags import get_flags
 from dbt.adapters.factory import get_adapter
 from dbt.clients import jinja
 from dbt.clients.system import make_directory
@@ -371,6 +371,18 @@ class Compiler:
                 node,
             )
 
+        # relation_name is set at parse time, except for tests without store_failures,
+        # but cli param can turn on store_failures, so we set here.
+        if (
+            node.resource_type == NodeType.Test
+            and node.relation_name is None
+            and node.is_relational
+        ):
+            adapter = get_adapter(self.config)
+            relation_cls = adapter.Relation
+            relation_name = str(relation_cls.create_from(self.config, node))
+            node.relation_name = relation_name
+
         node.compiled = True
 
         return node
@@ -378,6 +390,7 @@ class Compiler:
     def write_graph_file(self, linker: Linker, manifest: Manifest):
         filename = graph_file_name
         graph_path = os.path.join(self.config.target_path, filename)
+        flags = get_flags()
         if flags.WRITE_JSON:
             linker.write_graph(graph_path, manifest)
 

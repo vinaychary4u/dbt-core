@@ -36,6 +36,7 @@ from dbt.contracts.graph.nodes import (
     ResultNode,
     BaseNode,
 )
+from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
 from dbt.contracts.graph.unparsed import SourcePatch
 from dbt.contracts.files import SourceFile, SchemaSourceFile, FileHash, AnySourceFile
 from dbt.contracts.util import BaseArtifactMetadata, SourceKey, ArtifactMixin, schema_version

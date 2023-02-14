@@ -9,41 +9,18 @@ from dbt.events.functions import fire_event
 from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
 
 
-class ValidateTask(GraphRunnableTask):
-
-    def defer_to_manifest(self, adapter, selected_uids):
-        # validate don't defer
-        return
-
-    def get_node_selector(self):
-        if self.manifest is None or self.graph is None:
-            raise DbtInternalError("Manifest and graph must be set to get perform node selection")
-        if self.resource_types == [NodeType.Test]:
-            return TestSelector(
-                graph=self.graph,
-                manifest=self.manifest,
-                previous_state=self.previous_state,
-            )
-        else:
-            return ResourceTypeSelector(
-                graph=self.graph,
-                manifest=self.manifest,
-                previous_state=self.previous_state,
-                resource_types=self.resource_types,
-            )
+class ValidateTask(ManifestTask):
 
     def run(self):
         fire_event(ParseCmdOut(msg="Starting validation."))
         ManifestTask._runtime_initialize(self)
-        manifest = self.manifest
-
-        model = UserConfiguredModel(
-            entities=manifest.entities,
-            metrics=manifest.metrics
+        user_configured_model = UserConfiguredModel(
+            entities=self.manifest.entities,
+            metrics=self.manifest.metrics
         )
 
         breakpoint()
-        print(model)
+        # print(model)
         #{ 
         # NOTE: Compile is needed for anything dag related, validate to ensure semantic completeness
 
@@ -70,11 +47,9 @@ class ValidateTask(GraphRunnableTask):
         # 2. Figure out what the hell is going on with identifiers. 
         # 3. Import and initiate the ModelClass in validate
         # 4. Determine boundaries between validate and compile
-        # 
-        # 
-        # 
-        # 
         # }
+
+
         fire_event(ParseCmdOut(msg="Callum still has more todos"))
 
         ## TODO: Warehouse validation? I don't think so?

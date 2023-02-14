@@ -4,8 +4,6 @@ from datetime import date
 from typing import Union, Any
 from dbt.dataclass_schema import StrEnum
 
-import pandas as pd
-
 from dbt.dbt_semantic.object_utils import assert_values_exhausted
 
 
@@ -43,22 +41,22 @@ class TimeGranularity(StrEnum):
     def is_smaller_than_or_equal(self, other: "TimeGranularity") -> bool:  # noqa: D
         return self.to_int() <= other.to_int()
 
-    @property
-    def offset_period(self) -> pd.offsets.DateOffset:
-        """Offset object to use for adjusting by one granularity period."""
-        # The type checker is throwing errors for some of those arguments, but they are valid.
-        if self is TimeGranularity.DAY:
-            return pd.offsets.DateOffset(days=1)  # type: ignore
-        elif self is TimeGranularity.WEEK:
-            return pd.offsets.DateOffset(weeks=1)  # type: ignore
-        elif self is TimeGranularity.MONTH:
-            return pd.offsets.DateOffset(months=1)
-        elif self is TimeGranularity.QUARTER:
-            return pd.offsets.DateOffset(months=3)
-        elif self is TimeGranularity.YEAR:
-            return pd.offsets.DateOffset(years=1)  # type: ignore
-        else:
-            assert_values_exhausted(self)
+    # @property
+    # def offset_period(self) -> pd.offsets.DateOffset:
+    #     """Offset object to use for adjusting by one granularity period."""
+    #     # The type checker is throwing errors for some of those arguments, but they are valid.
+    #     if self is TimeGranularity.DAY:
+    #         return pd.offsets.DateOffset(days=1)  # type: ignore
+    #     elif self is TimeGranularity.WEEK:
+    #         return pd.offsets.DateOffset(weeks=1)  # type: ignore
+    #     elif self is TimeGranularity.MONTH:
+    #         return pd.offsets.DateOffset(months=1)
+    #     elif self is TimeGranularity.QUARTER:
+    #         return pd.offsets.DateOffset(months=3)
+    #     elif self is TimeGranularity.YEAR:
+    #         return pd.offsets.DateOffset(years=1)  # type: ignore
+    #     else:
+    #         assert_values_exhausted(self)
 
     @property
     def format_with_first_or_last(self) -> bool:

@@ -1,3 +1,154 @@
+[project]
+name = "dbt-core"
+dynamic = [
+  "version",
+]
+description = """\
+  With dbt, data analysts and engineers can build \
+  analytics the way engineers build applications.\
+  """
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.7.2"
+authors = [
+    { name = "dbt Labs", email = "info@dbtlabs.com" },
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "agate>=1.6,<1.7.1",
+    "betterproto==1.2.5",
+    "cffi>=1.9,<2.0.0",
+    "click>=7.0,<9",
+    "colorama>=0.3.9,<0.4.7",
+    "dbt-extractor~=0.4.1",
+    "hologram>=0.0.14,<=0.0.15",
+    "idna>=2.5,<4",
+    "isodate>=0.6,<0.7",
+    "Jinja2==3.1.2",
+    "logbook>=1.5,<1.6",
+    "mashumaro[msgpack]==3.3.1",
+    "minimal-snowplow-tracker==0.0.2",
+    "networkx>=2.3,<2.8.1;python_version<'3.8'",
+    "networkx>=2.3,<3;python_version>='3.8'",
+    "packaging>20.9",
+    "pathspec>=0.9,<0.11",
+    "pyyaml>=6.0",
+    "requests<3.0.0",
+    "sqlparse>=0.2.3,<0.5",
+    "typing-extensions>=3.7.4",
+    "werkzeug>=1,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "betterproto[compiler]==1.2.5",
+  "black==22.10.0",
+  "bumpversion",
+  "docutils",
+  "flake8",
+  "flaky",
+  "freezegun==0.3.12",
+  "ipdb",
+  "mypy==0.971",
+  "pip-tools",
+  "pre-commit",
+  "protobuf",
+  "pytest",
+  "pytest-cov",
+  "pytest-csv",
+  "pytest-dotenv",
+  "pytest-logbook",
+  "pytest-mock",
+  "pytest-xdist",
+  "pytz",
+  "sphinx",
+  "tox>=3.13",
+  "twine",
+  "types-colorama",
+  "types-docutils",
+  "types-PyYAML",
+  "types-freezegun",
+  "types-Jinja2",
+  "types-mock",
+  "types-protobuf",
+  "types-python-dateutil",
+  "types-pytz",
+  "types-requests",
+  "types-setuptools",
+  "wheel",
+]
+
+[project.scripts]
+dbt = "dbt.cli.main:cli"
+
+[project.urls]
+"Blog" = "https://www.getdbt.com/blog"
+"Changelog" = "https://github.com/dbt-labs/dbt-core/blob/main/CHANGELOG.md"
+"Discourse" = "https://discourse.getdbt.com"
+"Documentation" = "https://docs.getdbt.com"
+"Events" = "https://www.getdbt.com/events"
+"Home Page" = "https://www.getdbt.com"
+"Issues" = "https://github.com/dbt-labs/dbt-core/issues/new"
+"Slack" = "https://www.getdbt.com/community"
+"Source Code" = "https://github.com/dbt-labs/dbt-core"
+"Twitter" = "https://twitter.com/dbt_labs"
+"YouTube" = "https://www.youtube.com/c/dbt-labs"
+
+[tool.hatch.version]
+path = "core/dbt/version.py"
+
+[tool.hatch.build]
+only-include = [
+  "core/dbt/",
+  "core/dbt/py.typed",
+  "core/dbt/include/**/.gitkeep",
+  "core/dbt/include/**/.gitignore",
+  "core/dbt/include/**/*.html",
+  "core/dbt/include/**/*.md",
+  "core/dbt/include/**/*.py",
+  "core/dbt/include/**/*.sql",
+  "core/dbt/include/**/*.yml",
+]
+
+[tool.hatch.build.sources]
+"core/dbt" = "dbt"
+
+[tool.hatch.envs.default]
+description = "dbt-core with development, testing capabilities"
+features = [
+  "dev",
+]
+
+[tool.hatch.envs.dbt-postgres]
+description = "The postgres adapter plugin for dbt (data build tool)"
+features = [
+  "dev",
+]
+extra-dependencies = [
+  "{env:DBT_PSYCOPG2_NAME:psycopg2-binary}~=2.8",
+]
+
+[tool.hatch.envs.dbt-tests-adapters]
+description = "The dbt adapter tests for adapter plugins"
+dependencies = [
+  "pytest>=7.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [tool.mypy]
 # TODO: widen range of files as we fix issues
 files = 'core/dbt'

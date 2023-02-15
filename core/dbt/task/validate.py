@@ -13,14 +13,11 @@ class ValidateTask(ManifestTask):
 
     def run(self):
         fire_event(ParseCmdOut(msg="Starting validation."))
-        ManifestTask._runtime_initialize(self)
-        user_configured_model = UserConfiguredModel(
-            entities=self.manifest.entities,
-            metrics=self.manifest.metrics
-        )
+
+        user_configured_model=ManifestTask._user_configured_model_initialize(self)
 
         breakpoint()
-        # print(model)
+
         #{ 
         # NOTE: Compile is needed for anything dag related, validate to ensure semantic completeness
 

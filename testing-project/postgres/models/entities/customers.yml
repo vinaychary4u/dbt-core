@@ -12,6 +12,7 @@ entities:
     dimensions:
       - name: first_name_v3_testing
         type: categorical
+
       #   description: string
       #   column_name: first_name
       #   date_type: string

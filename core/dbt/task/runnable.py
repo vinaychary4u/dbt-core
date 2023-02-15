@@ -41,6 +41,7 @@ from dbt.events.types import (
 from dbt.events.contextvars import log_contextvars
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import SourceDefinition, ResultNode
+from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
 from dbt.contracts.results import NodeStatus, RunExecutionResult, RunningStatus
 from dbt.contracts.state import PreviousState
 from dbt.exceptions import (
@@ -92,12 +93,22 @@ class ManifestTask(ConfiguredTask):
 
     def _runtime_initialize(self):
         self.load_manifest()
-
         start_compile_manifest = time.perf_counter()
         self.compile_manifest()
         compile_time = time.perf_counter() - start_compile_manifest
         if dbt.tracking.active_user is not None:
             dbt.tracking.track_runnable_timing({"graph_compilation_elapsed": compile_time})
+
+    def _user_configured_model_initialize(self) -> UserConfiguredModel:
+        self.load_manifest()
+        self.compile_manifest()
+
+        user_configured_model = UserConfiguredModel(
+            entities=self.manifest.entities,
+            metrics=self.manifest.metrics
+        )
+
+        return user_configured_model
 
 
 class GraphRunnableTask(ManifestTask):

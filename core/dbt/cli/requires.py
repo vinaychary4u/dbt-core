@@ -84,7 +84,11 @@ def profile(func):
         if ctx.obj.get("profile") is None:
             flags = ctx.obj["flags"]
             profile = load_profile(
-                flags.PROJECT_DIR, flags.VARS, flags.PROFILE, flags.TARGET, flags.THREADS
+                flags.PROJECT_DIR,
+                flags.VARS,
+                flags.PROFILE,
+                flags.TARGET,
+                flags.get_with_fallback("THREADS"),
             )
             ctx.obj["profile"] = profile
 

@@ -7,14 +7,14 @@ from multiprocessing import get_context
 from pprint import pformat as pf
 from typing import Set, List
 
-from click import Context, get_current_context, BadOptionUsage, Command
+from click import Context, get_current_context, BadOptionUsage, Command, BadParameter
 from click.core import ParameterSource
 
 from dbt.config.profile import read_user_config
 from dbt.contracts.project import UserConfig
 import dbt.cli.params as p
 from dbt.helper_types import WarnErrorOptions
-from dbt.cli.resolvers import default_project_dir, default_log_path
+from dbt.cli.resolvers import default_log_path
 
 
 if os.name != "nt":
@@ -102,21 +102,20 @@ class Flags:
 
             which = invoked_subcommand_name or ctx.info_name
 
+        # Load user config if not provided, if available from profiles dir
         if not user_config:
-            profiles_dir = getattr(self, "PROFILES_DIR", None)
-            user_config = read_user_config(profiles_dir) if profiles_dir else None
+            user_config = read_user_config(self.get_with_fallback("PROFILES_DIR"))
 
-        # Overwrite default assignments with user config if available
-        if user_config:
-            for param_assigned_from_default in params_assigned_from_default:
-                user_config_param_value = getattr(user_config, param_assigned_from_default, None)
-                if user_config_param_value is not None:
-                    object.__setattr__(
-                        self,
-                        param_assigned_from_default.upper(),
-                        convert_config(param_assigned_from_default, user_config_param_value),
-                    )
-                    params_assigned_from_user.add(param_assigned_from_default)
+        # Overwrite default assignments with user config
+        for param_assigned_from_default in params_assigned_from_default:
+            user_config_param_value = getattr(user_config, param_assigned_from_default, None)
+            if user_config_param_value is not None:
+                object.__setattr__(
+                    self,
+                    param_assigned_from_default.upper(),
+                    convert_config(param_assigned_from_default, user_config_param_value),
+                )
+                params_assigned_from_user.add(param_assigned_from_default)
 
         # Hard coded flags
         object.__setattr__(self, "WHICH", which)
@@ -124,8 +123,8 @@ class Flags:
 
         # Default LOG_PATH from PROJECT_DIR, if available.
         if getattr(self, "LOG_PATH", None) is None:
-            project_dir = getattr(self, "PROJECT_DIR", default_project_dir())
-            version_check = getattr(self, "VERSION_CHECK", True)
+            project_dir = self.get_with_fallback("PROJECT_DIR")
+            version_check = self.get_with_fallback("PROJECT_DIR")
             object.__setattr__(self, "LOG_PATH", default_log_path(project_dir, version_check))
 
         # Support console DO NOT TRACK initiave
@@ -148,11 +147,8 @@ class Flags:
     def __str__(self) -> str:
         return str(pf(self.__dict__))
 
-    def __getattribute__(self, name):
-        try:
-            return object.__getattribute__(self, name)
-        except AttributeError:
-            return self.get_default(name)
+    def get_with_fallback(self, name):
+        return getattr(self, name, self.get_default(name))
 
     def _assert_mutually_exclusive(
         self, params_assigned_from_user: Set[str], group: List[str]
@@ -175,6 +171,11 @@ class Flags:
     def get_default(cls, param_name: str):
         param_decorator_name = param_name.lower()
 
+        # TODO: move log path out of dbt-profile
+        if param_decorator_name == "log_path":
+            # Not possible to get project_dir or version_check on uninstantiated class.
+            return "logs"
+
         try:
             param_decorator = getattr(p, param_decorator_name)
         except AttributeError:
@@ -183,12 +184,13 @@ class Flags:
         command = param_decorator(Command(None))
         param = command.params[0]
         default = param.default
+        # TODO: make ticket for getting out of returning lambdas from params from defaults
         if callable(default):
             return default()
         else:
             if param.type:
                 try:
                     return param.type.convert(default, param, None)
-                except TypeError:
+                except (BadParameter, TypeError):
                     return default
             return default

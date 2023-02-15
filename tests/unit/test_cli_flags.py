@@ -219,11 +219,11 @@ class TestFlags:
         assert Flags.get_default(param_name.upper()) == expected_default
 
     @pytest.mark.parametrize("param", cli.params)
-    def test_safe_access(self, param):
+    def test_get_with_fallback(self, param):
         # default flags
         flags = Flags()
-        getattr(flags, param.name)
-        getattr(flags, param.name.upper())
+        flags.get_with_fallback(param.name)
+        flags.get_with_fallback(param.name.upper())
 
     def test_access_invalid_param(self):
         # default flags

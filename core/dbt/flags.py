@@ -45,9 +45,12 @@ def get_flags():
 
 def set_from_args(args: Namespace, user_config):
     global GLOBAL_FLAGS
+    from dbt.cli.main import cli
     from dbt.cli.flags import Flags, convert_config
 
-    flags = Flags(ctx=None, user_config=None)
+    # make a dummy context to get the flags, totally arbitrary
+    ctx = cli.make_context("run", ["run"])
+    flags = Flags(ctx, user_config)
     for arg_name, args_param_value in vars(args).items():
         args_param_value = convert_config(arg_name, args_param_value)
         object.__setattr__(flags, arg_name.upper(), args_param_value)

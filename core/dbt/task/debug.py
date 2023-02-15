@@ -256,7 +256,7 @@ class DebugTask(BaseTask):
                     profile_name,
                     self.args.profile,
                     self.args.target,
-                    self.args.threads,
+                    self.args.get_with_fallback("threads"),
                 )
             except dbt.exceptions.DbtConfigError as exc:
                 profile_errors.append(str(exc))

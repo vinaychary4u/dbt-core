@@ -1,11 +1,12 @@
-from abc import ABC 
 from dbt.contracts.graph.nodes import Metric
 from dbt.dbt_semantic.objects.metrics import MetricType, MetricTimeWindow
 from dbt.dbt_semantic.validations.unique_valid_names import UniqueAndValidNames
 from dbt.exceptions import DbtSemanticValidationError
 
 
-class MetricValidator(ABC):
+class MetricValidator:
+    """This class exists to contain the functions we use to validate metrics.
+    It is called in schemas.py after metric parsing to validate them."""
 
     @staticmethod
     def _validate_cumulative_sum_metric_params(metric: Metric):
@@ -29,7 +30,7 @@ class MetricValidator(ABC):
         used_names = {input_metric.name for input_metric in metric.input_metrics}
         for input_metric in metric.input_metrics:
             if input_metric.alias:
-                UniqueAndValidNames._check_valid_name(name=input_metric.alias)
+                validation_errors += UniqueAndValidNames._check_valid_name(name=input_metric.alias)
                 if input_metric.alias in used_names:
                     validation_errors.append(
                         f"Alias '{input_metric.alias}' for input_metric '{input_metric.name}' is already being used."
@@ -44,7 +45,6 @@ class MetricValidator(ABC):
     @staticmethod
     def _validate_derived_metric_input_metrics(metric: Metric, metric_names):
         validation_errors = []
-        breakpoint()
         for input_metric in metric.input_metrics:
             if input_metric.name not in metric_names:
                 validation_errors.append(f"contains the input metric {input_metric.name} which does not exist as a configured metric")

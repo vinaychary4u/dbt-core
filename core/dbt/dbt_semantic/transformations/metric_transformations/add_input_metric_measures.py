@@ -28,7 +28,6 @@ class AddInputMetricMeasures(ABC):
         metrics=manifest.metrics.values()
         for metric in metrics:
             if metric.type == MetricType.DERIVED:
-                breakpoint()
                 measures = AddInputMetricMeasures._get_measures_for_metric(metric.name,metrics)
                 if metric.type_params.measures is None:
                     raise DbtSemanticValidationError(f"Metric '{metric.name}' is derived, which cannot have measures predefined in config.")

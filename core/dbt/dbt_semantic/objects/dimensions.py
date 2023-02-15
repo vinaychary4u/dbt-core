@@ -8,6 +8,7 @@ from typing import Optional, Dict, Any, List
 from dbt.dbt_semantic.time import TimeGranularity
 from dbt.dbt_semantic.references import DimensionReference, TimeDimensionReference
 
+
 class DimensionType(StrEnum):
     CATEGORICAL = "categorical"
     TIME = "time"
@@ -48,6 +49,7 @@ class DimensionTypeParameters(dbtClassMixin, Mergeable):
     is_primary: bool = False
     time_granularity: TimeGranularity = None
     validity_params: Optional[DimensionValidityParams] = None
+
 
 @dataclass
 class Dimension(dbtClassMixin, Mergeable):

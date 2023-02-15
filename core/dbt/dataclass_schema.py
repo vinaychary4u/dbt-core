@@ -2,6 +2,7 @@ from typing import (
     Type,
     ClassVar,
     cast,
+    List
 )
 import re
 from dataclasses import fields
@@ -128,6 +129,11 @@ class StrEnum(str, SerializableType, Enum):
     @classmethod
     def _deserialize(cls, value: str):
         return cls(value)
+
+    @classmethod
+    def list_names(cls) -> List[str]:
+        """List valid names within this enum class"""
+        return list(cls.__members__.keys())
 
 
 class HyphenatedDbtClassMixin(dbtClassMixin):

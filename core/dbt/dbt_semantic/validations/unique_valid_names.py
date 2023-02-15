@@ -4,12 +4,13 @@ from __future__ import annotations
 import re
 import enum
 from abc import ABC
-from typing import List
+from typing import List, Tuple, Dict
 
 from dbt.exceptions import DbtSemanticValidationError
 from dbt.contracts.graph.nodes import Entity
 from dbt.dbt_semantic.time import TimeGranularity
 from dbt.dbt_semantic.object_utils import assert_values_exhausted
+from dbt.dbt_semantic.references import ElementReference
 
 
 @enum.unique
@@ -61,14 +62,92 @@ class UniqueAndValidNames(ABC):
                 f"this name is reserved by MetricFlow. Reason: {reason}"
                 )
 
-        if validation_errors:
-            raise DbtSemanticValidationError(
-                f"Invalid name '{name}' - {', '.join(e for e in validation_errors)}"
-            )
+        return validation_errors
 
     @staticmethod
     def _validate_entity_elements(entity: Entity):
+        validation_errors=[]
+        element_info_tuples: List[Tuple[ElementReference, str]] = []
 
         if entity.measures:
             for measure in entity.measures:
-                print("hello")
+                element_info_tuples.append(
+                    (
+                        measure.reference,
+                        "measure"
+                    )
+                )
+
+        if entity.identifiers:
+            for identifier in entity.identifiers:
+                element_info_tuples.append(
+                    (
+                        identifier.reference,
+                        "identifier"
+                    )
+                )
+
+        if entity.dimensions:
+            for dimension in entity.dimensions:
+                element_info_tuples.append(
+                    (
+                        dimension.reference,
+                        "dimension"
+                    )
+                )
+
+        name_to_type: Dict[ElementReference, str] = {}
+        for name, _type in element_info_tuples:
+            if name.name in name_to_type:
+                validation_errors.append(
+                    f"can't use name `{name.name}` for a "
+                    f"{_type} when it was already used for a {name_to_type[name.name]}",
+                    )
+            else:
+                name_to_type[name.name] = _type
+
+
+        for name, _ in element_info_tuples:
+            validation_errors += UniqueAndValidNames._check_valid_name(name=name.name)
+
+        if validation_errors:
+            raise DbtSemanticValidationError(
+                f"In entity `{entity.name}`: {', '.join(e for e in validation_errors)}"
+            )
+
+
+    @staticmethod
+    def _validate_top_level_entities(manifest_entites):
+        """Checks names of objects that are not nested."""
+        object_info_tuples = []
+        validation_errors=[]
+        if manifest_entites:
+            for entity in manifest_entites:
+                object_info_tuples.append(
+                    (
+                        entity.name,
+                        "entity"
+                    )
+                )
+
+        name_to_type: Dict[str, str] = {}
+
+        for name, type_ in object_info_tuples:
+            if name in name_to_type:
+                validation_errors.append(
+                    f"Can't use name `{name}` for a {type_} when it was already used for a "
+                    f"{name_to_type[name]}",
+                    )
+            else:
+                name_to_type[name] = type_
+        
+        if validation_errors:
+            raise DbtSemanticValidationError(
+                f"Errors: {', '.join(e for e in validation_errors)}"
+            )
+
+    @staticmethod
+    def _validate_entities(manifest_entities):
+        UniqueAndValidNames._validate_top_level_entities(manifest_entites=manifest_entities)
+        for entity in manifest_entities:
+            UniqueAndValidNames._validate_entity_elements(entity=entity)

@@ -39,6 +39,9 @@ class ValidateTask(ManifestTask):
         # 2. Fix the issue with the lineage graph 
 
         # VALIDATE LOGIC:
+        # 1. Fix whatever the hell is going on in _validate_time_dimension
+
+
         # 1. Add the logic that establishes identifier relationships in entities
         # 1a. This logic should be bi-directional? IE should be present in both entities
         # 2. Figure out what the hell is going on with identifiers. 

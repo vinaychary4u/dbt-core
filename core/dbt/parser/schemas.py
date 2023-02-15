@@ -57,6 +57,7 @@ from dbt.dbt_semantic.objects.metrics import (
 )
 from dbt.dbt_semantic.objects.measures import Measure
 from dbt.dbt_semantic.validations.validate_metrics import MetricValidator
+from dbt.dbt_semantic.validations.validate_entities import EntityValidator
 from dbt.exceptions import (
     CompilationError,
     DuplicateMacroPatchNameError,
@@ -553,6 +554,11 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
             if "entities" in dct:
                 entity_parser = EntityParser(self, yaml_block)
                 entity_parser.parse()
+                
+                # We do this after parse because it requires the fully parsed 
+                # entities for relationships
+                entity_validator = EntityValidator()
+                entity_validator.validate_entity(manifest_entities=self.manifest.entities.values())
 
             # parse metrics
             if "metrics" in dct:

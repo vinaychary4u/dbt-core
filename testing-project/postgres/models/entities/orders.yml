@@ -14,8 +14,15 @@ entities:
           is_primary: true
           time_granularity: day
 
+      - name: order_date_one
+        type: time
+        expr: order_date
+        type_params:
+          time_granularity: day
+
       - name: order_location
         type: categorical
+
     measures:
       - name: order_total
         description: "The total value of the order"

@@ -128,12 +128,6 @@ class UnparsedMetricTypeParams(dbtClassMixin, Mergeable):
 
 
 @dataclass
-class MetricReference(dbtClassMixin, Replaceable):
-    sql: Optional[Union[str, int]]
-    unique_id: Optional[str]
-
-
-@dataclass
 class MetricTypeParams(dbtClassMixin):
     """Type params add additional context to certain metric types (the context depends on the metric type)"""
 

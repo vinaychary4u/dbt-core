@@ -39,7 +39,7 @@ from dbt.contracts.graph.nodes import (
     Resource,
     ManifestNode,
 )
-from dbt.contracts.graph.metrics import MetricReference, ResolvedMetricReference
+from dbt.contracts.graph.metrics import MetricReference
 from dbt.contracts.graph.entities import EntityReference, ResolvedEntityReference
 from dbt.events.functions import get_metadata_vars
 from dbt.exceptions import (
@@ -584,23 +584,10 @@ class ParseMetricResolver(BaseMetricResolver):
 
 
 class RuntimeMetricResolver(BaseMetricResolver):
-    def resolve(self, target_name: str, target_package: Optional[str] = None) -> MetricReference:
-        target_metric = self.manifest.resolve_metric(
-            target_name,
-            target_package,
-            self.current_project,
-            self.model.package_name,
-        )
+    def resolve(self, name: str, package: Optional[str] = None) -> MetricReference:
+        self.model.metrics.append(self._repack_args(name, package))
 
-        if target_metric is None or isinstance(target_metric, Disabled):
-            raise TargetNotFoundError(
-                node=self.model,
-                target_name=target_name,
-                target_kind="metric",
-                target_package=target_package,
-            )
-
-        return ResolvedMetricReference(target_metric, self.manifest, self.Relation)
+        return MetricReference(name, package)
 
 
 # metric` implementations

@@ -33,6 +33,10 @@
 
  ### Negatives
   * Click is rather insistent on keeping the parameters from a parent command isolated from the child command. This didn't fit well with the multi-level-ness of the legacy interface and caused us to implement somewhat hacky logic to create a dummy click context and use that as a representation of the parent command. The primary example of this can be seen in `dbt.cli.flags`.
+  * While they do provide a somewhat reasonable programmatic interface, invoking Click commands directly isn't ideal for the following reasons:
+    * Exceptions are Click specific and don't provide a great UX.
+    * Creating a Click context is somewhat cumbersome and not something an end-user should have to think about.
+  `dbt.cli.main.dbtRunner` was created to address those issues.
   * IDEs don't properly introspect the decorator pattern used by Click to add parameters to commands.
 
  ### Positives

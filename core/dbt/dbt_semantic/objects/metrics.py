@@ -12,7 +12,6 @@ from dbt.dbt_semantic.references import TimeDimensionReference, MeasureReference
 from dbt.dbt_semantic.time import TimeGranularity, string_to_time_granularity
 
 
-@dataclass
 class MetricType(StrEnum):
     """Currently supported metric types"""
 

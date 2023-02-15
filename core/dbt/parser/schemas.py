@@ -56,6 +56,7 @@ from dbt.dbt_semantic.objects.metrics import (
     MetricTypeParams,
 )
 from dbt.dbt_semantic.objects.measures import Measure
+from dbt.dbt_semantic.validations.validate_metrics import MetricValidator
 from dbt.exceptions import (
     CompilationError,
     DuplicateMacroPatchNameError,
@@ -557,7 +558,13 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
             if "metrics" in dct:
                 metric_parser = MetricParser(self, yaml_block)
                 metric_parser.parse()
-                metric_parser.validate()
+                metric_parser.transform()
+
+                # We do this after parse because it requires the fully parsed 
+                # metrics for relationships
+                metric_validator = MetricValidator()
+                metric_validator.validate_metric(manifest_metrics=self.manifest.metrics.values())
+
 
 
 def check_format_version(file_path, yaml_dct) -> None:
@@ -1349,8 +1356,8 @@ class MetricParser(YamlReader):
                 raise YamlParseDictError(self.yaml.path, self.key, data, exc)
             self.parse_metric(unparsed)
 
-    def validate(self):
+    def transform(self):
         ##We validate here for the input metric measurs because
         ## we need all of the metrics to be parsed. This exists for 
         ## derived metrics 
-        AddInputMetricMeasures.validate_inputs(self.manifest)
+        AddInputMetricMeasures.add_input_metrics(self.manifest)

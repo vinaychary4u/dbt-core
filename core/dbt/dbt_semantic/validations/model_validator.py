@@ -5,18 +5,18 @@ from typing import List, Sequence
 from dbt.exceptions import DbtSemanticValidationError
 
 from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
-# from metricflow.model.validations.agg_time_dimension import AggregationTimeDimensionRule
-# from metricflow.model.validations.data_sources import DataSourceTimeDimensionWarningsRule, DataSourceValidityWindowRule
-# from metricflow.model.validations.dimension_const import DimensionConsistencyRule
-# from metricflow.model.validations.element_const import ElementConsistencyRule
-# from metricflow.model.validations.identifiers import (
-#     IdentifierConfigRule,
-#     IdentifierConsistencyRule,
-#     NaturalIdentifierConfigurationRule,
-#     OnePrimaryIdentifierPerDataSourceRule,
-# )
-# from metricflow.model.validations.materializations import ValidMaterializationRule
-# from metricflow.model.validations.measures import (
+# from dbt.dbt_semantic.validations.agg_time_dimension import AggregationTimeDimensionRule
+# from dbt.dbt_semantic.validations.data_sources import DataSourceTimeDimensionWarningsRule, DataSourceValidityWindowRule
+# from dbt.dbt_semantic.validations.dimension_const import DimensionConsistencyRule
+from dbt.dbt_semantic.validations.element_const import ElementConsistencyRule
+from dbt.dbt_semantic.validations.identifiers import (
+    IdentifierConfigRule,
+    IdentifierConsistencyRule,
+    NaturalIdentifierConfigurationRule,
+    OnePrimaryIdentifierPerEntityRule,
+)
+# from dbt.dbt_semantic.validations.materializations import ValidMaterializationRule
+# from dbt.dbt_semantic.validations.measures import (
 #     PercentileAggregationRule,
 #     CountAggregationExprRule,
 #     DataSourceMeasuresUniqueRule,
@@ -24,8 +24,8 @@ from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
 #     MetricMeasuresRule,
 #     MeasuresNonAdditiveDimensionRule,
 # )
-# from metricflow.model.validations.metrics import CumulativeMetricRule, DerivedMetricRule
-# from metricflow.model.validations.non_empty import NonEmptyRule
+from dbt.dbt_semantic.validations.metrics import CumulativeMetricRule, DerivedMetricRule
+# from dbt.dbt_semantic.validations.non_empty import NonEmptyRule
 from dbt.dbt_semantic.validations.reserved_keywords import ReservedKeywordsRule
 from dbt.dbt_semantic.validations.unique_valid_name import UniqueAndValidNameRule
 from dbt.dbt_semantic.validations.validator_helpers import (
@@ -35,28 +35,26 @@ from dbt.dbt_semantic.validations.validator_helpers import (
     ModelBuildResult,
 )
 
-logger = logging.getLogger(__name__)
-
 
 class ModelValidator:
     """A Validator that acts on UserConfiguredModel"""
 
     DEFAULT_RULES = (
         # PercentileAggregationRule(),
-        # DerivedMetricRule(),
+        DerivedMetricRule(),
         # CountAggregationExprRule(),
         # DataSourceMeasuresUniqueRule(),
         # DataSourceTimeDimensionWarningsRule(),
         # DataSourceValidityWindowRule(),
         # DimensionConsistencyRule(),
-        # ElementConsistencyRule(),
-        # IdentifierConfigRule(),
-        # IdentifierConsistencyRule(),
-        # NaturalIdentifierConfigurationRule(),
-        # OnePrimaryIdentifierPerDataSourceRule(),
+        ElementConsistencyRule(),
+        IdentifierConfigRule(),
+        IdentifierConsistencyRule(),
+        NaturalIdentifierConfigurationRule(),
+        OnePrimaryIdentifierPerEntityRule(),
         # MeasureConstraintAliasesRule(),
         # MetricMeasuresRule(),
-        # CumulativeMetricRule(),
+        CumulativeMetricRule(),
         # NonEmptyRule(),
         UniqueAndValidNameRule(),
         # ValidMaterializationRule(),

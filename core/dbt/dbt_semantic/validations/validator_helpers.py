@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections import defaultdict, deque
 
 import click
 import functools
@@ -9,6 +10,8 @@ from datetime import date
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 from dbt.dataclass_schema import dbtClassMixin
+
+from itertools import chain
 
 from dbt.dbt_semantic.references import (
     EntityElementReference,
@@ -49,7 +52,7 @@ ISSUE_COLOR_MAP = {
 
 
 class EntityElementType(Enum):
-    """Maps data source element types to a readable string."""
+    """Maps entity element types to a readable string."""
 
     MEASURE = "measure"
     DIMENSION = "dimension"
@@ -64,18 +67,18 @@ class MetricContext(dbtClassMixin):
 
     def context_str(self) -> str:
         """Human readable stringified representation of the context"""
-        return f"with metric `{self.metric.metric_name}`"
+        return f"With metric `{self.metric.metric_name}`"
 
 
 @dataclass
 class EntityContext(dbtClassMixin):
-    """The context class for validation issues involving data sources"""
+    """The context class for validation issues involving entities"""
 
     entity: EntityReference
 
     def context_str(self) -> str:
         """Human readable stringified representation of the context"""
-        return f"with data source `{self.entity.entity_name}`"
+        return f"With entity `{self.entity.entity_name}`"
 
 
 @dataclass
@@ -87,7 +90,7 @@ class EntityElementContext(dbtClassMixin):
 
     def context_str(self) -> str:
         """Human readable stringified representation of the context"""
-        return f"with {self.element_type.value} `{self.entity_element.name}` in data source `{self.entity_element.entity_name}`"
+        return f"With {self.element_type.value} `{self.entity_element.name}` in entity `{self.entity_element.entity_name}`"
 
 
 ValidationContext = Union[
@@ -300,9 +303,9 @@ def validate_safely(whats_being_done: str) -> Callable:
 
 @dataclass(frozen=True)
 class DimensionInvariants:
-    """Helper object to ensure consistent dimension attributes across data sources.
+    """Helper object to ensure consistent dimension attributes across entities.
 
-    All dimensions with a given name in all data sources should have attributes matching these values.
+    All dimensions with a given name in all entities should have attributes matching these values.
     """
 
     type: DimensionType
@@ -344,3 +347,82 @@ class ModelBuildResult:  # noqa: D
     model: UserConfiguredModel
     # Issues found in the model.
     issues: ModelValidationResults = ModelValidationResults()
+
+
+class iter_bucket:
+    """
+    NOTE: Copied over from more_itertools but we don't want the dependency.
+
+    Wrap *iterable* and return an object that buckets it iterable into
+    child iterables based on a *key* function.
+    """
+
+    def __init__(self, iterable, key, validator=None):
+        self._it = iter(iterable)
+        self._key = key
+        self._cache = defaultdict(deque)
+        self._validator = validator or (lambda x: True)
+
+    def __contains__(self, value):
+        if not self._validator(value):
+            return False
+
+        try:
+            item = next(self[value])
+        except StopIteration:
+            return False
+        else:
+            self._cache[value].appendleft(item)
+
+        return True
+
+    def _get_values(self, value):
+        """
+        Helper to yield items from the parent iterator that match *value*.
+        Items that don't match are stored in the local cache as they
+        are encountered.
+        """
+        while True:
+            # If we've cached some items that match the target value, emit
+            # the first one and evict it from the cache.
+            if self._cache[value]:
+                yield self._cache[value].popleft()
+            # Otherwise we need to advance the parent iterator to search for
+            # a matching item, caching the rest.
+            else:
+                while True:
+                    try:
+                        item = next(self._it)
+                    except StopIteration:
+                        return
+                    item_value = self._key(item)
+                    if item_value == value:
+                        yield item
+                        break
+                    elif self._validator(item_value):
+                        self._cache[item_value].append(item)
+
+    def __iter__(self):
+        for item in self._it:
+            item_value = self._key(item)
+            if self._validator(item_value):
+                self._cache[item_value].append(item)
+
+        yield from self._cache.keys()
+
+    def __getitem__(self, value):
+        if not self._validator(value):
+            return iter(())
+
+        return self._get_values(value)
+
+def iter_flatten(listOfLists):
+    """
+    NOTE: Copied over from more_itertools but we don't want the dependency.
+
+    Return an iterator flattening one level of nesting in a list of lists.
+        >>> list(flatten([[0, 1], [2, 3]]))
+        [0, 1, 2, 3]
+    See also :func:`collapse`, which can flatten multiple levels of nesting.
+    """
+    return chain.from_iterable(listOfLists)

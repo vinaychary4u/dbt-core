@@ -23,16 +23,15 @@ entities:
       - name: order_location
         type: categorical
 
+      - name: order_total
+        type: categorical
+
     measures:
       - name: order_total
         description: "The total value of the order"
         agg: sum
 
-      - name: order_total
-        description: "The total value of the order"
-        agg: sum
-
-      - name: and
+      - name: order_location
         description: "The total value of the order"
         agg: sum
 
@@ -82,6 +81,7 @@ metrics:
     type_params:
       measure: order_total
       window: 7 days
+      grain_to_date: month
 
   - name: revenue_usd
     type: expr 

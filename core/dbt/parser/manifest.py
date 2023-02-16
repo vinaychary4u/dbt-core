@@ -372,8 +372,9 @@ class ManifestLoader:
             )
             semantic_result = ModelValidator().validate_model(user_configured_model)
             if semantic_result.issues.has_blocking_issues:
+                error_message = "\n".join(issue.as_cli_formatted_str() for issue in semantic_result.issues.errors)
                 raise dbt.exceptions.DbtSemanticValidationError(
-                    f"{', '.join(issue.as_cli_formatted_str() for issue in semantic_result.issues.errors)}"
+                    error_message
                 )
 
             self._perf_info.parse_project_elapsed = time.perf_counter() - start_parse_projects

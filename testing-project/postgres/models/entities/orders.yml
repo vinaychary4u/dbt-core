@@ -28,6 +28,14 @@ entities:
         description: "The total value of the order"
         agg: sum
 
+      - name: order_total
+        description: "The total value of the order"
+        agg: sum
+
+      - name: and
+        description: "The total value of the order"
+        agg: sum
+
       - name: sales
         description: "The total sale of the order"
         agg: sum
@@ -66,7 +74,7 @@ metrics:
     entity:  entity('orders')
     type_params:
       numerator: order_total
-      denominator: order_total
+      denominator: median_sales
 
   - name: wau_rolling_7
     type: cumulative

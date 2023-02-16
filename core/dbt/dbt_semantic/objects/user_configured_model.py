@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from dbt.dataclass_schema import dbtClassMixin, StrEnum, ExtensibleDbtClassMixin, ValidationError
+from dbt.dataclass_schema import dbtClassMixin
 from dbt.contracts.graph.nodes import Entity, Metric
 from typing import List
 
@@ -10,3 +10,6 @@ class UserConfiguredModel(dbtClassMixin):
 
     entities: List[Entity] = field(default_factory=list)
     metrics: List[Metric] = field(default_factory=list)
+
+    def _serialize(self):
+        return self.to_dict()

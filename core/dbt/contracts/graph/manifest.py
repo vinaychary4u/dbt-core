@@ -1234,6 +1234,14 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         )
         return self.__class__, args
 
+    def _user_configured_model(self):
+        user_configured_model = UserConfiguredModel(
+            entities=[entity for entity in self.manifest.entities.values()],
+            metrics=[metric for metric in self.manifest.metrics.values()],
+        )
+        breakpoint()
+        return user_configured_model
+
 
 class MacroManifest(MacroMethods):
     def __init__(self, macros):

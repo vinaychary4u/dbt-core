@@ -56,8 +56,6 @@ from dbt.dbt_semantic.objects.metrics import (
     MetricTypeParams,
 )
 from dbt.dbt_semantic.objects.measures import Measure
-from dbt.dbt_semantic.validations.validate_metrics import MetricValidator
-from dbt.dbt_semantic.validations.validate_entities import EntityValidator
 from dbt.exceptions import (
     CompilationError,
     DuplicateMacroPatchNameError,
@@ -554,11 +552,6 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
             if "entities" in dct:
                 entity_parser = EntityParser(self, yaml_block)
                 entity_parser.parse()
-                
-                # We do this after parse because it requires the fully parsed 
-                # entities for relationships
-                entity_validator = EntityValidator()
-                entity_validator.validate_entity(manifest_entities=self.manifest.entities.values())
 
             # parse metrics
             if "metrics" in dct:
@@ -568,9 +561,18 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
 
                 # We do this after parse because it requires the fully parsed 
                 # metrics for relationships
-                metric_validator = MetricValidator()
-                metric_validator.validate_metric(manifest_metrics=self.manifest.metrics.values())
+                # metric_validator = MetricValidator()
+                # metric_validator.validate_metric(manifest_metrics=self.manifest.metrics.values())
 
+                # We do this after parse because it requires the fully parsed 
+                # entities for relationships. Additionally it requires the metrics
+                # in the manifest.
+                #TODO: Figure out better place for this
+                # entity_validator = EntityValidator()
+                # entity_validator.validate_entity(
+                #     manifest_entities=self.manifest.entities.values(),
+                #     manifest_metrics=self.manifest.metrics.values()
+                # )
 
 
 def check_format_version(file_path, yaml_dct) -> None:

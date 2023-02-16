@@ -9,6 +9,8 @@ from itertools import chain
 import time
 from dbt.events.base_types import EventLevel
 
+from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
+
 import dbt.exceptions
 import dbt.tracking
 import dbt.flags as flags
@@ -77,6 +79,8 @@ from dbt.parser.seeds import SeedParser
 from dbt.parser.snapshots import SnapshotParser
 from dbt.parser.sources import SourcePatcher
 from dbt.version import __version__
+
+from dbt.dbt_semantic.validations.model_validator import ModelValidator, _print_issues
 
 from dbt.dataclass_schema import StrEnum, dbtClassMixin
 
@@ -359,6 +363,18 @@ class ManifestLoader:
                 )
 
             self.process_nodes()
+
+            ## Validate semantic model
+            #TODO: Figure out how to have this be its own area
+            user_configured_model = UserConfiguredModel(
+                entities=[entity for entity in self.manifest.entities.values()],
+                metrics=[metric for metric in self.manifest.metrics.values()],
+            )
+            semantic_result = ModelValidator().validate_model(user_configured_model)
+            if semantic_result.issues.has_blocking_issues:
+                raise dbt.exceptions.DbtSemanticValidationError(
+                    f"{', '.join(issue.as_cli_formatted_str() for issue in semantic_result.issues.errors)}"
+                )
 
             self._perf_info.parse_project_elapsed = time.perf_counter() - start_parse_projects
 

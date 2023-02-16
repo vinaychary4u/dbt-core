@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 from dbt.contracts.util import (
     Replaceable,
     Mergeable

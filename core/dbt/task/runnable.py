@@ -104,8 +104,8 @@ class ManifestTask(ConfiguredTask):
         self.compile_manifest()
 
         user_configured_model = UserConfiguredModel(
-            entities=self.manifest.entities,
-            metrics=self.manifest.metrics
+            entities=[entity for entity in self.manifest.entities.values()],
+            metrics=[metric for metric in self.manifest.metrics.values()],
         )
 
         return user_configured_model

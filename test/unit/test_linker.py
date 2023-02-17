@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from argparse import Namespace
 from unittest import mock
 
 from dbt import compilation
@@ -11,6 +12,7 @@ except ImportError:
 
 from dbt.graph.selector import NodeSelector
 from dbt.graph.cli import parse_difference
+from dbt import flags
 
 
 def _mock_manifest(nodes):
@@ -32,6 +34,7 @@ def _mock_manifest(nodes):
 class LinkerTest(unittest.TestCase):
 
     def setUp(self):
+        flags.set_from_args(Namespace(), None)
         self.linker = compilation.Linker()
 
     def test_linker_add_node(self):

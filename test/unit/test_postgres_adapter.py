@@ -2,6 +2,7 @@ import agate
 import decimal
 import unittest
 from unittest import mock
+from argparse import Namespace
 
 import dbt.flags as flags
 from dbt.task.debug import DebugTask
@@ -22,6 +23,7 @@ from .utils import config_from_parts_or_dicts, inject_adapter, mock_connection, 
 class TestPostgresAdapter(unittest.TestCase):
 
     def setUp(self):
+        flags.set_from_args(Namespace(), None)
         project_cfg = {
             'name': 'X',
             'version': '0.1',

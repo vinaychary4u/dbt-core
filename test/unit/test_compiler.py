@@ -1,4 +1,5 @@
 import unittest
+from argparse import Namespace
 from unittest.mock import MagicMock, patch
 
 import dbt.flags
@@ -21,6 +22,7 @@ class CompilerTest(unittest.TestCase):
             "".join(b.split()))
 
     def setUp(self):
+        dbt.flags.set_from_args(Namespace(), None)
         self.maxDiff = None
 
         self.model_config = NodeConfig.from_dict({

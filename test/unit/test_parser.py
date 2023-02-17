@@ -1,5 +1,6 @@
 import os
 import unittest
+from argparse import Namespace
 from copy import deepcopy
 from unittest import mock
 
@@ -67,6 +68,9 @@ class BaseParserTest(unittest.TestCase):
             yield pm
 
     def setUp(self):
+        
+        dbt.flags.set_from_args(Namespace(), None)
+
         dbt.flags.WARN_ERROR = True
         # HACK: this is needed since tracking events can
         # be sent when using the model parser

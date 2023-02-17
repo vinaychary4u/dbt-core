@@ -3,9 +3,13 @@ import unittest
 import dbt.exceptions
 import dbt.utils
 from dbt.parser.schema_renderer import SchemaYamlRenderer
-
+from dbt import flags
+from argparse import Namespace
 
 class TestYamlRendering(unittest.TestCase):
+
+    def setUp(self) -> None:
+        flags.set_from_args(Namespace(), None)
 
     def test__models(self):
 

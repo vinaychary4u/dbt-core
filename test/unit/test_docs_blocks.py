@@ -7,6 +7,8 @@ from dbt.contracts.graph.nodes import Documentation
 from dbt.node_types import NodeType
 from dbt.parser import docs
 from dbt.parser.search import FileBlock
+from dbt import flags
+from argparse import Namespace
 
 from .utils import config_from_parts_or_dicts
 
@@ -85,6 +87,8 @@ MULTIPLE_RAW_BLOCKS = r'''
 
 class DocumentationParserTest(unittest.TestCase):
     def setUp(self):
+        flags.set_from_args(Namespace(), None)
+        
         if os.name == 'nt':
             self.root_path = 'C:\\test_root'
             self.subdir_path = 'C:\\test_root\\test_subdir'

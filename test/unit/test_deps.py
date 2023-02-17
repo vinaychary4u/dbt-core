@@ -1,10 +1,11 @@
 from copy import deepcopy
-
+from argparse import Namespace
 import unittest
 from unittest import mock
 
 import dbt.deps
 import dbt.exceptions
+from dbt import flags
 from dbt.deps.git import GitUnpinnedPackage
 from dbt.deps.local import LocalUnpinnedPackage
 from dbt.deps.tarball import TarballUnpinnedPackage
@@ -155,6 +156,7 @@ class TestGitPackage(unittest.TestCase):
 
 class TestHubPackage(unittest.TestCase):
     def setUp(self):
+        flags.set_from_args(Namespace(), None)
         self.patcher = mock.patch('dbt.deps.registry.registry')
         self.registry = self.patcher.start()
         self.index_cached = self.registry.index_cached

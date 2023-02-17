@@ -137,6 +137,7 @@ macro_debugging = click.option(
     "--macro-debugging/--no-macro-debugging",
     envvar="DBT_MACRO_DEBUGGING",
     hidden=True,
+    default=False,
 )
 
 output = click.option(

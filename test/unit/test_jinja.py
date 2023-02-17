@@ -7,6 +7,8 @@ from dbt.clients.jinja import get_rendered
 from dbt.clients.jinja import get_template
 from dbt.clients.jinja import extract_toplevel_blocks
 from dbt.exceptions import CompilationError, JinjaRenderingError
+from dbt import flags
+from argparse import Namespace
 
 
 @contextmanager
@@ -373,6 +375,7 @@ jinja_tests = [
     ids=expected_id
 )
 def test_jinja_rendering(value, text_expectation, native_expectation):
+    flags.set_from_args(Namespace(), None)
     foo_value = yaml.safe_load(value)['foo']
     ctx = {
         'a_str': '100',

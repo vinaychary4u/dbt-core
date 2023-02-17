@@ -2,13 +2,15 @@ import re
 from unittest import TestCase, mock
 
 from dbt.adapters.base.query_headers import MacroQueryStringSetter
-
+from dbt import flags
+from argparse import Namespace
 from test.unit.utils import config_from_parts_or_dicts
 
 
 class TestQueryHeaders(TestCase):
 
     def setUp(self):
+        flags.set_from_args(Namespace(), None)
         self.profile_cfg = {
             'outputs': {
                 'test': {

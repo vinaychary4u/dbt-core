@@ -1,6 +1,8 @@
+from argparse import Namespace
 from unittest import TestCase
 from dbt.adapters.cache import RelationsCache
 from dbt.adapters.base.relation import BaseRelation
+from dbt import flags
 from multiprocessing.dummy import Pool as ThreadPool
 import dbt.exceptions
 
@@ -20,6 +22,7 @@ def make_mock_relationship(database, schema, identifier):
 
 class TestCache(TestCase):
     def setUp(self):
+        flags.set_from_args(Namespace(), None)
         self.cache = RelationsCache()
 
     def assert_relations_state(self, database, schema, identifiers):

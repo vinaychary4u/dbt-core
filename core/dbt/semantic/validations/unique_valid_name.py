@@ -3,7 +3,7 @@ from __future__ import annotations
 import enum
 import re
 from typing import Dict, Tuple, List, Optional
-from dbt.dbt_semantic.references import (
+from dbt.semantic.references import (
     EntityElementReference,
     EntityReference,
     MetricModelReference,
@@ -12,7 +12,7 @@ from dbt.dbt_semantic.references import (
 
 from dbt.contracts.graph.nodes import Entity
 from dbt.contracts.graph.manifest import UserConfiguredModel
-from dbt.dbt_semantic.validations.validator_helpers import (
+from dbt.semantic.validations.validator_helpers import (
     EntityContext,
     EntityElementContext,
     EntityElementType,
@@ -22,8 +22,8 @@ from dbt.dbt_semantic.validations.validator_helpers import (
     ValidationError,
     ValidationIssueType,
 )
-from dbt.dbt_semantic.object_utils import assert_values_exhausted
-from dbt.dbt_semantic.time import TimeGranularity
+from dbt.semantic.object_utils import assert_values_exhausted
+from dbt.semantic.time import TimeGranularity
 
 
 @enum.unique

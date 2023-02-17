@@ -2,7 +2,7 @@ from abc import ABC
 from typing import Optional
 from dbt.contracts.graph.nodes import Entity
 from dbt.contracts.graph.dimensions import DimensionType
-from dbt.dbt_semantic.references import TimeDimensionReference
+from dbt.semantic.references import TimeDimensionReference
 
 
 class SetMeasureAggregationTimeDimension(ABC):

@@ -1,9 +1,9 @@
 from collections import defaultdict
 from typing import List, DefaultDict
-from dbt.dbt_semantic.references import EntityReference
+from dbt.semantic.references import EntityReference
 
 from dbt.contracts.graph.manifest import UserConfiguredModel
-from dbt.dbt_semantic.validations.validator_helpers import (
+from dbt.semantic.validations.validator_helpers import (
     EntityContext,
     EntityElementType,
     ModelValidationRule,

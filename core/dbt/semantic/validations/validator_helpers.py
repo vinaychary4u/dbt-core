@@ -13,14 +13,14 @@ from dbt.dataclass_schema import dbtClassMixin
 
 from itertools import chain
 
-from dbt.dbt_semantic.references import (
+from dbt.semantic.references import (
     EntityElementReference,
     EntityReference,
     MetricModelReference,
 )
 from dbt.contracts.graph.dimensions import DimensionType
 from dbt.contracts.graph.manifest import UserConfiguredModel
-from dbt.dbt_semantic.object_utils import assert_values_exhausted
+from dbt.semantic.object_utils import assert_values_exhausted
 
 VALIDATE_SAFELY_ERROR_STR_TMPLT = ". Issue occurred in method `{method_name}` called with {arguments_str}"
 ValidationContextJSON = Dict[str, Union[str, int, None]]

@@ -1,13 +1,13 @@
 from collections import defaultdict
 from typing import DefaultDict, Dict, List, Set
 
-from dbt.dbt_semantic.aggregation_types import AggregationType
-from dbt.dbt_semantic.references import MetricModelReference, MeasureReference
+from dbt.semantic.aggregation_types import AggregationType
+from dbt.semantic.references import MetricModelReference, MeasureReference
 from dbt.contracts.graph.dimensions import DimensionType
 from dbt.contracts.graph.nodes import Metric
 from dbt.contracts.graph.manifest import UserConfiguredModel
-from dbt.dbt_semantic.validations.unique_valid_name import UniqueAndValidNameRule
-from dbt.dbt_semantic.validations.validator_helpers import (
+from dbt.semantic.validations.unique_valid_name import UniqueAndValidNameRule
+from dbt.semantic.validations.validator_helpers import (
     EntityElementContext,
     EntityElementReference,
     EntityElementType,

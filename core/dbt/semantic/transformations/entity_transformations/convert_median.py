@@ -1,5 +1,5 @@
 from abc import ABC
-from dbt.dbt_semantic.aggregation_types import AggregationType
+from dbt.semantic.aggregation_types import AggregationType
 from dbt.contracts.graph.nodes import Entity
 from dbt.contracts.graph.measures import MeasureAggregationParameters
 from dbt.exceptions import DbtSemanticValidationError

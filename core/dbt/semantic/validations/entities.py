@@ -1,11 +1,11 @@
 from typing import List
-from dbt.dbt_semantic.references import EntityElementReference, EntityReference
+from dbt.semantic.references import EntityElementReference, EntityReference
 
 from dbt.contracts.graph.nodes import Entity
 from dbt.contracts.graph.dimensions import DimensionType
 from dbt.contracts.graph.identifiers import IdentifierType
 from dbt.contracts.graph.manifest import UserConfiguredModel
-from dbt.dbt_semantic.validations.validator_helpers import (
+from dbt.semantic.validations.validator_helpers import (
     EntityContext,
     EntityElementContext,
     EntityElementType,
@@ -13,7 +13,7 @@ from dbt.dbt_semantic.validations.validator_helpers import (
     ValidationIssueType,
     ValidationError,
 )
-from dbt.dbt_semantic.time import SUPPORTED_GRANULARITIES
+from dbt.semantic.time import SUPPORTED_GRANULARITIES
 
 
 class EntityTimeDimensionWarningsRule(ModelValidationRule):

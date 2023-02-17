@@ -4,7 +4,7 @@ from datetime import date
 from typing import Union, Any
 from dbt.dataclass_schema import StrEnum
 
-from dbt.dbt_semantic.object_utils import assert_values_exhausted
+from dbt.semantic.object_utils import assert_values_exhausted
 
 class TimeGranularity(StrEnum):
     """For time dimensions, the smallest possible difference between two time values.

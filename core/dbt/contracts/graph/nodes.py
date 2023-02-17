@@ -13,12 +13,12 @@ from typing import (
     Iterator,
 )
 
-from dbt.dbt_semantic.references import (
+from dbt.semantic.references import (
     MeasureReference,
     LinkableElementReference
 )
-from dbt.dbt_semantic.time import TimeGranularity
-from dbt.dbt_semantic.object_utils import hash_items
+from dbt.semantic.time import TimeGranularity
+from dbt.semantic.object_utils import hash_items
 
 from dbt.dataclass_schema import dbtClassMixin, ExtensibleDbtClassMixin
 

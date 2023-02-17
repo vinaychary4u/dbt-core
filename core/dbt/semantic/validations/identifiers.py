@@ -6,7 +6,7 @@ from typing import List, MutableSet, Tuple, Sequence, DefaultDict
 from dbt.contracts.graph.nodes import Entity
 from dbt.contracts.graph.identifiers import Identifier, IdentifierType, CompositeSubIdentifier
 from dbt.contracts.graph.manifest import UserConfiguredModel
-from dbt.dbt_semantic.validations.validator_helpers import (
+from dbt.semantic.validations.validator_helpers import (
     EntityContext,
     EntityElementContext,
     EntityElementType,
@@ -17,8 +17,8 @@ from dbt.dbt_semantic.validations.validator_helpers import (
     ValidationWarning,
     iter_flatten
 )
-from dbt.dbt_semantic.validations.validator_helpers import ValidationFutureError
-from dbt.dbt_semantic.references import (
+from dbt.semantic.validations.validator_helpers import ValidationFutureError
+from dbt.semantic.references import (
     IdentifierReference,
     EntityElementReference, 
     EntityReference

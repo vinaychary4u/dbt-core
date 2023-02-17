@@ -80,7 +80,7 @@ from dbt.parser.snapshots import SnapshotParser
 from dbt.parser.sources import SourcePatcher
 from dbt.version import __version__
 
-from dbt.dbt_semantic.validations.model_validator import ModelValidator, _print_issues
+from dbt.semantic.validations.model_validator import ModelValidator, _print_issues
 
 from dbt.dataclass_schema import StrEnum, dbtClassMixin
 

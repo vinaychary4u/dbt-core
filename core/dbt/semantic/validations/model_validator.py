@@ -3,27 +3,27 @@ import copy
 from typing import List, Sequence
 
 from dbt.contracts.graph.manifest import UserConfiguredModel
-from dbt.dbt_semantic.validations.agg_time_dimensions import AggregationTimeDimensionRule
-from dbt.dbt_semantic.validations.entities import EntityTimeDimensionWarningsRule, EntityValidityWindowRule
-from dbt.dbt_semantic.validations.dimension_const import DimensionConsistencyRule
-from dbt.dbt_semantic.validations.element_const import ElementConsistencyRule
-from dbt.dbt_semantic.validations.identifiers import (
+from dbt.semantic.validations.agg_time_dimensions import AggregationTimeDimensionRule
+from dbt.semantic.validations.entities import EntityTimeDimensionWarningsRule, EntityValidityWindowRule
+from dbt.semantic.validations.dimension_const import DimensionConsistencyRule
+from dbt.semantic.validations.element_const import ElementConsistencyRule
+from dbt.semantic.validations.identifiers import (
     IdentifierConfigRule,
     IdentifierConsistencyRule,
     NaturalIdentifierConfigurationRule,
     OnePrimaryIdentifierPerEntityRule,
 )
-from dbt.dbt_semantic.validations.measures import (
+from dbt.semantic.validations.measures import (
     CountAggregationExprRule,
     EntityMeasuresUniqueRule,
     MeasureConstraintAliasesRule,
     MetricMeasuresRule,
     MeasuresNonAdditiveDimensionRule,
 )
-from dbt.dbt_semantic.validations.metrics import CumulativeMetricRule, DerivedMetricRule
-from dbt.dbt_semantic.validations.reserved_keywords import ReservedKeywordsRule
-from dbt.dbt_semantic.validations.unique_valid_name import UniqueAndValidNameRule
-from dbt.dbt_semantic.validations.validator_helpers import (
+from dbt.semantic.validations.metrics import CumulativeMetricRule, DerivedMetricRule
+from dbt.semantic.validations.reserved_keywords import ReservedKeywordsRule
+from dbt.semantic.validations.unique_valid_name import UniqueAndValidNameRule
+from dbt.semantic.validations.validator_helpers import (
     ModelValidationResults,
     ModelValidationRule,
     ModelValidationException,

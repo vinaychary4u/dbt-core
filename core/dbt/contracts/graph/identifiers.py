@@ -5,7 +5,7 @@ from dbt.contracts.util import (
 from dbt.dataclass_schema import dbtClassMixin, StrEnum
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
-from dbt.dbt_semantic.references import CompositeSubIdentifierReference, IdentifierReference
+from dbt.semantic.references import CompositeSubIdentifierReference, IdentifierReference
 
 class IdentifierType(StrEnum):
     """Defines uniqueness and the extent to which an identifier represents the common entity for a data source"""

@@ -5,8 +5,8 @@ from dbt.contracts.util import (
 from dbt.dataclass_schema import dbtClassMixin, StrEnum
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any, List
-from dbt.dbt_semantic.time import TimeGranularity
-from dbt.dbt_semantic.references import DimensionReference, TimeDimensionReference
+from dbt.semantic.time import TimeGranularity
+from dbt.semantic.references import DimensionReference, TimeDimensionReference
 
 
 class DimensionType(StrEnum):

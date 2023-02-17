@@ -17,7 +17,7 @@ from dbt.exceptions import CompilationError, ParsingError
 from dbt.dataclass_schema import dbtClassMixin, StrEnum, ExtensibleDbtClassMixin, ValidationError
 
 # Semantic Classes
-from dbt.dbt_semantic.references import (
+from dbt.semantic.references import (
     DimensionReference, 
     TimeDimensionReference,
     MeasureReference,

@@ -1,10 +1,10 @@
 from typing import List
-from dbt.dbt_semantic.references import EntityElementReference
+from dbt.semantic.references import EntityElementReference
 
 
 from dbt.contracts.graph.nodes import Entity
 from dbt.contracts.graph.manifest import UserConfiguredModel
-from dbt.dbt_semantic.validations.validator_helpers import (
+from dbt.semantic.validations.validator_helpers import (
     EntityContext,
     EntityElementContext,
     EntityElementType,

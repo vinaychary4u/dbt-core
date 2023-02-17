@@ -7,8 +7,8 @@ from dbt.exceptions import ParsingError
 from dbt.dataclass_schema import dbtClassMixin, StrEnum
 from dataclasses import dataclass, field
 from typing import Optional, List, Any, Union
-from dbt.dbt_semantic.references import MeasureReference
-from dbt.dbt_semantic.time import TimeGranularity, string_to_time_granularity
+from dbt.semantic.references import MeasureReference
+from dbt.semantic.time import TimeGranularity, string_to_time_granularity
 
 
 class MetricReference(object):

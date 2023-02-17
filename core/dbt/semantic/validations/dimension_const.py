@@ -1,12 +1,12 @@
 from typing import Dict, List
-from dbt.dbt_semantic.references import (
+from dbt.semantic.references import (
     EntityElementReference,
     DimensionReference
 )
 
 from dbt.contracts.graph.nodes import Entity
 from dbt.contracts.graph.dimensions import Dimension, DimensionType
-from dbt.dbt_semantic.validations.validator_helpers import (
+from dbt.semantic.validations.validator_helpers import (
     EntityElementContext,
     EntityElementType,
     ModelValidationRule,
@@ -15,7 +15,7 @@ from dbt.dbt_semantic.validations.validator_helpers import (
     ValidationError,
 )
 from dbt.contracts.graph.manifest import UserConfiguredModel
-from dbt.dbt_semantic.time import TimeGranularity
+from dbt.semantic.time import TimeGranularity
 
 
 class DimensionConsistencyRule(ModelValidationRule):

@@ -686,6 +686,7 @@ class ParseProvider(Provider):
     ref = ParseRefResolver
     source = ParseSourceResolver
     metric = ParseMetricResolver
+    entity = ParseEntityResolver
 
 
 class GenerateNameProvider(Provider):

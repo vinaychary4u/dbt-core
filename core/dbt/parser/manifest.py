@@ -366,11 +366,7 @@ class ManifestLoader:
 
             ## Validate semantic model
             #TODO: Figure out how to have this be its own area
-            user_configured_model = UserConfiguredModel(
-                entities=[entity for entity in self.manifest.entities.values()],
-                metrics=[metric for metric in self.manifest.metrics.values()],
-            )
-            semantic_result = ModelValidator().validate_model(user_configured_model)
+            semantic_result = ModelValidator().validate_model(self.manifest.user_configured_model)
             if semantic_result.issues.has_blocking_issues:
                 error_message = "\n".join(issue.as_cli_formatted_str() for issue in semantic_result.issues.errors)
                 raise dbt.exceptions.DbtSemanticValidationError(

@@ -1085,9 +1085,9 @@ class Entity(GraphNode):
     name: str
     model: str
     description: str
-    identifiers: Optional[Sequence[Identifier]] = None
-    dimensions: Optional[Sequence[Dimension]] = None
-    measures: Optional[Sequence[Measure]] = None
+    identifiers: Optional[Sequence[Identifier]] = field(default_factory=list)
+    dimensions: Optional[Sequence[Dimension]] = field(default_factory=list)
+    measures: Optional[Sequence[Measure]] = field(default_factory=list)
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Entity]})
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)

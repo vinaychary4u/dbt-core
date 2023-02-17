@@ -21,7 +21,6 @@ from dbt.dbt_semantic.validations.validator_helpers import (
     ValidationContext,
     ValidationError,
     ValidationIssueType,
-    validate_safely,
 )
 from dbt.dbt_semantic.object_utils import assert_values_exhausted
 from dbt.dbt_semantic.time import TimeGranularity

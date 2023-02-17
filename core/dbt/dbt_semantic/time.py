@@ -6,7 +6,6 @@ from dbt.dataclass_schema import StrEnum
 
 from dbt.dbt_semantic.object_utils import assert_values_exhausted
 
-
 class TimeGranularity(StrEnum):
     """For time dimensions, the smallest possible difference between two time values.
     Needed for calculating adjacency when merging 2 different time ranges.
@@ -201,3 +200,12 @@ class ISOWeekDay(StrEnum):
 def string_to_time_granularity(s: str) -> TimeGranularity:  # noqa: D
     values = {item.value: item for item in TimeGranularity}
     return values[s]
+
+
+SUPPORTED_GRANULARITIES = [
+    TimeGranularity.DAY,
+    TimeGranularity.WEEK,
+    TimeGranularity.MONTH,
+    TimeGranularity.QUARTER,
+    TimeGranularity.YEAR,
+]

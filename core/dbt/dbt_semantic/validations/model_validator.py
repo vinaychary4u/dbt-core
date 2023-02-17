@@ -1,13 +1,11 @@
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor
 import copy
-import logging
 from typing import List, Sequence
-from dbt.exceptions import DbtSemanticValidationError
 
 from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
-# from dbt.dbt_semantic.validations.agg_time_dimension import AggregationTimeDimensionRule
-# from dbt.dbt_semantic.validations.data_sources import DataSourceTimeDimensionWarningsRule, DataSourceValidityWindowRule
-# from dbt.dbt_semantic.validations.dimension_const import DimensionConsistencyRule
+from dbt.dbt_semantic.validations.agg_time_dimensions import AggregationTimeDimensionRule
+from dbt.dbt_semantic.validations.entities import EntityTimeDimensionWarningsRule, EntityValidityWindowRule
+from dbt.dbt_semantic.validations.dimension_const import DimensionConsistencyRule
 from dbt.dbt_semantic.validations.element_const import ElementConsistencyRule
 from dbt.dbt_semantic.validations.identifiers import (
     IdentifierConfigRule,
@@ -15,17 +13,14 @@ from dbt.dbt_semantic.validations.identifiers import (
     NaturalIdentifierConfigurationRule,
     OnePrimaryIdentifierPerEntityRule,
 )
-# from dbt.dbt_semantic.validations.materializations import ValidMaterializationRule
-# from dbt.dbt_semantic.validations.measures import (
-#     PercentileAggregationRule,
-#     CountAggregationExprRule,
-#     DataSourceMeasuresUniqueRule,
-#     MeasureConstraintAliasesRule,
-#     MetricMeasuresRule,
-#     MeasuresNonAdditiveDimensionRule,
-# )
+from dbt.dbt_semantic.validations.measures import (
+    CountAggregationExprRule,
+    EntityMeasuresUniqueRule,
+    MeasureConstraintAliasesRule,
+    MetricMeasuresRule,
+    MeasuresNonAdditiveDimensionRule,
+)
 from dbt.dbt_semantic.validations.metrics import CumulativeMetricRule, DerivedMetricRule
-# from dbt.dbt_semantic.validations.non_empty import NonEmptyRule
 from dbt.dbt_semantic.validations.reserved_keywords import ReservedKeywordsRule
 from dbt.dbt_semantic.validations.unique_valid_name import UniqueAndValidNameRule
 from dbt.dbt_semantic.validations.validator_helpers import (
@@ -40,27 +35,24 @@ class ModelValidator:
     """A Validator that acts on UserConfiguredModel"""
 
     DEFAULT_RULES = (
-        # PercentileAggregationRule(),
         DerivedMetricRule(),
-        # CountAggregationExprRule(),
-        # DataSourceMeasuresUniqueRule(),
-        # DataSourceTimeDimensionWarningsRule(),
-        # DataSourceValidityWindowRule(),
-        # DimensionConsistencyRule(),
+        CountAggregationExprRule(),
+        EntityMeasuresUniqueRule(),
+        EntityTimeDimensionWarningsRule(),
+        EntityValidityWindowRule(),
+        DimensionConsistencyRule(),
         ElementConsistencyRule(),
         IdentifierConfigRule(),
         IdentifierConsistencyRule(),
         NaturalIdentifierConfigurationRule(),
         OnePrimaryIdentifierPerEntityRule(),
-        # MeasureConstraintAliasesRule(),
-        # MetricMeasuresRule(),
+        MeasureConstraintAliasesRule(),
+        MetricMeasuresRule(),
         CumulativeMetricRule(),
-        # NonEmptyRule(),
         UniqueAndValidNameRule(),
-        # ValidMaterializationRule(),
-        # AggregationTimeDimensionRule(),
+        AggregationTimeDimensionRule(),
         ReservedKeywordsRule(),
-        # MeasuresNonAdditiveDimensionRule(),
+        MeasuresNonAdditiveDimensionRule(),
     )
 
     def __init__(self, rules: Sequence[ModelValidationRule] = DEFAULT_RULES, max_workers: int = 1) -> None:

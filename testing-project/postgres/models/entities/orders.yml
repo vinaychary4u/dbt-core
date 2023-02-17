@@ -11,27 +11,20 @@ entities:
       - name: order_date
         type: time
         type_params:
-          is_primary: true
           time_granularity: day
 
       - name: order_date_one
         type: time
         expr: order_date
         type_params:
+          is_primary: true
           time_granularity: day
 
       - name: order_location
         type: categorical
 
-      - name: order_total
-        type: categorical
-
     measures:
       - name: order_total
-        description: "The total value of the order"
-        agg: sum
-
-      - name: order_location
         description: "The total value of the order"
         agg: sum
 

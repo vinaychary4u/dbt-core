@@ -7,7 +7,6 @@ from dbt.contracts.util import (
     AdditionalPropertiesMixin,
     Mergeable,
     Replaceable,
-    rename_metric_attr,
 )
 
 # trigger the PathEncoder
@@ -17,25 +16,17 @@ from dbt.exceptions import CompilationError, ParsingError
 from dbt.dataclass_schema import dbtClassMixin, StrEnum, ExtensibleDbtClassMixin, ValidationError
 
 # Semantic Classes
-from dbt.semantic.references import (
-    DimensionReference, 
-    TimeDimensionReference,
-    MeasureReference,
-    IdentifierReference,
-    CompositeSubIdentifierReference,
-    LinkableElementReference
-)
 from dbt.contracts.graph.dimensions import Dimension
 from dbt.contracts.graph.identifiers import Identifier
 from dbt.contracts.graph.measures import Measure
 from dbt.contracts.graph.metrics import (
     MetricType,
     UnparsedMetricTypeParams,
-    MetricTypeParams
 )
 from dbt.contracts.graph.entities import (
     EntityMutability,
     EntityMutabilityType,
+    EntityOrigin
 )
 
 from dataclasses import dataclass, field
@@ -496,7 +487,7 @@ class UnparsedEntity(dbtClassMixin, Replaceable):
     mutability: EntityMutability = EntityMutability(type=EntityMutabilityType.FULL_MUTATION)
 
     # TODO: Figure out if we need this
-    # origin: DataSourceOrigin = DataSourceOrigin.SOURCE
+    origin: EntityOrigin = EntityOrigin.SOURCE
 
     @classmethod
     def validate(cls, data):

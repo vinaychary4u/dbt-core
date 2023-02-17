@@ -42,6 +42,7 @@ from dbt.contracts.graph.unparsed import (
 from dbt.contracts.graph.identifiers import Identifier
 from dbt.contracts.graph.dimensions import Dimension
 from dbt.contracts.graph.measures import Measure
+from dbt.contracts.graph.entities import EntityOrigin
 from dbt.contracts.graph.metrics import (
     MetricType,
     MetricInputMeasure,
@@ -1084,6 +1085,7 @@ class Entity(GraphNode):
     name: str
     model: str
     description: str
+    origin: EntityOrigin
     identifiers: Optional[Sequence[Identifier]] = field(default_factory=list)
     dimensions: Optional[Sequence[Dimension]] = field(default_factory=list)
     measures: Optional[Sequence[Measure]] = field(default_factory=list)
@@ -1122,6 +1124,9 @@ class Entity(GraphNode):
     def same_description(self, old: "Entity") -> bool:
         return self.description == old.description
 
+    def same_origin(self, old: "Entity") -> bool:
+        return self.origin == old.origin
+
     def same_config(self, old: "Entity") -> bool:
         return self.config.same_contents(
             self.unrendered_config,
@@ -1140,6 +1145,7 @@ class Entity(GraphNode):
             and self.same_dimensions(old)
             and self.same_measures(old)
             and self.same_description(old)
+            and self.same_origin(old)
             and self.same_config(old)
             and True
         )

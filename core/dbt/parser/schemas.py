@@ -1154,6 +1154,7 @@ class EntityParser(YamlReader):
             identifiers=unparsed.identifiers,
             dimensions=unparsed.dimensions,
             measures=unparsed.measures,
+            origin=unparsed.origin,
             meta=unparsed.meta,
             tags=unparsed.tags,
             config=config,

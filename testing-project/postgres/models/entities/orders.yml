@@ -75,7 +75,6 @@ metrics:
     type_params:
       measure: order_total
       window: 7 days
-      grain_to_date: month 
 
   - name: revenue_usd
     type: expr 

@@ -417,7 +417,7 @@ def test(ctx, **kwargs):
 @p.target
 @p.vars
 def validate(ctx, **kwargs):
-    """Validates teh semantic layer"""
+    """Validates the semantic layer"""
     flags = Flags()
     click.echo(f"`{inspect.stack()[0][3]}` called\n flags: {flags}")
 

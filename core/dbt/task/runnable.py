@@ -99,17 +99,6 @@ class ManifestTask(ConfiguredTask):
         if dbt.tracking.active_user is not None:
             dbt.tracking.track_runnable_timing({"graph_compilation_elapsed": compile_time})
 
-    def _user_configured_model_initialize(self) -> UserConfiguredModel:
-        self.load_manifest()
-        self.compile_manifest()
-
-        user_configured_model = UserConfiguredModel(
-            entities=[entity for entity in self.manifest.entities.values()],
-            metrics=[metric for metric in self.manifest.metrics.values()],
-        )
-
-        return user_configured_model
-
 
 class GraphRunnableTask(ManifestTask):
 

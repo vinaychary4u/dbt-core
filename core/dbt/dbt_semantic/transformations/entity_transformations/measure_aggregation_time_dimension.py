@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import Optional
 from dbt.contracts.graph.nodes import Entity
-from dbt.dbt_semantic.objects.dimensions import DimensionType
+from dbt.contracts.graph.dimensions import DimensionType
 from dbt.dbt_semantic.references import TimeDimensionReference
 
 

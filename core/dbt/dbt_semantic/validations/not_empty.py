@@ -4,7 +4,7 @@
 
 # from typing import List
 
-# from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
+# from dbt.contracts.graph.manifest import UserConfiguredModel
 # from dbt.dbt_semantic.validations.validator_helpers import (
 #     ModelValidationRule,
 #     ValidationError,

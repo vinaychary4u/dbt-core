@@ -52,10 +52,7 @@ from dbt.contracts.graph.unparsed import (
     UnparsedEntity,
     UnparsedSourceDefinition,
 )
-from dbt.dbt_semantic.objects.metrics import (
-    MetricTypeParams,
-)
-from dbt.dbt_semantic.objects.measures import Measure
+from dbt.contracts.graph.measures import Measure
 from dbt.exceptions import (
     CompilationError,
     DuplicateMacroPatchNameError,

@@ -1,6 +1,6 @@
 from typing import Union, List
 from abc import ABC
-from dbt.dbt_semantic.objects.metrics import (
+from dbt.contracts.graph.metrics import (
     MetricInputMeasure, 
     MetricTimeWindow, 
     MetricInput, 

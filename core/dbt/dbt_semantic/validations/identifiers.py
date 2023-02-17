@@ -4,8 +4,8 @@ from datetime import date
 from typing import List, MutableSet, Tuple, Sequence, DefaultDict
 
 from dbt.contracts.graph.nodes import Entity
-from dbt.dbt_semantic.objects.identifiers import Identifier, IdentifierType, CompositeSubIdentifier
-from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
+from dbt.contracts.graph.identifiers import Identifier, IdentifierType, CompositeSubIdentifier
+from dbt.contracts.graph.manifest import UserConfiguredModel
 from dbt.dbt_semantic.validations.validator_helpers import (
     EntityContext,
     EntityElementContext,

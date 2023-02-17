@@ -18,8 +18,8 @@ from dbt.dbt_semantic.references import (
     EntityReference,
     MetricModelReference,
 )
-from dbt.dbt_semantic.objects.dimensions import DimensionType
-from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
+from dbt.contracts.graph.dimensions import DimensionType
+from dbt.contracts.graph.manifest import UserConfiguredModel
 from dbt.dbt_semantic.object_utils import assert_values_exhausted
 
 VALIDATE_SAFELY_ERROR_STR_TMPLT = ". Issue occurred in method `{method_name}` called with {arguments_str}"

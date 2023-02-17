@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import List, DefaultDict
 from dbt.dbt_semantic.references import EntityReference
 
-from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
+from dbt.contracts.graph.manifest import UserConfiguredModel
 from dbt.dbt_semantic.validations.validator_helpers import (
     EntityContext,
     EntityElementType,

@@ -4,8 +4,8 @@ from typing import List
 from dbt.exceptions import DbtSemanticValidationError
 from dbt.dbt_semantic.references import MetricModelReference
 from dbt.contracts.graph.nodes import Metric
-from dbt.dbt_semantic.objects.metrics import MetricType, MetricTimeWindow
-from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
+from dbt.contracts.graph.metrics import MetricType, MetricTimeWindow
+from dbt.contracts.graph.manifest import UserConfiguredModel
 from dbt.dbt_semantic.validations.unique_valid_name import UniqueAndValidNameRule
 from dbt.dbt_semantic.validations.validator_helpers import (
     MetricContext,

@@ -1,7 +1,7 @@
 from typing import Set, List
 from abc import ABC
 from dbt.exceptions import DbtSemanticValidationError
-from dbt.dbt_semantic.objects.metrics import MetricType, MetricInputMeasure
+from dbt.contracts.graph.metrics import MetricType, MetricInputMeasure
 from dbt.contracts.graph.nodes import Metric
 
 

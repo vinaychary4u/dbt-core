@@ -2,7 +2,7 @@ from concurrent.futures import ProcessPoolExecutor
 import copy
 from typing import List, Sequence
 
-from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
+from dbt.contracts.graph.manifest import UserConfiguredModel
 from dbt.dbt_semantic.validations.agg_time_dimensions import AggregationTimeDimensionRule
 from dbt.dbt_semantic.validations.entities import EntityTimeDimensionWarningsRule, EntityValidityWindowRule
 from dbt.dbt_semantic.validations.dimension_const import DimensionConsistencyRule

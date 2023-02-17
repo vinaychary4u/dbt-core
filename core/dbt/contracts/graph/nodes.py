@@ -18,7 +18,6 @@ from dbt.dbt_semantic.references import (
     LinkableElementReference
 )
 from dbt.dbt_semantic.time import TimeGranularity
-from dbt.dbt_semantic.objects.metrics import MetricTypeParams
 from dbt.dbt_semantic.object_utils import hash_items
 
 from dbt.dataclass_schema import dbtClassMixin, ExtensibleDbtClassMixin
@@ -40,13 +39,13 @@ from dbt.contracts.graph.unparsed import (
     ExposureType,
     MaturityType,
 )
-from dbt.dbt_semantic.objects.identifiers import Identifier
-from dbt.dbt_semantic.objects.dimensions import Dimension
-from dbt.dbt_semantic.objects.measures import Measure
-from dbt.dbt_semantic.objects.metrics import (
+from dbt.contracts.graph.identifiers import Identifier
+from dbt.contracts.graph.dimensions import Dimension
+from dbt.contracts.graph.measures import Measure
+from dbt.contracts.graph.metrics import (
     MetricType,
     MetricInputMeasure,
-    MetricTimeWindow,
+    MetricTypeParams,
     MetricInput
 )
 from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin

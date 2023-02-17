@@ -6,7 +6,7 @@ from dbt.node_types import NodeType
 from dbt.events.types import ParseCmdOut
 from dbt.exceptions import DbtInternalError
 from dbt.events.functions import fire_event
-from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
+from dbt.contracts.graph.manifest import UserConfiguredModel
 
 
 class ValidateTask(ManifestTask):

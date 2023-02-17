@@ -1,4 +1,4 @@
-from dbt.dbt_semantic.objects.metrics import (
+from dbt.contracts.graph.metrics import (
     MetricType, 
     MetricInputMeasure,
     MetricTypeParams

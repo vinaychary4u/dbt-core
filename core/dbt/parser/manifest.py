@@ -9,7 +9,7 @@ from itertools import chain
 import time
 from dbt.events.base_types import EventLevel
 
-from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
+from dbt.contracts.graph.manifest import UserConfiguredModel
 
 import dbt.exceptions
 import dbt.tracking

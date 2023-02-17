@@ -3,9 +3,9 @@ from typing import DefaultDict, Dict, List, Set
 
 from dbt.dbt_semantic.aggregation_types import AggregationType
 from dbt.dbt_semantic.references import MetricModelReference, MeasureReference
-from dbt.dbt_semantic.objects.dimensions import DimensionType
+from dbt.contracts.graph.dimensions import DimensionType
 from dbt.contracts.graph.nodes import Metric
-from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
+from dbt.contracts.graph.manifest import UserConfiguredModel
 from dbt.dbt_semantic.validations.unique_valid_name import UniqueAndValidNameRule
 from dbt.dbt_semantic.validations.validator_helpers import (
     EntityElementContext,

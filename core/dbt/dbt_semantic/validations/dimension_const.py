@@ -5,7 +5,7 @@ from dbt.dbt_semantic.references import (
 )
 
 from dbt.contracts.graph.nodes import Entity
-from dbt.dbt_semantic.objects.dimensions import Dimension, DimensionType
+from dbt.contracts.graph.dimensions import Dimension, DimensionType
 from dbt.dbt_semantic.validations.validator_helpers import (
     EntityElementContext,
     EntityElementType,
@@ -14,7 +14,7 @@ from dbt.dbt_semantic.validations.validator_helpers import (
     ValidationIssueType,
     ValidationError,
 )
-from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
+from dbt.contracts.graph.manifest import UserConfiguredModel
 from dbt.dbt_semantic.time import TimeGranularity
 
 

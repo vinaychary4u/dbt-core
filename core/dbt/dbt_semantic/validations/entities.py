@@ -2,9 +2,9 @@ from typing import List
 from dbt.dbt_semantic.references import EntityElementReference, EntityReference
 
 from dbt.contracts.graph.nodes import Entity
-from dbt.dbt_semantic.objects.dimensions import DimensionType
-from dbt.dbt_semantic.objects.identifiers import IdentifierType
-from dbt.dbt_semantic.objects.user_configured_model import UserConfiguredModel
+from dbt.contracts.graph.dimensions import DimensionType
+from dbt.contracts.graph.identifiers import IdentifierType
+from dbt.contracts.graph.manifest import UserConfiguredModel
 from dbt.dbt_semantic.validations.validator_helpers import (
     EntityContext,
     EntityElementContext,

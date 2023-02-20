@@ -6,7 +6,7 @@ from dbt.contracts.util import (
 from dbt.dataclass_schema import dbtClassMixin
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
-from dbt.semantic.aggregation_types import AggregationType
+from dbt.semantic.aggregation_properties import AggregationType
 from dbt.semantic.references import TimeDimensionReference, MeasureReference
 
 

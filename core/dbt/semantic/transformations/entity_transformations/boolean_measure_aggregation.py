@@ -1,6 +1,6 @@
 from abc import ABC
 from dbt.contracts.graph.nodes import Entity
-from dbt.semantic.aggregation_types import AggregationType
+from dbt.semantic.aggregation_properties import AggregationType
 from dbt.exceptions import DbtSemanticValidationError
 
 class BooleanMeasureAggregation(ABC):

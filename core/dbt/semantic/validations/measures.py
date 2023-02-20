@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import DefaultDict, Dict, List, Set
 
-from dbt.semantic.aggregation_types import AggregationType
+from dbt.semantic.aggregation_properties import AggregationType
 from dbt.semantic.references import MetricModelReference, MeasureReference
 from dbt.contracts.graph.dimensions import DimensionType
 from dbt.contracts.graph.nodes import Metric

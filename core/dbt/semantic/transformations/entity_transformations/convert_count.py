@@ -1,5 +1,5 @@
 from abc import ABC
-from dbt.semantic.aggregation_types import AggregationType
+from dbt.semantic.aggregation_properties import AggregationType
 from dbt.contracts.graph.nodes import Entity
 
 ONE = "1"

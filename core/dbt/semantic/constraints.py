@@ -8,7 +8,7 @@ from mo_sql_parsing import parse as mo_parse
 
 from dbt.dataclass_schema import dbtClassMixin
 from dbt.exceptions import DbtSemanticValidationError
-from dbt.semantic.object_utils import SqlBindParameters
+from dbt.semantic.sql_bind_parameters import SqlBindParameters
 
 logger = logging.getLogger(__name__)
 

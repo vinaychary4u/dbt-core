@@ -36,6 +36,7 @@ from dbt.contracts.graph.nodes import (
     ResultNode,
     BaseNode,
 )
+from dbt.semantic.validations.validator_helpers import ModelValidationResults
 from dbt.contracts.graph.unparsed import SourcePatch
 from dbt.contracts.files import SourceFile, SchemaSourceFile, FileHash, AnySourceFile
 from dbt.contracts.util import BaseArtifactMetadata, SourceKey, ArtifactMixin, schema_version
@@ -633,6 +634,11 @@ class UserConfiguredModel(dbtClassMixin):
     def _serialize(self):
         return self.to_dict()
 
+@dataclass
+class ModelBuildResult:  # noqa: D
+    model: UserConfiguredModel
+    # Issues found in the model.
+    issues: ModelValidationResults = ModelValidationResults()
 
 @dataclass
 class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):

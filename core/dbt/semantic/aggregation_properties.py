@@ -63,7 +63,8 @@ class AggregationType(StrEnum):
         """
         return self in (AggregationType.SUM, AggregationType.SUM_BOOLEAN, AggregationType.COUNT)
 
-class MeasureAggregationState(StrEnum):
+
+class AggregationState(StrEnum):
     """Represents how the measure is aggregated."""
     NON_AGGREGATED = "NON_AGGREGATED"
     PARTIAL = "PARTIAL"

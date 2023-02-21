@@ -7,10 +7,9 @@ import string
 from collections import OrderedDict, defaultdict, deque
 from collections.abc import Mapping
 from dataclasses import is_dataclass, fields
-from enum import Enum
 import datetime
 from hashlib import sha1
-from typing import Sequence, TypeVar, Tuple, NoReturn, Type, Any, List, Union
+from typing import Sequence, TypeVar, Tuple, NoReturn, Union
 
 from dbt.dataclass_schema import dbtClassMixin
 

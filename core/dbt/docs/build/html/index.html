@@ -559,6 +559,87 @@
 <p>Type: boolean</p>
 <p>TODO: No help text currently available</p>
 </section>
+<h3>Command: retry<a class="headerlink" href="#dbt-section" title="Permalink to this heading">¶</a></h3>
+<section id="retry|defer">
+<h4>defer<a class="headerlink" href="#retry|defer" title="Permalink to this heading">¶</a></h4>
+<p>Type: boolean</p>
+<p>If set, defer to the state variable for resolving unselected nodes.</p>
+</section>
+<section id="retry|exclude">
+<h4>exclude<a class="headerlink" href="#retry|exclude" title="Permalink to this heading">¶</a></h4>
+<p>Type: unknown</p>
+<p>Specify the nodes to exclude.</p>
+</section>
+<section id="retry|fail_fast">
+<h4>fail_fast<a class="headerlink" href="#retry|fail_fast" title="Permalink to this heading">¶</a></h4>
+<p>Type: boolean</p>
+<p>Stop execution on first failure.</p>
+</section>
+<section id="retry|favor_state">
+<h4>favor_state<a class="headerlink" href="#retry|favor_state" title="Permalink to this heading">¶</a></h4>
+<p>Type: boolean</p>
+<p>If set, defer to the argument provided to the state flag for resolving unselected nodes, even if the node(s) exist as a database object in the current environment.</p>
+</section>
+<section id="retry|indirect_selection">
+<h4>indirect_selection<a class="headerlink" href="#retry|indirect_selection" title="Permalink to this heading">¶</a></h4>
+<p>Type: choice: [‘eager’, ‘cautious’, ‘buildable’]</p>
+<p>Select all tests that are adjacent to selected resources, even if they those resources have been explicitly selected.</p>
+</section>
+<section id="retry|profile">
+<h4>profile<a class="headerlink" href="#retry|profile" title="Permalink to this heading">¶</a></h4>
+<p>Type: string</p>
+<p>Which profile to load. Overrides setting in dbt_project.yml.</p>
+</section>
+<section id="retry|profiles_dir">
+<h4>profiles_dir<a class="headerlink" href="#retry|profiles_dir" title="Permalink to this heading">¶</a></h4>
+<p>Type: path</p>
+<p>Which directory to look in for the profiles.yml file. If not set, dbt will look in the current working directory first, then HOME/.dbt/</p>
+</section>
+<section id="retry|project_dir">
+<h4>project_dir<a class="headerlink" href="#retry|project_dir" title="Permalink to this heading">¶</a></h4>
+<p>Type: path</p>
+<p>Which directory to look in for the dbt_project.yml file. Default is the current working directory and its parents.</p>
+</section>
+<section id="retry|select">
+<h4>select<a class="headerlink" href="#retry|select" title="Permalink to this heading">¶</a></h4>
+<p>Type: unknown</p>
+<p>Specify the nodes to include.</p>
+</section>
+<section id="retry|selector">
+<h4>selector<a class="headerlink" href="#retry|selector" title="Permalink to this heading">¶</a></h4>
+<p>Type: string</p>
+<p>The selector name to use, as defined in selectors.yml</p>
+</section>
+<section id="retry|state">
+<h4>state<a class="headerlink" href="#retry|state" title="Permalink to this heading">¶</a></h4>
+<p>Type: path</p>
+<p>If set, use the given directory as the source for json files to compare with this project.</p>
+</section>
+<section id="retry|store_failures">
+<h4>store_failures<a class="headerlink" href="#retry|store_failures" title="Permalink to this heading">¶</a></h4>
+<p>Type: boolean</p>
+<p>Store test results (failing rows) in the database</p>
+</section>
+<section id="retry|target">
+<h4>target<a class="headerlink" href="#retry|target" title="Permalink to this heading">¶</a></h4>
+<p>Type: string</p>
+<p>Which target to load for the given profile</p>
+</section>
+<section id="retry|target_path">
+<h4>target_path<a class="headerlink" href="#retry|target_path" title="Permalink to this heading">¶</a></h4>
+<p>Type: path</p>
+<p>Configure the ‘target-path’. Only applies this setting for the current run. Overrides the ‘DBT_TARGET_PATH’ if it is set.</p>
+</section>
+<section id="retry|threads">
+<h4>threads<a class="headerlink" href="#retry|threads" title="Permalink to this heading">¶</a></h4>
+<p>Type: int</p>
+<p>Specify number of threads to use while executing models. Overrides settings in profiles.yml.</p>
+</section>
+<section id="retry|vars">
+<h4>vars<a class="headerlink" href="#retry|vars" title="Permalink to this heading">¶</a></h4>
+<p>Type: YAML</p>
+<p>Supply variables to the project. This argument overrides variables defined in your dbt_project.yml file. This argument should be a YAML string, eg. ‘{my_variable: my_value}’</p>
+</section>
 <h3>Command: run<a class="headerlink" href="#dbt-section" title="Permalink to this heading">¶</a></h3>
 <section id="run|defer">
 <h4>defer<a class="headerlink" href="#run|defer" title="Permalink to this heading">¶</a></h4>

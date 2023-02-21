@@ -14,7 +14,7 @@ from dbt.semantic.validations.validator_helpers import (
     ValidationIssueType,
     ValidationError,
 )
-from dbt.contracts.graph.manifest import UserConfiguredModel
+from dbt.semantic.user_configured_model import UserConfiguredModel
 from dbt.semantic.time import TimeGranularity
 
 

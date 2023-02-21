@@ -19,7 +19,7 @@ from dbt.semantic.references import (
     MetricModelReference,
 )
 from dbt.contracts.graph.dimensions import DimensionType
-from dbt.contracts.graph.manifest import UserConfiguredModel
+from dbt.semantic.user_configured_model import UserConfiguredModel
 from dbt.semantic.object_utils import assert_values_exhausted
 
 VALIDATE_SAFELY_ERROR_STR_TMPLT = ". Issue occurred in method `{method_name}` called with {arguments_str}"
@@ -342,7 +342,7 @@ class ModelValidationException(Exception):
         super().__init__(f"Error validating model. Issues:\n{issues_str}")
 
 
-@dataclass(frozen=True)
+@dataclass
 class ModelBuildResult:  # noqa: D
     model: UserConfiguredModel
     # Issues found in the model.

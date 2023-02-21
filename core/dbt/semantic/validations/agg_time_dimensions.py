@@ -3,7 +3,7 @@ from typing import List
 from dbt.semantic.references import EntityElementReference, TimeDimensionReference
 from dbt.contracts.graph.nodes import Entity
 from dbt.contracts.graph.dimensions import DimensionType
-from dbt.contracts.graph.manifest import UserConfiguredModel
+from dbt.semantic.user_configured_model import UserConfiguredModel
 from dbt.semantic.validations.validator_helpers import (
     EntityElementContext,
     EntityElementType,

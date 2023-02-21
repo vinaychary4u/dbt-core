@@ -5,7 +5,7 @@ from dbt.semantic.aggregation_properties import AggregationType
 from dbt.semantic.references import MetricModelReference, MeasureReference
 from dbt.contracts.graph.dimensions import DimensionType
 from dbt.contracts.graph.nodes import Metric
-from dbt.contracts.graph.manifest import UserConfiguredModel
+from dbt.semantic.user_configured_model import UserConfiguredModel
 from dbt.semantic.validations.unique_valid_name import UniqueAndValidNameRule
 from dbt.semantic.validations.validator_helpers import (
     EntityElementContext,

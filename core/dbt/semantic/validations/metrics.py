@@ -5,7 +5,7 @@ from dbt.exceptions import DbtSemanticValidationError
 from dbt.semantic.references import MetricModelReference
 from dbt.contracts.graph.nodes import Metric
 from dbt.contracts.graph.metrics import MetricType, MetricTimeWindow
-from dbt.contracts.graph.manifest import UserConfiguredModel
+from dbt.semantic.user_configured_model import UserConfiguredModel
 from dbt.semantic.validations.unique_valid_name import UniqueAndValidNameRule
 from dbt.semantic.validations.validator_helpers import (
     MetricContext,

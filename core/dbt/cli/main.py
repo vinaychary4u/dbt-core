@@ -618,6 +618,68 @@ def test(ctx, **kwargs):
     return results, success
 
 
+# It is actually kind of confusing what arguments I need to include here, some of them are for project
+# profile, feels like they should be defined alongside those decorators
+# dbt retry
+@cli.command("retry")
+@click.pass_context
+@p.defer
+@p.exclude
+@p.fail_fast
+@p.favor_state
+@p.indirect_selection
+@p.profile
+@p.profiles_dir
+@p.project_dir
+@p.select
+@p.selector
+@p.state
+@p.store_failures
+@p.target
+@p.target_path
+@p.threads
+@p.vars
+@requires.preflight
+@requires.profile
+@requires.project
+@requires.runtime_config
+@requires.manifest
+def retry(ctx, **kwargs):
+    """rerun you previous failed command"""
+
+    from dbt.contracts.state import PreviousState
+    from dbt.contracts.results import RunStatus, TestStatus
+
+    previous_state = PreviousState(ctx.obj["flags"].state, ctx.obj["flags"].state)
+    unique_ids = [
+        result.unique_id
+        for result in previous_state.results.results
+        if result.status not in [RunStatus.Success, TestStatus.Pass]
+    ]
+    # Using build task since it has a more complete runner set now
+    task = BuildTask(
+        ctx.obj["flags"],
+        ctx.obj["runtime_config"],
+        ctx.obj["manifest"],
+    )
+
+    from dbt import selected_resources
+    from dbt.graph import GraphQueue
+
+    task.compile_manifest()
+    selected_resources.set_selected_resources(set(unique_ids))
+    new_graph = task.graph.get_subset_graph(set(unique_ids))
+    # should we give a way here for consumers to mutate the graph?
+    queue = GraphQueue(new_graph.graph, task.manifest, set(unique_ids))
+
+    task.get_graph_queue = lambda: queue
+    task.compile_manifest = lambda: None
+
+    results = task.run()
+    success = task.interpret_results(results)
+    return results, success
+
+
 # Support running as a module
 if __name__ == "__main__":
     cli()

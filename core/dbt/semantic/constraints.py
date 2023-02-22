@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import logging
 import re
 from typing import List, Optional, Dict, Any
+from dataclasses import dataclass
 
 from mo_sql_parsing import parse as mo_parse
 
@@ -10,12 +10,10 @@ from dbt.dataclass_schema import dbtClassMixin
 from dbt.exceptions import DbtSemanticValidationError
 from dbt.semantic.sql_bind_parameters import SqlBindParameters
 
-logger = logging.getLogger(__name__)
-
 LITERAL_STR = "literal"
 INTERVAL_LITERAL = "interval"
 
-
+@dataclass
 class WhereClauseConstraint(dbtClassMixin):
     """Contains a string that is a where clause"""
 

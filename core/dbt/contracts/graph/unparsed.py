@@ -23,6 +23,8 @@ from dbt.contracts.graph.metrics import (
     MetricType,
     UnparsedMetricTypeParams,
 )
+from dbt.semantic.constraints import WhereClauseConstraint
+from dbt.semantic.transformations.metric_transformations.convert_type_params import ConvertTypeParams
 from dbt.contracts.graph.entities import (
     EntityMutability,
     EntityMutabilityType,
@@ -517,13 +519,14 @@ class UnparsedMetric(dbtClassMixin):
     type_params: UnparsedMetricTypeParams
     description: Optional[str] = None
     entity: Optional[str] = None
-    # constraint: Optional[WhereClauseConstraint]
+    # constraint: Optional[WhereClauseConstraint] = None
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
     config: Dict[str, Any] = field(default_factory=dict)
     
     @classmethod
     def validate(cls, data):
+        breakpoint()
         super(UnparsedMetric, cls).validate(data)
         # TODO: Figure out better way to convert to input measures. We need this here
         # so we can do full "mf model" validation in schemas.py. Specifically for input

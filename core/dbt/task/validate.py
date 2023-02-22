@@ -17,7 +17,7 @@ class ValidateTask(ManifestTask):
         ManifestTask.load_manifest(self)
 
         model=self.manifest.user_configured_model
-        
+        breakpoint()
         fire_event(ParseCmdOut(msg="Callum still has more todos"))
 
         fire_event(ParseCmdOut(msg="Validation completed!"))

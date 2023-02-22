@@ -1304,6 +1304,7 @@ class MetricParser(YamlReader):
             description=unparsed.description,
             type=unparsed.type,
             type_params=parsed_metric_type_params,
+            # constraint=unparsed.constraint,
             metrics=[[metric] for metric in unparsed.type_params.metrics],
             meta=unparsed.meta,
             tags=unparsed.tags,

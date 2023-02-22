@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from typing import Optional, List, Any, Union
 from dbt.semantic.references import MeasureReference
 from dbt.semantic.time import TimeGranularity, string_to_time_granularity
+from dbt.semantic.constraints import WhereClauseConstraint
 
 
 class MetricReference(object):
@@ -102,7 +103,7 @@ class MetricInput(dbtClassMixin, Mergeable):
     """Provides a pointer to a metric along with the additional properties used on that metric."""
 
     name: str
-    # constraint: Optional[WhereClauseConstraint]
+    # constraint: Optional[WhereClauseConstraint] = None
     alias: Optional[str] = None
     offset_window: Optional[MetricTimeWindow] = None
     offset_to_grain: Optional[TimeGranularity] = None

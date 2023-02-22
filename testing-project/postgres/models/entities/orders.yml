@@ -54,6 +54,15 @@ metrics:
     type_params:
       measure: order_total
 
+  - name: constraint_metric
+    entity: entity('orders')
+    description: "some description"
+    type: measure_proxy
+    type_params:
+      measure: order_total
+    # constraint: | 
+    #   value > 100 AND user__acquisition
+
   - name: sales_minus_revenue
     type: derived 
     type_params:

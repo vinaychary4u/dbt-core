@@ -15,10 +15,13 @@ from typing import (
 
 from dbt.semantic.references import (
     MeasureReference,
-    LinkableElementReference
+    LinkableElementReference,
+    EntityReference,
+    MetricReference
 )
 from dbt.semantic.time import TimeGranularity
 from dbt.semantic.object_utils import hash_items
+from dbt.semantic.constraints import WhereClauseConstraint
 
 from dbt.dataclass_schema import dbtClassMixin, ExtensibleDbtClassMixin
 
@@ -992,6 +995,7 @@ class Metric(GraphNode):
     entity: str
     type: MetricType
     type_params: MetricTypeParams
+    # constraint: Optional[WhereClauseConstraint] = None
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Metric]})
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
@@ -1058,6 +1062,9 @@ class Metric(GraphNode):
     def same_type_params(self, old: "Metric") -> bool:
         return self.type_params == old.type_params
 
+    def same_constraint(self, old: "Metric") -> bool:
+        return self.constraint == old.constraint
+
     def same_config(self, old: "Metric") -> bool:
         return self.config.same_contents(
             self.unrendered_config,
@@ -1073,11 +1080,46 @@ class Metric(GraphNode):
         return (
             self.same_description(old)
             and self.same_entity(old)
+            and self.same_constraint(old)
             and self.same_type(old)
             and self.same_type_params(old)
             and self.same_config(old)
             and True
         )
+
+    @property
+    def input_measures(self) -> List[MetricInputMeasure]:
+        """Return the complete list of input measure configurations for this metric"""
+        tp = self.type_params
+        res = tp.measures or []
+        if tp.measure:
+            res.append(tp.measure)
+        if tp.numerator:
+            res.append(tp.numerator)
+        if tp.denominator:
+            res.append(tp.denominator)
+
+        return res
+
+    @property
+    def measure_references(self) -> List[MeasureReference]:
+        """Return the measure references associated with all input measure configurations for this metric"""
+        return [x.measure_reference for x in self.input_measures]
+
+    @property
+    def input_metrics(self) -> List[MetricInput]:
+        """Return the associated input metrics for this metric"""
+        return self.type_params.metrics or []
+
+    @property
+    def definition_hash(self) -> str:  # noqa: D
+        values: List[str] = [self.name, self.type_params.expr or ""]
+        if self.constraint:
+            values.append(self.constraint.where)
+            if self.constraint.linkable_names:
+                values.extend(self.constraint.linkable_names)
+        values.extend([m.element_name for m in self.measure_references])
+        return hash_items(values)
 
 
 @dataclass
@@ -1184,6 +1226,10 @@ class Entity(GraphNode):
                 return ident
 
         raise ValueError(f"No identifier with name ({identifier_reference}) in data source with name ({self.name})")
+
+    @property
+    def reference(self) -> EntityReference:  # noqa: D
+        return EntityReference(entity_name=self.name)
 
 
 # ====================================

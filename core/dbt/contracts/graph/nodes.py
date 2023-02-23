@@ -1118,7 +1118,7 @@ class Metric(GraphNode):
             values.append(self.constraint.where)
             if self.constraint.linkable_names:
                 values.extend(self.constraint.linkable_names)
-        values.extend([m.element_name for m in self.measure_references])
+        values.extend([m.name for m in self.measure_references])
         return hash_items(values)
 
 

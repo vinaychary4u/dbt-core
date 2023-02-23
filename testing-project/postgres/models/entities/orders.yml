@@ -60,8 +60,8 @@ metrics:
     type: measure_proxy
     type_params:
       measure: order_total
-    # constraint: | 
-    #   value > 100 AND user__acquisition
+    constraint: | 
+      value > 100 AND user__acquisition
 
   - name: sales_minus_revenue
     type: derived 

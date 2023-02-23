@@ -519,15 +519,23 @@ class UnparsedMetric(dbtClassMixin):
     type_params: UnparsedMetricTypeParams
     description: Optional[str] = None
     entity: Optional[str] = None
-    # constraint: Optional[WhereClauseConstraint] = None
+    constraint: Optional[str] = None
+    # constraint: Optional[List[Union[WhereClauseConstraint,str]]] = None
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
     config: Dict[str, Any] = field(default_factory=dict)
     
     @classmethod
     def validate(cls, data):
-        breakpoint()
         super(UnparsedMetric, cls).validate(data)
+        if "constraint" in data:
+            if isinstance(data["constraint"], str):
+                # breakpoint()
+                data["constraint"] = WhereClauseConstraint.parse(data["constraint"])
+                breakpoint()
+            else:
+                raise CompilationError(f"Expected input for constraint on metric {data['name']} to be of type string")
+
         # TODO: Figure out better way to convert to input measures. We need this here
         # so we can do full "mf model" validation in schemas.py. Specifically for input
         # measure metric rules - they requrie that identifiers be present in metrics propert

@@ -995,7 +995,7 @@ class Metric(GraphNode):
     entity: str
     type: MetricType
     type_params: MetricTypeParams
-    # constraint: Optional[WhereClauseConstraint] = None
+    constraint: Optional[WhereClauseConstraint] = None
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Metric]})
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)

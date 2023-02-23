@@ -24,12 +24,12 @@ class ElementConsistencyRule(ModelValidationRule):
     @staticmethod
     def validate_model(model: UserConfiguredModel) -> List[ValidationIssueType]:  # noqa: D
         issues = []
-        element_name_to_types = ElementConsistencyRule._get_element_name_to_types(model=model)
+        name_to_types = ElementConsistencyRule._get_name_to_types(model=model)
         invalid_elements = {
-            name: type_mapping for name, type_mapping in element_name_to_types.items() if len(type_mapping) > 1
+            name: type_mapping for name, type_mapping in name_to_types.items() if len(type_mapping) > 1
         }
 
-        for element_name, type_to_context in invalid_elements.items():
+        for name, type_to_context in invalid_elements.items():
             # Sort these by value to ensure consistent error messaging
             types_used = [EntityElementType(v) for v in sorted(k.value for k in type_to_context.keys())]
             value_types_used = [type.value for type in types_used]
@@ -40,7 +40,7 @@ class ElementConsistencyRule(ModelValidationRule):
                 issues.append(
                     ValidationError(
                         context=entity_context,
-                        message=f"In data sources {entity_names}, element `{element_name}` is of type "
+                        message=f"In data sources {entity_names}, element `{name}` is of type "
                         f"{element_type.value}, but it is used as types {value_types_used} across the model.",
                     )
                 )
@@ -48,7 +48,7 @@ class ElementConsistencyRule(ModelValidationRule):
         return issues
 
     @staticmethod
-    def _get_element_name_to_types(
+    def _get_name_to_types(
         model: UserConfiguredModel,
     ) -> DefaultDict[str, DefaultDict[EntityElementType, List[EntityContext]]]:
         """Create a mapping of all element names in the model to types with a list of associated EntityContexts"""

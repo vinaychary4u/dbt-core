@@ -3,7 +3,7 @@ version: 2
 exposures:
 
   - name: weekly_metrics
-    label: Soem Label
+    label: Some Label
     type: dashboard
     maturity: high
     url: https://bi.tool/dashboards/1

@@ -49,11 +49,11 @@ class CommonIdentifiersRule(ModelValidationRule):
                 ValidationWarning(
                     context=EntityElementContext(
                         entity_element=EntityElementReference(
-                            entity_name=entity.name, element_name=identifier.name
+                            entity_name=entity.name, name=identifier.name
                         ),
                         element_type=EntityElementType.IDENTIFIER,
                     ),
-                    message=f"Identifier `{identifier.reference.element_name}` "
+                    message=f"Identifier `{identifier.reference.name}` "
                     f"only found in one entity `{entity.name}` "
                     f"which means it will be unused in joins.",
                 )

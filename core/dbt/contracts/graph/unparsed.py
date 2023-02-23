@@ -530,9 +530,7 @@ class UnparsedMetric(dbtClassMixin):
         super(UnparsedMetric, cls).validate(data)
         if "constraint" in data:
             if isinstance(data["constraint"], str):
-                # breakpoint()
                 data["constraint"] = WhereClauseConstraint.parse(data["constraint"])
-                breakpoint()
             else:
                 raise CompilationError(f"Expected input for constraint on metric {data['name']} to be of type string")
 

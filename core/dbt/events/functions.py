@@ -18,6 +18,15 @@ LOG_VERSION = 3
 metadata_vars: Optional[Dict[str, str]] = None
 
 
+def setup_fallback_logger(enable_legacy_logger: bool, level: EventLevel):
+    cleanup_event_logger()
+    EVENT_MANAGER.add_logger(
+        _get_logbook_log_config(False, True, False, False)  # type: ignore
+        if enable_legacy_logger
+        else _get_stdout_config(LineFormat.PlainText, False, True, level, False, False)
+    )
+
+
 def setup_event_logger(flags) -> None:
     cleanup_event_logger()
     make_log_dir_if_missing(flags.LOG_PATH)
@@ -169,11 +178,7 @@ def cleanup_event_logger():
 # currently fire before logs can be configured by setup_event_logger(), we
 # create a default configuration with default settings and no file output.
 EVENT_MANAGER: EventManager = EventManager()
-EVENT_MANAGER.add_logger(
-    _get_logbook_log_config(False, True, False, False)  # type: ignore
-    if ENABLE_LEGACY_LOGGER
-    else _get_stdout_config(LineFormat.PlainText, False, True, EventLevel.INFO, False, False)
-)
+setup_fallback_logger(bool(ENABLE_LEGACY_LOGGER), EventLevel.INFO)
 
 # This global, and the following two functions for capturing stdout logs are
 # an unpleasant hack we intend to remove as part of API-ification. The GitHub

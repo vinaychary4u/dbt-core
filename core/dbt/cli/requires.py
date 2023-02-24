@@ -4,7 +4,8 @@ from dbt.flags import set_flags, get_flag_dict
 from dbt.cli.flags import Flags
 from dbt.config import RuntimeConfig
 from dbt.config.runtime import load_project, load_profile, UnsetProfile
-from dbt.events.functions import setup_event_logger, fire_event, LOG_VERSION
+from dbt.events.base_types import EventLevel
+from dbt.events.functions import setup_event_logger, setup_fallback_logger, fire_event, LOG_VERSION
 from dbt.events.types import MainReportVersion, MainReportArgs, MainTrackingUserState
 from dbt.exceptions import DbtProjectError
 from dbt.parser.manifest import ManifestLoader, write_manifest
@@ -22,6 +23,14 @@ def preflight(func):
         assert isinstance(ctx, Context)
         ctx.obj = ctx.obj or {}
 
+        # Since loggable events can happen while the flags and user config are being read, look for
+        # and enforce certain logging command line parameters early to ensure they take effect.
+        parent_params = ctx.parent.params
+        setup_fallback_logger(
+            bool(parent_params["enable_legacy_logger"]),
+            EventLevel.ERROR if parent_params["quiet"] else EventLevel.INFO,
+        )
+
         # Flags
         flags = Flags(ctx)
         ctx.obj["flags"] = flags
@@ -32,7 +41,6 @@ def preflight(func):
         ctx.with_resource(track_run(run_command=flags.WHICH))
 
         # Logging
-        # N.B. Legacy logger is not supported
         setup_event_logger(flags)
 
         # Now that we have our logger, fire away!

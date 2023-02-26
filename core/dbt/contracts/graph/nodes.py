@@ -1036,7 +1036,7 @@ class Metric(GraphNode):
     def definition_hash(self) -> str:  # noqa: D
         values: List[str] = [self.name, self.type_params.expr or ""]
         if self.constraint:
-            values.append(self.constraint.where)
+            values.append(self.constraint.where_clause)
             if self.constraint.linkable_names:
                 values.extend(self.constraint.linkable_names)
         values.extend([m.name for m in self.measure_references])
@@ -1087,40 +1087,6 @@ class Metric(GraphNode):
             and True
         )
 
-    @property
-    def input_measures(self) -> List[MetricInputMeasure]:
-        """Return the complete list of input measure configurations for this metric"""
-        tp = self.type_params
-        res = tp.measures or []
-        if tp.measure:
-            res.append(tp.measure)
-        if tp.numerator:
-            res.append(tp.numerator)
-        if tp.denominator:
-            res.append(tp.denominator)
-
-        return res
-
-    @property
-    def measure_references(self) -> List[MeasureReference]:
-        """Return the measure references associated with all input measure configurations for this metric"""
-        return [x.measure_reference for x in self.input_measures]
-
-    @property
-    def input_metrics(self) -> List[MetricInput]:
-        """Return the associated input metrics for this metric"""
-        return self.type_params.metrics or []
-
-    @property
-    def definition_hash(self) -> str:  # noqa: D
-        values: List[str] = [self.name, self.type_params.expr or ""]
-        if self.constraint:
-            values.append(self.constraint.where)
-            if self.constraint.linkable_names:
-                values.extend(self.constraint.linkable_names)
-        values.extend([m.name for m in self.measure_references])
-        return hash_items(values)
-
 
 @dataclass
 class Entity(GraphNode):
@@ -1128,6 +1094,7 @@ class Entity(GraphNode):
     model: str
     description: str
     origin: EntityOrigin
+    sql_table: str
     identifiers: Optional[Sequence[Identifier]] = field(default_factory=list)
     dimensions: Optional[Sequence[Dimension]] = field(default_factory=list)
     measures: Optional[Sequence[Measure]] = field(default_factory=list)
@@ -1226,6 +1193,33 @@ class Entity(GraphNode):
                 return ident
 
         raise ValueError(f"No identifier with name ({identifier_reference}) in data source with name ({self.name})")
+
+    @property
+    def has_validity_dimensions(self) -> bool:
+        """Returns True if there are validity params set on one or more dimensions"""
+        return any([dim.validity_params is not None for dim in self.dimensions])
+
+    @property
+    def validity_start_dimension(self) -> Optional[Dimension]:
+        """Returns the validity window start dimension, if one is set"""
+        validity_start_dims = [dim for dim in self.dimensions if dim.validity_params and dim.validity_params.is_start]
+        if not validity_start_dims:
+            return None
+        assert (
+            len(validity_start_dims) == 1
+        ), "Found more than one validity start dimension. This should have been blocked in validation!"
+        return validity_start_dims[0]
+
+    @property
+    def validity_end_dimension(self) -> Optional[Dimension]:
+        """Returns the validity window end dimension, if one is set"""
+        validity_end_dims = [dim for dim in self.dimensions if dim.validity_params and dim.validity_params.is_end]
+        if not validity_end_dims:
+            return None
+        assert (
+            len(validity_end_dims) == 1
+        ), "Found more than one validity end dimension. This should have been blocked in validation!"
+        return validity_end_dims[0]
 
     @property
     def reference(self) -> EntityReference:  # noqa: D

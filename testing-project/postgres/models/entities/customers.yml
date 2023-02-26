@@ -6,11 +6,12 @@ entities:
     description: "Our customers entity"
 
     identifiers:
-      - name: customer_id
+      - name: customer
         type: primary
+        expr: customer_id
 
     dimensions:
-      - name: first_name_v3_testing
+      - name: first_name
         type: categorical
 
         

@@ -520,7 +520,6 @@ class UnparsedMetric(dbtClassMixin):
     description: Optional[str] = None
     entity: Optional[str] = None
     constraint: Optional[str] = None
-    # constraint: Optional[List[Union[WhereClauseConstraint,str]]] = None
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
     config: Dict[str, Any] = field(default_factory=dict)

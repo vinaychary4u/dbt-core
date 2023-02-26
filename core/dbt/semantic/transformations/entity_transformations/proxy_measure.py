@@ -69,6 +69,7 @@ class ProxyMeasure(ABC):
                             unique_id=unique_id,
                             fqn=fqn,
                             name=measure.name,
+                            constraint=None,
                             entity="entity('" + parsed_entity.name + "')",
                             description=measure.description,
                             type=MetricType.MEASURE_PROXY,

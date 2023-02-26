@@ -5,8 +5,11 @@ entities:
     model: ref('fact_orders')
     description: "Our orders entity"
     identifiers:
-      - name: order_id
+      - name: order
         type: primary
+      - name: customer
+        type: foreign
+        expr: customer_id
     dimensions:
       - name: order_date
         type: time

@@ -1115,6 +1115,8 @@ class EntityParser(YamlReader):
     def parse_entity(self, unparsed: UnparsedEntity):
         package_name = self.project.project_name
         unique_id = f"{NodeType.Entity}.{package_name}.{unparsed.name}"
+        entity_model_name = unparsed.model.replace('"','\'').split('\'')[1]
+        model_key=f"model.{package_name}.{entity_model_name}"
         path = self.yaml.path.relative_path
 
         fqn = self.schema_parser.get_fqn_prefix(path)
@@ -1141,6 +1143,7 @@ class EntityParser(YamlReader):
                 f"Calculated a {type(config)} for an entity, but expected a EntityConfig"
             )
 
+
         parsed = Entity(
             resource_type=NodeType.Entity,
             package_name=package_name,
@@ -1149,6 +1152,7 @@ class EntityParser(YamlReader):
             unique_id=unique_id,
             fqn=fqn,
             model=unparsed.model,
+            sql_table=self.schema_parser.manifest.nodes[model_key].relation_name,
             name=unparsed.name,
             description=unparsed.description,
             identifiers=unparsed.identifiers,
@@ -1367,4 +1371,7 @@ class MetricParser(YamlReader):
         ##We validate here for the input metric measurs because
         ## we need all of the metrics to be parsed. This exists for 
         ## derived metrics 
-        AddInputMetricMeasures.add_input_metrics(self.manifest)
+        metrics=[metric for metric in self.manifest.metrics.values()]
+        for metric in metrics:
+            metric = AddInputMetricMeasures.add_input_metrics(metric=metric,metrics=metrics)
+            # self.update_metric

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 from dbt.contracts.util import (
     Replaceable,
     Mergeable
@@ -31,7 +32,17 @@ class MetricType(StrEnum):
     DERIVED = "derived"
 
 
-MetricInputMeasueValue = Any
+@dataclass
+class UnparsedMetricInputMeasure(dbtClassMixin, Replaceable):
+    """Provides a pointer to a measure along with metric-specific processing directives
+    If an alias is set, this will be used as the string name reference for this measure after the aggregation
+    phase in the SQL plan.
+    """
+
+    name: str
+    constraint: Optional[str] = None
+    alias: Optional[str]=None
+
 
 @dataclass
 class MetricInputMeasure(dbtClassMixin, Replaceable):
@@ -41,7 +52,7 @@ class MetricInputMeasure(dbtClassMixin, Replaceable):
     """
 
     name: str
-    # constraint: Optional[WhereClauseConstraint]
+    constraint: Optional[WhereClauseConstraint] = None
     alias: Optional[str]=None
 
     # Removed _from_yaml_value due to how dbt reads in yml
@@ -55,6 +66,9 @@ class MetricInputMeasure(dbtClassMixin, Replaceable):
     def post_aggregation_measure_reference(self) -> MeasureReference:
         """Property accessor to get the MeasureReference with the aliased name, if appropriate"""
         return MeasureReference(name=self.alias or self.name)
+
+    def __hash__(self) -> int:  # noqa: D
+        return hash(json.dumps(self.to_dict()))
 
 
 @dataclass
@@ -115,10 +129,10 @@ class UnparsedMetricTypeParams(dbtClassMixin, Mergeable):
 
     #NOTE: Adding a union to allow for the class or a string. We 
     # change to prefered class in schemas.py during conversion to Metric
-    measure: Optional[Union[MetricInputMeasure,str]] = None
-    measures: Optional[List[Union[MetricInputMeasure,str]]]  = field(default_factory=list)
-    numerator: Optional[Union[MetricInputMeasure,str]] = None
-    denominator: Optional[Union[MetricInputMeasure,str]] = None
+    measure: Optional[Union[UnparsedMetricInputMeasure,str]] = None
+    measures: Optional[List[Union[UnparsedMetricInputMeasure,str]]]  = field(default_factory=list)
+    numerator: Optional[Union[UnparsedMetricInputMeasure,str]] = None
+    denominator: Optional[Union[UnparsedMetricInputMeasure,str]] = None
     expr: Optional[str] = None
     window: Optional[Union[MetricTimeWindow,str]] = None
     grain_to_date: Optional[TimeGranularity] = None

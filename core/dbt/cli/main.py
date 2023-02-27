@@ -20,12 +20,16 @@ from dbt.task.freshness import FreshnessTask
 from dbt.task.run_operation import RunOperationTask
 from dbt.task.build import BuildTask
 from dbt.task.generate import GenerateTask
+from dbt.task.validate import ValidateTask
 from dbt.task.init import InitTask
 
-# metricflow_module = importlib.util.find_spec("metricflow")
-# print(metricflow_module)
-# if importlib.util.find_spec("metricflow") is not None:
-# from metricflow.cli.main import commands as metricflow_commands
+import importlib
+metricflow_module = importlib.util.find_spec("metricflow")
+if metricflow_module is not None:
+    from metricflow.cli.main import (
+        cli as metricflow_cli
+    )
+
 
 class dbtUsageException(Exception):
     pass
@@ -162,6 +166,13 @@ def clean(ctx, **kwargs):
     results = task.run()
     success = task.interpret_results(results)
     return results, success
+
+# mf 
+@cli.group()
+@click.pass_context
+def mf(ctx, **kwargs):
+    """Used to house the metricflow metrics"""
+    pass
 
 
 # dbt docs
@@ -576,7 +587,7 @@ def freshness(ctx, **kwargs):
 snapshot_freshness = copy(cli.commands["source"].commands["freshness"])  # type: ignore
 snapshot_freshness.hidden = True
 cli.commands["source"].add_command(snapshot_freshness, "snapshot-freshness")  # type: ignore
-
+cli.add_command(metricflow_cli, "mf")
 
 # dbt test
 @cli.command("test")
@@ -617,18 +628,29 @@ def test(ctx, **kwargs):
 
 
 # dbt validate
-@cli.command("validate")
-@click.pass_context
-@p.args
-@p.profile
-@p.profiles_dir
-@p.project_dir
-@p.target
-@p.vars
-def validate(ctx, **kwargs):
-    """Validates the semantic layer"""
-    flags = Flags()
-    click.echo(f"`{inspect.stack()[0][3]}` called\n flags: {flags}")
+# @cli.command("validate")
+# @click.pass_context
+# @p.args
+# @p.profile
+# @p.profiles_dir
+# @p.project_dir
+# @p.target
+# @p.vars
+# @requires.preflight
+# @requires.profile
+# @requires.project
+# @requires.runtime_config
+# @requires.manifest
+# def validate(ctx, **kwargs):
+#     """Validates the semantic layer"""
+#     task = ValidateTask(
+#         ctx.obj["flags"],
+#         ctx.obj["runtime_config"],
+#         ctx.obj["manifest"],
+#     )
+#     results = task.run()
+#     success = task.interpret_results(results)
+#     return results, success
 
 
 # Support running as a module

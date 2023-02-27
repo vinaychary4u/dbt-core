@@ -25,6 +25,7 @@ entities:
 
       - name: order_location
         type: categorical
+        expr: order_country
 
 
     measures:

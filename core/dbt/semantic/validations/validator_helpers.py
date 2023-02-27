@@ -342,13 +342,6 @@ class ModelValidationException(Exception):
         super().__init__(f"Error validating model. Issues:\n{issues_str}")
 
 
-@dataclass
-class ModelBuildResult:  # noqa: D
-    model: UserConfiguredModel
-    # Issues found in the model.
-    issues: ModelValidationResults = ModelValidationResults()
-
-
 class iter_bucket:
     """
     NOTE: Copied over from more_itertools but we don't want the dependency.
@@ -426,3 +419,9 @@ def iter_flatten(listOfLists):
     See also :func:`collapse`, which can flatten multiple levels of nesting.
     """
     return chain.from_iterable(listOfLists)
+
+@dataclass
+class ModelBuildResult:  # noqa: D
+    model: UserConfiguredModel
+    # Issues found in the model.
+    issues: ModelValidationResults = ModelValidationResults()

@@ -37,7 +37,7 @@ from dbt.contracts.graph.nodes import (
     ResultNode,
     BaseNode,
 )
-from dbt.semantic.validations.validator_helpers import ModelValidationResults
+from dbt.semantic.user_configured_model import UserConfiguredModel
 from dbt.contracts.graph.unparsed import SourcePatch
 from dbt.contracts.files import SourceFile, SchemaSourceFile, FileHash, AnySourceFile
 from dbt.contracts.util import BaseArtifactMetadata, SourceKey, ArtifactMixin, schema_version
@@ -624,22 +624,6 @@ class ManifestStateCheck(dbtClassMixin):
     profile_hash: FileHash = field(default_factory=FileHash.empty)
     project_hashes: MutableMapping[str, FileHash] = field(default_factory=dict)
 
-
-@dataclass
-class UserConfiguredModel(dbtClassMixin):
-    """Model holds all the information the SemanticLayer needs to render a query"""
-
-    entities: List[Entity] = field(default_factory=list)
-    metrics: List[Metric] = field(default_factory=list)
-
-    def _serialize(self):
-        return self.to_dict()
-
-@dataclass
-class ModelBuildResult:  # noqa: D
-    model: UserConfiguredModel
-    # Issues found in the model.
-    issues: ModelValidationResults = ModelValidationResults()
 
 @dataclass
 class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):

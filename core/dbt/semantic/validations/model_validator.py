@@ -27,7 +27,7 @@ from dbt.semantic.validations.validator_helpers import (
     ModelValidationResults,
     ModelValidationRule,
     ModelValidationException,
-    ModelBuildResult,
+    ModelBuildResult
 )
 
 

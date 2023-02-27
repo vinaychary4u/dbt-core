@@ -370,6 +370,7 @@ class BaseConfig(AdditionalPropertiesAllowed, Replaceable):
 @dataclass
 class MetricConfig(BaseConfig):
     enabled: bool = True
+    group: Optional[str] = None
 
 
 @dataclass
@@ -406,6 +407,10 @@ class NodeAndTestConfig(BaseConfig):
     meta: Dict[str, Any] = field(
         default_factory=dict,
         metadata=MergeBehavior.Update.meta(),
+    )
+    group: Optional[str] = field(
+        default=None,
+        metadata=CompareBehavior.Exclude.meta(),
     )
 
     @classmethod
@@ -456,6 +461,7 @@ class NodeConfig(NodeAndTestConfig):
         default_factory=Docs,
         metadata=MergeBehavior.Update.meta(),
     )
+    contract: bool = False
 
     @classmethod
     def msg_attributes(self):

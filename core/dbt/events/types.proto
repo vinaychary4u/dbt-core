@@ -207,7 +207,7 @@ message ProfileWrittenWithTargetTemplateYAML {
 
 message ProfileWrittenWithTargetTemplateYAMLMsg {
     EventInfo info = 1;
-    ProfileWrittenWithTargetTemplateYAMLMsg data = 2;
+    ProfileWrittenWithTargetTemplateYAML data = 2;
 }
 
 // A022
@@ -347,53 +347,6 @@ message InternalDeprecation {
 message InternalDeprecationMsg {
     EventInfo info = 1;
     InternalDeprecation data = 2;
-}
-
-// D - Deprecation
-
-// D001
-message PackageRedirectDeprecation {
-    EventInfo info = 1;
-    string old_name = 2;
-    string new_name = 3;
-}
-
-// D002
-message PackageInstallPathDeprecation {
-    EventInfo info = 1;
-}
-
-// D003
-message ConfigSourcePathDeprecation {
-    EventInfo info = 1;
-    string deprecated_path = 2;
-    string exp_path = 3;
-}
-
-// D004
-message ConfigDataPathDeprecation {
-    EventInfo info = 1;
-    string deprecated_path = 2;
-    string exp_path = 3;
-}
-
-//D005
-message AdapterDeprecationWarning {
-    EventInfo info = 1;
-    string old_name = 2;
-    string new_name = 3;
-}
-
-//D006
-message MetricAttributesRenamed {
-    EventInfo info = 1;
-    string metric_name = 2;
-}
-
-//D007
-message ExposureNameDeprecation {
-    EventInfo info = 1;
-    string exposure = 2;
 }
 
 // E - DB Adapter
@@ -807,21 +760,42 @@ message FinishedRunningStatsMsg {
     FinishedRunningStats data = 2;
 }
 
-
 // I - Project parsing
 
-// I001
-message ParseCmdOut {
-    string msg = 1;
+// Skipping I001, I002, I003, I004, I005, I006, I007
+
+// I008
+message InvalidValueForField {
+    string field_name = 1;
+    string field_value = 2;
 }
 
-message ParseCmdOutMsg {
+message InvalidValueForFieldMsg {
     EventInfo info = 1;
-    ParseCmdOut data = 2;
+    InvalidValueForField data = 2;
 }
 
-// Skipping I002, I003, I004, I005, I006, I007, I008, I009, I010
+// I009
+message ValidationWarning {
+    string resource_type = 1;
+    string field_name = 2;
+    string node_name = 3;
+}
 
+message ValidationWarningMsg {
+    EventInfo info = 1;
+    ValidationWarning data = 2;
+}
+
+// I010
+message ParsePerfInfoPath {
+    string path = 1;
+}
+
+message ParsePerfInfoPathMsg {
+    EventInfo info = 1;
+    ParsePerfInfoPath data = 2;
+}
 
 // I011
 message GenericTestFileParse {
@@ -1405,19 +1379,6 @@ message NoNodesForSelectionCriteriaMsg {
     NoNodesForSelectionCriteria data = 2;
 }
 
-// M029
-message DepsUnpinned {
-    EventInfo info = 1;
-    string revision = 2;
-    string git = 3;
-}
-
-// M030
-message NoNodesForSelectionCriteria {
-    EventInfo info = 1;
-    string spec_raw = 2;
-}
-
 // Q - Node execution
 
 // Q001
@@ -1511,7 +1472,7 @@ message LogModelResult {
     string status = 3;
     int32 index = 4;
     int32 total = 5;
-    int32 execution_time = 6;
+    float execution_time = 6;
 }
 
 message LogModelResultMsg {
@@ -1545,16 +1506,9 @@ message LogSeedResult {
     int32 index = 4;
     int32 total = 5;
     float execution_time = 6;
-    string source_name = 7;
-    string table_name = 8;
+    string schema = 7;
+    string relation = 8;
 }
-
-message LogSeedResultMsg {
-    EventInfo info = 1;
-    LogSeedResult data = 2;
-}
-
-// Skipped Q017
 
 message LogSeedResultMsg {
     EventInfo info = 1;
@@ -1724,24 +1678,6 @@ message NothingToDo {
 }
 
 message NothingToDoMsg {
-    NodeInfo node_info = 1;
-    string resource_type = 2;
-    string schema = 3;
-    string node_name = 4;
-    int32 index = 5;
-    int32 total = 6;
-}
-
-message SkippingDetailsMsg {
-    NodeInfo node_info = 1;
-    string resource_type = 2;
-    string schema = 3;
-    string node_name = 4;
-    int32 index = 5;
-    int32 total = 6;
-}
-
-message SkippingDetailsMsg {
     EventInfo info = 1;
     NothingToDo data = 2;
 }
@@ -1776,11 +1712,6 @@ message NoNodesSelected {
 message NoNodesSelectedMsg {
     EventInfo info = 1;
     NoNodesSelected data = 2;
-}
-
-// Q038
-message NoNodesSelected {
-    EventInfo info = 1;
 }
 
 // W - Node testing

@@ -28,7 +28,7 @@ from dbt.contracts.graph.unparsed import (
     UnparsedSourceTableDefinition,
     UnparsedColumn,
     TestDef,
-    ExposureOwner,
+    Owner,
     ExposureType,
     MaturityType,
     MetricFilter,
@@ -38,16 +38,17 @@ from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
 from dbt.contracts.graph.utils import get_msg_attribute_value
 from dbt.events.proto_types import NodeInfo
 from dbt.events.functions import warn_or_error
-from dbt.exceptions import ParsingError
+from dbt.exceptions import ParsingError, InvalidAccessTypeError
 from dbt.events.types import (
     SeedIncreased,
     SeedExceedsLimitSamePath,
     SeedExceedsLimitAndPathChanged,
     SeedExceedsLimitChecksumChanged,
+    ValidationWarning,
 )
 from dbt.events.contextvars import set_contextvars
 from dbt.flags import get_flags
-from dbt.node_types import ModelLanguage, NodeType
+from dbt.node_types import ModelLanguage, NodeType, AccessType
 from dbt.utils import cast_dict_to_dict_of_strings
 
 from dbt.contracts.graph import proto_nodes
@@ -62,6 +63,7 @@ from .model_config import (
     EmptySnapshotConfig,
     SnapshotConfig,
 )
+
 
 # =====================================================================
 # This contains the classes for all of the nodes and node-like objects
@@ -164,6 +166,8 @@ class ColumnInfo(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable
     description: str = ""
     meta: Dict[str, Any] = field(default_factory=dict)
     data_type: Optional[str] = None
+    constraints: Optional[List[str]] = None
+    constraints_check: Optional[str] = None
     quote: Optional[bool] = None
     tags: List[str] = field(default_factory=list)
     _extra: Dict[str, Any] = field(default_factory=dict)
@@ -279,6 +283,7 @@ class ParsedNode(NodeInfoMixin, ParsedNodeMandatory, SerializableType):
     description: str = field(default="")
     columns: Dict[str, ColumnInfo] = field(default_factory=dict)
     meta: Dict[str, Any] = field(default_factory=dict)
+    group: Optional[str] = None
     docs: Docs = field(default_factory=Docs)
     patch_path: Optional[str] = None
     build_path: Optional[str] = None
@@ -417,6 +422,26 @@ class ParsedNode(NodeInfoMixin, ParsedNodeMandatory, SerializableType):
         self.created_at = time.time()
         self.description = patch.description
         self.columns = patch.columns
+        # This might not be the ideal place to validate the "access" field,
+        # but at this point we have the information we need to properly
+        # validate and we don't before this.
+        if patch.access:
+            if self.resource_type == NodeType.Model:
+                if AccessType.is_valid(patch.access):
+                    self.access = AccessType(patch.access)
+                else:
+                    raise InvalidAccessTypeError(
+                        unique_id=self.unique_id,
+                        field_value=patch.access,
+                    )
+            else:
+                warn_or_error(
+                    ValidationWarning(
+                        field_name="access",
+                        resource_type=self.resource_type.value,
+                        node_name=patch.name,
+                    )
+                )
 
     def same_contents(self, old) -> bool:
         if old is None:
@@ -456,6 +481,7 @@ class CompiledNode(ParsedNode):
     extra_ctes_injected: bool = False
     extra_ctes: List[InjectedCTE] = field(default_factory=list)
     _pre_injected_sql: Optional[str] = None
+    contract: bool = False
 
     @classmethod
     def msg_attributes(self):
@@ -479,8 +505,10 @@ class CompiledNode(ParsedNode):
         do if extra_ctes were an OrderedDict
         """
         for cte in self.extra_ctes:
+            # Because it's possible that multiple threads are compiling the
+            # node at the same time, we don't want to overwrite already compiled
+            # sql in the extra_ctes with empty sql.
             if cte.id == cte_id:
-                cte.sql = sql
                 break
         else:
             self.extra_ctes.append(InjectedCTE(id=cte_id, sql=sql))
@@ -545,6 +573,7 @@ class HookNode(CompiledNode):
 @dataclass
 class ModelNode(CompiledNode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Model]})
+    access: AccessType = AccessType.Protected
 
 
 # TODO: this node type should probably be removed when the rpc server is no longer supported
@@ -742,6 +771,7 @@ class GenericTestNode(TestShouldStoreFailures, CompiledNode, HasTestMetadata):
     # Was not able to make mypy happy and keep the code working. We need to
     # refactor the various configs.
     config: TestConfig = field(default_factory=TestConfig)  # type: ignore
+    attached_node: Optional[str] = None
 
     def to_msg(self):
         msg = super().to_msg()
@@ -1096,7 +1126,7 @@ class SourceDefinition(NodeInfoMixin, ParsedSourceMandatory):
 @dataclass
 class Exposure(GraphNode):
     type: ExposureType
-    owner: ExposureOwner
+    owner: Owner
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Exposure]})
     description: str = ""
     label: Optional[str] = None
@@ -1321,6 +1351,18 @@ class Metric(GraphNode):
 
 
 # ====================================
+# Group node
+# ====================================
+
+
+@dataclass
+class Group(BaseNode):
+    name: str
+    owner: Owner
+    resource_type: NodeType = field(metadata={"restrict": [NodeType.Group]})
+
+
+# ====================================
 # Patches
 # ====================================
 
@@ -1340,6 +1382,7 @@ class ParsedPatch(HasYamlMetadata, Replaceable):
 @dataclass
 class ParsedNodePatch(ParsedPatch):
     columns: Dict[str, ColumnInfo]
+    access: Optional[str]
 
 
 @dataclass
@@ -1388,6 +1431,7 @@ Resource = Union[
     GraphMemberNode,
     Documentation,
     Macro,
+    Group,
 ]
 
 TestNode = Union[

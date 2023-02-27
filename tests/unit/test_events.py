@@ -14,6 +14,8 @@ from dbt.events.base_types import (
     msg_from_base_event,
 )
 from dbt.events.functions import msg_to_dict, msg_to_json
+from dbt.flags import set_from_args
+from argparse import Namespace
 
 
 # takes in a class and finds any subclasses for it
@@ -170,8 +172,9 @@ sample_values = [
     types.HooksRunning(num_hooks=0, hook_type=""),
     types.FinishedRunningStats(stat_line="", execution="", execution_time=0),
     # I - Project parsing ======================
-    types.ParseCmdOut(msg="testing"),
-    types.ParseCmdPerfInfoPath(path=""),
+    types.InvalidValueForField(field_name="test", field_value="test"),
+    types.ValidationWarning(resource_type="model", field_name="access", node_name="my_macro"),
+    types.ParsePerfInfoPath(path=""),
     types.GenericTestFileParse(path=""),
     types.MacroFileParse(path=""),
     types.PartialParsingErrorProcessingFile(file=""),
@@ -385,6 +388,7 @@ class TestEventJSONSerialization:
     # event types that take `Any` are not possible to test in this way since some will serialize
     # just fine and others won't.
     def test_all_serializable(self):
+        set_from_args(Namespace(WARN_ERROR=False), None)
         all_non_abstract_events = set(
             get_all_subclasses(BaseEvent),
         )
@@ -399,18 +403,31 @@ class TestEventJSONSerialization:
             assert type(event) != type
 
         # if we have everything we need to test, try to serialize everything
+        count = 0
         for event in sample_values:
             msg = msg_from_base_event(event)
+            print(f"--- msg: {msg.info.name}")
+            # Serialize to dictionary
             try:
                 msg_to_dict(msg)
             except Exception as e:
                 raise Exception(
                     f"{event} can not be converted to a dict. Originating exception: {e}"
                 )
+            # Serialize to json
             try:
                 msg_to_json(msg)
             except Exception as e:
                 raise Exception(f"{event} is not serializable to json. Originating exception: {e}")
+            # Serialize to binary
+            try:
+                bytes(msg)
+            except Exception as e:
+                raise Exception(
+                    f"{event} is not serializable to binary protobuf. Originating exception: {e}"
+                )
+            count += 1
+        print(f"--- Found {count} events")
 
 
 T = TypeVar("T")

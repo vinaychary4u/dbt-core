@@ -1044,7 +1044,7 @@ class WrongResourceSchemaFile(WarnLevel, pt.WrongResourceSchemaFile):
 
 
 @dataclass
-class NoNodeForYamlKey(WarnLevel, pt.NoNodeForYamlKey):
+class NoNodeForYAMLKey(WarnLevel, pt.NoNodeForYAMLKey):
     def code(self):
         return "I058"
 

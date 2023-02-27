@@ -71,7 +71,7 @@ from dbt.exceptions import (
     YamlParseListError,
 )
 from dbt.events.functions import warn_or_error
-from dbt.events.types import WrongResourceSchemaFile, NoNodeForYamlKey, MacroNotFoundForPatch
+from dbt.events.types import WrongResourceSchemaFile, NoNodeForYAMLKey, MacroNotFoundForPatch
 from dbt.node_types import NodeType
 from dbt.parser.base import SimpleParser
 from dbt.parser.search import FileBlock
@@ -935,7 +935,7 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
                     node.patch(patch)
             else:
                 warn_or_error(
-                    NoNodeForYamlKey(
+                    NoNodeForYAMLKey(
                         patch_name=patch.name,
                         yaml_key=patch.yaml_key,
                         file_path=source_file.path.original_file_path,

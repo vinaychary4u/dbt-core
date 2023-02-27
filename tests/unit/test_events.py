@@ -204,7 +204,7 @@ sample_values = [
     types.WrongResourceSchemaFile(
         patch_name="", resource_type="", file_path="", plural_resource_type=""
     ),
-    types.NoNodeForYamlKey(patch_name="", yaml_key="", file_path=""),
+    types.NoNodeForYAMLKey(patch_name="", yaml_key="", file_path=""),
     types.MacroNotFoundForPatch(patch_name=""),
     types.NodeNotFoundOrDisabled(
         original_file_path="",

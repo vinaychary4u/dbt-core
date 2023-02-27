@@ -3,17 +3,27 @@ from copy import copy
 from pprint import pformat as pf  # This is temporary for RAT-ing
 
 import click
+import importlib
 from dbt.adapters.factory import adapter_management
 from dbt.cli import params as p
 from dbt.cli.flags import Flags
 from dbt.profiler import profiler
 
+# metricflow_module = importlib.util.find_spec("metricflow")
+# print(metricflow_module)
+# if importlib.util.find_spec("metricflow") is not None:
+# from metricflow.cli.main import commands as metricflow_commands
 
 def cli_runner():
     # Alias "list" to "ls"
     ls = copy(cli.commands["list"])
     ls.hidden = True
     cli.add_command(ls, "ls")
+
+    # Add the metricflow commands
+    # breakpoint()
+    # if metricflow_module is not None:
+    # cli.add_command(metricflow_commands.list_metrics,"list-metrics")
 
     # Run the cli
     cli()

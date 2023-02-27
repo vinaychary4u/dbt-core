@@ -1251,6 +1251,7 @@ class Metric(GraphNode):
     metrics: List[List[str]] = field(default_factory=list)
     depends_on: DependsOn = field(default_factory=DependsOn)
     created_at: float = field(default_factory=lambda: time.time())
+    group: Optional[str] = None
 
     @classmethod
     def msg_attributes(self):

@@ -17,9 +17,16 @@ class ListOfStrings(betterproto.Message):
 
 
 @dataclass(eq=False, repr=False)
+class Hook(betterproto.Message):
+    sql: str = betterproto.string_field(1)
+    transaction: bool = betterproto.bool_field(2)
+    index: Optional[int] = betterproto.int32_field(3, optional=True, group="_index")
+
+
+@dataclass(eq=False, repr=False)
 class Docs(betterproto.Message):
     show: bool = betterproto.bool_field(1)
-    node_color: str = betterproto.string_field(2)
+    node_color: Optional[str] = betterproto.string_field(2, optional=True, group="_node_color")
 
 
 @dataclass(eq=False, repr=False)
@@ -99,11 +106,11 @@ class NodeConfig(betterproto.Message):
     persist_docs: Dict[str, str] = betterproto.map_field(
         9, betterproto.TYPE_STRING, betterproto.TYPE_STRING
     )
+    post_hook: "Hook" = betterproto.message_field(10)
+    pre_hook: "Hook" = betterproto.message_field(11)
     quoting: Dict[str, str] = betterproto.map_field(
         12, betterproto.TYPE_STRING, betterproto.TYPE_STRING
     )
-    """post_hook = 10; pre_hook = 11;"""
-
     column_types: Dict[str, str] = betterproto.map_field(
         13, betterproto.TYPE_STRING, betterproto.TYPE_STRING
     )
@@ -244,7 +251,7 @@ class ColumnInfo(betterproto.Message):
     meta: Dict[str, str] = betterproto.map_field(
         3, betterproto.TYPE_STRING, betterproto.TYPE_STRING
     )
-    data_type: str = betterproto.string_field(4)
+    data_type: Optional[str] = betterproto.string_field(4, optional=True, group="_data_type")
     quote: Optional[bool] = betterproto.bool_field(5, optional=True, group="_quote")
     tags: List[str] = betterproto.string_field(6)
     extra: Dict[str, str] = betterproto.map_field(
@@ -296,11 +303,14 @@ class ModelNode(betterproto.Message):
     depends_on: "DependsOn" = betterproto.message_field(26)
     compiled: bool = betterproto.bool_field(27)
     compiled_code: str = betterproto.string_field(28)
+    contract: bool = betterproto.bool_field(29)
+    group: str = betterproto.string_field(30)
+    access: str = betterproto.string_field(31)
 
 
 @dataclass(eq=False, repr=False)
 class AnalysisNode(betterproto.Message):
-    """This should be exactly the same as ModelNode"""
+    """This should be exactly the same as ModelNode w/o access"""
 
     name: str = betterproto.string_field(1)
     resource_type: str = betterproto.string_field(2)
@@ -336,11 +346,13 @@ class AnalysisNode(betterproto.Message):
     depends_on: "DependsOn" = betterproto.message_field(26)
     compiled: bool = betterproto.bool_field(27)
     compiled_code: str = betterproto.string_field(28)
+    contract: bool = betterproto.bool_field(29)
+    group: str = betterproto.string_field(30)
 
 
 @dataclass(eq=False, repr=False)
 class RPCNode(betterproto.Message):
-    """This should be exactly the same as ModelNode"""
+    """This should be exactly the same as ModelNode w/o access"""
 
     name: str = betterproto.string_field(1)
     resource_type: str = betterproto.string_field(2)
@@ -376,11 +388,13 @@ class RPCNode(betterproto.Message):
     depends_on: "DependsOn" = betterproto.message_field(26)
     compiled: bool = betterproto.bool_field(27)
     compiled_code: str = betterproto.string_field(28)
+    contract: bool = betterproto.bool_field(29)
+    group: str = betterproto.string_field(30)
 
 
 @dataclass(eq=False, repr=False)
 class SqlNode(betterproto.Message):
-    """This should be exactly the same as ModelNode"""
+    """This should be exactly the same as ModelNode w/o access"""
 
     name: str = betterproto.string_field(1)
     resource_type: str = betterproto.string_field(2)
@@ -416,12 +430,15 @@ class SqlNode(betterproto.Message):
     depends_on: "DependsOn" = betterproto.message_field(26)
     compiled: bool = betterproto.bool_field(27)
     compiled_code: str = betterproto.string_field(28)
+    contract: bool = betterproto.bool_field(29)
+    group: str = betterproto.string_field(30)
 
 
 @dataclass(eq=False, repr=False)
 class HookNode(betterproto.Message):
     """
-    This should be the same as ModelNode plus additional "index" attribute
+    This should be the same as ModelNode (w/o access) plus additional "index"
+    attribute
     """
 
     name: str = betterproto.string_field(1)
@@ -458,7 +475,9 @@ class HookNode(betterproto.Message):
     depends_on: "DependsOn" = betterproto.message_field(26)
     compiled: bool = betterproto.bool_field(27)
     compiled_code: str = betterproto.string_field(28)
-    index: Optional[int] = betterproto.int32_field(29, optional=True, group="_index")
+    contract: bool = betterproto.bool_field(29)
+    group: str = betterproto.string_field(30)
+    index: Optional[int] = betterproto.int32_field(31, optional=True, group="_index")
 
 
 @dataclass(eq=False, repr=False)
@@ -491,11 +510,12 @@ class SeedNode(betterproto.Message):
     relation_name: str = betterproto.string_field(20)
     raw_code: str = betterproto.string_field(21)
     root_path: str = betterproto.string_field(22)
+    group: str = betterproto.string_field(23)
 
 
 @dataclass(eq=False, repr=False)
 class SingularTestNode(betterproto.Message):
-    """Same as ModelNode except config is TestConfig"""
+    """Same as ModelNode w/o access except config is TestConfig"""
 
     name: str = betterproto.string_field(1)
     resource_type: str = betterproto.string_field(2)
@@ -531,6 +551,8 @@ class SingularTestNode(betterproto.Message):
     depends_on: "DependsOn" = betterproto.message_field(26)
     compiled: bool = betterproto.bool_field(27)
     compiled_code: str = betterproto.string_field(28)
+    contract: bool = betterproto.bool_field(29)
+    group: str = betterproto.string_field(30)
 
 
 @dataclass(eq=False, repr=False)
@@ -545,8 +567,8 @@ class TestMetadata(betterproto.Message):
 @dataclass(eq=False, repr=False)
 class GenericTestNode(betterproto.Message):
     """
-    Same as ModelNode except config is TestConfig, and has test_metadata and
-    column_name attributes.
+    Same as ModelNode w/o access except config is TestConfig, and has
+    test_metadata and column_name attributes.
     """
 
     name: str = betterproto.string_field(1)
@@ -583,13 +605,17 @@ class GenericTestNode(betterproto.Message):
     depends_on: "DependsOn" = betterproto.message_field(26)
     compiled: bool = betterproto.bool_field(27)
     compiled_code: str = betterproto.string_field(28)
-    test_metadata: "TestMetadata" = betterproto.message_field(29)
-    column_name: Optional[str] = betterproto.string_field(30, optional=True, group="_column_name")
+    contract: bool = betterproto.bool_field(29)
+    group: str = betterproto.string_field(30)
+    test_metadata: "TestMetadata" = betterproto.message_field(31)
+    column_name: Optional[str] = betterproto.string_field(32, optional=True, group="_column_name")
 
 
 @dataclass(eq=False, repr=False)
 class SnapshotNode(betterproto.Message):
-    """SnapshotNode - Sames as ModelNode except with SnapshotConfig"""
+    """
+    SnapshotNode - Sames as ModelNode w/o access except with SnapshotConfig
+    """
 
     name: str = betterproto.string_field(1)
     resource_type: str = betterproto.string_field(2)
@@ -625,6 +651,8 @@ class SnapshotNode(betterproto.Message):
     depends_on: "DependsOn" = betterproto.message_field(26)
     compiled: bool = betterproto.bool_field(27)
     compiled_code: str = betterproto.string_field(28)
+    contract: bool = betterproto.bool_field(29)
+    group: str = betterproto.string_field(30)
 
 
 @dataclass(eq=False, repr=False)
@@ -770,3 +798,4 @@ class Metric(betterproto.Message):
     sources: List["ListOfStrings"] = betterproto.message_field(25)
     metrics: List["ListOfStrings"] = betterproto.message_field(26)
     depends_on: "DependsOn" = betterproto.message_field(27)
+    group: str = betterproto.string_field(28)

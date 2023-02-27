@@ -10,7 +10,7 @@ message ListOfStrings {
 message Hook {
     string sql = 1;
     bool transaction = 2;
-    optional int index = 3;
+    optional int32 index = 3;
 }
 
 message Docs {
@@ -212,9 +212,12 @@ message ModelNode {
     DependsOn depends_on = 26;
     bool compiled = 27;
     string compiled_code = 28;
+    bool contract = 29;
+    string group = 30;
+    string access = 31;
 }
 
-// This should be exactly the same as ModelNode
+// This should be exactly the same as ModelNode w/o access
 message AnalysisNode {
     string name = 1;
     string resource_type = 2;
@@ -244,9 +247,11 @@ message AnalysisNode {
     DependsOn depends_on = 26;
     bool compiled = 27;
     string compiled_code = 28;
+    bool contract = 29;
+    string group = 30;
 }
 
-// This should be exactly the same as ModelNode
+// This should be exactly the same as ModelNode w/o access
 message RPCNode {
     string name = 1;
     string resource_type = 2;
@@ -276,10 +281,12 @@ message RPCNode {
     DependsOn depends_on = 26;
     bool compiled = 27;
     string compiled_code = 28;
+    bool contract = 29;
+    string group = 30;
 }
 
 
-// This should be exactly the same as ModelNode
+// This should be exactly the same as ModelNode w/o access
 message SqlNode {
     string name = 1;
     string resource_type = 2;
@@ -309,9 +316,11 @@ message SqlNode {
     DependsOn depends_on = 26;
     bool compiled = 27;
     string compiled_code = 28;
+    bool contract = 29;
+    string group = 30;
 }
 
-// This should be the same as ModelNode plus additional "index" attribute
+// This should be the same as ModelNode (w/o access) plus additional "index" attribute
 message HookNode {
     string name = 1;
     string resource_type = 2;
@@ -341,7 +350,9 @@ message HookNode {
     DependsOn depends_on = 26;
     bool compiled = 27;
     string compiled_code = 28;
-    optional int32 index = 29;
+    bool contract = 29;
+    string group = 30;
+    optional int32 index = 31;
 }
 
 
@@ -368,10 +379,11 @@ message SeedNode {
     string relation_name  = 20;
     string raw_code = 21;
     string root_path = 22;
+    string group = 23;
 }
 
 
-// Same as ModelNode except config is TestConfig
+// Same as ModelNode w/o access except config is TestConfig
 message SingularTestNode {
     string name = 1;
     string resource_type = 2;
@@ -401,6 +413,8 @@ message SingularTestNode {
     DependsOn depends_on = 26;
     bool compiled = 27;
     string compiled_code = 28;
+    bool contract = 29;
+    string group = 30;
 }
 
 message TestMetadata {
@@ -409,7 +423,7 @@ message TestMetadata {
     optional string namespace = 3;
 }
 
-// Same as ModelNode except config is TestConfig, and has test_metadata
+// Same as ModelNode w/o access except config is TestConfig, and has test_metadata
 // and column_name attributes.
 message GenericTestNode {
     string name = 1;
@@ -440,11 +454,13 @@ message GenericTestNode {
     DependsOn depends_on = 26;
     bool compiled = 27;
     string compiled_code = 28;
-    TestMetadata test_metadata = 29;
-    optional string column_name = 30;
+    bool contract = 29;
+    string group = 30;
+    TestMetadata test_metadata = 31;
+    optional string column_name = 32;
 }
 
-// SnapshotNode - Sames as ModelNode except with SnapshotConfig
+// SnapshotNode - Sames as ModelNode w/o access except with SnapshotConfig
 message SnapshotNode {
     string name = 1;
     string resource_type = 2;
@@ -474,6 +490,8 @@ message SnapshotNode {
     DependsOn depends_on = 26;
     bool compiled = 27;
     string compiled_code = 28;
+    bool contract = 29;
+    string group = 30;
 }
 
 // Macro - BaseNode plus additional attributes
@@ -585,4 +603,5 @@ message Metric {
     repeated ListOfStrings sources = 25;
     repeated ListOfStrings metrics = 26;
     DependsOn depends_on = 27;
+    string group = 28;
 }

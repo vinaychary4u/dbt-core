@@ -24,7 +24,7 @@ from dbt.contracts.graph.model_config import (
     ExposureConfig,
     MetricConfig,
 )
-from dbt.contracts.graph.unparsed import ExposureOwner, MetricFilter
+from dbt.contracts.graph.unparsed import Owner, MetricFilter
 from dbt.node_types import NodeType, ModelLanguage
 from dbt.contracts.files import FileHash
 
@@ -348,7 +348,7 @@ def test_nodes():
         fqn=["my", "exposure"],
         config=ExposureConfig(enabled=True),
         type="dashboard",
-        owner=ExposureOwner(email="someone@somewhere"),
+        owner=Owner(email="someone@somewhere"),
         description="my exposure",
     )
     proto_exposure_msg = exposure.to_msg()

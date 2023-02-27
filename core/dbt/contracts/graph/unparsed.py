@@ -466,7 +466,7 @@ class Owner(AdditionalPropertiesAllowed, Replaceable):
     name: Optional[str] = None
 
     def to_msg(self):
-        return proto_nodes.ExposureOwner(
+        return proto_nodes.Owner(
             email=self.email,
             name=self.name,
         )

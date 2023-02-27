@@ -308,6 +308,7 @@ class ParsedNode(NodeInfoMixin, ParsedNodeMandatory, SerializableType):
             "unrendered_config",
             "relation_name",
             "raw_code",
+            "group",
         ]
 
     def write_node(self, target_path: str, subdirectory: str, payload: str):
@@ -574,6 +575,11 @@ class HookNode(CompiledNode):
 class ModelNode(CompiledNode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Model]})
     access: AccessType = AccessType.Protected
+
+    def to_msg(self):
+        msg = super().to_msg()
+        msg.access = self.access
+        return msg
 
 
 # TODO: this node type should probably be removed when the rpc server is no longer supported

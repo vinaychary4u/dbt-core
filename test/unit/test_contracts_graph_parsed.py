@@ -1,7 +1,7 @@
 import pickle
 import pytest
 
-from dbt.node_types import NodeType
+from dbt.node_types import NodeType, AccessType
 from dbt.contracts.files import FileHash
 from dbt.contracts.graph.model_config import (
     NodeConfig,
@@ -33,7 +33,7 @@ from dbt.contracts.graph.nodes import (
     SourceDefinition,
     Documentation,
     HookNode,
-    ExposureOwner,
+    Owner,
     TestMetadata,
 )
 from dbt.contracts.graph.unparsed import (
@@ -46,10 +46,12 @@ from dbt.contracts.graph.unparsed import (
     TimePeriod,
 )
 from dbt import flags
+from argparse import Namespace
 
 from dbt.dataclass_schema import ValidationError
 from .utils import ContractTestCase, assert_symmetric, assert_from_dict, compare_dicts, assert_fails_validation, dict_replace, replace_config
 
+flags.set_from_args(Namespace(SEND_ANONYMOUS_USAGE_STATS=False), None)
 
 @pytest.fixture
 def populated_node_config_object():
@@ -79,6 +81,7 @@ def populated_node_config_dict():
         'grants': {},
         'packages': [],
         'docs': {'show': True},
+        'contract': False,
     }
 
 
@@ -162,15 +165,18 @@ def base_parsed_model_dict():
             'meta': {},
             'grants': {},
             'docs': {'show': True},
+            'contract': False,
         'packages': [],
         },
         'deferred': False,
         'docs': {'show': True},
+        'contract': False,
         'columns': {},
         'meta': {},
         'checksum': {'name': 'sha256', 'checksum': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'},
         'unrendered_config': {},
         'config_call_dict': {},
+        'access': AccessType.Protected.value,
     }
 
 
@@ -262,9 +268,11 @@ def complex_parsed_model_dict():
             'meta': {},
             'grants': {},
             'docs': {'show': True},
+            'contract': False,
         'packages': [],
         },
         'docs': {'show': True},
+        'contract': False,
         'columns': {
             'a': {
                 'name': 'a',
@@ -280,6 +288,7 @@ def complex_parsed_model_dict():
             'post_hook': ['insert into blah(a, b) select "1", 1'],
         },
         'config_call_dict': {},
+        'access': AccessType.Protected.value,
     }
 
 
@@ -321,6 +330,10 @@ def complex_parsed_model_object():
         },
     )
 
+
+{'enabled': True, 'tags': [], 'meta': {}, 'materialized': 'ephemeral', 'persist_docs': {}, 'quoting': {}, 'column_types': {'a': 'text'}, 'on_schema_change': 'ignore', 'grants': {}, 'packages': [], 'docs': {'show': True}, 'contract': False, 'post-hook': [{'sql': 'insert into blah(a, b) select "1", 1', 'transaction': True}], 'pre-hook': []}
+
+{'column_types': {'a': 'text'}, 'enabled': True, 'materialized': 'ephemeral', 'persist_docs': {}, 'post-hook': [{'sql': 'insert into blah(a, b) select "1", 1', 'transaction': True}], 'pre-hook': [], 'quoting': {}, 'tags': [], 'on_schema_change': 'ignore', 'meta': {}, 'grants': {}, 'docs': {'show': True}, 'packages': []}
 
 def test_model_basic(basic_parsed_model_object, base_parsed_model_dict, minimal_parsed_model_dict):
     node = basic_parsed_model_object
@@ -439,6 +452,7 @@ def basic_parsed_seed_dict():
         'unique_id': 'seed.test.foo',
         'fqn': ['test', 'seeds', 'foo'],
         'database': 'test_db',
+        'depends_on': {'macros': []},
         'description': '',
         'schema': 'test_schema',
         'tags': [],
@@ -456,6 +470,7 @@ def basic_parsed_seed_dict():
             'meta': {},
             'grants': {},
             'docs': {'show': True},
+            'contract': False,
         'packages': [],
         },
         'deferred': False,
@@ -527,6 +542,7 @@ def complex_parsed_seed_dict():
         'unique_id': 'seed.test.foo',
         'fqn': ['test', 'seeds', 'foo'],
         'database': 'test_db',
+        'depends_on': {'macros': []},
         'description': 'a description',
         'schema': 'test_schema',
         'tags': ['mytag'],
@@ -545,6 +561,7 @@ def complex_parsed_seed_dict():
             'meta': {},
             'grants': {},
             'docs': {'show': True},
+            'contract': False,
         'packages': [],
         },
         'deferred': False,
@@ -571,6 +588,7 @@ def complex_parsed_seed_object():
         unique_id='seed.test.foo',
         fqn=['test', 'seeds', 'foo'],
         database='test_db',
+        depends_on=MacroDependsOn(),
         description='a description',
         schema='test_schema',
         tags=['mytag'],
@@ -688,6 +706,7 @@ def basic_parsed_model_patch_dict():
             },
         },
         'config': {},
+        'access': 'public',
     }
 
 
@@ -703,6 +722,7 @@ def basic_parsed_model_patch_object():
         docs=Docs(),
         meta={},
         config={},
+        access='public',
     )
 
 
@@ -735,6 +755,7 @@ def patched_model_object():
         docs=Docs(),
         checksum=FileHash.from_contents(''),
         unrendered_config={},
+        access=AccessType.Public,
     )
 
 
@@ -802,9 +823,11 @@ def base_parsed_hook_dict():
             'meta': {},
             'grants': {},
             'docs': {'show': True},
+            'contract': False,
         'packages': [],
         },
         'docs': {'show': True},
+        'contract': False,
         'columns': {},
         'meta': {},
         'checksum': {'name': 'sha256', 'checksum': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'},
@@ -881,9 +904,11 @@ def complex_parsed_hook_dict():
             'meta': {},
             'grants': {},
             'docs': {'show': True},
+            'contract': False,
         'packages': [],
         },
         'docs': {'show': True},
+        'contract': False,
         'columns': {
             'a': {
                 'name': 'a',
@@ -1033,6 +1058,7 @@ def basic_parsed_schema_test_dict():
             'schema': 'dbt_test__audit',
         },
         'docs': {'show': True},
+        'contract': False,
         'columns': {},
         'test_metadata': {
             'name': 'foo',
@@ -1111,6 +1137,7 @@ def complex_parsed_schema_test_dict():
             'schema': 'dbt_test__audit',
         },
         'docs': {'show': False},
+        'contract': False,
         'columns': {
             'a': {
                 'name': 'a',
@@ -1232,6 +1259,7 @@ def basic_timestamp_snapshot_config_dict():
         'grants': {},
         'packages': [],
         'docs': {'show': True},
+        'contract': False,
     }
 
 
@@ -1268,6 +1296,7 @@ def complex_timestamp_snapshot_config_dict():
         'grants': {},
         'packages': [],
         'docs': {'show': True},
+        'contract': False,
     }
 
 
@@ -1328,6 +1357,7 @@ def basic_check_snapshot_config_dict():
         'grants': {},
         'packages': [],
         'docs': {'show': True},
+        'contract': False,
     }
 
 
@@ -1364,6 +1394,7 @@ def complex_set_snapshot_config_dict():
         'grants': {},
         'packages': [],
         'docs': {'show': True},
+        'contract': False,
     }
 
 
@@ -1474,9 +1505,11 @@ def basic_timestamp_snapshot_dict():
             'meta': {},
             'grants': {},
             'docs': {'show': True},
+            'contract': False,
         'packages': [],
         },
         'docs': {'show': True},
+        'contract': False,
         'columns': {},
         'meta': {},
         'checksum': {'name': 'sha256', 'checksum': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'},
@@ -1617,9 +1650,11 @@ def basic_check_snapshot_dict():
             'meta': {},
             'grants': {},
             'docs': {'show': True},
+            'contract': False,
         'packages': [],
         },
         'docs': {'show': True},
+        'contract': False,
         'columns': {},
         'meta': {},
         'checksum': {'name': 'sha256', 'checksum': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'},
@@ -1773,6 +1808,7 @@ def populated_parsed_node_patch_dict():
         'yaml_key': 'models',
         'package_name': 'test',
         'config': {},
+        'access': 'public',
     }
 
 
@@ -1788,6 +1824,7 @@ def populated_parsed_node_patch_object():
         package_name='test',
         docs=Docs(show=False),
         config={},
+        access='public',
     )
 
 
@@ -2165,7 +2202,7 @@ def basic_parsed_exposure_object():
         package_name='test',
         path='models/something.yml',
         original_file_path='models/something.yml',
-        owner=ExposureOwner(email='test@example.com'),
+        owner=Owner(email='test@example.com'),
         description='',
         meta={},
         tags=[],
@@ -2219,7 +2256,7 @@ def complex_parsed_exposure_object():
         name='my_exposure',
         resource_type=NodeType.Exposure,
         type=ExposureType.Analysis,
-        owner=ExposureOwner(email='test@example.com', name='A Name'),
+        owner=Owner(email='test@example.com', name='A Name'),
         maturity=MaturityType.Low,
         url='https://example.com/analyses/1',
         description='my description',

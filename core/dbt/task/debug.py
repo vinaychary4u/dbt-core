@@ -5,14 +5,16 @@ import sys
 from typing import Optional, Dict, Any, List
 
 from dbt.events.functions import fire_event
-from dbt.events.types import OpenCommand
-from dbt import flags
+from dbt.events.types import (
+    OpenCommand,
+    DebugCmdOut,
+    DebugCmdResult,
+)
 import dbt.clients.system
 import dbt.exceptions
 from dbt.adapters.factory import get_adapter, register_adapter
-from dbt.config import Project, Profile
+from dbt.config import PartialProject, Project, Profile
 from dbt.config.renderer import DbtProjectYamlRenderer, ProfileRenderer
-from dbt.config.utils import parse_cli_vars
 from dbt.clients.yaml_helper import load_yaml_text
 from dbt.links import ProfileConfigDocs
 from dbt.ui import green, red
@@ -59,10 +61,10 @@ FILE_NOT_FOUND = "file not found"
 class DebugTask(BaseTask):
     def __init__(self, args, config):
         super().__init__(args, config)
-        self.profiles_dir = flags.PROFILES_DIR
+        self.profiles_dir = args.PROFILES_DIR
         self.profile_path = os.path.join(self.profiles_dir, "profiles.yml")
         try:
-            self.project_dir = get_nearest_project_dir(self.args)
+            self.project_dir = get_nearest_project_dir(self.args.project_dir)
         except dbt.exceptions.Exception:
             # we probably couldn't find a project directory. Set project dir
             # to whatever was given, or default to the current directory.
@@ -71,7 +73,7 @@ class DebugTask(BaseTask):
             else:
                 self.project_dir = os.getcwd()
         self.project_path = os.path.join(self.project_dir, "dbt_project.yml")
-        self.cli_vars = parse_cli_vars(getattr(self.args, "vars", "{}"))
+        self.cli_vars: Dict[str, Any] = args.vars
 
         # set by _load_*
         self.profile: Optional[Profile] = None
@@ -99,25 +101,25 @@ class DebugTask(BaseTask):
             return not self.any_failure
 
         version = get_installed_version().to_version_string(skip_matcher=True)
-        print("dbt version: {}".format(version))
-        print("python version: {}".format(sys.version.split()[0]))
-        print("python path: {}".format(sys.executable))
-        print("os info: {}".format(platform.platform()))
-        print("Using profiles.yml file at {}".format(self.profile_path))
-        print("Using dbt_project.yml file at {}".format(self.project_path))
-        print("")
+        fire_event(DebugCmdOut(msg="dbt version: {}".format(version)))
+        fire_event(DebugCmdOut(msg="python version: {}".format(sys.version.split()[0])))
+        fire_event(DebugCmdOut(msg="python path: {}".format(sys.executable)))
+        fire_event(DebugCmdOut(msg="os info: {}".format(platform.platform())))
+        fire_event(DebugCmdOut(msg="Using profiles.yml file at {}".format(self.profile_path)))
+        fire_event(DebugCmdOut(msg="Using dbt_project.yml file at {}".format(self.project_path)))
         self.test_configuration()
         self.test_dependencies()
         self.test_connection()
 
         if self.any_failure:
-            print(red(f"{(pluralize(len(self.messages), 'check'))} failed:"))
+            fire_event(
+                DebugCmdResult(msg=red(f"{(pluralize(len(self.messages), 'check'))} failed:"))
+            )
         else:
-            print(green("All checks passed!"))
+            fire_event(DebugCmdResult(msg=green("All checks passed!")))
 
         for message in self.messages:
-            print(message)
-            print("")
+            fire_event(DebugCmdResult(msg=f"{message}\n"))
 
         return not self.any_failure
 
@@ -135,7 +137,7 @@ class DebugTask(BaseTask):
             self.project = Project.from_project_root(
                 self.project_dir,
                 renderer,
-                verify_version=flags.VERSION_CHECK,
+                verify_version=self.args.VERSION_CHECK,
             )
         except dbt.exceptions.DbtConfigError as exc:
             self.project_fail_details = str(exc)
@@ -171,9 +173,9 @@ class DebugTask(BaseTask):
         project_profile: Optional[str] = None
         if os.path.exists(self.project_path):
             try:
-                partial = Project.partial_load(
+                partial = PartialProject.from_project_root(
                     os.path.dirname(self.project_path),
-                    verify_version=bool(flags.VERSION_CHECK),
+                    verify_version=bool(self.args.VERSION_CHECK),
                 )
                 renderer = DbtProjectYamlRenderer(None, self.cli_vars)
                 project_profile = partial.render_profile_name(renderer)
@@ -249,7 +251,15 @@ class DebugTask(BaseTask):
         renderer = ProfileRenderer(self.cli_vars)
         for profile_name in profile_names:
             try:
-                profile: Profile = Profile.render_from_args(self.args, renderer, profile_name)
+                profile: Profile = Profile.render(
+                    renderer,
+                    profile_name,
+                    self.args.profile,
+                    self.args.target,
+                    # TODO: Generalize safe access to flags.THREADS:
+                    # https://github.com/dbt-labs/dbt-core/issues/6259
+                    getattr(self.args, "threads", None),
+                )
             except dbt.exceptions.DbtConfigError as exc:
                 profile_errors.append(str(exc))
             else:
@@ -273,21 +283,33 @@ class DebugTask(BaseTask):
         return green("OK found")
 
     def test_dependencies(self):
-        print("Required dependencies:")
-        print(" - git [{}]".format(self.test_git()))
-        print("")
+        fire_event(DebugCmdOut(msg="Required dependencies:"))
+
+        logline_msg = self.test_git()
+        fire_event(DebugCmdResult(msg=f" - git [{logline_msg}]\n"))
 
     def test_configuration(self):
+        fire_event(DebugCmdOut(msg="Configuration:"))
+
         profile_status = self._load_profile()
+        fire_event(DebugCmdOut(msg=f"  profiles.yml file [{profile_status}]"))
+
         project_status = self._load_project()
-        print("Configuration:")
-        print("  profiles.yml file [{}]".format(profile_status))
-        print("  dbt_project.yml file [{}]".format(project_status))
+        fire_event(DebugCmdOut(msg=f"  dbt_project.yml file [{project_status}]"))
+
         # skip profile stuff if we can't find a profile name
         if self.profile_name is not None:
-            print("  profile: {} [{}]".format(self.profile_name, self._profile_found()))
-            print("  target: {} [{}]".format(self.target_name, self._target_found()))
-        print("")
+            fire_event(
+                DebugCmdOut(
+                    msg="  profile: {} [{}]\n".format(self.profile_name, self._profile_found())
+                )
+            )
+            fire_event(
+                DebugCmdOut(
+                    msg="  target: {} [{}]\n".format(self.target_name, self._target_found())
+                )
+            )
+
         self._log_project_fail()
         self._log_profile_fail()
 
@@ -348,11 +370,12 @@ class DebugTask(BaseTask):
     def test_connection(self):
         if not self.profile:
             return
-        print("Connection:")
+        fire_event(DebugCmdOut(msg="Connection:"))
         for k, v in self.profile.credentials.connection_info():
-            print("  {}: {}".format(k, v))
-        print("  Connection test: [{}]".format(self._connection_result()))
-        print("")
+            fire_event(DebugCmdOut(msg=f"  {k}: {v}"))
+
+        res = self._connection_result()
+        fire_event(DebugCmdOut(msg=f"  Connection test: [{res}]\n"))
 
     @classmethod
     def validate_connection(cls, target_dict):

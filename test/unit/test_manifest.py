@@ -2,6 +2,7 @@ import os
 import unittest
 from unittest import mock
 
+from argparse import Namespace
 import copy
 from collections import namedtuple
 from itertools import product
@@ -23,18 +24,19 @@ from dbt.contracts.graph.nodes import (
     SourceDefinition,
     Exposure,
     Metric,
-    Entity
+    Group,
 )
 
 from dbt.contracts.graph.unparsed import (
     ExposureType,
-    ExposureOwner,
+    Owner,
     MaturityType,
     MetricFilter,
     MetricTime
 )
 
 from dbt.events.functions import reset_metadata_vars
+from dbt.flags import set_from_args
 
 from dbt.node_types import NodeType
 import freezegun
@@ -43,11 +45,12 @@ from .utils import MockMacro, MockDocumentation, MockSource, MockNode, MockMater
 
 
 REQUIRED_PARSED_NODE_KEYS = frozenset({
-    'alias', 'tags', 'config', 'unique_id', 'refs', 'sources', 'metrics', 'entities', 'meta',
-    'depends_on', 'database', 'schema', 'name', 'resource_type',
+    'alias', 'tags', 'config', 'unique_id', 'refs', 'sources', 'metrics', 'meta',
+    'depends_on', 'database', 'schema', 'name', 'resource_type', 'group',
     'package_name', 'path', 'original_file_path', 'raw_code', 'language',
     'description', 'columns', 'fqn', 'build_path', 'compiled_path', 'patch_path', 'docs',
-    'deferred', 'checksum', 'unrendered_config', 'created_at', 'config_call_dict', 'relation_name',
+    'deferred', 'checksum', 'unrendered_config', 'created_at', 'config_call_dict', 'relation_name', 'contract',
+    'access',
 })
 
 REQUIRED_COMPILED_NODE_KEYS = frozenset(REQUIRED_PARSED_NODE_KEYS | {
@@ -84,7 +87,7 @@ class ManifestTest(unittest.TestCase):
             'exposure.root.my_exposure': Exposure(
                 name='my_exposure',
                 type=ExposureType.Dashboard,
-                owner=ExposureOwner(email='some@email.com'),
+                owner=Owner(email='some@email.com'),
                 resource_type=NodeType.Exposure,
                 description='Test description',
                 maturity=MaturityType.High,
@@ -133,25 +136,15 @@ class ManifestTest(unittest.TestCase):
             )
         }
 
-        self.entities = {
-            'entity.root.my_entity': Entity(
-                name='my_entity',
-                model='ref("multi")',
-                description="my entity",
-                dimensions=['plan', 'country'],
-                resource_type=NodeType.Entity,
-                meta={'is_okr': True},
-                tags=['okrs'],
-                depends_on=DependsOn(nodes=['model.root.multi']),
-                refs=[['multi']],
-                sources=[],
-                metrics=[],
-                entities=[],
-                fqn=['root', 'my_entity'],
-                unique_id='entity.root.my_entity',
+        self.groups = {
+            'group.root.my_group': Group(
+                name='my_group',
+                owner=Owner(email='some@email.com'),
+                resource_type=NodeType.Group,
+                unique_id='group.root.my_group',
                 package_name='root',
-                path='my_entity.yml',
-                original_file_path='my_entity.yml'
+                path='my_metric.yml',
+                original_file_path='my_metric.yml',
             )
         }
 
@@ -348,13 +341,14 @@ class ManifestTest(unittest.TestCase):
                 'macros': {},
                 'exposures': {},
                 'metrics': {},
-                'entities': {},
+                'groups': {},
                 'selectors': {},
                 'parent_map': {},
                 'child_map': {},
+                'group_map': {},
                 'metadata': {
                     'generated_at': '2018-02-14T09:15:13Z',
-                    'dbt_schema_version': 'https://schemas.getdbt.com/dbt/manifest/v8.json',
+                    'dbt_schema_version': 'https://schemas.getdbt.com/dbt/manifest/v9.json',
                     'dbt_version': dbt.version.__version__,
                     'env': {ENV_KEY_NAME: 'value'},
                     'invocation_id': invocation_id,
@@ -435,21 +429,23 @@ class ManifestTest(unittest.TestCase):
     def test__build_flat_graph(self):
         exposures = copy.copy(self.exposures)
         metrics = copy.copy(self.metrics)
-        entities = copy.copy(self.entities)
+        groups = copy.copy(self.groups)
         nodes = copy.copy(self.nested_nodes)
         sources = copy.copy(self.sources)
         manifest = Manifest(nodes=nodes, sources=sources, macros={}, docs={},
                             disabled={}, files={}, exposures=exposures,
-                            metrics=metrics, entities=entities, selectors={})
+                            metrics=metrics, groups=groups, selectors={})
         manifest.build_flat_graph()
         flat_graph = manifest.flat_graph
         flat_exposures = flat_graph['exposures']
+        flat_groups = flat_graph['groups']
         flat_metrics = flat_graph['metrics']
         flat_entities = flat_graph['entities']
         flat_nodes = flat_graph['nodes']
         flat_sources = flat_graph['sources']
-        self.assertEqual(set(flat_graph), set(['exposures', 'nodes', 'sources', 'metrics', 'entities']))
+        self.assertEqual(set(flat_graph), set(['exposures', 'groups', 'nodes', 'sources', 'metrics']))
         self.assertEqual(set(flat_exposures), set(self.exposures))
+        self.assertEqual(set(flat_groups), set(self.groups))
         self.assertEqual(set(flat_metrics), set(self.metrics))
         self.assertEqual(set(flat_entities), set(self.entities))
         self.assertEqual(set(flat_nodes), set(self.nested_nodes))
@@ -461,7 +457,7 @@ class ManifestTest(unittest.TestCase):
     def test_metadata(self, mock_user):
         mock_user.id = 'cfc9500f-dc7f-4c83-9ea7-2c581c1b38cf'
         dbt.events.functions.EVENT_MANAGER.invocation_id = '01234567-0123-0123-0123-0123456789ab'
-        dbt.flags.SEND_ANONYMOUS_USAGE_STATS = False
+        set_from_args(Namespace(SEND_ANONYMOUS_USAGE_STATS=False), None)
         now = datetime.utcnow()
         self.assertEqual(
             ManifestMetadata(
@@ -484,7 +480,7 @@ class ManifestTest(unittest.TestCase):
     def test_no_nodes_with_metadata(self, mock_user):
         mock_user.id = 'cfc9500f-dc7f-4c83-9ea7-2c581c1b38cf'
         dbt.events.functions.EVENT_MANAGER.invocation_id = '01234567-0123-0123-0123-0123456789ab'
-        dbt.flags.SEND_ANONYMOUS_USAGE_STATS = False
+        set_from_args(Namespace(SEND_ANONYMOUS_USAGE_STATS=False), None)
         metadata = ManifestMetadata(
             project_id='098f6bcd4621d373cade4e832627b4f6',
             adapter_type='postgres',
@@ -502,14 +498,15 @@ class ManifestTest(unittest.TestCase):
                 'macros': {},
                 'exposures': {},
                 'metrics': {},
-                'entities': {},
+                'groups': {},
                 'selectors': {},
                 'parent_map': {},
                 'child_map': {},
+                'group_map': {},
                 'docs': {},
                 'metadata': {
                     'generated_at': '2018-02-14T09:15:13Z',
-                    'dbt_schema_version': 'https://schemas.getdbt.com/dbt/manifest/v8.json',
+                    'dbt_schema_version': 'https://schemas.getdbt.com/dbt/manifest/v9.json',
                     'dbt_version': dbt.version.__version__,
                     'project_id': '098f6bcd4621d373cade4e832627b4f6',
                     'user_id': 'cfc9500f-dc7f-4c83-9ea7-2c581c1b38cf',
@@ -776,13 +773,14 @@ class MixedManifestTest(unittest.TestCase):
                 'sources': {},
                 'exposures': {},
                 'metrics': {},
-                'entities': {},
+                'groups': {},
                 'selectors': {},
                 'parent_map': {},
                 'child_map': {},
+                'group_map': {},
                 'metadata': {
                     'generated_at': '2018-02-14T09:15:13Z',
-                    'dbt_schema_version': 'https://schemas.getdbt.com/dbt/manifest/v8.json',
+                    'dbt_schema_version': 'https://schemas.getdbt.com/dbt/manifest/v9.json',
                     'dbt_version': dbt.version.__version__,
                     'invocation_id': '01234567-0123-0123-0123-0123456789ab',
                     'env': {ENV_KEY_NAME: 'value'},
@@ -866,7 +864,7 @@ class MixedManifestTest(unittest.TestCase):
         manifest.build_flat_graph()
         flat_graph = manifest.flat_graph
         flat_nodes = flat_graph['nodes']
-        self.assertEqual(set(flat_graph), set(['exposures', 'metrics', 'entities', 'nodes', 'sources']))
+        self.assertEqual(set(flat_graph), set(['exposures', 'groups', 'metrics', 'nodes', 'sources']))
         self.assertEqual(set(flat_nodes), set(self.nested_nodes))
         compiled_count = 0
         for node in flat_nodes.values():

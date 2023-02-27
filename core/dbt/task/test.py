@@ -5,6 +5,7 @@ from dbt.utils import _coerce_decimal
 from dbt.events.format import pluralize
 from dbt.dataclass_schema import dbtClassMixin
 import threading
+from typing import Dict, Any
 
 from .compile import CompileRunner
 from .run import RunTask
@@ -30,7 +31,7 @@ from dbt.graph import (
     ResourceTypeSelector,
 )
 from dbt.node_types import NodeType
-from dbt import flags
+from dbt.flags import get_flags
 
 
 @dataclass
@@ -38,6 +39,7 @@ class TestResultData(dbtClassMixin):
     failures: int
     should_warn: bool
     should_error: bool
+    adapter_response: Dict[str, Any]
 
     @classmethod
     def validate(cls, data):
@@ -137,6 +139,7 @@ class TestRunner(CompileRunner):
                 map(_coerce_decimal, table.rows[0]),
             )
         )
+        test_result_dct["adapter_response"] = result["response"].to_dict(omit_none=True)
         TestResultData.validate(test_result_dct)
         return TestResultData.from_dict(test_result_dct)
 
@@ -154,7 +157,7 @@ class TestRunner(CompileRunner):
             message = f"Got {num_errors}, configured to fail if {test.config.error_if}"
             failures = result.failures
         elif result.should_warn:
-            if flags.WARN_ERROR:
+            if get_flags().WARN_ERROR:
                 status = TestStatus.Fail
                 message = f"Got {num_errors}, configured to fail if {test.config.warn_if}"
             else:
@@ -171,7 +174,7 @@ class TestRunner(CompileRunner):
             thread_id=thread_id,
             execution_time=0,
             message=message,
-            adapter_response={},
+            adapter_response=result.adapter_response,
             failures=failures,
         )
 

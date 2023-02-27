@@ -71,6 +71,7 @@ class TestList:
                 "tags": [],
                 "config": {
                     "enabled": True,
+                    "group": None,
                     "materialized": "snapshot",
                     "post-hook": [],
                     "tags": [],
@@ -94,6 +95,7 @@ class TestList:
                     "packages": [],
                     "incremental_strategy": None,
                     "docs": {"node_color": None, "show": True},
+                    "contract": False,
                 },
                 "unique_id": "snapshot.test.my_snapshot",
                 "original_file_path": normalize("snapshots/snapshot.sql"),
@@ -115,6 +117,7 @@ class TestList:
                 "tags": [],
                 "config": {
                     "enabled": True,
+                    "group": None,
                     "materialized": "view",
                     "post-hook": [],
                     "tags": [],
@@ -133,6 +136,7 @@ class TestList:
                     "packages": [],
                     "incremental_strategy": None,
                     "docs": {"node_color": None, "show": True},
+                    "contract": False,
                 },
                 "unique_id": "analysis.test.a",
                 "original_file_path": normalize("analyses/a.sql"),
@@ -155,6 +159,7 @@ class TestList:
                     "tags": [],
                     "config": {
                         "enabled": True,
+                        "group": None,
                         "materialized": "ephemeral",
                         "post-hook": [],
                         "tags": [],
@@ -173,6 +178,7 @@ class TestList:
                         "packages": [],
                         "incremental_strategy": None,
                         "docs": {"node_color": None, "show": True},
+                        "contract": False,
                     },
                     "original_file_path": normalize("models/ephemeral.sql"),
                     "unique_id": "model.test.ephemeral",
@@ -189,6 +195,7 @@ class TestList:
                     "tags": [],
                     "config": {
                         "enabled": True,
+                        "group": None,
                         "materialized": "incremental",
                         "post-hook": [],
                         "tags": [],
@@ -207,6 +214,7 @@ class TestList:
                         "packages": [],
                         "incremental_strategy": "delete+insert",
                         "docs": {"node_color": None, "show": True},
+                        "contract": False,
                     },
                     "original_file_path": normalize("models/incremental.sql"),
                     "unique_id": "model.test.incremental",
@@ -220,6 +228,7 @@ class TestList:
                     "tags": [],
                     "config": {
                         "enabled": True,
+                        "group": None,
                         "materialized": "view",
                         "post-hook": [],
                         "tags": [],
@@ -238,6 +247,7 @@ class TestList:
                         "packages": [],
                         "incremental_strategy": None,
                         "docs": {"node_color": None, "show": True},
+                        "contract": False,
                     },
                     "original_file_path": normalize("models/sub/inner.sql"),
                     "unique_id": "model.test.inner",
@@ -251,6 +261,7 @@ class TestList:
                     "tags": [],
                     "config": {
                         "enabled": True,
+                        "group": None,
                         "materialized": "view",
                         "post-hook": [],
                         "tags": [],
@@ -269,6 +280,7 @@ class TestList:
                         "packages": [],
                         "incremental_strategy": None,
                         "docs": {"node_color": None, "show": True},
+                        "contract": False,
                     },
                     "original_file_path": normalize("models/outer.sql"),
                     "unique_id": "model.test.outer",
@@ -360,6 +372,7 @@ class TestList:
                 "tags": [],
                 "config": {
                     "enabled": True,
+                    "group": None,
                     "materialized": "seed",
                     "post-hook": [],
                     "tags": [],
@@ -379,7 +392,9 @@ class TestList:
                     "packages": [],
                     "incremental_strategy": None,
                     "docs": {"node_color": None, "show": True},
+                    "contract": False,
                 },
+                "depends_on": {"macros": []},
                 "unique_id": "seed.test.seed",
                 "original_file_path": normalize("seeds/seed.csv"),
                 "alias": "seed",
@@ -404,6 +419,7 @@ class TestList:
                     "tags": [],
                     "config": {
                         "enabled": True,
+                        "group": None,
                         "materialized": "test",
                         "severity": "ERROR",
                         "store_failures": None,
@@ -430,6 +446,7 @@ class TestList:
                     "tags": [],
                     "config": {
                         "enabled": True,
+                        "group": None,
                         "materialized": "test",
                         "severity": "ERROR",
                         "store_failures": None,
@@ -459,6 +476,7 @@ class TestList:
                     "tags": [],
                     "config": {
                         "enabled": True,
+                        "group": None,
                         "materialized": "test",
                         "severity": "ERROR",
                         "store_failures": None,

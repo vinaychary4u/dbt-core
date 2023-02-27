@@ -109,7 +109,10 @@ class HasDocs(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable):
     description: str = ""
     meta: Dict[str, Any] = field(default_factory=dict)
     data_type: Optional[str] = None
+    constraints: Optional[List[str]] = None
+    constraints_check: Optional[str] = None
     docs: Docs = field(default_factory=Docs)
+    access: Optional[str] = None
     _extra: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -440,8 +443,8 @@ class MaturityType(StrEnum):
 
 
 @dataclass
-class ExposureOwner(dbtClassMixin, Replaceable):
-    email: str
+class Owner(AdditionalPropertiesAllowed, Replaceable):
+    email: Optional[str] = None
     name: Optional[str] = None
 
 
@@ -449,7 +452,7 @@ class ExposureOwner(dbtClassMixin, Replaceable):
 class UnparsedExposure(dbtClassMixin, Replaceable):
     name: str
     type: ExposureType
-    owner: ExposureOwner
+    owner: Owner
     description: str = ""
     label: Optional[str] = None
     maturity: Optional[MaturityType] = None
@@ -466,6 +469,9 @@ class UnparsedExposure(dbtClassMixin, Replaceable):
             # name can only contain alphanumeric chars and underscores
             if not (re.match(r"[\w-]+$", data["name"])):
                 deprecations.warn("exposure-name", exposure=data["name"])
+
+        if data["owner"].get("name") is None and data["owner"].get("email") is None:
+            raise ValidationError("Exposure owner must have at least one of 'name' or 'email'.")
 
 #########################
 ## SEMANTIC LAYER CLASSES
@@ -549,3 +555,15 @@ class UnparsedMetric(dbtClassMixin):
                 raise ParsingError(
                     f"The metric '{data['name']}' does not contain a proper entity('') reference in the entity property."
                 )
+
+
+@dataclass
+class UnparsedGroup(dbtClassMixin, Replaceable):
+    name: str
+    owner: Owner
+
+    @classmethod
+    def validate(cls, data):
+        super(UnparsedGroup, cls).validate(data)
+        if data["owner"].get("name") is None and data["owner"].get("email") is None:
+            raise ValidationError("Group owner must have at least one of 'name' or 'email'.")

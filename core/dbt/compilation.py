@@ -1,12 +1,13 @@
-import os
-from collections import defaultdict
-from typing import List, Dict, Any, Tuple, Optional
-
+import argparse
 import networkx as nx  # type: ignore
+import os
 import pickle
 import sqlparse
 
-from dbt import flags
+from collections import defaultdict
+from typing import List, Dict, Any, Tuple, Optional
+
+from dbt.flags import get_flags
 from dbt.adapters.factory import get_adapter
 from dbt.clients import jinja
 from dbt.clients.system import make_directory
@@ -32,6 +33,7 @@ from dbt.events.contextvars import get_node_info
 from dbt.node_types import NodeType, ModelLanguage
 from dbt.events.format import pluralize
 import dbt.tracking
+import dbt.task.list as list_task
 
 graph_file_name = "graph.gpickle"
 
@@ -49,6 +51,7 @@ def print_compile_stats(stats):
         NodeType.Exposure: "exposure",
         NodeType.Metric: "metric",
         NodeType.Entity: "entity",
+        NodeType.Group: "group",
     }
 
     results = {k: 0 for k in names.keys()}
@@ -88,15 +91,18 @@ def _generate_stats(manifest: Manifest):
         stats[entity.resource_type] += 1
     for macro in manifest.macros.values():
         stats[macro.resource_type] += 1
+    for group in manifest.groups.values():
+        stats[group.resource_type] += 1
     return stats
 
 
 def _add_prepended_cte(prepended_ctes, new_cte):
     for cte in prepended_ctes:
-        if cte.id == new_cte.id:
+        if cte.id == new_cte.id and new_cte.sql:
             cte.sql = new_cte.sql
             return
-    prepended_ctes.append(new_cte)
+    if new_cte.sql:
+        prepended_ctes.append(new_cte)
 
 
 def _extend_prepended_ctes(prepended_ctes, new_prepended_ctes):
@@ -260,16 +266,18 @@ class Compiler:
         inserting CTEs into the SQL.
         """
         if model.compiled_code is None:
-            raise DbtRuntimeError("Cannot inject ctes into an unparsed node", model)
+            raise DbtRuntimeError("Cannot inject ctes into an uncompiled node", model)
+
+        # extra_ctes_injected flag says that we've already recursively injected the ctes
         if model.extra_ctes_injected:
             return (model, model.extra_ctes)
 
         # Just to make it plain that nothing is actually injected for this case
-        if not model.extra_ctes:
+        if len(model.extra_ctes) == 0:
+            # SeedNodes don't have compilation attributes
             if not isinstance(model, SeedNode):
                 model.extra_ctes_injected = True
-            manifest.update_node(model)
-            return (model, model.extra_ctes)
+            return (model, [])
 
         # This stores the ctes which will all be recursively
         # gathered and then "injected" into the model.
@@ -278,7 +286,8 @@ class Compiler:
         # extra_ctes are added to the model by
         # RuntimeRefResolver.create_relation, which adds an
         # extra_cte for every model relation which is an
-        # ephemeral model.
+        # ephemeral model. InjectedCTEs have a unique_id and sql.
+        # extra_ctes start out with sql set to None, and the sql is set in this loop.
         for cte in model.extra_ctes:
             if cte.id not in manifest.nodes:
                 raise DbtInternalError(
@@ -291,23 +300,23 @@ class Compiler:
             if not cte_model.is_ephemeral_model:
                 raise DbtInternalError(f"{cte.id} is not ephemeral")
 
-            # This model has already been compiled, so it's been
-            # through here before
-            if getattr(cte_model, "compiled", False):
+            # This model has already been compiled and extra_ctes_injected, so it's been
+            # through here before. We already checked above for extra_ctes_injected, but
+            # checking again because updates maybe have happened in another thread.
+            if cte_model.compiled is True and cte_model.extra_ctes_injected is True:
                 new_prepended_ctes = cte_model.extra_ctes
 
             # if the cte_model isn't compiled, i.e. first time here
             else:
                 # This is an ephemeral parsed model that we can compile.
-                # Compile and update the node
-                cte_model = self._compile_node(cte_model, manifest, extra_context)
-                # recursively call this method
+                # Render the raw_code and set compiled to True
+                cte_model = self._compile_code(cte_model, manifest, extra_context)
+                # recursively call this method, sets extra_ctes_injected to True
                 cte_model, new_prepended_ctes = self._recursively_prepend_ctes(
                     cte_model, manifest, extra_context
                 )
-                # Save compiled SQL file and sync manifest
+                # Write compiled SQL file
                 self._write_node(cte_model)
-                manifest.sync_update_node(cte_model)
 
             _extend_prepended_ctes(prepended_ctes, new_prepended_ctes)
 
@@ -321,20 +330,21 @@ class Compiler:
             model.compiled_code,
             prepended_ctes,
         )
-        model._pre_injected_sql = model.compiled_code
-        model.compiled_code = injected_sql
-        model.extra_ctes_injected = True
-        model.extra_ctes = prepended_ctes
-        model.validate(model.to_dict(omit_none=True))
-        manifest.update_node(model)
+        # Check again before updating for multi-threading
+        if not model.extra_ctes_injected:
+            model._pre_injected_sql = model.compiled_code
+            model.compiled_code = injected_sql
+            model.extra_ctes = prepended_ctes
+            model.extra_ctes_injected = True
 
-        return model, prepended_ctes
+        # if model.extra_ctes is not set to prepended ctes, something went wrong
+        return model, model.extra_ctes
 
-    # Sets compiled fields in the ManifestSQLNode passed in,
+    # Sets compiled_code and compiled flag in the ManifestSQLNode passed in,
     # creates a "context" dictionary for jinja rendering,
     # and then renders the "compiled_code" using the node, the
     # raw_code and the context.
-    def _compile_node(
+    def _compile_code(
         self,
         node: ManifestSQLNode,
         manifest: Manifest,
@@ -343,24 +353,7 @@ class Compiler:
         if extra_context is None:
             extra_context = {}
 
-        data = node.to_dict(omit_none=True)
-        data.update(
-            {
-                "compiled": False,
-                "compiled_code": None,
-                "extra_ctes_injected": False,
-                "extra_ctes": [],
-            }
-        )
-
         if node.language == ModelLanguage.python:
-            # TODO could we also 'minify' this code at all? just aesthetic, not functional
-
-            # quoating seems like something very specific to sql so far
-            # for all python implementations we are seeing there's no quating.
-            # TODO try to find better way to do this, given that
-            original_quoting = self.config.quoting
-            self.config.quoting = {key: False for key in original_quoting.keys()}
             context = self._create_node_context(node, manifest, extra_context)
 
             postfix = jinja.get_rendered(
@@ -370,8 +363,6 @@ class Compiler:
             )
             # we should NOT jinja render the python model's 'raw code'
             node.compiled_code = f"{node.raw_code}\n\n{postfix}"
-            # restore quoting settings in the end since context is lazy evaluated
-            self.config.quoting = original_quoting
 
         else:
             context = self._create_node_context(node, manifest, extra_context)
@@ -383,11 +374,24 @@ class Compiler:
 
         node.compiled = True
 
+        # relation_name is set at parse time, except for tests without store_failures,
+        # but cli param can turn on store_failures, so we set here.
+        if (
+            node.resource_type == NodeType.Test
+            and node.relation_name is None
+            and node.is_relational
+        ):
+            adapter = get_adapter(self.config)
+            relation_cls = adapter.Relation
+            relation_name = str(relation_cls.create_from(self.config, node))
+            node.relation_name = relation_name
+
         return node
 
     def write_graph_file(self, linker: Linker, manifest: Manifest):
         filename = graph_file_name
         graph_path = os.path.join(self.config.target_path, filename)
+        flags = get_flags()
         if flags.WRITE_JSON:
             linker.write_graph(graph_path, manifest)
 
@@ -489,7 +493,13 @@ class Compiler:
 
         if write:
             self.write_graph_file(linker, manifest)
-        print_compile_stats(stats)
+
+        # Do not print these for ListTask's
+        if not (
+            self.config.args.__class__ == argparse.Namespace
+            and self.config.args.cls == list_task.ListTask
+        ):
+            print_compile_stats(stats)
 
         return Graph(linker.graph)
 
@@ -517,11 +527,11 @@ class Compiler:
     ) -> ManifestSQLNode:
         """This is the main entry point into this code. It's called by
         CompileRunner.compile, GenericRPCRunner.compile, and
-        RunTask.get_hook_sql. It calls '_compile_node' to convert
-        the node into a compiled node, and then calls the
+        RunTask.get_hook_sql. It calls '_compile_code' to render
+        the node's raw_code into compiled_code, and then calls the
         recursive method to "prepend" the ctes.
         """
-        node = self._compile_node(node, manifest, extra_context)
+        node = self._compile_code(node, manifest, extra_context)
 
         node, _ = self._recursively_prepend_ctes(node, manifest, extra_context)
         if write:

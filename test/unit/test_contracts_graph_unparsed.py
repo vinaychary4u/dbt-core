@@ -6,9 +6,8 @@ from dbt.contracts.graph.unparsed import (
     UnparsedNode, UnparsedRunHook, UnparsedMacro, Time, TimePeriod,
     FreshnessThreshold, Quoting, UnparsedSourceDefinition,
     UnparsedSourceTableDefinition, UnparsedDocumentationFile, UnparsedColumn,
-    UnparsedNodeUpdate, Docs, UnparsedExposure, MaturityType, ExposureOwner,
-    ExposureType, UnparsedMetric, UnparsedEntity, MetricFilter, MetricTime, 
-    MetricTimePeriod
+    UnparsedNodeUpdate, Docs, UnparsedExposure, MaturityType, Owner,
+    ExposureType, UnparsedMetric, MetricFilter, MetricTime, MetricTimePeriod
 )
 from dbt.contracts.results import FreshnessStatus
 from dbt.node_types import NodeType
@@ -585,7 +584,9 @@ class TestUnparsedExposure(ContractTestCase):
             'name': 'my_exposure',
             'type': 'dashboard',
             'owner': {
+                'name': 'example',
                 'email': 'name@example.com',
+                'slack': '#channel'
             },
             'maturity': 'medium',
             'meta': {'tool': 'my_tool'},
@@ -603,7 +604,7 @@ class TestUnparsedExposure(ContractTestCase):
         exposure = self.ContractType(
             name='my_exposure',
             type=ExposureType.Dashboard,
-            owner=ExposureOwner(email='name@example.com'),
+            owner=Owner(name='example', email='name@example.com', _extra={'slack': '#channel'}),
             maturity=MaturityType.Medium,
             url='https://example.com/dashboards/1',
             description='A exposure',
@@ -653,6 +654,7 @@ class TestUnparsedExposure(ContractTestCase):
     def test_bad_owner_missing_things(self):
         tst = self.get_ok_dict()
         del tst['owner']['email']
+        del tst['owner']['name']
         self.assert_fails_validation(tst)
 
         del tst['owner']

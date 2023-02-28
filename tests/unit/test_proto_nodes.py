@@ -60,11 +60,13 @@ def test_nodes():
         alias="my_node",
         checksum=FileHash.from_contents("select 1 from fun"),
         config=node_config,
+        group="analytics",
     )
     assert model_node
     # Get a matching proto message
     proto_model_msg = model_node.to_msg()
     assert proto_model_msg
+    assert proto_model_msg.group == "analytics"
 
     # Create a dummy AnalysisNode
     analysis_node = AnalysisNode(
@@ -372,7 +374,9 @@ def test_nodes():
         filters=[MetricFilter(field="sum", operator="sum", value="sum")],
         time_grains=["day", "minute"],
         dimensions=["day", "minute"],
+        group="analytics",
     )
     proto_metric_msg = metric.to_msg()
     assert proto_metric_msg
     assert proto_metric_msg.label
+    assert proto_metric_msg.group == "analytics"

@@ -1280,6 +1280,7 @@ class Metric(GraphNode):
             "sources",
             "metrics",
             "depends_on",
+            "group",
         ]
 
     def to_msg(self):

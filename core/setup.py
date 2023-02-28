@@ -64,11 +64,16 @@ setup(
         "typing-extensions>=3.7.4",
         "werkzeug>=1,<3",
         "pathspec>=0.9,<0.11",
+        "pyyaml>=6.0",
+        # modules exposed in BaseContext
+        "pytz",
+        "datetime",
+        "re",
+        "itertools",
         # the following are all to match snowflake-connector-python
         "requests<3.0.0",
         "idna>=2.5,<4",
         "cffi>=1.9,<2.0.0",
-        "pyyaml>=6.0",
     ],
     zip_safe=False,
     classifiers=[

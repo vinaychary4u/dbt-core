@@ -5,13 +5,11 @@ from dbt.semantic.references import EntityElementReference
 from dbt.contracts.graph.nodes import Entity
 from dbt.semantic.user_configured_model import UserConfiguredModel
 from dbt.semantic.validations.validator_helpers import (
-    EntityContext,
     EntityElementContext,
     EntityElementType,
     ModelValidationRule,
     ValidationError,
     ValidationIssueType,
-    validate_safely,
 )
 
 # A non-exaustive tuple of reserved keywords

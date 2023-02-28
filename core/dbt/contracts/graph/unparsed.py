@@ -24,9 +24,6 @@ from dbt.contracts.graph.metrics import (
     UnparsedMetricTypeParams,
 )
 from dbt.semantic.constraints import WhereClauseConstraint
-from dbt.semantic.transformations.metric_transformations.convert_type_params import (
-    ConvertTypeParams,
-)
 from dbt.contracts.graph.entities import EntityMutability, EntityMutabilityType, EntityOrigin
 
 from dataclasses import dataclass, field
@@ -473,7 +470,7 @@ class UnparsedExposure(dbtClassMixin, Replaceable):
 
 
 #########################
-## SEMANTIC LAYER CLASSES
+# SEMANTIC LAYER CLASSES
 #########################
 
 
@@ -484,9 +481,9 @@ class UnparsedEntity(dbtClassMixin, Replaceable):
     name: str
     model: str
     description: str = ""
-    identifiers: Optional[Sequence[Identifier]] = field(default_factory=list)
-    dimensions: Optional[Sequence[Dimension]] = field(default_factory=list)
-    measures: Optional[Sequence[Measure]] = field(default_factory=list)
+    identifiers: Sequence[Identifier] = field(default_factory=list)
+    dimensions: Sequence[Dimension] = field(default_factory=list)
+    measures: Sequence[Measure] = field(default_factory=list)
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
     config: Dict[str, Any] = field(default_factory=dict)
@@ -523,8 +520,8 @@ class UnparsedMetric(dbtClassMixin):
     name: str
     type: MetricType
     type_params: UnparsedMetricTypeParams
-    description: Optional[str] = None
-    entity: Optional[str] = None
+    description: str = ""
+    entity: str
     constraint: Optional[str] = None
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)

@@ -14,26 +14,28 @@ from dbt.exceptions import DbtValidationError
 class ProxyMeasure(ABC):
     """All the functionality needed to convert measures to metrics"""
 
-    def _create_proxy_metrics(self, parsed_entity: Entity, path: str, fqn: List):
+    @staticmethod
+    def _create_proxy_metrics(parser, parsed_entity: Entity, path: str, fqn: List):
         if parsed_entity.measures:
             for measure in parsed_entity.measures:
                 if measure.create_metric:
                     add_metric = True
-                    package_name = self.project.project_name
+                    package_name = parser.project.project_name
                     unique_id = f"{NodeType.Metric}.{package_name}.{measure.name}"
-                    original_file_path = self.yaml.path.original_file_path
+                    original_file_path = parser.yaml.path.original_file_path
                     fqn[2] = measure.name
 
-                    for metric in parsed_entity.metrics:
-                        if metric.name == measure.name:
-                            if metric.type != MetricType.MEASURE_PROXY:
-                                raise DbtValidationError(
-                                    f"Cannot have metric with the same name as a measure ({measure.name}) that is not a "
-                                    f"proxy for that measure"
-                                )
-                            add_metric = False
+                    if parsed_entity.metrics:
+                        for metric in parsed_entity.metrics:
+                            if metric.name == measure.name:
+                                if metric.type != MetricType.MEASURE_PROXY:
+                                    raise DbtValidationError(
+                                        f"Cannot have metric with the same name as a measure ({measure.name}) that is not a "
+                                        f"proxy for that measure"
+                                    )
+                                add_metric = False
 
-                    config = self._generate_proxy_metric_config(
+                    config = parser._generate_proxy_metric_config(
                         target=measure,
                         fqn=fqn,
                         package_name=package_name,
@@ -42,7 +44,7 @@ class ProxyMeasure(ABC):
 
                     config = config.finalize_and_validate()
 
-                    unrendered_config = self._generate_proxy_metric_config(
+                    unrendered_config = parser._generate_proxy_metric_config(
                         target=measure,
                         fqn=fqn,
                         package_name=package_name,
@@ -79,8 +81,8 @@ class ProxyMeasure(ABC):
 
                         proxy_ctx = generate_parse_metrics(
                             proxy_metric,
-                            self.root_project,
-                            self.schema_parser.manifest,
+                            parser.root_project,
+                            parser.schema_parser.manifest,
                             package_name,
                         )
 
@@ -89,8 +91,8 @@ class ProxyMeasure(ABC):
                             get_rendered(entity_ref, proxy_ctx, proxy_metric)
 
                         if proxy_metric.config.enabled:
-                            self.manifest.add_metric(self.yaml.file, proxy_metric)
+                            parser.manifest.add_metric(parser.yaml.file, proxy_metric)
                         else:
-                            self.manifest.add_disabled(self.yaml.file, proxy_metric)
+                            parser.manifest.add_disabled(parser.yaml.file, proxy_metric)
 
-        return self
+        return parser

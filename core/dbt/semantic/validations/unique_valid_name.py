@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import enum
 import re
-from typing import Dict, Tuple, List, Optional
+from typing import Dict, Tuple, List
 from dbt.semantic.references import (
     EntityElementReference,
     EntityReference,

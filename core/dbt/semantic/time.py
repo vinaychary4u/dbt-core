@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
-from typing import Union, Any
+from typing import Any
 from dbt.dataclass_schema import StrEnum
 
 from dbt.semantic.object_utils import assert_values_exhausted

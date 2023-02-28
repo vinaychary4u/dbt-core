@@ -86,7 +86,7 @@ from dbt.parser.snapshots import SnapshotParser
 from dbt.parser.sources import SourcePatcher
 from dbt.version import __version__
 
-from dbt.semantic.validations.model_validator import ModelValidator, _print_issues
+from dbt.semantic.validations.model_validator import ModelValidator
 
 from dbt.dataclass_schema import StrEnum, dbtClassMixin
 
@@ -378,7 +378,7 @@ class ManifestLoader:
 
             self.process_nodes()
 
-            ## Validate semantic model
+            # Validate semantic model
             # TODO: Figure out how to have this be its own area
             semantic_result = ModelValidator().validate_model(self.manifest.user_configured_model)
             if semantic_result.issues.has_blocking_issues:
@@ -1372,9 +1372,6 @@ def _process_metrics_for_node(
         target_metric: Optional[Union[Disabled, Metric]] = None
         target_metric_name: str
         target_metric_package: Optional[str] = None
-
-        ##TODO: This is my issue. UnparsedMetricInput is sneaking through
-        # into the metrics list
 
         if len(metric) == 1:
             if isinstance(metric[0], UnparsedMetricInput):

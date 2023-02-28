@@ -4,7 +4,7 @@ from dbt.contracts.util import Replaceable, Mergeable
 from dbt.exceptions import ParsingError
 from dbt.dataclass_schema import dbtClassMixin, StrEnum
 from dataclasses import dataclass, field
-from typing import Optional, List, Any, Union
+from typing import Optional, List, Union
 from dbt.semantic.references import MeasureReference
 from dbt.semantic.time import TimeGranularity, string_to_time_granularity
 from dbt.semantic.constraints import WhereClauseConstraint
@@ -140,13 +140,13 @@ class UnparsedMetricTypeParams(dbtClassMixin, Mergeable):
     # NOTE: Adding a union to allow for the class or a string. We
     # change to prefered class in schemas.py during conversion to Metric
     measure: Optional[Union[UnparsedMetricInputMeasure, str]] = None
-    measures: Optional[List[Union[UnparsedMetricInputMeasure, str]]] = field(default_factory=list)
+    measures: List[Union[UnparsedMetricInputMeasure, str]] = field(default_factory=list)
     numerator: Optional[Union[UnparsedMetricInputMeasure, str]] = None
     denominator: Optional[Union[UnparsedMetricInputMeasure, str]] = None
     expr: Optional[str] = None
     window: Optional[Union[MetricTimeWindow, str]] = None
     grain_to_date: Optional[TimeGranularity] = None
-    metrics: Optional[List[Union[UnparsedMetricInput, str]]] = field(default_factory=list)
+    metrics: List[Union[UnparsedMetricInput, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -154,13 +154,13 @@ class MetricTypeParams(dbtClassMixin):
     """Type params add additional context to certain metric types (the context depends on the metric type)"""
 
     measure: Optional[MetricInputMeasure] = None
-    measures: Optional[List[MetricInputMeasure]] = field(default_factory=list)
+    measures: List[MetricInputMeasure] = field(default_factory=list)
     numerator: Optional[MetricInputMeasure] = None
     denominator: Optional[MetricInputMeasure] = None
     expr: Optional[str] = None
     window: Optional[MetricTimeWindow] = None
     grain_to_date: Optional[TimeGranularity] = None
-    metrics: Optional[List[MetricInput]] = field(default_factory=list)
+    metrics: List[MetricInput] = field(default_factory=list)
 
     @property
     def numerator_measure_reference(self) -> Optional[MeasureReference]:

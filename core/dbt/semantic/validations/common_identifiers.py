@@ -14,9 +14,6 @@ from dbt.semantic.validations.validator_helpers import (
 )
 
 
-##NOTE: DEPRECATE? Doesn't look like this is used
-
-
 class CommonIdentifiersRule(ModelValidationRule):
     """Checks that identifiers exist on more than one entity"""
 

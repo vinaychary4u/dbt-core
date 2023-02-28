@@ -45,7 +45,7 @@ class DimensionTypeParameters(dbtClassMixin, Mergeable):
     TODO: Can we abstract from params and have these be first class??"""
 
     is_primary: bool = False
-    time_granularity: TimeGranularity
+    time_granularity: Optional[TimeGranularity] = None
     validity_params: Optional[DimensionValidityParams] = None
 
 

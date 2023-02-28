@@ -20,7 +20,6 @@ from dbt.task.freshness import FreshnessTask
 from dbt.task.run_operation import RunOperationTask
 from dbt.task.build import BuildTask
 from dbt.task.generate import GenerateTask
-from dbt.task.validate import ValidateTask
 from dbt.task.init import InitTask
 
 import importlib
@@ -588,6 +587,7 @@ snapshot_freshness = copy(cli.commands["source"].commands["freshness"])  # type:
 snapshot_freshness.hidden = True
 cli.commands["source"].add_command(snapshot_freshness, "snapshot-freshness")  # type: ignore
 cli.add_command(metricflow_cli, "mf")
+
 
 # dbt test
 @cli.command("test")

@@ -1,4 +1,5 @@
 import traceback
+import sys
 from typing import List
 
 from dbt.exceptions import DbtSemanticValidationError
@@ -37,18 +38,31 @@ class CumulativeMetricRule(ModelValidationRule):
                 try:
                     MetricTimeWindow.parse(metric.type_params.window.to_string())
                 except DbtSemanticValidationError as e:
-                    issues.append(
-                        ValidationError(
-                            context=MetricContext(
-                                metric=MetricModelReference(metric_name=metric.name),
-                            ),
-                            message="".join(
-                                traceback.format_exception_only(etype=type(e), value=e)
-                            ),
-                            extra_detail="".join(traceback.format_tb(e.__traceback__)),
+                    breakpoint()
+                    if sys.version_info >= (3, 10):
+                        issues.append(
+                            ValidationError(
+                                context=MetricContext(
+                                    metric=MetricModelReference(metric_name=metric.name),
+                                ),
+                                message="".join(
+                                    traceback.format_exception_only(exc=type(e), value=e)
+                                ),
+                                extra_detail="".join(traceback.format_tb(e.__traceback__)),
+                            )
                         )
-                    )
-
+                    elif sys.version_info < (3, 10):
+                        issues.append(
+                            ValidationError(
+                                context=MetricContext(
+                                    metric=MetricModelReference(metric_name=metric.name),
+                                ),
+                                message="".join(
+                                    traceback.format_exception_only(etype=type(e), value=e)
+                                ),
+                                extra_detail="".join(traceback.format_tb(e.__traceback__)),
+                            )
+                        )
         return issues
 
     @staticmethod
@@ -69,15 +83,10 @@ class DerivedMetricRule(ModelValidationRule):
         issues: List[ValidationIssueType] = []
 
         if metric.type == MetricType.DERIVED:
-            metric_context = MetricContext(
-                metric=MetricModelReference(metric_name=metric.name),
-            )
             used_names = {input_metric.name for input_metric in metric.input_metrics}
             for input_metric in metric.input_metrics:
                 if input_metric.alias:
-                    issues += UniqueAndValidNameRule.check_valid_name(
-                        input_metric.alias, metric_context
-                    )
+                    issues += UniqueAndValidNameRule.check_valid_name(input_metric.alias)
                     if input_metric.alias in used_names:
                         issues.append(
                             ValidationError(

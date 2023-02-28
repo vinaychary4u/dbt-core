@@ -17,9 +17,7 @@ from dbt.semantic.references import (
     MeasureReference,
     LinkableElementReference,
     EntityReference,
-    MetricReference,
 )
-from dbt.semantic.time import TimeGranularity
 from dbt.semantic.object_utils import hash_items
 from dbt.semantic.constraints import WhereClauseConstraint
 
@@ -1161,9 +1159,9 @@ class Entity(GraphNode):
     description: str
     origin: EntityOrigin
     sql_table: str
-    identifiers: Optional[Sequence[Identifier]] = field(default_factory=list)
-    dimensions: Optional[Sequence[Dimension]] = field(default_factory=list)
-    measures: Optional[Sequence[Measure]] = field(default_factory=list)
+    identifiers: Sequence[Identifier] = field(default_factory=list)
+    dimensions: Sequence[Dimension] = field(default_factory=list)
+    measures: Sequence[Measure] = field(default_factory=list)
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Entity]})
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)

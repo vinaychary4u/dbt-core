@@ -1619,7 +1619,7 @@ def generate_parse_entities(
             project,
             manifest,
         ),
-        ## An entity cannot reference another entity so we comment out this section
+        # An entity cannot reference another entity so we comment out this section
         # "entity": ParseEntityResolver(
         #     None,
         #     entity,

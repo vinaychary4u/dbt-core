@@ -9,18 +9,23 @@ from dbt.contracts.graph.metrics import (
     UnparsedMetricTypeParams,
     MetricTypeParams,
 )
+from dbt.semantic.constraints import WhereClauseConstraint
 
 
 class ConvertTypeParams(ABC):
     """All the functionality needed to convert UnparsedMetricTypeParams to MetricTypeParams"""
 
     @staticmethod
-    def _get_parameter(parameter: Union[str, UnparsedMetricInputMeasure]) -> MetricInputMeasure:
+    def _get_parameter(
+        parameter: Union[UnparsedMetricInputMeasure, str, None]
+    ) -> MetricInputMeasure:
         if isinstance(parameter, str):
             return MetricInputMeasure(name=parameter)
         elif isinstance(parameter, UnparsedMetricInputMeasure):
             return MetricInputMeasure(
-                name=parameter.name, constraint=parameter.constraint, alias=parameter.alias
+                name=parameter.name,
+                constraint=WhereClauseConstraint.parse(parameter.constraint),
+                alias=parameter.alias
             )
 
     @staticmethod
@@ -36,7 +41,7 @@ class ConvertTypeParams(ABC):
                     parameters_list.append(
                         MetricInputMeasure(
                             name=parameter.name,
-                            constraint=parameter.constraint,
+                            constraint=WhereClauseConstraint.parse(parameter.constraint),
                             alias=parameter.alias,
                         )
                     )
@@ -45,7 +50,7 @@ class ConvertTypeParams(ABC):
             return []
 
     @staticmethod
-    def _get_window_parameter(parameter: Union[str, MetricTimeWindow]):
+    def _get_window_parameter(parameter: Union[MetricTimeWindow, str, None]):
         if isinstance(parameter, str):
             return MetricTimeWindow.parse(window=parameter)
         elif isinstance(parameter, MetricTimeWindow):
@@ -64,7 +69,7 @@ class ConvertTypeParams(ABC):
                     parameters_list.append(
                         MetricInput(
                             name=parameter.name,
-                            constraint=parameter.constraint,
+                            constraint=WhereClauseConstraint.parse(parameter.constraint),
                             alias=parameter.alias,
                             offset_window=parameter.offset_window,
                             offset_to_grain=parameter.offset_to_grain,

@@ -147,7 +147,7 @@ class MeasureConstraintAliasesRule(ModelValidationRule):
                 assert (
                     measure.alias
                 ), "Type refinement assertion, previous filter should ensure this is true"
-                issues += UniqueAndValidNameRule.check_valid_name(measure.alias, metric_context)
+                issues += UniqueAndValidNameRule.check_valid_name(measure.alias)
                 if measure.alias in measure_names:
                     issues.append(
                         ValidationError(

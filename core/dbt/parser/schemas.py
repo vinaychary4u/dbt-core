@@ -87,7 +87,7 @@ from dbt.parser.generic_test_builders import (
     TestBlock,
     Testable,
 )
-from dbt.utils import get_pseudo_test_path, coerce_dict_str
+from dbt.utils import get_pseudo_test_path, coerce_dict_str, md5
 from dbt.semantic.transformations.entity_transformations.boolean_measure_aggregation import (
     BooleanMeasureAggregation,
 )
@@ -109,7 +109,6 @@ from dbt.semantic.transformations.metric_transformations.add_input_metric_measur
 from dbt.semantic.transformations.metric_transformations.convert_type_params import (
     ConvertTypeParams,
 )
-from dbt.utils import get_pseudo_test_path, coerce_dict_str, md5
 
 
 TestDef = Union[str, Dict[str, Any]]
@@ -1425,7 +1424,7 @@ class MetricParser(YamlReader):
 
         if parsed.entity is not None:
             entity_ref = "{{ " + parsed.entity + " }}"
-            ## The get rendered is the step that adds the dependencies
+            # The get rendered is the step that adds the dependencies
             get_rendered(entity_ref, ctx, parsed)
 
         # if the metric is disabled we do not want it included in the manifest, only in the disabled dict
@@ -1468,9 +1467,9 @@ class MetricParser(YamlReader):
             self.parse_metric(unparsed)
 
     def transform(self):
-        ##We validate here for the input metric measurs because
-        ## we need all of the metrics to be parsed. This exists for
-        ## derived metrics
+        # We validate here for the input metric measurs because
+        # we need all of the metrics to be parsed. This exists for
+        # derived metrics
         metrics = [metric for metric in self.manifest.metrics.values()]
         for metric in metrics:
             metric = AddInputMetricMeasures.add_input_metrics(metric=metric, metrics=metrics)

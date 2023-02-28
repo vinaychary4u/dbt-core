@@ -1,8 +1,10 @@
 from typing import Union, List
 from abc import ABC
 from dbt.contracts.graph.metrics import (
+    UnparsedMetricInputMeasure,
     MetricInputMeasure, 
     MetricTimeWindow, 
+    UnparsedMetricInput, 
     MetricInput, 
     UnparsedMetricTypeParams,
     MetricTypeParams
@@ -12,21 +14,29 @@ class ConvertTypeParams(ABC):
     """All the functionality needed to convert UnparsedMetricTypeParams to MetricTypeParams"""
 
     @staticmethod
-    def _get_parameter(parameter: Union[str,MetricInputMeasure]):
+    def _get_parameter(parameter: Union[str,UnparsedMetricInputMeasure]) -> MetricInputMeasure:
         if isinstance(parameter,str):
             return MetricInputMeasure(name=parameter)
-        elif isinstance(parameter,MetricInputMeasure):
-            return parameter
+        elif isinstance(parameter,UnparsedMetricInputMeasure):
+            return MetricInputMeasure(
+                name=parameter.name,
+                constraint=parameter.constraint,
+                alias=parameter.alias
+            )
 
     @staticmethod
-    def _get_parameters(parameters: List[Union[MetricInputMeasure,str]]):
+    def _get_parameters(parameters: List[Union[UnparsedMetricInputMeasure,str]]) -> List[MetricInputMeasure]:
         parameters_list=[]
         if parameters:
             for parameter in parameters:
                 if isinstance(parameter,str):
                     parameters_list.append(MetricInputMeasure(name=parameter))
-                elif isinstance(parameter,MetricInputMeasure):
-                    parameters_list.append(MetricInputMeasure(name=parameter))
+                elif isinstance(parameter,UnparsedMetricInputMeasure):
+                    parameters_list.append(MetricInputMeasure(
+                        name=parameter.name,
+                        constraint=parameter.constraint,
+                        alias=parameter.alias
+                    ))
             return parameters_list
         else:
             return []
@@ -39,14 +49,20 @@ class ConvertTypeParams(ABC):
             return parameter
 
     @staticmethod
-    def _get_metric_parameters(parameters: List[Union[MetricInput,str]]):
+    def _get_metric_parameters(parameters: List[Union[UnparsedMetricInput,str]]) -> List[MetricInput]:
         parameters_list=[]
         if parameters:
             for parameter in parameters:
                 if isinstance(parameter,str):
                     parameters_list.append(MetricInput(name=parameter))
-                elif isinstance(parameter,MetricInput):
-                    parameters_list.append(MetricInput(name=parameter))
+                elif isinstance(parameter,UnparsedMetricInput):
+                    parameters_list.append(MetricInput(
+                        name=parameter.name,
+                        constraint=parameter.constraint,
+                        alias=parameter.alias,
+                        offset_window=parameter.offset_window,
+                        offset_to_grain=parameter.offset_to_grain
+                    ))
             return parameters_list
         else:
             return []

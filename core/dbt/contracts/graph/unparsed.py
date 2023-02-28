@@ -533,11 +533,21 @@ class UnparsedMetric(dbtClassMixin):
     @classmethod
     def validate(cls, data):
         super(UnparsedMetric, cls).validate(data)
+        # The following validation is because CM couldn't figure out a better way
+        # to parse constraint strings into WhereClauseConstraints without throwing
+        # errors all over the place
         if "constraint" in data:
             if isinstance(data["constraint"], str):
                 data["constraint"] = WhereClauseConstraint.parse(data["constraint"])
             else:
                 raise CompilationError(f"Expected input for constraint on metric {data['name']} to be of type string")
+
+        if "type_params" in data:
+            if "metrics" in data["type_params"]:
+                for loop_id, metric in enumerate(data["type_params"]["metrics"]):
+                    if isinstance(metric, dict):
+                        if isinstance(metric["constraint"],str):
+                            data["type_params"]["metrics"][loop_id]["constraint"] = WhereClauseConstraint.parse(metric["constraint"])
 
         # TODO: Figure out better way to convert to input measures. We need this here
         # so we can do full "mf model" validation in schemas.py. Specifically for input

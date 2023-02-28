@@ -11,7 +11,7 @@ from dbt.events.base_types import EventLevel
 import json
 import pprint
 
-from dbt.semantic.user_configured_model import UserConfiguredModel
+from dbt.contracts.graph.metrics import UnparsedMetricInput
 
 import dbt.exceptions
 import dbt.tracking
@@ -1367,8 +1367,15 @@ def _process_metrics_for_node(
         target_metric_name: str
         target_metric_package: Optional[str] = None
 
+
+        ##TODO: This is my issue. UnparsedMetricInput is sneaking through
+        # into the metrics list
+
         if len(metric) == 1:
-            target_metric_name = metric[0]
+            if isinstance(metric[0],UnparsedMetricInput):
+                target_metric_name=metric[0].name
+            else:
+                target_metric_name = metric[0]
         elif len(metric) == 2:
             target_metric_package, target_metric_name = metric
         else:

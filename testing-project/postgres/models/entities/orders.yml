@@ -5,7 +5,7 @@ entities:
     model: ref('fact_orders')
     description: "Our orders entity"
     identifiers:
-      - name: order
+      - name: order_id
         type: primary
       - name: customer
         type: foreign
@@ -48,6 +48,7 @@ entities:
       - name: testing_count
         description: "Testing count functionality"
         agg: count
+        expr: order_id
         create_metric: True
 
 metrics:
@@ -65,7 +66,7 @@ metrics:
     type_params:
       measure: order_total
     constraint: | 
-      value > 100 AND user__acquisition
+      order_location = 'Unovo'
 
   - name: sales_minus_revenue
     type: derived 
@@ -74,6 +75,16 @@ metrics:
       metrics: 
         - sales
         - revenue
+
+  - name: constraint_derived
+    type: derived 
+    type_params:
+      expr: sales - revenue 
+      metrics: 
+        - sales
+        - name: revenue
+          constraint: | 
+            order_location = 'Unovo'
 
   - name: cancellation_rate
     type: ratio

@@ -590,21 +590,6 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
                 metric_parser.parse()
                 metric_parser.transform()
 
-                # We do this after parse because it requires the fully parsed 
-                # metrics for relationships
-                # metric_validator = MetricValidator()
-                # metric_validator.validate_metric(manifest_metrics=self.manifest.metrics.values())
-
-                # We do this after parse because it requires the fully parsed 
-                # entities for relationships. Additionally it requires the metrics
-                # in the manifest.
-                #TODO: Figure out better place for this
-                # entity_validator = EntityValidator()
-                # entity_validator.validate_entity(
-                #     manifest_entities=self.manifest.entities.values(),
-                #     manifest_metrics=self.manifest.metrics.values()
-                # )
-
             # parse groups
             if "groups" in dct:
                 group_parser = GroupParser(self, yaml_block)
@@ -1248,6 +1233,7 @@ class EntityParser(YamlReader):
             rendered=False,
         )
 
+
         if not isinstance(config, EntityConfig):
             raise DbtInternalError(
                 f"Calculated a {type(config)} for an entity, but expected a EntityConfig"
@@ -1419,7 +1405,7 @@ class MetricParser(YamlReader):
             type=unparsed.type,
             type_params=parsed_metric_type_params,
             constraint=unparsed.constraint,
-            metrics=[[metric] for metric in unparsed.type_params.metrics],
+            metrics=[[metric.name] for metric in parsed_metric_type_params.metrics],
             meta=unparsed.meta,
             tags=unparsed.tags,
             config=config,
@@ -1485,6 +1471,7 @@ class MetricParser(YamlReader):
         for metric in metrics:
             metric = AddInputMetricMeasures.add_input_metrics(metric=metric,metrics=metrics)
             # self.update_metric
+
 
 class GroupParser(YamlReader):
     def __init__(self, schema_parser: SchemaParser, yaml: YamlBlock):

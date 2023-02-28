@@ -38,6 +38,7 @@ RESERVED_KEYWORDS = (
     "null",
     "on",
     "or",
+    "order",
     "right",
     "select",
     "union",

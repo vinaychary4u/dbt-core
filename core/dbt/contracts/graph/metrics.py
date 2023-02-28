@@ -113,11 +113,22 @@ class MetricTimeWindow(dbtClassMixin, Mergeable):
 
 
 @dataclass
+class UnparsedMetricInput(dbtClassMixin, Mergeable):
+    """Provides a pointer to a metric along with the additional properties used on that metric."""
+
+    name: str
+    constraint: Optional[str] = None
+    alias: Optional[str] = None
+    offset_window: Optional[MetricTimeWindow] = None
+    offset_to_grain: Optional[TimeGranularity] = None
+
+
+@dataclass
 class MetricInput(dbtClassMixin, Mergeable):
     """Provides a pointer to a metric along with the additional properties used on that metric."""
 
     name: str
-    # constraint: Optional[WhereClauseConstraint] = None
+    constraint: Optional[WhereClauseConstraint] = None
     alias: Optional[str] = None
     offset_window: Optional[MetricTimeWindow] = None
     offset_to_grain: Optional[TimeGranularity] = None
@@ -136,7 +147,7 @@ class UnparsedMetricTypeParams(dbtClassMixin, Mergeable):
     expr: Optional[str] = None
     window: Optional[Union[MetricTimeWindow,str]] = None
     grain_to_date: Optional[TimeGranularity] = None
-    metrics: Optional[List[Union[MetricInput,str]]] = field(default_factory=list)
+    metrics: Optional[List[Union[UnparsedMetricInput,str]]] = field(default_factory=list)
 
     @property
     def numerator_measure_reference(self) -> Optional[MeasureReference]:

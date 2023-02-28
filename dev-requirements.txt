@@ -14,7 +14,6 @@ pytest-dotenv
 pytest-logbook
 pytest-mock
 pytest-xdist
-pytz
 tox>=3.13
 twine
 types-colorama

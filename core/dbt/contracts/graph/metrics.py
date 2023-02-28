@@ -148,16 +148,6 @@ class UnparsedMetricTypeParams(dbtClassMixin, Mergeable):
     grain_to_date: Optional[TimeGranularity] = None
     metrics: Optional[List[Union[UnparsedMetricInput, str]]] = field(default_factory=list)
 
-    @property
-    def numerator_measure_reference(self) -> Optional[MeasureReference]:
-        """Return the measure reference, if any, associated with the metric input measure defined as the numerator"""
-        return self.numerator.measure_reference if self.numerator else None
-
-    @property
-    def denominator_measure_reference(self) -> Optional[MeasureReference]:
-        """Return the measure reference, if any, associated with the metric input measure defined as the denominator"""
-        return self.denominator.measure_reference if self.denominator else None
-
 
 @dataclass
 class MetricTypeParams(dbtClassMixin):

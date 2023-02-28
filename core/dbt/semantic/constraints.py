@@ -66,7 +66,7 @@ class WhereClauseConstraint(dbtClassMixin, Mergeable):
         if isinstance(where_clause, dict):
             if not len(where_clause.keys()) == 1:
                 raise DbtSemanticValidationError(
-                    f"expected parsed constraint to contain exactly one key; got {where}"
+                    f"expected parsed constraint to contain exactly one key; got {where_clause}"
                 )
             return WhereClauseConstraint(
                 where_clause=s,

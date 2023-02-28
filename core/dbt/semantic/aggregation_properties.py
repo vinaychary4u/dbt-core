@@ -27,7 +27,7 @@ class AggregationType(StrEnum):
             self is AggregationType.MIN
             or self is AggregationType.MAX
             or self is AggregationType.COUNT_DISTINCT
-            or self is AggregationType.BOOLEAN
+            or self is AggregationType.SUM_BOOLEAN
             or self is AggregationType.AVERAGE
             or self is AggregationType.PERCENTILE
             or self is AggregationType.MEDIAN
@@ -45,7 +45,7 @@ class AggregationType(StrEnum):
             AggregationType.SUM,
             AggregationType.MIN,
             AggregationType.MAX,
-            AggregationType.BOOLEAN,
+            AggregationType.SUM_BOOLEAN,
             AggregationType.COUNT,
         )
 

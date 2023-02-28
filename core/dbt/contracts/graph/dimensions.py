@@ -13,7 +13,7 @@ class DimensionType(StrEnum):
 
     def is_time_type(self) -> bool:
         """Checks if this type of dimension is a time type"""
-        return self in [DimensionType.time]
+        return self in [DimensionType.TIME]
 
 
 @dataclass
@@ -45,7 +45,7 @@ class DimensionTypeParameters(dbtClassMixin, Mergeable):
     TODO: Can we abstract from params and have these be first class??"""
 
     is_primary: bool = False
-    time_granularity: TimeGranularity = None
+    time_granularity: TimeGranularity
     validity_params: Optional[DimensionValidityParams] = None
 
 

@@ -22,7 +22,9 @@ from dbt.contracts.graph.dimensions import DimensionType
 from dbt.semantic.user_configured_model import UserConfiguredModel
 from dbt.semantic.object_utils import assert_values_exhausted
 
-VALIDATE_SAFELY_ERROR_STR_TMPLT = ". Issue occurred in method `{method_name}` called with {arguments_str}"
+VALIDATE_SAFELY_ERROR_STR_TMPLT = (
+    ". Issue occurred in method `{method_name}` called with {arguments_str}"
+)
 ValidationContextJSON = Dict[str, Union[str, int, None]]
 ValidationIssueJSON = Dict[str, Union[str, int, ValidationContextJSON]]
 
@@ -133,7 +135,8 @@ class ValidationIssue(dbtClassMixin):
     def as_cli_formatted_str(self, verbose: bool = False) -> str:
         """Returns a color-coded readable string for rendering issues in the CLI"""
         return self.as_readable_str(
-            verbose=verbose, prefix=click.style(self.level.name, bold=True, fg=ISSUE_COLOR_MAP[self.level])
+            verbose=verbose,
+            prefix=click.style(self.level.name, bold=True, fg=ISSUE_COLOR_MAP[self.level]),
         )
 
 
@@ -206,7 +209,9 @@ class ModelValidationResults(dbtClassMixin):
                 errors.append(issue)
             else:
                 assert_values_exhausted(issue.level)
-        return cls(warnings=tuple(warnings), future_errors=tuple(future_errors), errors=tuple(errors))
+        return cls(
+            warnings=tuple(warnings), future_errors=tuple(future_errors), errors=tuple(errors)
+        )
 
     @classmethod
     def merge(cls, results: Sequence[ModelValidationResults]) -> ModelValidationResults:
@@ -258,7 +263,10 @@ class ModelValidationResults(dbtClassMixin):
 
 
 def generate_exception_issue(
-    what_was_being_done: str, e: Exception, context: Optional[ValidationContext] = None, extras: Dict[str, str] = {}
+    what_was_being_done: str,
+    e: Exception,
+    context: Optional[ValidationContext] = None,
+    extras: Dict[str, str] = {},
 ) -> ValidationIssue:
     """Generates a validation issue for exceptions"""
     if "stacktrace" not in extras:
@@ -409,6 +417,7 @@ class iter_bucket:
 
         return self._get_values(value)
 
+
 def iter_flatten(listOfLists):
     """
     NOTE: Copied over from more_itertools but we don't want the dependency.
@@ -419,6 +428,7 @@ def iter_flatten(listOfLists):
     See also :func:`collapse`, which can flatten multiple levels of nesting.
     """
     return chain.from_iterable(listOfLists)
+
 
 @dataclass
 class ModelBuildResult:  # noqa: D

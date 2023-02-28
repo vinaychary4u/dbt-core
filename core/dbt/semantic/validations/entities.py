@@ -35,9 +35,7 @@ class EntityTimeDimensionWarningsRule(ModelValidationRule):
 
         for dim in entity.dimensions:
             context = EntityElementContext(
-                entity_element=EntityElementReference(
-                    entity_name=entity.name, name=dim.name
-                ),
+                entity_element=EntityElementReference(entity_name=entity.name, name=dim.name),
                 element_type=EntityElementType.DIMENSION,
             )
 
@@ -121,9 +119,15 @@ class EntityValidityWindowRule(ModelValidationRule):
         )
         validity_param_dimension_names = [dim.name for dim in validity_param_dims]
         start_dim_names = [
-            dim.name for dim in validity_param_dims if dim.validity_params and dim.validity_params.is_start
+            dim.name
+            for dim in validity_param_dims
+            if dim.validity_params and dim.validity_params.is_start
         ]
-        end_dim_names = [dim.name for dim in validity_param_dims if dim.validity_params and dim.validity_params.is_end]
+        end_dim_names = [
+            dim.name
+            for dim in validity_param_dims
+            if dim.validity_params and dim.validity_params.is_end
+        ]
         num_start_dims = len(start_dim_names)
         num_end_dims = len(end_dim_names)
 
@@ -169,7 +173,9 @@ class EntityValidityWindowRule(ModelValidationRule):
             for identifier in entity.identifiers
             if identifier.type in (IdentifierType.PRIMARY, IdentifierType.UNIQUE)
         ]
-        if not any([identifier.type is IdentifierType.NATURAL for identifier in entity.identifiers]):
+        if not any(
+            [identifier.type is IdentifierType.NATURAL for identifier in entity.identifiers]
+        ):
             error = ValidationError(
                 context=context,
                 message=(

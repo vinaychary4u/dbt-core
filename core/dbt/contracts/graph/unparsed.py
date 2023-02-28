@@ -24,12 +24,10 @@ from dbt.contracts.graph.metrics import (
     UnparsedMetricTypeParams,
 )
 from dbt.semantic.constraints import WhereClauseConstraint
-from dbt.semantic.transformations.metric_transformations.convert_type_params import ConvertTypeParams
-from dbt.contracts.graph.entities import (
-    EntityMutability,
-    EntityMutabilityType,
-    EntityOrigin
+from dbt.semantic.transformations.metric_transformations.convert_type_params import (
+    ConvertTypeParams,
 )
+from dbt.contracts.graph.entities import EntityMutability, EntityMutabilityType, EntityOrigin
 
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -473,9 +471,11 @@ class UnparsedExposure(dbtClassMixin, Replaceable):
         if data["owner"].get("name") is None and data["owner"].get("email") is None:
             raise ValidationError("Exposure owner must have at least one of 'name' or 'email'.")
 
+
 #########################
 ## SEMANTIC LAYER CLASSES
 #########################
+
 
 @dataclass
 class UnparsedEntity(dbtClassMixin, Replaceable):
@@ -503,17 +503,17 @@ class UnparsedEntity(dbtClassMixin, Replaceable):
         # TODO: Replace this hacky way to verify a ref statement
         # We are using this today in order to verify that model field
         # is taking a ref input
-        if "ref('" not in data['model']:
+        if "ref('" not in data["model"]:
             raise ParsingError(
                 f"The entity '{data['name']}' does not contain a proper ref('') in the model property."
             )
-        for identifier in data['identifiers']:
+        for identifier in data["identifiers"]:
             if identifier.get("entity") is None:
-                if 'name' not in identifier:
+                if "name" not in identifier:
                     raise ParsingError(
                         f"Failed to define identifier entity value for entity '{data['name']}' because identifier name was not defined."
                     )
-                identifier["entity"]=identifier["name"]
+                identifier["entity"] = identifier["name"]
 
 
 @dataclass
@@ -529,7 +529,7 @@ class UnparsedMetric(dbtClassMixin):
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
     config: Dict[str, Any] = field(default_factory=dict)
-    
+
     @classmethod
     def validate(cls, data):
         super(UnparsedMetric, cls).validate(data)
@@ -540,28 +540,36 @@ class UnparsedMetric(dbtClassMixin):
             if isinstance(data["constraint"], str):
                 data["constraint"] = WhereClauseConstraint.parse(data["constraint"])
             else:
-                raise CompilationError(f"Expected input for constraint on metric {data['name']} to be of type string")
+                raise CompilationError(
+                    f"Expected input for constraint on metric {data['name']} to be of type string"
+                )
 
         if "type_params" in data:
             if "metrics" in data["type_params"]:
                 for loop_id, metric in enumerate(data["type_params"]["metrics"]):
                     if isinstance(metric, dict):
-                        if isinstance(metric["constraint"],str):
-                            data["type_params"]["metrics"][loop_id]["constraint"] = WhereClauseConstraint.parse(metric["constraint"])
+                        if isinstance(metric["constraint"], str):
+                            data["type_params"]["metrics"][loop_id][
+                                "constraint"
+                            ] = WhereClauseConstraint.parse(metric["constraint"])
 
         # TODO: Figure out better way to convert to input measures. We need this here
         # so we can do full "mf model" validation in schemas.py. Specifically for input
         # measure metric rules - they requrie that identifiers be present in metrics propert
         if "entity" not in data:
             if data["type"] != MetricType.DERIVED:
-                raise CompilationError(f"The metric {data['name']} is missing the required entity property.")
+                raise CompilationError(
+                    f"The metric {data['name']} is missing the required entity property."
+                )
         elif "entity" in data:
             if data["type"] == MetricType.DERIVED:
-                raise CompilationError(f"The metric {data['name']} is derived, which does not support entity definition.")
+                raise CompilationError(
+                    f"The metric {data['name']} is derived, which does not support entity definition."
+                )
             # TODO: Replace this hacky way to verify an entity lookup
             # We are doing this to ensure that the entity property is using an entity
             # function and not just providing a string
-            if "entity('" not in data['entity']:
+            if "entity('" not in data["entity"]:
                 raise ParsingError(
                     f"The metric '{data['name']}' does not contain a proper entity('') reference in the entity property."
                 )

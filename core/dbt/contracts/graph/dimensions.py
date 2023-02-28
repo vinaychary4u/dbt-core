@@ -1,7 +1,5 @@
 from __future__ import annotations
-from dbt.contracts.util import (
-    Mergeable
-)
+from dbt.contracts.util import Mergeable
 from dbt.dataclass_schema import dbtClassMixin, StrEnum
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any, List
@@ -19,7 +17,7 @@ class DimensionType(StrEnum):
 
 
 @dataclass
-class DimensionValidityParams(dbtClassMixin,Mergeable):
+class DimensionValidityParams(dbtClassMixin, Mergeable):
     """Parameters identifying a given dimension as an identifier for validity state
     This construct is used for supporting SCD Type II tables, such as might be
     created via dbt's snapshot feature, or generated via periodic loads from external
@@ -34,16 +32,16 @@ class DimensionValidityParams(dbtClassMixin,Mergeable):
 
 @dataclass
 class DimensionTypeParameters(dbtClassMixin, Mergeable):
-    """This class contains the type parameters required for the semantic layer. 
+    """This class contains the type parameters required for the semantic layer.
     The first iteration of this is specifically focused on time.
-    
+
     Additionally we use the final two properties (start/end) for  supporting SCD
     Type II tables, such as might be created via dbt's snapshot feature, or generated
     via periodic loads from external dimension data sources. In either of those cases,
-    there is typically a time dimension associated with the SCD data source that 
-    indicates the start and end times of a validity window, where the dimension 
+    there is typically a time dimension associated with the SCD data source that
+    indicates the start and end times of a validity window, where the dimension
     value is valid for any time within that range.
-    
+
     TODO: Can we abstract from params and have these be first class??"""
 
     is_primary: bool = False
@@ -54,6 +52,7 @@ class DimensionTypeParameters(dbtClassMixin, Mergeable):
 @dataclass
 class Dimension(dbtClassMixin, Mergeable):
     """Each instance of this class represents a dimension in the associated entity."""
+
     name: str
     type: DimensionType
     type_params: Optional[DimensionTypeParameters] = None
@@ -76,7 +75,9 @@ class Dimension(dbtClassMixin, Mergeable):
 
     @property
     def time_dimension_reference(self) -> TimeDimensionReference:  # noqa: D
-        assert self.type == DimensionType.TIME, f"Got type as {self.type} instead of {DimensionType.TIME}"
+        assert (
+            self.type == DimensionType.TIME
+        ), f"Got type as {self.type} instead of {DimensionType.TIME}"
         return TimeDimensionReference(name=self.name)
 
     @property

@@ -1,9 +1,10 @@
 from dbt.contracts.graph.nodes import Entity
 from abc import ABC
 
+
 class CompositeIdentifierExpressionRule(ABC):
     """Transform composite sub-identifiers for convenience.
-    If a sub-identifier has no expression, check if an identifier exists 
+    If a sub-identifier has no expression, check if an identifier exists
     with the same name and use that identifier's expression if it has one.
     """
 

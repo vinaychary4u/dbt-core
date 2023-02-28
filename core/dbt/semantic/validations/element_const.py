@@ -26,12 +26,16 @@ class ElementConsistencyRule(ModelValidationRule):
         issues = []
         name_to_types = ElementConsistencyRule._get_name_to_types(model=model)
         invalid_elements = {
-            name: type_mapping for name, type_mapping in name_to_types.items() if len(type_mapping) > 1
+            name: type_mapping
+            for name, type_mapping in name_to_types.items()
+            if len(type_mapping) > 1
         }
 
         for name, type_to_context in invalid_elements.items():
             # Sort these by value to ensure consistent error messaging
-            types_used = [EntityElementType(v) for v in sorted(k.value for k in type_to_context.keys())]
+            types_used = [
+                EntityElementType(v) for v in sorted(k.value for k in type_to_context.keys())
+            ]
             value_types_used = [type.value for type in types_used]
             for element_type in types_used:
                 entity_contexts = type_to_context[element_type]
@@ -52,9 +56,9 @@ class ElementConsistencyRule(ModelValidationRule):
         model: UserConfiguredModel,
     ) -> DefaultDict[str, DefaultDict[EntityElementType, List[EntityContext]]]:
         """Create a mapping of all element names in the model to types with a list of associated EntityContexts"""
-        element_types: DefaultDict[str, DefaultDict[EntityElementType, List[EntityContext]]] = defaultdict(
-            lambda: defaultdict(list)
-        )
+        element_types: DefaultDict[
+            str, DefaultDict[EntityElementType, List[EntityContext]]
+        ] = defaultdict(lambda: defaultdict(list))
         for entity in model.entities:
             entity_context = EntityContext(
                 entity=EntityReference(entity_name=entity.name),
@@ -64,8 +68,12 @@ class ElementConsistencyRule(ModelValidationRule):
                     element_types[measure.name][EntityElementType.MEASURE].append(entity_context)
             if entity.dimensions:
                 for dimension in entity.dimensions:
-                    element_types[dimension.name][EntityElementType.DIMENSION].append(entity_context)
+                    element_types[dimension.name][EntityElementType.DIMENSION].append(
+                        entity_context
+                    )
             if entity.identifiers:
                 for identifier in entity.identifiers:
-                    element_types[identifier.name][EntityElementType.IDENTIFIER].append(entity_context)
+                    element_types[identifier.name][EntityElementType.IDENTIFIER].append(
+                        entity_context
+                    )
         return element_types

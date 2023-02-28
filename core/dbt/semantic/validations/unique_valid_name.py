@@ -7,7 +7,7 @@ from dbt.semantic.references import (
     EntityElementReference,
     EntityReference,
     MetricModelReference,
-    ElementReference
+    ElementReference,
 )
 
 from dbt.contracts.graph.nodes import Entity
@@ -76,7 +76,9 @@ class UniqueAndValidNameRule(ModelValidationRule):
                 )
             )
         if name.lower() in {reserved_name.value for reserved_name in SemanticReservedKeywords}:
-            reason = SemanticReservedKeywords.get_reserved_reason(SemanticReservedKeywords(name.lower()))
+            reason = SemanticReservedKeywords.get_reserved_reason(
+                SemanticReservedKeywords(name.lower())
+            )
             issues.append(
                 ValidationError(
                     message=f"Invalid name `{name}` - this name is reserved by MetricFlow. Reason: {reason}",

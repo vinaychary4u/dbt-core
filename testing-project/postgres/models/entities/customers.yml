@@ -14,7 +14,7 @@ entities:
       - name: first_name
         type: categorical
 
-        
+
       #   description: string
       #   column_name: first_name
       #   date_type: string

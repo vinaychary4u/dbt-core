@@ -1,9 +1,4 @@
-from typing import (
-    Type,
-    ClassVar,
-    cast,
-    List
-)
+from typing import Type, ClassVar, cast, List
 import re
 import json
 from dataclasses import fields

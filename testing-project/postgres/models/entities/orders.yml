@@ -65,25 +65,25 @@ metrics:
     type: measure_proxy
     type_params:
       measure: order_total
-    constraint: | 
+    constraint: |
       order_location = 'Unovo'
 
   - name: sales_minus_revenue
-    type: derived 
+    type: derived
     type_params:
-      expr: sales - revenue 
-      metrics: 
+      expr: sales - revenue
+      metrics:
         - sales
         - revenue
 
   - name: constraint_derived
-    type: derived 
+    type: derived
     type_params:
-      expr: sales - revenue 
-      metrics: 
+      expr: sales - revenue
+      metrics:
         - sales
         - name: revenue
-          constraint: | 
+          constraint: |
             order_location = 'Unovo'
 
   - name: cancellation_rate
@@ -101,10 +101,10 @@ metrics:
       window: 7 days
 
   - name: revenue_usd
-    type: expr 
+    type: expr
     entity: entity('orders')
     type_params:
       expr: order_total - sales
-      measures: 
+      measures:
         - order_total
         - sales

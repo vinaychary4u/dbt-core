@@ -15,14 +15,10 @@ from dbt.semantic.validations.validator_helpers import (
     ValidationError,
     ValidationIssueType,
     ValidationWarning,
-    iter_flatten
+    iter_flatten,
 )
 from dbt.semantic.validations.validator_helpers import ValidationFutureError
-from dbt.semantic.references import (
-    IdentifierReference,
-    EntityElementReference, 
-    EntityReference
-)
+from dbt.semantic.references import IdentifierReference, EntityElementReference, EntityReference
 
 
 class IdentifierConfigRule(ModelValidationRule):
@@ -57,7 +53,9 @@ class IdentifierConfigRule(ModelValidationRule):
                                 f"({ident.name}), please set one",
                             )
                         )
-                    elif sub_id.ref is not None and sub_id.ref not in [i.name for i in entity.identifiers]:
+                    elif sub_id.ref is not None and sub_id.ref not in [
+                        i.name for i in entity.identifiers
+                    ]:
                         issues.append(
                             ValidationError(
                                 context=context,
@@ -100,7 +98,11 @@ class NaturalIdentifierConfigurationRule(ModelValidationRule):
         )
 
         natural_identifier_names = set(
-            [identifier.name for identifier in entity.identifiers if identifier.type is IdentifierType.NATURAL]
+            [
+                identifier.name
+                for identifier in entity.identifiers
+                if identifier.type is IdentifierType.NATURAL
+            ]
         )
         if len(natural_identifier_names) > 1:
             error = ValidationError(
@@ -110,7 +112,9 @@ class NaturalIdentifierConfigurationRule(ModelValidationRule):
                 f"{natural_identifier_names}.",
             )
             issues.append(error)
-        if natural_identifier_names and not [dim for dim in entity.dimensions if dim.validity_params]:
+        if natural_identifier_names and not [
+            dim for dim in entity.dimensions if dim.validity_params
+        ]:
             error = ValidationError(
                 context=context,
                 message=f"The use of `natural` identifiers is currently supported only in conjunction with a validity "
@@ -198,7 +202,9 @@ class IdentifierConsistencyRule(ModelValidationRule):
                 SubIdentifierContext(
                     entity=entity,
                     identifier_reference=identifier.reference,
-                    sub_identifier_names=tuple(IdentifierConsistencyRule._get_sub_identifier_names(identifier)),
+                    sub_identifier_names=tuple(
+                        IdentifierConsistencyRule._get_sub_identifier_names(identifier)
+                    ),
                 )
             )
         return contexts
@@ -207,7 +213,9 @@ class IdentifierConsistencyRule(ModelValidationRule):
     def validate_model(model: UserConfiguredModel) -> List[ValidationIssueType]:  # noqa: D
         issues: List[ValidationIssueType] = []
         # build collection of sub-identifier contexts, keyed by identifier name
-        identifier_to_sub_identifier_contexts: DefaultDict[str, List[SubIdentifierContext]] = defaultdict(list)
+        identifier_to_sub_identifier_contexts: DefaultDict[
+            str, List[SubIdentifierContext]
+        ] = defaultdict(list)
         all_contexts: List[SubIdentifierContext] = list(
             iter_flatten(
                 [
@@ -217,7 +225,9 @@ class IdentifierConsistencyRule(ModelValidationRule):
             )
         )
         for context in all_contexts:
-            identifier_to_sub_identifier_contexts[context.identifier_reference.name].append(context)
+            identifier_to_sub_identifier_contexts[context.identifier_reference.name].append(
+                context
+            )
 
         # Filter out anything that has fewer than 2 distinct sub-identifier sets
         invalid_sub_identifier_configurations = dict(
@@ -228,7 +238,10 @@ class IdentifierConsistencyRule(ModelValidationRule):
         )
 
         # convert each invalid identifier configuration into a validation warning
-        for identifier_name, sub_identifier_contexts in invalid_sub_identifier_configurations.items():
+        for (
+            identifier_name,
+            sub_identifier_contexts,
+        ) in invalid_sub_identifier_configurations.items():
             entity = sub_identifier_contexts[0].entity
             issues.append(
                 ValidationWarning(

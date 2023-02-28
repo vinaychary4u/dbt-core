@@ -1,9 +1,6 @@
 from __future__ import annotations
 import json
-from dbt.contracts.util import (
-    Replaceable,
-    Mergeable
-)
+from dbt.contracts.util import Replaceable, Mergeable
 from dbt.exceptions import ParsingError
 from dbt.dataclass_schema import dbtClassMixin, StrEnum
 from dataclasses import dataclass, field
@@ -41,7 +38,7 @@ class UnparsedMetricInputMeasure(dbtClassMixin, Replaceable):
 
     name: str
     constraint: Optional[str] = None
-    alias: Optional[str]=None
+    alias: Optional[str] = None
 
 
 @dataclass
@@ -53,7 +50,7 @@ class MetricInputMeasure(dbtClassMixin, Replaceable):
 
     name: str
     constraint: Optional[WhereClauseConstraint] = None
-    alias: Optional[str]=None
+    alias: Optional[str] = None
 
     # Removed _from_yaml_value due to how dbt reads in yml
 
@@ -104,7 +101,9 @@ class MetricTimeWindow(dbtClassMixin, Mergeable):
 
         count = parts[0]
         if not count.isdigit():
-            raise ParsingError(f"Invalid count ({count}) in cumulative metric window string: ({window})")
+            raise ParsingError(
+                f"Invalid count ({count}) in cumulative metric window string: ({window})"
+            )
 
         return MetricTimeWindow(
             count=int(count),
@@ -138,16 +137,16 @@ class MetricInput(dbtClassMixin, Mergeable):
 class UnparsedMetricTypeParams(dbtClassMixin, Mergeable):
     """Type params add additional context to certain metric types (the context depends on the metric type)"""
 
-    #NOTE: Adding a union to allow for the class or a string. We 
+    # NOTE: Adding a union to allow for the class or a string. We
     # change to prefered class in schemas.py during conversion to Metric
-    measure: Optional[Union[UnparsedMetricInputMeasure,str]] = None
-    measures: Optional[List[Union[UnparsedMetricInputMeasure,str]]]  = field(default_factory=list)
-    numerator: Optional[Union[UnparsedMetricInputMeasure,str]] = None
-    denominator: Optional[Union[UnparsedMetricInputMeasure,str]] = None
+    measure: Optional[Union[UnparsedMetricInputMeasure, str]] = None
+    measures: Optional[List[Union[UnparsedMetricInputMeasure, str]]] = field(default_factory=list)
+    numerator: Optional[Union[UnparsedMetricInputMeasure, str]] = None
+    denominator: Optional[Union[UnparsedMetricInputMeasure, str]] = None
     expr: Optional[str] = None
-    window: Optional[Union[MetricTimeWindow,str]] = None
+    window: Optional[Union[MetricTimeWindow, str]] = None
     grain_to_date: Optional[TimeGranularity] = None
-    metrics: Optional[List[Union[UnparsedMetricInput,str]]] = field(default_factory=list)
+    metrics: Optional[List[Union[UnparsedMetricInput, str]]] = field(default_factory=list)
 
     @property
     def numerator_measure_reference(self) -> Optional[MeasureReference]:

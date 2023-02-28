@@ -1174,7 +1174,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         _check_duplicates(entity, self.entities)
         self.entities[entity.unique_id] = entity
         source_file.entities.append(entity.unique_id)
-        
+
     def add_group(self, source_file: SchemaSourceFile, group: Group):
         _check_duplicates(group, self.groups)
         self.groups[group.unique_id] = group

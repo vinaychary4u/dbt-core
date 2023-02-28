@@ -3,6 +3,7 @@ from dbt.contracts.graph.nodes import Entity
 from dbt.semantic.aggregation_properties import AggregationType
 from dbt.exceptions import DbtSemanticValidationError
 
+
 class BooleanMeasureAggregation(ABC):
     """Converts the expression used in boolean measures so that it can be aggregated."""
 

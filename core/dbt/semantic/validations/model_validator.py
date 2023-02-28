@@ -4,7 +4,10 @@ from typing import List, Sequence
 
 from dbt.semantic.user_configured_model import UserConfiguredModel
 from dbt.semantic.validations.agg_time_dimensions import AggregationTimeDimensionRule
-from dbt.semantic.validations.entities import EntityTimeDimensionWarningsRule, EntityValidityWindowRule
+from dbt.semantic.validations.entities import (
+    EntityTimeDimensionWarningsRule,
+    EntityValidityWindowRule,
+)
 from dbt.semantic.validations.dimension_const import DimensionConsistencyRule
 from dbt.semantic.validations.element_const import ElementConsistencyRule
 from dbt.semantic.validations.identifiers import (
@@ -27,7 +30,7 @@ from dbt.semantic.validations.validator_helpers import (
     ModelValidationResults,
     ModelValidationRule,
     ModelValidationException,
-    ModelBuildResult
+    ModelBuildResult,
 )
 
 
@@ -55,7 +58,9 @@ class ModelValidator:
         MeasuresNonAdditiveDimensionRule(),
     )
 
-    def __init__(self, rules: Sequence[ModelValidationRule] = DEFAULT_RULES, max_workers: int = 1) -> None:
+    def __init__(
+        self, rules: Sequence[ModelValidationRule] = DEFAULT_RULES, max_workers: int = 1
+    ) -> None:
         """Constructor.
 
         Args:
@@ -65,7 +70,9 @@ class ModelValidator:
 
         # Raises an error if 'rules' is an empty sequence or None
         if not rules:
-            raise ValueError("ModelValidator 'rules' must be a sequence with at least one ModelValidationRule.")
+            raise ValueError(
+                "ModelValidator 'rules' must be a sequence with at least one ModelValidationRule."
+            )
 
         self._rules = rules
         self._executor = ProcessPoolExecutor(max_workers=max_workers)
@@ -80,7 +87,9 @@ class ModelValidator:
 
         return ModelBuildResult(model=model, issues=ModelValidationResults.merge(issues))
 
-    def checked_validations(self, model: UserConfiguredModel) -> UserConfiguredModel:  # chTODO: remember checked_build
+    def checked_validations(
+        self, model: UserConfiguredModel
+    ) -> UserConfiguredModel:  # chTODO: remember checked_build
         """Similar to validate(), but throws an exception if validation fails."""
         model_copy = copy.deepcopy(model)
         build_result = self.validate_model(model_copy)

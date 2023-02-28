@@ -4,6 +4,7 @@ from dbt.contracts.graph.nodes import Entity
 
 ONE = "1"
 
+
 class ConvertCountToSum(ABC):
     """Converts any COUNT measures to SUM equivalent."""
 
@@ -12,7 +13,7 @@ class ConvertCountToSum(ABC):
         if entity.measures:
             for measure in entity.measures:
                 if measure.agg == AggregationType.COUNT:
-                    #NOTE: Removed if expr none error because dbt metric design encourages count on 
+                    # NOTE: Removed if expr none error because dbt metric design encourages count on
                     # columns, not requiring an expression. This makes it easier for users.
                     if measure.expr is None:
                         measure.expr = f"case when {measure.name} is not null then 1 else 0 end"

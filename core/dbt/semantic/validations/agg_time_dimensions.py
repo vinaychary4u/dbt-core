@@ -25,9 +25,14 @@ class AggregationTimeDimensionRule(ModelValidationRule):
         return issues
 
     @staticmethod
-    def _time_dimension_in_model(time_dimension_reference: TimeDimensionReference, entity: Entity) -> bool:
+    def _time_dimension_in_model(
+        time_dimension_reference: TimeDimensionReference, entity: Entity
+    ) -> bool:
         for dimension in entity.dimensions:
-            if dimension.type == DimensionType.TIME and dimension.name == time_dimension_reference.name:
+            if (
+                dimension.type == DimensionType.TIME
+                and dimension.name == time_dimension_reference.name
+            ):
                 return True
         return False
 
@@ -37,9 +42,7 @@ class AggregationTimeDimensionRule(ModelValidationRule):
 
         for measure in entity.measures:
             measure_context = EntityElementContext(
-                entity_element=EntityElementReference(
-                    entity_name=entity.name, name=measure.name
-                ),
+                entity_element=EntityElementReference(entity_name=entity.name, name=measure.name),
                 element_type=EntityElementType.MEASURE,
             )
             agg_time_dimension_reference = measure.checked_agg_time_dimension

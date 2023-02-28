@@ -86,7 +86,11 @@ class ReservedKeywordsRule(ModelValidationRule):
             for identifier in entity.identifiers:
                 if identifier.is_composite:
                     msg = "'{name}' is an SQL reserved keyword, and thus cannot be used as a sub-identifier 'name'"
-                    names = [sub_ident.name for sub_ident in identifier.identifiers if sub_ident.name is not None]
+                    names = [
+                        sub_ident.name
+                        for sub_ident in identifier.identifiers
+                        if sub_ident.name is not None
+                    ]
                 else:
                     msg = "'{name}' is an SQL reserved keyword, and thus cannot be used as an identifier 'name'"
                     names = [identifier.name]
@@ -131,7 +135,6 @@ class ReservedKeywordsRule(ModelValidationRule):
             issues += cls._validate_entity_sub_elements(entity=entity)
 
         return issues
-
 
     @classmethod
     def validate_model(cls, model: UserConfiguredModel) -> List[ValidationIssueType]:  # noqa: D

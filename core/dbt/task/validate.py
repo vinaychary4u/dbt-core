@@ -10,7 +10,6 @@ from dbt.semantic.user_configured_model import UserConfiguredModel
 
 
 class ValidateTask(GraphRunnableTask):
-
     def __init__(self, args, config, manifest):
         super().__init__(args, config, manifest)
         if self.args.models:
@@ -26,10 +25,9 @@ class ValidateTask(GraphRunnableTask):
 
         GraphRunnableTask.load_manifest(self)
 
-        model=self.manifest.user_configured_model
+        model = self.manifest.user_configured_model
         breakpoint()
         fire_event(DebugCmdOut(msg="Callum still has more todos"))
 
         fire_event(DebugCmdOut(msg="Validation completed!"))
         fire_event(DebugCmdOut(msg="Done."))
-

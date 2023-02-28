@@ -6,6 +6,7 @@ from dbt.exceptions import DbtSemanticValidationError
 
 MEDIAN_PERCENTILE = 0.5
 
+
 class ConvertMedianToPercentile(ABC):
     """Converts any MEDIAN measures to percentile equivalent."""
 
@@ -19,7 +20,10 @@ class ConvertMedianToPercentile(ABC):
                     if not measure.agg_params:
                         measure.agg_params = MeasureAggregationParameters()
                     else:
-                        if measure.agg_params.percentile is not None and measure.agg_params.percentile != 0.5:
+                        if (
+                            measure.agg_params.percentile is not None
+                            and measure.agg_params.percentile != 0.5
+                        ):
                             raise DbtSemanticValidationError(
                                 f"Measure '{measure.name}' uses a MEDIAN aggregation, while percentile is set to "
                                 f"'{measure.agg_params.percentile}', a conflicting value. Please remove the parameter "

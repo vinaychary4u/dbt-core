@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 from dbt.semantic.references import CompositeSubIdentifierReference, IdentifierReference
 
+
 class IdentifierType(StrEnum):
     """Defines uniqueness and the extent to which an identifier represents the common entity for a data source"""
 
@@ -26,8 +27,11 @@ class CompositeSubIdentifier(dbtClassMixin):
 
     @property
     def reference(self) -> CompositeSubIdentifierReference:  # noqa: D
-        assert self.name, f"The element name should have been set during model transformation. Got {self}"
+        assert (
+            self.name
+        ), f"The element name should have been set during model transformation. Got {self}"
         return CompositeSubIdentifierReference(name=self.name)
+
 
 @dataclass
 class Identifier(dbtClassMixin, Mergeable):

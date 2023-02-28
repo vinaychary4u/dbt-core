@@ -379,14 +379,20 @@ class ManifestLoader:
             self.process_nodes()
 
             ## Validate semantic model
-            #TODO: Figure out how to have this be its own area
+            # TODO: Figure out how to have this be its own area
             semantic_result = ModelValidator().validate_model(self.manifest.user_configured_model)
             if semantic_result.issues.has_blocking_issues:
-                error_message = "\n".join(issue.as_cli_formatted_str() for issue in semantic_result.issues.errors)
-                warning_message = "\n".join(issue.as_cli_formatted_str() for issue in semantic_result.issues.warnings)
-                future_error_message = "\n".join(issue.as_cli_formatted_str() for issue in semantic_result.issues.future_errors)
+                error_message = "\n".join(
+                    issue.as_cli_formatted_str() for issue in semantic_result.issues.errors
+                )
+                warning_message = "\n".join(
+                    issue.as_cli_formatted_str() for issue in semantic_result.issues.warnings
+                )
+                future_error_message = "\n".join(
+                    issue.as_cli_formatted_str() for issue in semantic_result.issues.future_errors
+                )
                 raise dbt.exceptions.DbtSemanticValidationError(
-                    error_message+warning_message+future_error_message
+                    error_message + warning_message + future_error_message
                 )
 
             self._perf_info.parse_project_elapsed = time.perf_counter() - start_parse_projects
@@ -1367,13 +1373,12 @@ def _process_metrics_for_node(
         target_metric_name: str
         target_metric_package: Optional[str] = None
 
-
         ##TODO: This is my issue. UnparsedMetricInput is sneaking through
         # into the metrics list
 
         if len(metric) == 1:
-            if isinstance(metric[0],UnparsedMetricInput):
-                target_metric_name=metric[0].name
+            if isinstance(metric[0], UnparsedMetricInput):
+                target_metric_name = metric[0].name
             else:
                 target_metric_name = metric[0]
         elif len(metric) == 2:

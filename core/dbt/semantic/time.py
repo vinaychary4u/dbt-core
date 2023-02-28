@@ -6,6 +6,7 @@ from dbt.dataclass_schema import StrEnum
 
 from dbt.semantic.object_utils import assert_values_exhausted
 
+
 class TimeGranularity(StrEnum):
     """For time dimensions, the smallest possible difference between two time values.
     Needed for calculating adjacency when merging 2 different time ranges.
@@ -97,7 +98,9 @@ class TimeGranularity(StrEnum):
     @property
     def period_begin_offset(  # noqa: D
         self,
-    ) -> Union[pd.offsets.MonthBegin, pd.offsets.QuarterBegin, pd.offsets.Week, pd.offsets.YearBegin]:
+    ) -> Union[
+        pd.offsets.MonthBegin, pd.offsets.QuarterBegin, pd.offsets.Week, pd.offsets.YearBegin
+    ]:
         if self is TimeGranularity.DAY:
             raise ValueError(f"Can't get period start offset for TimeGranularity.{self.name}.")
         elif self is TimeGranularity.WEEK:
@@ -128,21 +131,27 @@ class TimeGranularity(StrEnum):
         else:
             assert_values_exhausted(self)
 
-    def adjust_to_start_of_period(self, date_to_adjust: pd.Timestamp, rollback: bool = True) -> pd.Timestamp:
+    def adjust_to_start_of_period(
+        self, date_to_adjust: pd.Timestamp, rollback: bool = True
+    ) -> pd.Timestamp:
         """Adjust to start of period if not at start already."""
         if rollback:
             return self.period_begin_offset.rollback(date_to_adjust)
         else:
             return self.period_begin_offset.rollforward(date_to_adjust)
 
-    def adjust_to_end_of_period(self, date_to_adjust: pd.Timestamp, rollforward: bool = True) -> pd.Timestamp:
+    def adjust_to_end_of_period(
+        self, date_to_adjust: pd.Timestamp, rollforward: bool = True
+    ) -> pd.Timestamp:
         """Adjust to end of period if not at end already."""
         if rollforward:
             return self.period_end_offset.rollforward(date_to_adjust)
         else:
             return self.period_end_offset.rollback(date_to_adjust)
 
-    def match_start_or_end_of_period(self, date_to_match: pd.Timestamp, date_to_adjust: pd.Timestamp) -> pd.Timestamp:
+    def match_start_or_end_of_period(
+        self, date_to_match: pd.Timestamp, date_to_adjust: pd.Timestamp
+    ) -> pd.Timestamp:
         """Adjust date_to_adjust to be start or end of period based on if date_to_match is at start or end of period."""
         if self.is_period_start(date_to_match):
             return self.adjust_to_start_of_period(date_to_adjust)

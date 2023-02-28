@@ -1268,7 +1268,7 @@ class EnvVarMissingError(ParsingError):
 
 
 class TargetNotFoundError(CompilationError):
-    #NOTE: CM Might be what I'm looking for
+    # NOTE: CM Might be what I'm looking for
     def __init__(
         self,
         node,

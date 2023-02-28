@@ -17,7 +17,7 @@ from dbt.semantic.references import (
     MeasureReference,
     LinkableElementReference,
     EntityReference,
-    MetricReference
+    MetricReference,
 )
 from dbt.semantic.time import TimeGranularity
 from dbt.semantic.object_utils import hash_items
@@ -50,7 +50,7 @@ from dbt.contracts.graph.metrics import (
     MetricType,
     MetricInputMeasure,
     MetricTypeParams,
-    MetricInput
+    MetricInput,
 )
 from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
 from dbt.events.proto_types import NodeInfo
@@ -1053,6 +1053,7 @@ class Exposure(GraphNode):
 # Metric node
 # ====================================
 
+
 @dataclass
 class Metric(GraphNode):
     name: str
@@ -1250,14 +1251,20 @@ class Entity(GraphNode):
             if dim.reference == dimension_reference:
                 return dim
 
-        raise ValueError(f"No dimension with name ({dimension_reference}) in data source with name ({self.name})")
+        raise ValueError(
+            f"No dimension with name ({dimension_reference}) in data source with name ({self.name})"
+        )
 
-    def get_identifier(self, identifier_reference: LinkableElementReference) -> Identifier:  # noqa: D
+    def get_identifier(
+        self, identifier_reference: LinkableElementReference
+    ) -> Identifier:  # noqa: D
         for ident in self.identifiers:
             if ident.reference == identifier_reference:
                 return ident
 
-        raise ValueError(f"No identifier with name ({identifier_reference}) in data source with name ({self.name})")
+        raise ValueError(
+            f"No identifier with name ({identifier_reference}) in data source with name ({self.name})"
+        )
 
     @property
     def has_validity_dimensions(self) -> bool:
@@ -1267,7 +1274,9 @@ class Entity(GraphNode):
     @property
     def validity_start_dimension(self) -> Optional[Dimension]:
         """Returns the validity window start dimension, if one is set"""
-        validity_start_dims = [dim for dim in self.dimensions if dim.validity_params and dim.validity_params.is_start]
+        validity_start_dims = [
+            dim for dim in self.dimensions if dim.validity_params and dim.validity_params.is_start
+        ]
         if not validity_start_dims:
             return None
         assert (
@@ -1278,7 +1287,9 @@ class Entity(GraphNode):
     @property
     def validity_end_dimension(self) -> Optional[Dimension]:
         """Returns the validity window end dimension, if one is set"""
-        validity_end_dims = [dim for dim in self.dimensions if dim.validity_params and dim.validity_params.is_end]
+        validity_end_dims = [
+            dim for dim in self.dimensions if dim.validity_params and dim.validity_params.is_end
+        ]
         if not validity_end_dims:
             return None
         assert (

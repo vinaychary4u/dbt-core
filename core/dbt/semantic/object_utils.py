@@ -147,7 +147,9 @@ def pformat_big_objects(*args, **kwargs) -> str:  # type: ignore
 SequenceT = TypeVar("SequenceT")
 
 
-def flatten_nested_sequence(sequence_of_sequences: Sequence[Sequence[SequenceT]]) -> Tuple[SequenceT, ...]:
+def flatten_nested_sequence(
+    sequence_of_sequences: Sequence[Sequence[SequenceT]],
+) -> Tuple[SequenceT, ...]:
     """Convert a nested sequence into a flattened tuple.
 
     e.g. ((1,2), (3,4)) -> (1, 2, 3, 4)
@@ -155,7 +157,9 @@ def flatten_nested_sequence(sequence_of_sequences: Sequence[Sequence[SequenceT]]
     return tuple(itertools.chain.from_iterable(sequence_of_sequences))
 
 
-def flatten_and_dedupe(sequence_of_sequences: Sequence[Sequence[SequenceT]]) -> Tuple[SequenceT, ...]:
+def flatten_and_dedupe(
+    sequence_of_sequences: Sequence[Sequence[SequenceT]],
+) -> Tuple[SequenceT, ...]:
     """Convert a nested sequence into a flattened tuple, with de-duping.
 
     e.g. ((1,2), (2,3)) -> (1, 2, 3)
@@ -179,7 +183,9 @@ def hash_items(items: Sequence[SqlColumnType]) -> str:
         hash_builder.update(str(item).encode("utf-8"))
     return hash_builder.hexdigest()
 
+
 SqlColumnType = Union[str, int, float, datetime.datetime, datetime.date, bool]
+
 
 class iter_bucket:
     """Wrap *iterable* and return an object that buckets it iterable into

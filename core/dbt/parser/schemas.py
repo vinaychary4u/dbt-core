@@ -88,15 +88,27 @@ from dbt.parser.generic_test_builders import (
     Testable,
 )
 from dbt.utils import get_pseudo_test_path, coerce_dict_str
-from dbt.semantic.transformations.entity_transformations.boolean_measure_aggregation import BooleanMeasureAggregation
-from dbt.semantic.transformations.entity_transformations.composite_identifier_expressions import CompositeIdentifierExpressionRule
+from dbt.semantic.transformations.entity_transformations.boolean_measure_aggregation import (
+    BooleanMeasureAggregation,
+)
+from dbt.semantic.transformations.entity_transformations.composite_identifier_expressions import (
+    CompositeIdentifierExpressionRule,
+)
 from dbt.semantic.transformations.entity_transformations.convert_count import ConvertCountToSum
-from dbt.semantic.transformations.entity_transformations.convert_median import ConvertMedianToPercentile
+from dbt.semantic.transformations.entity_transformations.convert_median import (
+    ConvertMedianToPercentile,
+)
 from dbt.semantic.transformations.entity_transformations.lowercase_names import LowerCaseNames
-from dbt.semantic.transformations.entity_transformations.measure_aggregation_time_dimension import SetMeasureAggregationTimeDimension
+from dbt.semantic.transformations.entity_transformations.measure_aggregation_time_dimension import (
+    SetMeasureAggregationTimeDimension,
+)
 from dbt.semantic.transformations.entity_transformations.proxy_measure import ProxyMeasure
-from dbt.semantic.transformations.metric_transformations.add_input_metric_measures import AddInputMetricMeasures
-from dbt.semantic.transformations.metric_transformations.convert_type_params import ConvertTypeParams
+from dbt.semantic.transformations.metric_transformations.add_input_metric_measures import (
+    AddInputMetricMeasures,
+)
+from dbt.semantic.transformations.metric_transformations.convert_type_params import (
+    ConvertTypeParams,
+)
 from dbt.utils import get_pseudo_test_path, coerce_dict_str, md5
 
 
@@ -1210,8 +1222,8 @@ class EntityParser(YamlReader):
     def parse_entity(self, unparsed: UnparsedEntity):
         package_name = self.project.project_name
         unique_id = f"{NodeType.Entity}.{package_name}.{unparsed.name}"
-        entity_model_name = unparsed.model.replace('"','\'').split('\'')[1]
-        model_key=f"model.{package_name}.{entity_model_name}"
+        entity_model_name = unparsed.model.replace('"', "'").split("'")[1]
+        model_key = f"model.{package_name}.{entity_model_name}"
         path = self.yaml.path.relative_path
 
         fqn = self.schema_parser.get_fqn_prefix(path)
@@ -1233,12 +1245,10 @@ class EntityParser(YamlReader):
             rendered=False,
         )
 
-
         if not isinstance(config, EntityConfig):
             raise DbtInternalError(
                 f"Calculated a {type(config)} for an entity, but expected a EntityConfig"
             )
-
 
         parsed = Entity(
             resource_type=NodeType.Entity,
@@ -1261,13 +1271,13 @@ class EntityParser(YamlReader):
             unrendered_config=unrendered_config,
         )
 
-        parsed=ConvertCountToSum._transform_entity(entity=parsed)
-        parsed=LowerCaseNames._transform_entity(entity=parsed)
-        parsed=CompositeIdentifierExpressionRule._transform_entity(entity=parsed)
-        parsed=ConvertMedianToPercentile._transform_entity(entity=parsed)
-        parsed=BooleanMeasureAggregation._transform_entity(entity=parsed)
-        parsed=SetMeasureAggregationTimeDimension._transform_entity(entity=parsed)
-        
+        parsed = ConvertCountToSum._transform_entity(entity=parsed)
+        parsed = LowerCaseNames._transform_entity(entity=parsed)
+        parsed = CompositeIdentifierExpressionRule._transform_entity(entity=parsed)
+        parsed = ConvertMedianToPercentile._transform_entity(entity=parsed)
+        parsed = BooleanMeasureAggregation._transform_entity(entity=parsed)
+        parsed = SetMeasureAggregationTimeDimension._transform_entity(entity=parsed)
+
         ctx = generate_parse_entities(
             entity=parsed,
             config=self.root_project,
@@ -1275,12 +1285,7 @@ class EntityParser(YamlReader):
             package_name=package_name,
         )
 
-        self = ProxyMeasure._create_proxy_metrics(
-            self,
-            parsed_entity=parsed,
-            path=path,
-            fqn=fqn
-        )
+        self = ProxyMeasure._create_proxy_metrics(self, parsed_entity=parsed, path=path, fqn=fqn)
 
         if parsed.model is not None:
             model_ref = "{{ " + parsed.model + " }}"
@@ -1317,7 +1322,7 @@ class EntityParser(YamlReader):
         )
 
     def _generate_proxy_metric_config(
-                self, target: Measure, fqn: List[str], package_name: str, rendered: bool
+        self, target: Measure, fqn: List[str], package_name: str, rendered: bool
     ):
         generator: BaseContextConfigGenerator
         if rendered:
@@ -1345,7 +1350,6 @@ class EntityParser(YamlReader):
             try:
                 UnparsedEntity.validate(data)
                 unparsed = UnparsedEntity.from_dict(data)
-            
 
             except (ValidationError, JSONValidationError) as exc:
                 raise YamlParseDictError(self.yaml.path, self.key, data, exc)
@@ -1382,7 +1386,7 @@ class MetricParser(YamlReader):
             rendered=False,
         )
 
-        parsed_metric_type_params=ConvertTypeParams._get_metric_type_params(unparsed.type_params)
+        parsed_metric_type_params = ConvertTypeParams._get_metric_type_params(unparsed.type_params)
 
         if not isinstance(config, MetricConfig):
             raise DbtInternalError(
@@ -1465,11 +1469,11 @@ class MetricParser(YamlReader):
 
     def transform(self):
         ##We validate here for the input metric measurs because
-        ## we need all of the metrics to be parsed. This exists for 
-        ## derived metrics 
-        metrics=[metric for metric in self.manifest.metrics.values()]
+        ## we need all of the metrics to be parsed. This exists for
+        ## derived metrics
+        metrics = [metric for metric in self.manifest.metrics.values()]
         for metric in metrics:
-            metric = AddInputMetricMeasures.add_input_metrics(metric=metric,metrics=metrics)
+            metric = AddInputMetricMeasures.add_input_metrics(metric=metric, metrics=metrics)
             # self.update_metric
 
 

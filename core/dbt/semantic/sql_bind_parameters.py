@@ -120,7 +120,9 @@ class SqlBindParameters(dbtClassMixin):
     def create_from_dict(param_dict: Mapping[str, SqlColumnType]) -> SqlBindParameters:  # noqa: D
         return SqlBindParameters(
             tuple(
-                SqlBindParameter(key=key, value=SqlBindParameterValue.create_from_sql_column_type(value))
+                SqlBindParameter(
+                    key=key, value=SqlBindParameterValue.create_from_sql_column_type(value)
+                )
                 for key, value in param_dict.items()
             )
         )

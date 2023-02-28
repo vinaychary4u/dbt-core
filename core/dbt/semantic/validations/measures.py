@@ -16,7 +16,7 @@ from dbt.semantic.validations.validator_helpers import (
     ValidationIssueType,
     ValidationError,
     ValidationWarning,
-    iter_bucket
+    iter_bucket,
 )
 
 
@@ -55,7 +55,9 @@ class MeasureConstraintAliasesRule(ModelValidationRule):
     """
 
     @staticmethod
-    def _validate_required_aliases_are_set(metric: Metric, metric_context: MetricContext) -> List[ValidationIssueType]:
+    def _validate_required_aliases_are_set(
+        metric: Metric, metric_context: MetricContext
+    ) -> List[ValidationIssueType]:
         """Checks if valid aliases are set on the input measure references where they are required
 
         Aliases are required whenever there are 2 or more input measures with the same measure
@@ -97,7 +99,9 @@ class MeasureConstraintAliasesRule(ModelValidationRule):
                 continue
 
             constrained_measures_without_aliases = [
-                measure for measure in input_measures if measure.constraint is not None and measure.alias is None
+                measure
+                for measure in input_measures
+                if measure.constraint is not None and measure.alias is None
             ]
             if constrained_measures_without_aliases:
                 issues.append(
@@ -134,11 +138,15 @@ class MeasureConstraintAliasesRule(ModelValidationRule):
             )
 
             aliased_measures = [
-                input_measure for input_measure in metric.input_measures if input_measure.alias is not None
+                input_measure
+                for input_measure in metric.input_measures
+                if input_measure.alias is not None
             ]
 
             for measure in aliased_measures:
-                assert measure.alias, "Type refinement assertion, previous filter should ensure this is true"
+                assert (
+                    measure.alias
+                ), "Type refinement assertion, previous filter should ensure this is true"
                 issues += UniqueAndValidNameRule.check_valid_name(measure.alias, metric_context)
                 if measure.alias in measure_names:
                     issues.append(
@@ -174,7 +182,9 @@ class MetricMeasuresRule(ModelValidationRule):
     """Checks that the measures referenced in the metrics exist."""
 
     @staticmethod
-    def _validate_metric_measure_references(metric: Metric, valid_measure_names: Set[str]) -> List[ValidationIssueType]:
+    def _validate_metric_measure_references(
+        metric: Metric, valid_measure_names: Set[str]
+    ) -> List[ValidationIssueType]:
         issues: List[ValidationIssueType] = []
 
         for measure_reference in metric.measure_references:
@@ -243,7 +253,8 @@ class MeasuresNonAdditiveDimensionRule(ModelValidationRule):
 
                 # Validates that the non_additive_dimension exists as a time dimension in the entity
                 matching_dimension = next(
-                    (dim for dim in entity.dimensions if non_additive_dimension.name == dim.name), None
+                    (dim for dim in entity.dimensions if non_additive_dimension.name == dim.name),
+                    None,
                 )
                 if matching_dimension is None:
                     issues.append(
@@ -304,7 +315,10 @@ class MeasuresNonAdditiveDimensionRule(ModelValidationRule):
                         )
 
                 # Validates that the window_choice is either MIN/MAX
-                if non_additive_dimension.window_choice not in {AggregationType.MIN, AggregationType.MAX}:
+                if non_additive_dimension.window_choice not in {
+                    AggregationType.MIN,
+                    AggregationType.MAX,
+                }:
                     issues.append(
                         ValidationError(
                             context=EntityElementContext(

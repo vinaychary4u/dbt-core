@@ -24,11 +24,10 @@ from dbt.task.validate import ValidateTask
 from dbt.task.init import InitTask
 
 import importlib
+
 metricflow_module = importlib.util.find_spec("metricflow")
 if metricflow_module is not None:
-    from metricflow.cli.main import (
-        cli as metricflow_cli
-    )
+    from metricflow.cli.main import cli as metricflow_cli
 
 
 class dbtUsageException(Exception):
@@ -167,7 +166,8 @@ def clean(ctx, **kwargs):
     success = task.interpret_results(results)
     return results, success
 
-# mf 
+
+# mf
 @cli.group()
 @click.pass_context
 def mf(ctx, **kwargs):

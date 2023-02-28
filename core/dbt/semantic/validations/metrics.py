@@ -42,7 +42,9 @@ class CumulativeMetricRule(ModelValidationRule):
                             context=MetricContext(
                                 metric=MetricModelReference(metric_name=metric.name),
                             ),
-                            message="".join(traceback.format_exception_only(etype=type(e), value=e)),
+                            message="".join(
+                                traceback.format_exception_only(etype=type(e), value=e)
+                            ),
                             extra_detail="".join(traceback.format_tb(e.__traceback__)),
                         )
                     )
@@ -73,7 +75,9 @@ class DerivedMetricRule(ModelValidationRule):
             used_names = {input_metric.name for input_metric in metric.input_metrics}
             for input_metric in metric.input_metrics:
                 if input_metric.alias:
-                    issues += UniqueAndValidNameRule.check_valid_name(input_metric.alias, metric_context)
+                    issues += UniqueAndValidNameRule.check_valid_name(
+                        input_metric.alias, metric_context
+                    )
                     if input_metric.alias in used_names:
                         issues.append(
                             ValidationError(

@@ -1,8 +1,5 @@
 from typing import Dict, List
-from dbt.semantic.references import (
-    EntityElementReference,
-    DimensionReference
-)
+from dbt.semantic.references import EntityElementReference, DimensionReference
 
 from dbt.contracts.graph.nodes import Entity
 from dbt.contracts.graph.dimensions import Dimension, DimensionType
@@ -33,7 +30,9 @@ class DimensionConsistencyRule(ModelValidationRule):
 
         for entity in model.entities:
             issues += DimensionConsistencyRule._validate_entity(
-                entity=entity, dimension_to_invariant=dimension_to_invariant, update_invariant_dict=True
+                entity=entity,
+                dimension_to_invariant=dimension_to_invariant,
+                update_invariant_dict=True,
             )
 
             for dimension in entity.dimensions:
@@ -59,21 +58,22 @@ class DimensionConsistencyRule(ModelValidationRule):
         """
         issues: List[ValidationIssueType] = []
         context = EntityElementContext(
-            entity_element=EntityElementReference(
-                entity_name=entity.name, name=dimension.name
-            ),
+            entity_element=EntityElementReference(entity_name=entity.name, name=dimension.name),
             element_type=EntityElementType.DIMENSION,
         )
 
         if dimension.type == DimensionType.TIME:
             if dimension.reference not in time_dims_to_granularity and dimension.type_params:
-                time_dims_to_granularity[dimension.reference] = dimension.type_params.time_granularity
+                time_dims_to_granularity[
+                    dimension.reference
+                ] = dimension.type_params.time_granularity
 
                 # The primary time dimension can be of different time granularities, so don't check for it.
                 if (
                     dimension.type_params is not None
                     and not dimension.type_params.is_primary
-                    and dimension.type_params.time_granularity != time_dims_to_granularity[dimension.reference]
+                    and dimension.type_params.time_granularity
+                    != time_dims_to_granularity[dimension.reference]
                 ):
                     expected_granularity = time_dims_to_granularity[dimension.reference]
                     issues.append(
@@ -107,7 +107,9 @@ class DimensionConsistencyRule(ModelValidationRule):
 
             if dimension_invariant is None:
                 if update_invariant_dict:
-                    dimension_invariant = DimensionInvariants(dimension.type, dimension.is_partition or False)
+                    dimension_invariant = DimensionInvariants(
+                        dimension.type, dimension.is_partition or False
+                    )
                     dimension_to_invariant[dimension.reference] = dimension_invariant
                     continue
                 # TODO: Can't check for unknown dimensions easily as the name follows <id>__<name> format.

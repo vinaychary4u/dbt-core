@@ -14,6 +14,7 @@ from dbt.semantic.sql_bind_parameters import SqlBindParameters
 LITERAL_STR = "literal"
 INTERVAL_LITERAL = "interval"
 
+
 @dataclass
 class WhereClauseConstraint(dbtClassMixin, Mergeable):
     """Contains a string that is a where clause"""
@@ -64,7 +65,9 @@ class WhereClauseConstraint(dbtClassMixin, Mergeable):
 
         if isinstance(where_clause, dict):
             if not len(where_clause.keys()) == 1:
-                raise DbtSemanticValidationError(f"expected parsed constraint to contain exactly one key; got {where}")
+                raise DbtSemanticValidationError(
+                    f"expected parsed constraint to contain exactly one key; got {where}"
+                )
             return WhereClauseConstraint(
                 where_clause=s,
                 linkable_names=constraint_dimension_names_from_dict(where_clause),
@@ -77,10 +80,15 @@ class WhereClauseConstraint(dbtClassMixin, Mergeable):
                 sql_params=SqlBindParameters(),
             )
         else:
-            raise TypeError(f"where-clause is neither a dict nor a string. Unexpectedly it is a {type(where_clause)}")
+            raise TypeError(
+                f"where-clause is neither a dict nor a string. Unexpectedly it is a {type(where_clause)}"
+            )
 
     def __repr__(self) -> str:  # noqa: D
-        return f"{self.__class__.__name__}" f"(where_clause={self.where_clause}, linkable_names={self.linkable_names})"
+        return (
+            f"{self.__class__.__name__}"
+            f"(where_clause={self.where_clause}, linkable_names={self.linkable_names})"
+        )
 
 
 def strip_where_clause(s: str) -> str:

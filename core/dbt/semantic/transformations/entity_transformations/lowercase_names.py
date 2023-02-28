@@ -1,6 +1,7 @@
 from dbt.contracts.graph.nodes import Entity
 from abc import ABC
 
+
 class LowerCaseNames(ABC):
     """Lowercases the names of both top level objects and entity elements"""
 

@@ -3,6 +3,7 @@ from dbt.dataclass_schema import StrEnum
 
 class AggregationType(StrEnum):
     """Aggregation methods for measures"""
+
     SUM = "sum"
     MIN = "min"
     MAX = "max"
@@ -16,7 +17,11 @@ class AggregationType(StrEnum):
     @property
     def is_additive(self) -> bool:
         """Indicates that if you sum values over a dimension grouping, you will still get an accurate result for this metric."""
-        if self is AggregationType.SUM or self is AggregationType.SUM_BOOLEAN or self is AggregationType.COUNT:
+        if (
+            self is AggregationType.SUM
+            or self is AggregationType.SUM_BOOLEAN
+            or self is AggregationType.COUNT
+        ):
             return True
         elif (
             self is AggregationType.MIN
@@ -29,7 +34,7 @@ class AggregationType(StrEnum):
         ):
             return False
         # else:
-            # assert_values_exhausted(self)
+        # assert_values_exhausted(self)
 
     @property
     def is_expansive(self) -> bool:
@@ -66,6 +71,7 @@ class AggregationType(StrEnum):
 
 class AggregationState(StrEnum):
     """Represents how the measure is aggregated."""
+
     NON_AGGREGATED = "NON_AGGREGATED"
     PARTIAL = "PARTIAL"
     COMPLETE = "COMPLETE"

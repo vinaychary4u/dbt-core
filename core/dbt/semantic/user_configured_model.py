@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from dbt.dataclass_schema import dbtClassMixin
 from dbt.contracts.graph.nodes import Entity, Metric
 
+
 @dataclass
 class UserConfiguredModel(dbtClassMixin):
     """Model holds all the information the SemanticLayer needs to render a query"""

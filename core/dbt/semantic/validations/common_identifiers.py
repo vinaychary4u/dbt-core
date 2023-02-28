@@ -16,6 +16,7 @@ from dbt.semantic.validations.validator_helpers import (
 
 ##NOTE: DEPRECATE? Doesn't look like this is used
 
+
 class CommonIdentifiersRule(ModelValidationRule):
     """Checks that identifiers exist on more than one entity"""
 
@@ -61,7 +62,9 @@ class CommonIdentifiersRule(ModelValidationRule):
         return issues
 
     @staticmethod
-    @validate_safely(whats_being_done="running model validation warning if identifiers are only one one entity")
+    @validate_safely(
+        whats_being_done="running model validation warning if identifiers are only one one entity"
+    )
     def validate_model(model: UserConfiguredModel) -> List[ValidationIssueType]:
         """Issues a warning for any identifier that is associated with only one entity"""
         issues = []

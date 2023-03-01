@@ -173,6 +173,7 @@ def base_parsed_model_dict():
         'unrendered_config': {},
         'config_call_dict': {},
         'access': AccessType.Protected.value,
+        'yaml_config_dict': {},
     }
 
 
@@ -283,6 +284,7 @@ def complex_parsed_model_dict():
         },
         'config_call_dict': {},
         'access': AccessType.Protected.value,
+        'yaml_config_dict': {},
     }
 
 

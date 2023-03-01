@@ -208,6 +208,7 @@ def basic_compiled_dict():
         'unrendered_config': {},
         'config_call_dict': {},
         'access': 'protected',
+        'yaml_config_dict': {},
     }
 
 @pytest.mark.skip("Haven't found where we would use uncompiled node")

@@ -401,9 +401,11 @@ class ConfiguredParser(
             fqn=fqn,
         )
         self.render_update(node, config)
-        self.add_result_node(block, node)
-        result = self.transform(node)
-        return result
+        # Snapshot is converted from IntermediateSnapshotNode in transform
+        final_node = self.transform(node)
+        self.add_result_node(block, final_node)
+        self.post_parse_node(final_node)
+        return final_node
 
     def _update_node_relation_name(self, node: ManifestNode):
         # Seed and Snapshot nodes and Models that are not ephemeral,
@@ -424,6 +426,9 @@ class ConfiguredParser(
 
     @abc.abstractmethod
     def transform(self, node: IntermediateNode) -> FinalNode:
+        pass
+
+    def post_parse_node(self, node):
         pass
 
 

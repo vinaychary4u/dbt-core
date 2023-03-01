@@ -35,6 +35,8 @@ from dbt.parser.search import FileBlock
 from dbt.parser.sources import SourcePatcher
 from .utils import config_from_parts_or_dicts, normalize, generate_name_macros, MockNode
 
+from argparse import Namespace
+dbt.flags.set_from_args(Namespace(SEND_ANONYMOUS_USAGE_STATS=False, MACRO_DEBUGGING=False), None)
 
 def get_abs_os_path(unix_path):
     return normalize(os.path.abspath(unix_path))

@@ -194,9 +194,8 @@ class ModelParser(SimpleSQLParser[ModelNode]):
             ModelNode.validate(dct)
         return ModelNode.from_dict(dct)
 
-    def transform(self, node: ModelNode) -> ModelNode:
+    def post_parse_node(self, node: ModelNode):
         if node.yaml_config_dict:
-            # Need to dummy up a SchemaSourceFile?
             self.manifest.ref_lookup.add_node(node)
             source_file = self.manifest.files[node.file_id]
             block = FileBlock(file=source_file)
@@ -208,7 +207,6 @@ class ModelParser(SimpleSQLParser[ModelNode]):
             model_parser = TestablePatchParser(schema_parser, yaml_block, "models")
             for test_block in model_parser.parse():
                 schema_parser.parse_tests(test_block)
-        return node
 
     @property
     def resource_type(self) -> NodeType:

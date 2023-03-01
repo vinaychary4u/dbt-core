@@ -880,8 +880,8 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
             config=block.target.config,
             access=block.target.access,
         )
-        assert isinstance(self.yaml.file, SchemaSourceFile)
-        source_file: SchemaSourceFile = self.yaml.file
+        # This used to assert SchemaSourceFile, but removed to support yaml frontmatter
+        source_file = self.yaml.file
         if patch.yaml_key in ["models", "seeds", "snapshots"]:
             unique_id = self.manifest.ref_lookup.get_unique_id(patch.name, None)
             if unique_id:
@@ -924,7 +924,8 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
 
                 # all nodes in the disabled dict have the same unique_id so just grab the first one
                 # to append with the uniqe id
-                source_file.append_patch(patch.yaml_key, found_nodes[0].unique_id)
+                if isinstance(source_file, SchemaSourceFile):
+                    source_file.append_patch(patch.yaml_key, found_nodes[0].unique_id)
                 for node in found_nodes:
                     node.patch_path = source_file.file_id
                     # re-calculate the node config with the patch config.  Always do this
@@ -950,7 +951,8 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
                 package_name, existing_file_path = node.patch_path.split("://")
                 raise DuplicatePatchPathError(patch, existing_file_path)
 
-            source_file.append_patch(patch.yaml_key, node.unique_id)
+            if isinstance(source_file, SchemaSourceFile):
+                source_file.append_patch(patch.yaml_key, node.unique_id)
             # re-calculate the node config with the patch config.  Always do this
             # for the case when no config is set to ensure the default of true gets captured
             if patch.config:

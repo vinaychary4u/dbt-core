@@ -8,6 +8,8 @@ from dbt.flags import get_flags
 from dbt.node_types import NodeType, ModelLanguage
 from dbt.parser.base import SimpleSQLParser
 from dbt.parser.search import FileBlock
+from dbt.parser.schemas import SchemaParser, TestablePatchParser
+from dbt.parser.generic_test_builders import YamlBlock
 from dbt.clients.jinja import get_rendered
 from dbt.clients.yaml_helper import (
     has_yaml_frontmatter,
@@ -191,6 +193,22 @@ class ModelParser(SimpleSQLParser[ModelNode]):
         if validate:
             ModelNode.validate(dct)
         return ModelNode.from_dict(dct)
+
+    def transform(self, node: ModelNode) -> ModelNode:
+        if node.yaml_config_dict:
+            # Need to dummy up a SchemaSourceFile?
+            self.manifest.ref_lookup.add_node(node)
+            source_file = self.manifest.files[node.file_id]
+            block = FileBlock(file=source_file)
+            entry = deepcopy(node.yaml_config_dict)
+            entry["name"] = node.name
+            dct = {"models": [entry]}
+            yaml_block = YamlBlock.from_file_block(block, dct)
+            schema_parser = SchemaParser(self.project, self.manifest, self.root_project)
+            model_parser = TestablePatchParser(schema_parser, yaml_block, "models")
+            for test_block in model_parser.parse():
+                schema_parser.parse_tests(test_block)
+        return node
 
     @property
     def resource_type(self) -> NodeType:

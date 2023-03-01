@@ -401,8 +401,8 @@ class ConfiguredParser(
             fqn=fqn,
         )
         self.render_update(node, config)
+        self.add_result_node(block, node)
         result = self.transform(node)
-        self.add_result_node(block, result)
         return result
 
     def _update_node_relation_name(self, node: ManifestNode):

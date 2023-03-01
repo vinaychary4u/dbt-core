@@ -336,6 +336,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                 "checksum": checksum_file(model_sql_path),
                 "unrendered_config": unrendered_model_config,
                 "access": "protected",
+                "yaml_config_dict": {},
             },
             "model.test.second_model": {
                 "compiled_path": os.path.join(compiled_model_path, "second_model.sql"),
@@ -430,6 +431,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
                 "checksum": checksum_file(second_model_sql_path),
                 "unrendered_config": unrendered_second_config,
                 "access": "protected",
+                "yaml_config_dict": {},
             },
             "seed.test.seed": {
                 "build_path": None,
@@ -949,6 +951,7 @@ def expected_references_manifest(project):
                 "checksum": checksum_file(ephemeral_copy_path),
                 "unrendered_config": get_unrendered_model_config(materialized="ephemeral"),
                 "access": "protected",
+                "yaml_config_dict": {},
             },
             "model.test.ephemeral_summary": {
                 "alias": "ephemeral_summary",
@@ -1013,6 +1016,7 @@ def expected_references_manifest(project):
                     materialized="table", group="test_group"
                 ),
                 "access": "protected",
+                "yaml_config_dict": {},
             },
             "model.test.view_summary": {
                 "alias": "view_summary",
@@ -1073,6 +1077,7 @@ def expected_references_manifest(project):
                 "checksum": checksum_file(view_summary_path),
                 "unrendered_config": get_unrendered_model_config(materialized="view"),
                 "access": "protected",
+                "yaml_config_dict": {},
             },
             "seed.test.seed": {
                 "alias": "seed",

@@ -361,7 +361,8 @@ class ParsedNode(NodeInfoMixin, ParsedNodeMandatory, SerializableType):
         # explicitly pick out the parts to update so we don't inadvertently
         # step on the model name or anything
         # Note: config should already be updated
-        self.patch_path: Optional[str] = patch.file_id
+        if patch.file_id != self.file_id:
+            self.patch_path: Optional[str] = patch.file_id
         # update created_at so process_docs will run in partial parsing
         self.created_at = time.time()
         self.description = patch.description

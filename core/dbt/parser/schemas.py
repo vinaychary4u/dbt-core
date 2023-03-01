@@ -927,7 +927,8 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
                 if isinstance(source_file, SchemaSourceFile):
                     source_file.append_patch(patch.yaml_key, found_nodes[0].unique_id)
                 for node in found_nodes:
-                    node.patch_path = source_file.file_id
+                    if isinstance(source_file, SchemaSourceFile):
+                        node.patch_path = source_file.file_id
                     # re-calculate the node config with the patch config.  Always do this
                     # for the case when no config is set to ensure the default of true gets captured
                     if patch.config:

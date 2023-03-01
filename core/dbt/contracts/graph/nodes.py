@@ -487,6 +487,7 @@ class HookNode(CompiledNode):
 class ModelNode(CompiledNode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Model]})
     access: AccessType = AccessType.Protected
+    yaml_config_dict: Dict[str, Any] = field(default_factory=dict)
 
 
 # TODO: rm?

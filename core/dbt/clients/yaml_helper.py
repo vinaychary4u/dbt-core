@@ -67,7 +67,7 @@ def load_yaml_text(contents, path=None):
         raise dbt.exceptions.DbtValidationError(error)
 
 
-def split_yaml_frontmatter(content: str, original_file_path: str) -> Tuple[Optional[str], str]:
+def split_yaml_frontmatter(content: str) -> Tuple[Optional[str], str]:
     """Splits `content` into raw YAML frontmatter (as a raw string) and everything else proceeding.
 
     Frontmatter is defined as a block of YAML appearing between two `---` tokens in an otherwise non-YAML document.
@@ -102,10 +102,7 @@ def parse_yaml_frontmatter(
     return parsed_yaml
 
 
-def maybe_has_yaml_frontmatter(content: str) -> bool:
-    """Return if `content` *might* have YAML frontmatter
+def has_yaml_frontmatter(content: str) -> bool:
+    """Check first line for yaml frontmatter"""
 
-    This weak filter allows us to skip the more-expensive regex + YAML parsing.
-    """
-    # The manual [0] and [1] here are perf optimizations.
-    return FRONTMATTER_CHECK[0] in content or FRONTMATTER_CHECK[1] in content
+    return content.startswith(FRONTMATTER_CHECK[0]) or content.startswith(FRONTMATTER_CHECK[1])

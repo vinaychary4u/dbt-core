@@ -9,6 +9,11 @@ from dbt.node_types import NodeType, ModelLanguage
 from dbt.parser.base import SimpleSQLParser
 from dbt.parser.search import FileBlock
 from dbt.clients.jinja import get_rendered
+from dbt.clients.yaml_helper import (
+    has_yaml_frontmatter,
+    split_yaml_frontmatter,
+    parse_yaml_frontmatter,
+)
 import dbt.tracking as tracking
 from dbt import utils
 from dbt_extractor import ExtractionError, py_extract_from_source  # type: ignore
@@ -174,6 +179,15 @@ def verify_python_model_code(node):
 
 class ModelParser(SimpleSQLParser[ModelNode]):
     def parse_from_dict(self, dct, validate=True) -> ModelNode:
+
+        # change raw_code to not have the yaml frontmatter
+        if dct["raw_code"] and has_yaml_frontmatter(dct["raw_code"]):
+            yaml_frontmatter, rest_of_contents = split_yaml_frontmatter(dct["raw_code"])
+            if yaml_frontmatter:
+                yaml_config_dict = parse_yaml_frontmatter(yaml_frontmatter, dct["raw_code"])
+                dct["yaml_config_dict"] = yaml_config_dict
+                dct["raw_code"] = rest_of_contents
+
         if validate:
             ModelNode.validate(dct)
         return ModelNode.from_dict(dct)

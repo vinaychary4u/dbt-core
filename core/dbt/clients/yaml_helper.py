@@ -86,9 +86,7 @@ def split_yaml_frontmatter(content: str) -> Tuple[Optional[str], str]:
     return frontmatter_content, after_footer
 
 
-def parse_yaml_frontmatter(
-    frontmatter_content: str, original_content: str
-) -> Optional[dict[str, Any]]:
+def parse_yaml_frontmatter(frontmatter_content: str, original_content: str):
     try:
         parsed_yaml = safe_load(frontmatter_content)
     except (yaml.scanner.ScannerError, yaml.YAMLError) as e:

@@ -103,4 +103,7 @@ def parse_yaml_frontmatter(frontmatter_content: str, original_content: str):
 def has_yaml_frontmatter(content: str) -> bool:
     """Check first line for yaml frontmatter"""
 
-    return content.startswith(FRONTMATTER_CHECK[0]) or content.startswith(FRONTMATTER_CHECK[1])
+    # The following didn't work on Windows
+    # return content.startswith(FRONTMATTER_CHECK[0]) or content.startswith(FRONTMATTER_CHECK[1])
+    # This seems a bit loose of a check, but the split function should take care of some of it
+    return FRONTMATTER_CHECK[0] in content or FRONTMATTER_CHECK[1] in content

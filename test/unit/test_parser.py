@@ -394,6 +394,7 @@ class SchemaParserModelsTest(SchemaParserTest):
             refs=[],
             sources=[],
             patch_path=None,
+            yaml_config_dict={},
         )
         nodes = {my_model_node.unique_id: my_model_node}
         macros = {m.unique_id: m for m in generate_name_macros('root')}

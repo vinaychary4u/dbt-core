@@ -10,7 +10,7 @@ except ImportError:
     from yaml import Loader, SafeLoader, Dumper  # type: ignore  # noqa: F401
 
 FRONTMATTER_CHECK = ["---\n", "---\r\n"]
-FRONTMATTER_DELIMITER = re.compile(r"^---$", re.MULTILINE)
+FRONTMATTER_DELIMITER = re.compile(r"^---", re.MULTILINE)
 NON_WHITESPACE = re.compile(r"\S")
 
 YAML_ERROR_MESSAGE = """
@@ -103,7 +103,4 @@ def parse_yaml_frontmatter(frontmatter_content: str, original_content: str):
 def has_yaml_frontmatter(content: str) -> bool:
     """Check first line for yaml frontmatter"""
 
-    # The following didn't work on Windows
-    # return content.startswith(FRONTMATTER_CHECK[0]) or content.startswith(FRONTMATTER_CHECK[1])
-    # This seems a bit loose of a check, but the split function should take care of some of it
-    return FRONTMATTER_CHECK[0] in content or FRONTMATTER_CHECK[1] in content
+    return content.startswith(FRONTMATTER_CHECK[0]) or content.startswith(FRONTMATTER_CHECK[1])

@@ -25,7 +25,7 @@ class ConvertTypeParams(ABC):
             return MetricInputMeasure(
                 name=parameter.name,
                 constraint=WhereClauseConstraint.parse(parameter.constraint),
-                alias=parameter.alias
+                alias=parameter.alias,
             )
 
     @staticmethod
@@ -55,6 +55,8 @@ class ConvertTypeParams(ABC):
             return MetricTimeWindow.parse(window=parameter)
         elif isinstance(parameter, MetricTimeWindow):
             return parameter
+        else:
+            return None
 
     @staticmethod
     def _get_metric_parameters(
@@ -69,7 +71,7 @@ class ConvertTypeParams(ABC):
                     parameters_list.append(
                         MetricInput(
                             name=parameter.name,
-                            constraint=WhereClauseConstraint.parse(parameter.constraint),
+                            constraint=parameter.constraint,
                             alias=parameter.alias,
                             offset_window=parameter.offset_window,
                             offset_to_grain=parameter.offset_to_grain,

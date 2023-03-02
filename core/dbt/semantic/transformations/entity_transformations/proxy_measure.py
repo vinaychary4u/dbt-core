@@ -8,8 +8,6 @@ from dbt.context.providers import (
     generate_parse_metrics,
 )
 
-from dbt.exceptions import DbtValidationError
-
 
 class ProxyMeasure(ABC):
     """All the functionality needed to convert measures to metrics"""
@@ -25,15 +23,17 @@ class ProxyMeasure(ABC):
                     original_file_path = parser.yaml.path.original_file_path
                     fqn[2] = measure.name
 
-                    if parsed_entity.metrics:
-                        for metric in parsed_entity.metrics:
-                            if metric.name == measure.name:
-                                if metric.type != MetricType.MEASURE_PROXY:
-                                    raise DbtValidationError(
-                                        f"Cannot have metric with the same name as a measure ({measure.name}) that is not a "
-                                        f"proxy for that measure"
-                                    )
-                                add_metric = False
+                    # TODO: Figure out new location in validation
+                    # if parsed_entity.metrics:
+                    #     breakpoint()
+                    #     for metric in parsed_entity.metrics:
+                    #         if metric == measure.name:
+                    #             if metric.type != MetricType.MEASURE_PROXY:
+                    #                 raise DbtValidationError(
+                    #                     f"Cannot have metric with the same name as a measure ({measure.name}) that is not a "
+                    #                     f"proxy for that measure"
+                    #                 )
+                    #             add_metric = False
 
                     config = parser._generate_proxy_metric_config(
                         target=measure,

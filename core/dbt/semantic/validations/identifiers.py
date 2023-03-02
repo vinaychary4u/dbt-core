@@ -1,6 +1,5 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import date
 from typing import List, MutableSet, Tuple, Sequence, DefaultDict
 
 from dbt.contracts.graph.nodes import Entity
@@ -11,13 +10,11 @@ from dbt.semantic.validations.validator_helpers import (
     EntityElementContext,
     EntityElementType,
     ModelValidationRule,
-    ValidationIssue,
     ValidationError,
     ValidationIssueType,
     ValidationWarning,
     iter_flatten,
 )
-from dbt.semantic.validations.validator_helpers import ValidationFutureError
 from dbt.semantic.references import IdentifierReference, EntityElementReference, EntityReference
 
 
@@ -91,8 +88,8 @@ class NaturalIdentifierConfigurationRule(ModelValidationRule):
     """Ensures that identifiers marked as IdentifierType.NATURAL are configured correctly"""
 
     @staticmethod
-    def _validate_entity_natural_identifiers(entity: Entity) -> List[ValidationIssue]:
-        issues: List[ValidationIssue] = []
+    def _validate_entity_natural_identifiers(entity: Entity) -> List[ValidationIssueType]:
+        issues: List[ValidationIssueType] = []
         context = EntityContext(
             entity=EntityReference(entity_name=entity.name),
         )
@@ -127,9 +124,9 @@ class NaturalIdentifierConfigurationRule(ModelValidationRule):
         return issues
 
     @staticmethod
-    def validate_model(model: UserConfiguredModel) -> List[ValidationIssue]:
+    def validate_model(model: UserConfiguredModel) -> List[ValidationIssueType]:
         """Validate identifiers marked as IdentifierType.NATURAL"""
-        issues: List[ValidationIssue] = []
+        issues: List[ValidationIssueType] = []
         for entity in model.entities:
             issues += NaturalIdentifierConfigurationRule._validate_entity_natural_identifiers(
                 entity=entity
@@ -142,7 +139,7 @@ class OnePrimaryIdentifierPerEntityRule(ModelValidationRule):
     """Ensures that each entity has only one primary identifier"""
 
     @staticmethod
-    def _only_one_primary_identifier(entity: Entity) -> List[ValidationIssue]:
+    def _only_one_primary_identifier(entity: Entity) -> List[ValidationIssueType]:
         primary_identifier_names: MutableSet[str] = set()
         for identifier in entity.identifiers or []:
             if identifier.type == IdentifierType.PRIMARY:
@@ -150,19 +147,18 @@ class OnePrimaryIdentifierPerEntityRule(ModelValidationRule):
 
         if len(primary_identifier_names) > 1:
             return [
-                ValidationFutureError(
+                ValidationError(
+                    message=f"Entities can have only one primary identifier. The entity"
+                    f" `{entity.name}` has {len(primary_identifier_names)}: {', '.join(primary_identifier_names)}",
                     context=EntityContext(
                         entity=EntityReference(entity_name=entity.name),
                     ),
-                    message=f"entitys can have only one primary identifier. The entity"
-                    f" `{entity.name}` has {len(primary_identifier_names)}: {', '.join(primary_identifier_names)}",
-                    error_date=date(2022, 1, 12),  # Wed January 12th 2022
                 )
             ]
         return []
 
     @staticmethod
-    def validate_model(model: UserConfiguredModel) -> List[ValidationIssue]:  # noqa: D
+    def validate_model(model: UserConfiguredModel) -> List[ValidationIssueType]:  # noqa: D
         issues = []
 
         for entity in model.entities:

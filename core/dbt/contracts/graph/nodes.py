@@ -1056,9 +1056,9 @@ class Exposure(GraphNode):
 class Metric(GraphNode):
     name: str
     description: str
-    entity: str
     type: MetricType
     type_params: MetricTypeParams
+    entity: Optional[str] = None
     constraint: Optional[WhereClauseConstraint] = None
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Metric]})
     meta: Dict[str, Any] = field(default_factory=dict)
@@ -1158,7 +1158,7 @@ class Entity(GraphNode):
     model: str
     description: str
     origin: EntityOrigin
-    sql_table: str
+    sql_table: Optional[str] = None
     identifiers: Sequence[Identifier] = field(default_factory=list)
     dimensions: Sequence[Dimension] = field(default_factory=list)
     measures: Sequence[Measure] = field(default_factory=list)

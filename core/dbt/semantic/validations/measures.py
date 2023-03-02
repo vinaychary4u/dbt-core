@@ -4,6 +4,7 @@ from typing import DefaultDict, Dict, List, Set
 from dbt.semantic.aggregation_properties import AggregationType
 from dbt.semantic.references import MetricModelReference, MeasureReference
 from dbt.contracts.graph.dimensions import DimensionType
+from dbt.contracts.graph.metrics import MetricType
 from dbt.contracts.graph.nodes import Metric
 from dbt.semantic.user_configured_model import UserConfiguredModel
 from dbt.semantic.validations.unique_valid_name import UniqueAndValidNameRule
@@ -18,6 +19,45 @@ from dbt.semantic.validations.validator_helpers import (
     ValidationWarning,
     iter_bucket,
 )
+
+
+class MeasureMetricProxyUniqueRule(ModelValidationRule):
+    """Asserts that measure names and metric names don't match unless measure proxy"""
+
+    @staticmethod
+    def validate_model(model: UserConfiguredModel) -> List[ValidationIssueType]:  # noqa: D
+        issues: List[ValidationIssueType] = []
+
+        metric_names = [metric.name for metric in model.metrics]
+        for entity in model.entities:
+            for measure in entity.measures:
+                if measure.name in metric_names:
+                    measure_name_match_index = next(
+                        (
+                            i
+                            for i, metric in enumerate(model.metrics)
+                            if metric.name == measure.name
+                        )
+                    )
+                    if measure_name_match_index:
+                        if (
+                            model.metrics[measure_name_match_index].type
+                            != MetricType.MEASURE_PROXY
+                        ):
+                            issues.append(
+                                ValidationError(
+                                    context=EntityElementContext(
+                                        entity_element=EntityElementReference(
+                                            entity_name=entity.name, name=measure.name
+                                        ),
+                                        element_type=EntityElementType.MEASURE,
+                                    ),
+                                    message=f"Cannot have metric with the same name as a measure ({measure.name}) that is not a "
+                                    f"proxy for that measure",
+                                )
+                            )
+
+        return issues
 
 
 class EntityMeasuresUniqueRule(ModelValidationRule):

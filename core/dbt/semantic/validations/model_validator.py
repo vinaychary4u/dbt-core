@@ -22,6 +22,7 @@ from dbt.semantic.validations.measures import (
     MeasureConstraintAliasesRule,
     MetricMeasuresRule,
     MeasuresNonAdditiveDimensionRule,
+    MeasureMetricProxyUniqueRule,
 )
 from dbt.semantic.validations.metrics import CumulativeMetricRule, DerivedMetricRule
 from dbt.semantic.validations.reserved_keywords import ReservedKeywordsRule
@@ -56,6 +57,7 @@ class ModelValidator:
         AggregationTimeDimensionRule(),
         ReservedKeywordsRule(),
         MeasuresNonAdditiveDimensionRule(),
+        MeasureMetricProxyUniqueRule(),
     )
 
     def __init__(
@@ -98,15 +100,3 @@ class ModelValidator:
             raise ModelValidationException(issues=tuple(build_result.issues.all_issues))
 
         return model
-
-
-def _print_issues(
-    issues: ModelValidationResults, show_non_blocking: bool = False, verbose: bool = False
-) -> None:  # noqa: D
-    for issue in issues.errors:
-        print(f"• {issue.as_cli_formatted_str(verbose=verbose)}")
-    if show_non_blocking:
-        for issue in issues.future_errors:
-            print(f"• {issue.as_cli_formatted_str(verbose=verbose)}")
-        for issue in issues.warnings:
-            print(f"• {issue.as_cli_formatted_str(verbose=verbose)}")

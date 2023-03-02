@@ -676,6 +676,7 @@ class Provider(Protocol):
     ref: Type[BaseRefResolver]
     source: Type[BaseSourceResolver]
     metric: Type[BaseMetricResolver]
+    entity: Type[BaseEntityResolver]
 
 
 class ParseProvider(Provider):

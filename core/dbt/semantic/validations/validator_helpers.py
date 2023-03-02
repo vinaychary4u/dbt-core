@@ -4,7 +4,7 @@ from collections import defaultdict, deque
 import click
 import functools
 import traceback
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
@@ -149,10 +149,11 @@ class ValidationWarning(ValidationIssue, dbtClassMixin):
         return ValidationIssueLevel.WARNING
 
 
+@dataclass
 class ValidationFutureError(ValidationIssue, dbtClassMixin):
     """A future error that was found while validating the model."""
 
-    error_date: date
+    error_date: date = date(year=2030, month=1, day=1)
 
     @property
     def level(self) -> ValidationIssueLevel:  # noqa: D
@@ -267,7 +268,7 @@ def generate_exception_issue(
     e: Exception,
     context: Optional[ValidationContext] = None,
     extras: Dict[str, str] = {},
-) -> ValidationIssue:
+) -> ValidationIssueType:
     """Generates a validation issue for exceptions"""
     if "stacktrace" not in extras:
         extras["stacktrace"] = "".join(traceback.format_tb(e.__traceback__))
@@ -320,7 +321,7 @@ class DimensionInvariants:
     is_partition: bool
 
 
-class ModelValidationRule(ABC):
+class ModelValidationRule(dbtClassMixin):
     """Encapsulates logic for checking the values of objects in a model."""
 
     @classmethod
@@ -330,16 +331,17 @@ class ModelValidationRule(ABC):
         pass
 
     @classmethod
-    def validate_model_serialized_for_multiprocessing(cls, serialized_model: str) -> str:
+    def validate_model_serialized_for_multiprocessing(cls, serialized_model: str):
         """Validate a model serialized via Pydantic's .json() method, and return a list of JSON serialized issues
 
         This method exists because our validations are forked into parallel processes via
         multiprocessing.ProcessPoolExecutor, and passing a model or validation results object can result in
         idiosyncratic behavior and inscrutable errors due to interactions between pickling and pydantic objects.
         """
+        # TODO: Fix? This might be broken
         return ModelValidationResults.from_issues_sequence(
             cls.validate_model(UserConfiguredModel.parse_raw(serialized_model))
-        ).json()
+        ).to_dict()
 
 
 class ModelValidationException(Exception):

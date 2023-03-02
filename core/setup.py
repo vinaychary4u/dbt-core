@@ -64,6 +64,7 @@ setup(
         "typing-extensions>=3.7.4",
         "werkzeug>=1,<3",
         "pathspec>=0.9,<0.11",
+        "mo-sql-parsing==9.328.23003",
         # the following are all to match snowflake-connector-python
         "requests<3.0.0",
         "idna>=2.5,<4",

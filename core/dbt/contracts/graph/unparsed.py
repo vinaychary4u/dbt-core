@@ -521,7 +521,7 @@ class UnparsedMetric(dbtClassMixin):
     type: MetricType
     type_params: UnparsedMetricTypeParams
     description: str = ""
-    entity: str
+    entity: Optional[str] = None
     constraint: Optional[str] = None
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)

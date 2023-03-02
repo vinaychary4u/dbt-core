@@ -1,6 +1,7 @@
 import pytest
 
 from dbt.tests.util import run_dbt, get_manifest, write_file
+from dbt.exceptions import DuplicatePatchPathError
 
 my_model_sql = """
 ---
@@ -38,6 +39,14 @@ columns:
 select 1 as id
 """
 
+schema_yml = """
+version: 2
+
+models:
+  - name: my_model
+    description: "config from schema file"
+"""
+
 
 class TestYamlFrontmatter:
     @pytest.fixture(scope="class")
@@ -64,3 +73,8 @@ class TestYamlFrontmatter:
         assert len(manifest.nodes) == 3
         model = manifest.nodes[my_model_id]
         assert model.description == "again: testing yaml frontmatter"
+
+        # Add a schema file which updates the same model
+        write_file(schema_yml, project.project_root, "models", "schema.yml")
+        with pytest.raises(DuplicatePatchPathError):
+            run_dbt(["run"])

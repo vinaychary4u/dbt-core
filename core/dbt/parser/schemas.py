@@ -948,8 +948,19 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
         # patches can't be overwritten
         node = self.manifest.nodes.get(unique_id)
         if node:
-            if node.patch_path:
-                package_name, existing_file_path = node.patch_path.split("://")
+            # If patch_path is set, then a schema file has already been processed for this node.
+            # If the node has a yaml_config_dict and THIS invocation of the schema parser is from
+            # a different file, then this is a schema file duplicate of config already done in the model
+            # via yaml frontmatter.
+            if node.patch_path or (
+                hasattr(node, "yaml_config_dict")
+                and node.yaml_config_dict
+                and node.file_id != source_file.file_id
+            ):
+                if node.patch_path:
+                    _, existing_file_path = node.patch_path.split("://")
+                else:  # yaml frontmatter
+                    existing_file_path = node.original_file_path
                 raise DuplicatePatchPathError(patch, existing_file_path)
 
             if isinstance(source_file, SchemaSourceFile):

@@ -1,7 +1,13 @@
 from colorama import Style
 import dbt.events.functions as this  # don't worry I hate it too.
 from dbt.events.base_types import NoStdOut, Event, NoFile, ShowException, Cache
-from dbt.events.types import T_Event, MainReportVersion, EmptyLine, EventBufferFull
+from dbt.events.types import (
+    T_Event,
+    MainReportVersion,
+    EmptyLine,
+    EventBufferFull,
+    GeneralWarningMsg,
+)
 import dbt.flags as flags
 from dbt.constants import SECRET_ENV_PREFIX
 
@@ -128,11 +134,14 @@ def event_to_serializable_dict(
     code: str
     try:
         log_line = e.to_dict()
-    except AttributeError as exc:
-        event_type = type(e).__name__
-        raise Exception(  # TODO this may hang async threads
-            f"type {event_type} is not serializable. {str(exc)}"
-        )
+    except BaseException:
+        try:
+            event = str(e)
+        except BaseException:
+            event = type(e).__name__
+        message = f"Error while serializing {event}"
+        e = GeneralWarningMsg(msg=message, log_fmt="") # mypy doesn't like this
+        log_line = e.to_dict()
 
     # We get the code from the event object, so we don't need it in the data
     if "code" in log_line:
@@ -194,7 +203,17 @@ def create_json_log_line(e: T_Event) -> Optional[str]:
         return None  # will not be sent to logger
     # using preformatted ts string instead of formatting it here to be extra careful about timezone
     values = event_to_serializable_dict(e)
-    raw_log_line = json.dumps(values, sort_keys=True)
+    try:
+        raw_log_line = json.dumps(values, sort_keys=True)
+    except BaseException:
+        try:
+            event = str(e)
+        except BaseException:
+            event = type(e).__name__
+        message = f"Error while serializing {event}"
+        e = GeneralWarningMsg(msg=message, log_fmt="") # mypy doesn't like this
+        values = event_to_serializable_dict(e)
+        raw_log_line = json.dumps(values, sort_keys=True)
     return scrub_secrets(raw_log_line, env_secrets())
 
 

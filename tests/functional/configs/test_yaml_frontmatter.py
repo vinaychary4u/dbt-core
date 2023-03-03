@@ -74,6 +74,10 @@ class TestYamlFrontmatter:
         model = manifest.nodes[my_model_id]
         assert model.description == "again: testing yaml frontmatter"
 
+        # Run tests
+        results = run_dbt(["test"])
+        len(results) == 2
+
         # Add a schema file which updates the same model
         write_file(schema_yml, project.project_root, "models", "schema.yml")
         with pytest.raises(DuplicatePatchPathError):

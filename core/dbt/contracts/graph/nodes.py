@@ -686,6 +686,19 @@ class GenericTestNode(TestShouldStoreFailures, CompiledNode, HasTestMetadata):
     def test_node_type(self):
         return "generic"
 
+    def write_node(self, target_path: str, subdirectory: str, payload: str):
+        # If this test came from yaml frontmatter, it will try to write to a directory
+        # with the same name as the model file, which won't work. So change the
+        # directory to model file name + .schema.
+        file_path = self.original_file_path
+        if file_path.endswith(".sql"):
+            file_path = file_path + ".schema"
+        path = os.path.join(file_path, self.path)
+        full_path = os.path.join(target_path, subdirectory, self.package_name, path)
+
+        write_file(full_path, payload)
+        return full_path
+
 
 # ====================================
 # Snapshot node

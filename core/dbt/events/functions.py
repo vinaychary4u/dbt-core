@@ -3,7 +3,7 @@ from colorama import Style
 from datetime import datetime
 import dbt.events.functions as this  # don't worry I hate it too.
 from dbt.events.base_types import Cli, Event, File, ShowException, NodeInfo, Cache
-from dbt.events.types import EventBufferFull, T_Event, MainReportVersion, EmptyLine
+from dbt.events.types import EventBufferFull, T_Event, MainReportVersion, EmptyLine, GeneralWarningMsg
 import dbt.flags as flags
 # TODO this will need to move eventually
 from dbt.logger import SECRET_ENV_PREFIX, make_log_dir_if_missing, GLOBAL_LOGGER
@@ -144,15 +144,14 @@ def event_to_serializable_dict(
     log_line = dict()
     try:
         log_line = dataclasses.asdict(e, dict_factory=type(e).asdict)
-    except AttributeError:
-        event_type = type(e).__name__
-        raise Exception(  # TODO this may hang async threads
-            f"type {event_type} is not serializable to json."
-            f" First make sure that the call sites for {event_type} match the type hints"
-            f" and if they do, you can override the dataclass method `asdict` in {event_type} in"
-            " types.py to define your own serialization function to a dictionary of valid json"
-            " types"
-        )
+    except:
+        try:
+            event = str(e)
+        except:
+            event = type(e).__name__
+        message = f"Error while serializing {event}"
+        e = GeneralWarningMsg(msg=message, log_fmt="")
+        log_line = dataclasses.asdict(e, dict_factory=type(e).asdict)
 
     if isinstance(e, NodeInfo):
         node_info = dataclasses.asdict(e.get_node_info())

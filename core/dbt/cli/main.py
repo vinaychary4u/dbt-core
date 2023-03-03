@@ -26,7 +26,13 @@ import importlib
 
 metricflow_module = importlib.util.find_spec("metricflow")
 if metricflow_module is not None:
-    from metricflow.cli.main import cli as metricflow_cli
+    from metricflow.cli.main import (
+        list_metrics,
+        list_dimensions,
+        get_dimension_values,
+        query,
+        validate_configs
+    )
 
 
 class dbtUsageException(Exception):
@@ -586,7 +592,11 @@ def freshness(ctx, **kwargs):
 snapshot_freshness = copy(cli.commands["source"].commands["freshness"])  # type: ignore
 snapshot_freshness.hidden = True
 cli.commands["source"].add_command(snapshot_freshness, "snapshot-freshness")  # type: ignore
-cli.add_command(metricflow_cli, "mf")
+cli.add_command(list_metrics, "list-metrics")
+cli.add_command(list_dimensions, "list-dimensions")
+cli.add_command(get_dimension_values, "get-dimension-values")
+cli.add_command(query, "query")
+cli.add_command(validate_configs, "validate-configs")
 
 
 # dbt test

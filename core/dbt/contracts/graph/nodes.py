@@ -154,6 +154,21 @@ class ColumnInfo(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable
     tags: List[str] = field(default_factory=list)
     _extra: Dict[str, Any] = field(default_factory=dict)
 
+    def same_contract(self, old: "ColumnInfo") -> bool:
+        """contract includes name and data_type"""
+        breaking_changes = []
+        if self.name != old.name:
+            breaking_changes.append(f"Column {old.name} renamed to {self.name}.")
+        elif self.data_type != old.data_type:
+            breaking_changes.append(
+                f"Column {self.name} updated data_type from {old.data_type} to {self.data_type}"
+            )
+
+        if breaking_changes:
+            raise Exception(breaking_changes)
+
+        return True
+
 
 # Metrics, exposures,
 @dataclass
@@ -457,6 +472,34 @@ class CompiledNode(ParsedNode):
             if "compiled_code" in dct:
                 del dct["compiled_code"]
         return dct
+
+    def same_contract(self, old) -> bool:
+        if old is None:
+            return False
+
+        breaking_changes = []
+        old_column_contract = [(column.name, column.data_type) for column in old.columns.values()]
+        new_column_contract = [(column.name, column.data_type) for column in self.columns.values()]
+
+        if old.contract and not self.contract:
+            breaking_changes.append("Updated config from contract: true to contract: false")
+
+        for column in old.columns:
+            if column not in self.columns.keys():
+                breaking_changes.append(f"Column {column} removed")
+            else:
+                try:
+                    self.columns[column].same_contract(old.columns[column])
+                except Exception as e:
+                    breaking_changes.append(str(e).strip("[']"))
+
+        if breaking_changes and (self.contract or old.contract):
+            breaking_changes_formatted = "\n * ".join(breaking_changes)
+            raise Exception(
+                f"breaking changes in {self.unique_id}!!\n * {breaking_changes_formatted}"
+            )
+
+        return old_column_contract == new_column_contract
 
     @property
     def depends_on_nodes(self):

@@ -523,6 +523,7 @@ class StateSelectorMethod(SelectorMethod):
             "modified": self.check_modified_content,
             "modified.body": self.check_modified_factory("same_body"),
             "modified.configs": self.check_modified_factory("same_config"),
+            "modified.contract": self.check_modified_factory("same_contract"),
             "modified.persisted_descriptions": self.check_modified_factory(
                 "same_persisted_description"
             ),

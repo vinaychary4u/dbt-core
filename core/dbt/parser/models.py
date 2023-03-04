@@ -188,23 +188,34 @@ class ModelParser(SimpleSQLParser[ModelNode]):
             if yaml_frontmatter:
                 yaml_config_dict = parse_yaml_frontmatter(yaml_frontmatter, dct["raw_code"])
                 dct["yaml_config_dict"] = yaml_config_dict
-                dct["raw_code"] = rest_of_contents
+                dct["raw_code"] = rest_of_contents.strip()
 
         if validate:
             ModelNode.validate(dct)
         return ModelNode.from_dict(dct)
 
     def post_parse_node(self, node: ModelNode):
+        # This handles parsing yaml frontmatter by calling the
+        # schema model parser
         if node.yaml_config_dict:
+            # The generic test processing expects to be able to lookup the node, so we add it here.
+            # The node should already have been added to the manifest by "add_result_node"
+            # in the base "parse_node" method.
             self.manifest.ref_lookup.add_node(node)
+
+            # Create the YamlBlock that the schema model parser needs.
             source_file = self.manifest.files[node.file_id]
             block = FileBlock(file=source_file)
             entry = deepcopy(node.yaml_config_dict)
+            # Make a dictionary like the schema model parser expects.
             entry["name"] = node.name
             dct = {"models": [entry]}
             yaml_block = YamlBlock.from_file_block(block, dct)
+
+            # Create the SchemaParser needed by the "TestablePatchParser"
             schema_parser = SchemaParser(self.project, self.manifest, self.root_project)
             model_parser = TestablePatchParser(schema_parser, yaml_block, "models")
+            # parse the schema model patch and create the tests
             for test_block in model_parser.parse():
                 schema_parser.parse_tests(test_block)
 

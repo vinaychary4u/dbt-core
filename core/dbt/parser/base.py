@@ -404,6 +404,8 @@ class ConfiguredParser(
         # Snapshot is converted from IntermediateSnapshotNode in transform
         final_node = self.transform(node)
         self.add_result_node(block, final_node)
+        # This handles calling the schema model parser for the model parser.
+        # It needs to be after "add_result_node" has been called.
         self.post_parse_node(final_node)
         return final_node
 

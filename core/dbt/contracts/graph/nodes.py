@@ -691,7 +691,7 @@ class GenericTestNode(TestShouldStoreFailures, CompiledNode, HasTestMetadata):
         # with the same name as the model file, which won't work. So change the
         # directory to model file name + .yaml.
         file_path = self.original_file_path
-        if file_path.endswith(".sql"):
+        if file_path.endswith(".sql") or file_path.endswith(".py"):
             file_path = file_path + ".yaml"
         path = os.path.join(file_path, self.path)
         full_path = os.path.join(target_path, subdirectory, self.package_name, path)

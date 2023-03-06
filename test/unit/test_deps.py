@@ -3,6 +3,8 @@ from copy import deepcopy
 import unittest
 from unittest import mock
 
+from dbt.flags import set_from_args
+from argparse import Namespace
 import dbt.deps
 import dbt.exceptions
 from dbt.deps.git import GitUnpinnedPackage
@@ -22,6 +24,8 @@ from dbt.semver import VersionSpecifier
 from dbt.version import get_installed_version
 
 from dbt.dataclass_schema import ValidationError
+
+set_from_args(Namespace(SEND_ANONYMOUS_USAGE_STATS=False), None)
 
 
 class TestLocalPackage(unittest.TestCase):

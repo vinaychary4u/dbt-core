@@ -129,7 +129,7 @@ def resolve_packages(
         for package in pending:
             final.incorporate(package)
             resolved = final[package].resolved()
-            target = resolved.fetch_metadata(config, renderer)
+            target = resolved.fetch_metadata(project, renderer)
             next_pending.update_from(target.packages, by_whom=str(resolved))
         pending = next_pending
 

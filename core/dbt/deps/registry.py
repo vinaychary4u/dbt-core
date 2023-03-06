@@ -1,7 +1,7 @@
 from typing import List, Dict, Optional
 
 from dbt import semver
-from dbt import flags
+from dbt.flags import get_flags
 from dbt.version import get_installed_version
 from dbt.clients import registry
 from dbt.contracts.project import (
@@ -130,7 +130,7 @@ class RegistryUnpinnedPackage(RegistryPackageMixin, UnpinnedPackage[RegistryPinn
             new_msg = f"Version error for package {self.name}: {self.package_requests()}"
             print(f"--- in resolved. new_msg: {new_msg}")
             raise DependencyError(new_msg) from e
-
+        flags = get_flags()
         should_version_check = bool(flags.VERSION_CHECK)
         dbt_version = get_installed_version()
         compatible_versions = registry.get_compatible_versions(

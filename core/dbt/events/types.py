@@ -768,16 +768,34 @@ class FinishedRunningStats(InfoLevel, pt.FinishedRunningStats):
 # =======================================================
 
 
+# Skipping I001, I002, I003, I004, I005, I006, I007
+
+
 @dataclass
-class ParseCmdOut(InfoLevel, pt.ParseCmdOut):
+class InvalidValueForField(WarnLevel, pt.InvalidValueForField):
     def code(self):
-        return "I001"
+        return "I008"
 
     def message(self) -> str:
-        return self.msg
+        return f"Invalid value ({self.field_value}) for field {self.field_name}"
 
 
-# Skipping I002, I003, I004, I005, I006, I007, I008, I009, I010
+@dataclass
+class ValidationWarning(WarnLevel, pt.ValidationWarning):
+    def code(self):
+        return "I009"
+
+    def message(self) -> str:
+        return f"Field {self.field_name} is not valid for {self.resource_type} ({self.node_name})"
+
+
+@dataclass
+class ParsePerfInfoPath(InfoLevel, pt.ParsePerfInfoPath):
+    def code(self):
+        return "I010"
+
+    def message(self) -> str:
+        return f"Performance info: {self.path}"
 
 
 @dataclass
@@ -2013,33 +2031,6 @@ class Formatting(InfoLevel, pt.Formatting):
 
     def message(self) -> str:
         return self.msg
-
-
-@dataclass
-class ServingDocsPort(InfoLevel, pt.ServingDocsPort):
-    def code(self):
-        return "Z018"
-
-    def message(self) -> str:
-        return f"Serving docs at {self.address}:{self.port}"
-
-
-@dataclass
-class ServingDocsAccessInfo(InfoLevel, pt.ServingDocsAccessInfo):
-    def code(self):
-        return "Z019"
-
-    def message(self) -> str:
-        return f"To access from your browser, navigate to:  http://localhost:{self.port}"
-
-
-@dataclass
-class ServingDocsExitInfo(InfoLevel, pt.ServingDocsExitInfo):
-    def code(self):
-        return "Z020"
-
-    def message(self) -> str:
-        return "Press Ctrl+C to exit."
 
 
 @dataclass

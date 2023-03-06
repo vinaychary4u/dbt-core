@@ -4,15 +4,17 @@ from dataclasses import field
 from datetime import datetime
 import os
 import traceback
-from typing import Dict, Optional, Mapping, Callable, Any, List, Type, Union, Tuple
+from typing import Dict, Optional, Mapping, Callable, Any, List, Type, Union, Tuple, Set
 from itertools import chain
 import time
 from dbt.events.base_types import EventLevel
+import json
 import pprint
 
 import dbt.exceptions
 import dbt.tracking
-import dbt.flags as flags
+import dbt.utils
+from dbt.flags import get_flags
 
 from dbt.adapters.factory import (
     get_adapter,
@@ -24,6 +26,7 @@ from dbt.events.functions import fire_event, get_invocation_id, warn_or_error
 from dbt.events.types import (
     PartialParsingErrorProcessingFile,
     PartialParsingError,
+    ParsePerfInfoPath,
     PartialParsingSkipParsing,
     UnableToPartialParse,
     PartialParsingNotEnabled,
@@ -34,10 +37,10 @@ from dbt.events.types import (
     Note,
 )
 from dbt.logger import DbtProcessState
-from dbt.node_types import NodeType
+from dbt.node_types import NodeType, AccessType
 from dbt.clients.jinja import get_rendered, MacroStack
 from dbt.clients.jinja_static import statically_extract_macro_calls
-from dbt.clients.system import make_directory
+from dbt.clients.system import make_directory, write_file
 from dbt.config import Project, RuntimeConfig
 from dbt.context.docs import generate_runtime_docs_context
 from dbt.context.macro_resolver import MacroResolver, TestMacroNamespace
@@ -82,8 +85,10 @@ from dbt.version import __version__
 
 from dbt.dataclass_schema import StrEnum, dbtClassMixin
 
+MANIFEST_FILE_NAME = "manifest.json"
 PARTIAL_PARSE_FILE_NAME = "partial_parse.msgpack"
 PARSING_STATE = DbtProcessState("parsing")
+PERF_INFO_FILE_NAME = "perf_info.json"
 
 
 class ReparseReason(StrEnum):
@@ -186,6 +191,7 @@ class ManifestLoader:
         config: RuntimeConfig,
         *,
         reset: bool = False,
+        write_perf_info=False,
     ) -> Manifest:
 
         adapter = get_adapter(config)  # type: ignore
@@ -216,6 +222,9 @@ class ManifestLoader:
             loader._perf_info.load_all_elapsed = time.perf_counter() - start_load_all
             loader.track_project_load()
 
+            if write_perf_info:
+                loader.write_perf_info(config.target_path)
+
         return manifest
 
     # This is where the main action happens
@@ -244,6 +253,8 @@ class ManifestLoader:
             else:
                 # create child_map and parent_map
                 self.saved_manifest.build_parent_and_child_maps()
+                # create group_map
+                self.saved_manifest.build_group_map()
                 # files are different, we need to create a new set of
                 # project_parser_files.
                 try:
@@ -387,6 +398,7 @@ class ManifestLoader:
             self.process_refs(self.root_project.project_name)
             self.process_docs(self.root_project)
             self.process_metrics(self.root_project)
+            self.check_valid_group_config()
 
             # update tracking data
             self._perf_info.process_manifest_elapsed = time.perf_counter() - start_process
@@ -640,7 +652,7 @@ class ManifestLoader:
         return False
 
     def read_manifest_for_partial_parse(self) -> Optional[Manifest]:
-        if not flags.PARTIAL_PARSE:
+        if not get_flags().PARTIAL_PARSE:
             fire_event(PartialParsingNotEnabled())
             return None
         path = os.path.join(
@@ -682,6 +694,7 @@ class ManifestLoader:
         return None
 
     def build_perf_info(self):
+        flags = get_flags()
         mli = ManifestLoaderInfo(
             is_partial_parse_enabled=flags.PARTIAL_PARSE,
             is_static_analysis_enabled=flags.STATIC_PARSER,
@@ -695,12 +708,8 @@ class ManifestLoader:
             mli._project_index[project.project_name] = project_info
         return mli
 
-    # TODO: this should be calculated per-file based on the vars() calls made in
-    # parsing, so changing one var doesn't invalidate everything. also there should
-    # be something like that for env_var - currently changing env_vars in way that
-    # impact graph selection or configs will result in weird test failures.
-    # finally, we should hash the actual profile used, not just root project +
-    # profiles.yml + relevant args. While sufficient, it is definitely overkill.
+    # TODO: handle --vars in the same way we handle env_var
+    # https://github.com/dbt-labs/dbt-core/issues/6323
     def build_manifest_state_check(self):
         config = self.root_project
         all_projects = self.all_projects
@@ -751,7 +760,7 @@ class ManifestLoader:
         profile_env_vars_hash = FileHash.from_contents(env_var_str)
 
         # Create a FileHash of the profile file
-        profile_path = os.path.join(flags.PROFILES_DIR, "profiles.yml")
+        profile_path = os.path.join(get_flags().PROFILES_DIR, "profiles.yml")
         with open(profile_path) as fp:
             profile_hash = FileHash.from_contents(fp.read())
 
@@ -976,6 +985,31 @@ class ManifestLoader:
 
         self.manifest.rebuild_ref_lookup()
 
+    def check_valid_group_config(self):
+        manifest = self.manifest
+        group_names = {group.name for group in manifest.groups.values()}
+
+        for metric in manifest.metrics.values():
+            self.check_valid_group_config_node(metric, group_names)
+
+        for node in manifest.nodes.values():
+            self.check_valid_group_config_node(node, group_names)
+
+    def check_valid_group_config_node(
+        self, groupable_node: Union[Metric, ManifestNode], valid_group_names: Set[str]
+    ):
+        groupable_node_group = groupable_node.group
+        if groupable_node_group and groupable_node_group not in valid_group_names:
+            raise dbt.exceptions.ParsingError(
+                f"Invalid group '{groupable_node_group}', expected one of {sorted(list(valid_group_names))}",
+                node=groupable_node,
+            )
+
+    def write_perf_info(self, target_path: str):
+        path = os.path.join(target_path, PERF_INFO_FILE_NAME)
+        write_file(path, json.dumps(self._perf_info, cls=dbt.utils.JSONEncoder, indent=4))
+        fire_event(ParsePerfInfoPath(path=path))
+
 
 def invalid_target_fail_unless_test(
     node,
@@ -1161,6 +1195,16 @@ def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposur
             )
 
             continue
+        elif (
+            target_model.resource_type == NodeType.Model
+            and target_model.access == AccessType.Private
+        ):
+            # Exposures do not have a group and so can never reference private models
+            raise dbt.exceptions.DbtReferenceError(
+                unique_id=exposure.unique_id,
+                ref_unique_id=target_model.unique_id,
+                group=dbt.utils.cast_to_str(target_model.group),
+            )
 
         target_model_id = target_model.unique_id
 
@@ -1204,6 +1248,16 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: M
                 should_warn_if_disabled=False,
             )
             continue
+        elif (
+            target_model.resource_type == NodeType.Model
+            and target_model.access == AccessType.Private
+        ):
+            if not metric.group or metric.group != target_model.group:
+                raise dbt.exceptions.DbtReferenceError(
+                    unique_id=metric.unique_id,
+                    ref_unique_id=target_model.unique_id,
+                    group=dbt.utils.cast_to_str(target_model.group),
+                )
 
         target_model_id = target_model.unique_id
 
@@ -1249,7 +1303,7 @@ def _process_metrics_for_node(
             invalid_target_fail_unless_test(
                 node=node,
                 target_name=target_metric_name,
-                target_kind="source",
+                target_kind="metric",
                 target_package=target_metric_package,
                 disabled=(isinstance(target_metric, Disabled)),
             )
@@ -1300,6 +1354,18 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
                 should_warn_if_disabled=False,
             )
             continue
+
+        # Handle references to models that are private
+        elif (
+            target_model.resource_type == NodeType.Model
+            and target_model.access == AccessType.Private
+        ):
+            if not node.group or node.group != target_model.group:
+                raise dbt.exceptions.DbtReferenceError(
+                    unique_id=node.unique_id,
+                    ref_unique_id=target_model.unique_id,
+                    group=dbt.utils.cast_to_str(target_model.group),
+                )
 
         target_model_id = target_model.unique_id
 
@@ -1406,3 +1472,8 @@ def process_node(config: RuntimeConfig, manifest: Manifest, node: ManifestNode):
     _process_refs_for_node(manifest, config.project_name, node)
     ctx = generate_runtime_docs_context(config, node, manifest, config.project_name)
     _process_docs_for_node(ctx, node)
+
+
+def write_manifest(manifest: Manifest, target_path: str):
+    path = os.path.join(target_path, MANIFEST_FILE_NAME)
+    manifest.write(path)

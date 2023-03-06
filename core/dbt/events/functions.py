@@ -4,7 +4,7 @@ from dbt.events.base_types import BaseEvent, Cache, EventLevel, NoFile, NoStdOut
 from dbt.events.eventmgr import EventManager, LoggerConfig, LineFormat, NoFilter
 from dbt.events.helpers import env_secrets, scrub_secrets
 from dbt.events.types import Formatting
-import dbt.flags as flags
+from dbt.flags import get_flags, ENABLE_LEGACY_LOGGER
 from dbt.logger import GLOBAL_LOGGER, make_log_dir_if_missing
 from functools import partial
 import json
@@ -18,90 +18,138 @@ LOG_VERSION = 3
 metadata_vars: Optional[Dict[str, str]] = None
 
 
-# The "fallback" logger is used as a stop-gap so that console logging works before the logging
-# configuration is fully loaded.
-def setup_fallback_logger(use_legacy: bool, level: EventLevel) -> None:
+def setup_event_logger(flags) -> None:
     cleanup_event_logger()
-    config = _get_logbook_log_config(level) if use_legacy else _get_stdout_config(level)
-    EVENT_MANAGER.add_logger(config)
+    make_log_dir_if_missing(flags.LOG_PATH)
 
-
-def setup_event_logger(log_path: str, level_override: Optional[EventLevel] = None):
-    cleanup_event_logger()
-    make_log_dir_if_missing(log_path)
-    if flags.ENABLE_LEGACY_LOGGER:
-        EVENT_MANAGER.add_logger(_get_logbook_log_config(level_override))
+    if ENABLE_LEGACY_LOGGER:
+        EVENT_MANAGER.add_logger(
+            _get_logbook_log_config(
+                flags.DEBUG, flags.USE_COLORS, flags.LOG_CACHE_EVENTS, flags.QUIET
+            )
+        )
     else:
-        EVENT_MANAGER.add_logger(_get_stdout_config(level_override))
+        if flags.LOG_LEVEL != "none":
+            line_format = _line_format_from_str(flags.LOG_FORMAT, LineFormat.PlainText)
+            log_level = EventLevel.DEBUG if flags.DEBUG else EventLevel(flags.LOG_LEVEL)
+            console_config = _get_stdout_config(
+                line_format,
+                flags.DEBUG,
+                flags.USE_COLORS,
+                log_level,
+                flags.LOG_CACHE_EVENTS,
+                flags.QUIET,
+            )
+            EVENT_MANAGER.add_logger(console_config)
 
-        if _CAPTURE_STREAM:
-            # Create second stdout logger to support test which want to know what's
-            # being sent to stdout.
-            capture_config = _get_stdout_config(level_override)
-            capture_config.output_stream = _CAPTURE_STREAM
-            EVENT_MANAGER.add_logger(capture_config)
+            if _CAPTURE_STREAM:
+                # Create second stdout logger to support test which want to know what's
+                # being sent to stdout.
+                console_config.output_stream = _CAPTURE_STREAM
+                EVENT_MANAGER.add_logger(console_config)
 
-        # create and add the file logger to the event manager
-        EVENT_MANAGER.add_logger(_get_logfile_config(os.path.join(log_path, "dbt.log")))
+        if flags.LOG_LEVEL_FILE != "none":
+            # create and add the file logger to the event manager
+            log_file = os.path.join(flags.LOG_PATH, "dbt.log")
+            log_file_format = _line_format_from_str(flags.LOG_FORMAT_FILE, LineFormat.DebugText)
+            log_level_file = EventLevel.DEBUG if flags.DEBUG else EventLevel(flags.LOG_LEVEL_FILE)
+            EVENT_MANAGER.add_logger(
+                _get_logfile_config(
+                    log_file, flags.USE_COLORS_FILE, log_file_format, log_level_file
+                )
+            )
 
 
-def _get_stdout_config(level: Optional[EventLevel] = None) -> LoggerConfig:
-    fmt = LineFormat.PlainText
-    if flags.LOG_FORMAT == "json":
-        fmt = LineFormat.Json
-    elif flags.DEBUG:
-        fmt = LineFormat.DebugText
+def _line_format_from_str(format_str: str, default: LineFormat) -> LineFormat:
+    if format_str == "text":
+        return LineFormat.PlainText
+    elif format_str == "debug":
+        return LineFormat.DebugText
+    elif format_str == "json":
+        return LineFormat.Json
+
+    return default
+
+
+def _get_stdout_config(
+    line_format: LineFormat,
+    debug: bool,
+    use_colors: bool,
+    level: EventLevel,
+    log_cache_events: bool,
+    quiet: bool,
+) -> LoggerConfig:
 
     return LoggerConfig(
         name="stdout_log",
-        level=level or (EventLevel.DEBUG if flags.DEBUG else EventLevel.INFO),
-        use_colors=bool(flags.USE_COLORS),
-        line_format=fmt,
+        level=level,
+        use_colors=use_colors,
+        line_format=line_format,
         scrubber=env_scrubber,
         filter=partial(
-            _stdout_filter, bool(flags.LOG_CACHE_EVENTS), bool(flags.DEBUG), bool(flags.QUIET)
+            _stdout_filter,
+            log_cache_events,
+            debug,
+            quiet,
+            line_format,
         ),
         output_stream=sys.stdout,
     )
 
 
 def _stdout_filter(
-    log_cache_events: bool, debug_mode: bool, quiet_mode: bool, msg: EventMsg
+    log_cache_events: bool,
+    debug_mode: bool,
+    quiet_mode: bool,
+    line_format: LineFormat,
+    msg: EventMsg,
 ) -> bool:
     return (
         not isinstance(msg.data, NoStdOut)
         and (not isinstance(msg.data, Cache) or log_cache_events)
         and (EventLevel(msg.info.level) != EventLevel.DEBUG or debug_mode)
         and (EventLevel(msg.info.level) == EventLevel.ERROR or not quiet_mode)
-        and not (flags.LOG_FORMAT == "json" and type(msg.data) == Formatting)
+        and not (line_format == LineFormat.Json and type(msg.data) == Formatting)
     )
 
 
-def _get_logfile_config(log_path: str) -> LoggerConfig:
+def _get_logfile_config(
+    log_path: str, use_colors: bool, line_format: LineFormat, level: EventLevel
+) -> LoggerConfig:
     return LoggerConfig(
         name="file_log",
-        line_format=LineFormat.Json if flags.LOG_FORMAT == "json" else LineFormat.DebugText,
-        use_colors=bool(flags.USE_COLORS),
-        level=EventLevel.DEBUG,  # File log is *always* debug level
+        line_format=line_format,
+        use_colors=use_colors,
+        level=level,  # File log is *always* debug level
         scrubber=env_scrubber,
-        filter=partial(_logfile_filter, bool(flags.LOG_CACHE_EVENTS)),
+        filter=partial(_logfile_filter, bool(get_flags().LOG_CACHE_EVENTS), line_format),
         output_file_name=log_path,
     )
 
 
-def _logfile_filter(log_cache_events: bool, msg: EventMsg) -> bool:
+def _logfile_filter(log_cache_events: bool, line_format: LineFormat, msg: EventMsg) -> bool:
     return (
         not isinstance(msg.data, NoFile)
         and not (isinstance(msg.data, Cache) and not log_cache_events)
-        and not (flags.LOG_FORMAT == "json" and type(msg.data) == Formatting)
+        and not (line_format == LineFormat.Json and type(msg.data) == Formatting)
     )
 
 
-def _get_logbook_log_config(level: Optional[EventLevel] = None) -> LoggerConfig:
-    config = _get_stdout_config(level)
+def _get_logbook_log_config(
+    debug: bool, use_colors: bool, log_cache_events: bool, quiet: bool
+) -> LoggerConfig:
+    config = _get_stdout_config(
+        LineFormat.PlainText,
+        debug,
+        use_colors,
+        EventLevel.DEBUG if debug else EventLevel.INFO,
+        log_cache_events,
+        quiet,
+    )
     config.name = "logbook_log"
-    config.filter = NoFilter if flags.LOG_CACHE_EVENTS else lambda e: not isinstance(e.data, Cache)
+    config.filter = NoFilter if log_cache_events else lambda e: not isinstance(e.data, Cache)
     config.logger = GLOBAL_LOGGER
+    config.output_stream = None
     return config
 
 
@@ -121,8 +169,11 @@ def cleanup_event_logger():
 # currently fire before logs can be configured by setup_event_logger(), we
 # create a default configuration with default settings and no file output.
 EVENT_MANAGER: EventManager = EventManager()
-setup_fallback_logger(bool(flags.ENABLE_LEGACY_LOGGER), EventLevel.INFO)
-
+EVENT_MANAGER.add_logger(
+    _get_logbook_log_config(False, True, False, False)  # type: ignore
+    if ENABLE_LEGACY_LOGGER
+    else _get_stdout_config(LineFormat.PlainText, False, True, EventLevel.INFO, False, False)
+)
 
 # This global, and the following two functions for capturing stdout logs are
 # an unpleasant hack we intend to remove as part of API-ification. The GitHub
@@ -167,11 +218,9 @@ def msg_to_dict(msg: EventMsg) -> dict:
 
 
 def warn_or_error(event, node=None):
-    # TODO: resolve this circular import when flags.WARN_ERROR_OPTIONS is WarnErrorOptions type via click CLI.
-    from dbt.helper_types import WarnErrorOptions
+    flags = get_flags()
+    if flags.WARN_ERROR or flags.WARN_ERROR_OPTIONS.includes(type(event).__name__):
 
-    warn_error_options = WarnErrorOptions.from_yaml_string(flags.WARN_ERROR_OPTIONS)
-    if flags.WARN_ERROR or warn_error_options.includes(type(event).__name__):
         # TODO: resolve this circular import when at top
         from dbt.exceptions import EventCompilationError
 

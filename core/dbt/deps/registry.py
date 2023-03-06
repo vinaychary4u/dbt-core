@@ -114,7 +114,7 @@ class RegistryUnpinnedPackage(RegistryPackageMixin, UnpinnedPackage[RegistryPinn
         )
 
     def incorporate(self, other: "RegistryUnpinnedPackage") -> "RegistryUnpinnedPackage":
-        who_wants_which = (self.who_wants_which or {}) | (other.who_wants_which or {})
+        who_wants_which = (self.who_wants_which or {}) or (other.who_wants_which or {})
         return RegistryUnpinnedPackage(
             package=self.package,
             install_prerelease=self.install_prerelease,

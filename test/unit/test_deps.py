@@ -300,10 +300,8 @@ class TestHubPackage(unittest.TestCase):
 
         with self.assertRaises(dbt.exceptions.DependencyError) as exc:
             c.resolved()
-        msg = (
-            "Version error for package dbt-labs-test/a: Could not "
-            "find a satisfactory version from options: ['=0.1.2', '=0.1.3']"
-        )
+        msg = "Version error for package dbt-labs-test/a: \n    Required by user: ['=0.1.3']"
+        print(f"--- from str(exc.exception): {str(exc.exception)}")
         self.assertEqual(msg, str(exc.exception))
 
     def test_resolve_ranges(self):

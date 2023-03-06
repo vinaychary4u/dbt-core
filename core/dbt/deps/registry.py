@@ -127,7 +127,8 @@ class RegistryUnpinnedPackage(RegistryPackageMixin, UnpinnedPackage[RegistryPinn
         try:
             range_ = semver.reduce_versions(*self.versions)
         except VersionsNotCompatibleError as e:
-            new_msg = "Version error for package {}: {}".format(self.name, self.package_requests())
+            new_msg = f"Version error for package {self.name}: {self.package_requests()}"
+            print(f"--- in resolved. new_msg: {new_msg}")
             raise DependencyError(new_msg) from e
 
         should_version_check = bool(flags.VERSION_CHECK)

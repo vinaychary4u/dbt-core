@@ -59,7 +59,7 @@ metrics:
     type_params:
       measure: order_total
 
-  - name: constraint_metric
+  - name: testing_metric_constraint
     entity: entity('orders')
     description: "some description"
     type: measure_proxy

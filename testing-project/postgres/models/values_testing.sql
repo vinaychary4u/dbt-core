@@ -1,1 +1,6 @@
-select '{{entity("orders")}}' as entity_ref_value
+{# {% set mf = modules.mf %} #}
+{# {% set explain_plan = mf.explain(metrics=["sales"]) %} #}
+{# {% set explain_plan = mf.explain(self,metrics=["sales"]) %} #}
+
+
+{# select "{{manifest}}" as explain_plan #}

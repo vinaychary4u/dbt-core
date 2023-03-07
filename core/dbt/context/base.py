@@ -30,6 +30,9 @@ import datetime
 import re
 import itertools
 
+import importlib
+metricflow_module = importlib.util.find_spec("metricflow")
+
 # See the `contexts` module README for more information on how contexts work
 
 
@@ -51,6 +54,11 @@ def get_re_module_context() -> Dict[str, Any]:
 
     return {name: getattr(re, name) for name in context_exports}
 
+if metricflow_module is not None:  
+    def get_metricflow_module_context() -> Dict[str, Any]:
+        from metricflow.api.metricflow_client import MetricFlowClient
+        context_exports = ["explain"]
+        return {name: getattr(MetricFlowClient, name) for name in context_exports}
 
 def get_itertools_module_context() -> Dict[str, Any]:
     # Excluded dropwhile, filterfalse, takewhile and groupby;
@@ -81,6 +89,7 @@ def get_context_modules() -> Dict[str, Dict[str, Any]]:
         "datetime": get_datetime_module_context(),
         "re": get_re_module_context(),
         "itertools": get_itertools_module_context(),
+        "mf": get_metricflow_module_context(),
     }
 
 

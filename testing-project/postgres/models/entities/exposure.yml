@@ -1,7 +1,6 @@
 version: 2
 
 exposures:
-
   - name: weekly_metrics
     label: Some Label
     type: dashboard

@@ -592,11 +592,12 @@ def freshness(ctx, **kwargs):
 snapshot_freshness = copy(cli.commands["source"].commands["freshness"])  # type: ignore
 snapshot_freshness.hidden = True
 cli.commands["source"].add_command(snapshot_freshness, "snapshot-freshness")  # type: ignore
-cli.add_command(list_metrics, "list-metrics")
-cli.add_command(list_dimensions, "list-dimensions")
-cli.add_command(get_dimension_values, "get-dimension-values")
-cli.add_command(query, "query")
-cli.add_command(validate_configs, "validate-configs")
+if metricflow_module is not None:
+    cli.add_command(list_metrics, "list-metrics")
+    cli.add_command(list_dimensions, "list-dimensions")
+    cli.add_command(get_dimension_values, "get-dimension-values")
+    cli.add_command(query, "query")
+    cli.add_command(validate_configs, "validate-configs")
 
 
 # dbt test

@@ -89,7 +89,6 @@ def get_context_modules() -> Dict[str, Dict[str, Any]]:
         "datetime": get_datetime_module_context(),
         "re": get_re_module_context(),
         "itertools": get_itertools_module_context(),
-        "mf": get_metricflow_module_context(),
     }
 
 

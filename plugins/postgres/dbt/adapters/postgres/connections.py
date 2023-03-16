@@ -86,7 +86,7 @@ class PostgresConnectionManager(SQLConnectionManager):
                 # useful information, so raise it without modification.
                 raise
 
-            raise dbt.exceptions.DbtRuntimeError(e) from e
+            raise dbt.exceptions.DbtRuntimeError(str(e)) from e
 
     @classmethod
     def open(cls, connection):

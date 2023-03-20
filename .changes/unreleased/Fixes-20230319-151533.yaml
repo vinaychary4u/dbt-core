@@ -1,5 +1,5 @@
 kind: Fixes
-body: add negative part_number arg for split part macro
+body: add negative part_number argument for split part macro
 time: 2023-03-19T15:15:33.7376-05:00
 custom:
   Author: dave-connors-3

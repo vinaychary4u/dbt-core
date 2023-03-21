@@ -123,6 +123,7 @@ class ParserRef:
         constraints_check: Optional[str],
         meta: Dict[str, Any],
     ):
+        # TODO: look into adding versions (VersionInfo from UnparsedVersion) here
         tags: List[str] = []
         tags.extend(getattr(column, "tags", ()))
         quote: Optional[bool]
@@ -862,6 +863,8 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
             docs=block.target.docs,
             config=block.target.config,
             access=block.target.access,
+            version=block.target.latest_version,  # TODO: does this make any sense
+            latest_version=block.target.latest_version,
         )
         assert isinstance(self.yaml.file, SchemaSourceFile)
         source_file: SchemaSourceFile = self.yaml.file
@@ -888,6 +891,50 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
                 f"Unexpected yaml_key {patch.yaml_key} for patch in "
                 f"file {source_file.path.original_file_path}"
             )
+
+        # patch versioned nodes.
+        versions = block.target.versions
+        if versions:
+            for unparsed_version in versions:
+                versioned_model_name = (
+                    unparsed_version.defined_in or f"{patch.name}_v{unparsed_version.name}"
+                )
+                versioned_model_unique_id = self.manifest.ref_lookup.get_unique_id(
+                    versioned_model_name, None
+                )
+                if versioned_model_unique_id is None:
+                    warn_or_error(
+                        NoNodeForYamlKey(
+                            patch_name=versioned_model_name,
+                            yaml_key=patch.yaml_key,
+                            file_path=source_file.path.original_file_path,
+                        )
+                    )
+                    continue
+                versioned_model_node = self.manifest.nodes.pop(versioned_model_unique_id)
+                versioned_model_node.unique_id = (
+                    f"model.{patch.package_name}.{patch.name}.v{unparsed_version.name}"
+                )
+                versioned_model_node.fqn[-1] = patch.name  # bleugh
+                self.manifest.nodes[versioned_model_node.unique_id] = versioned_model_node
+                versioned_model_patch = ParsedNodePatch(
+                    name=patch.name,
+                    original_file_path=versioned_model_node.original_file_path,
+                    yaml_key=patch.yaml_key,
+                    package_name=versioned_model_node.package_name,
+                    description=unparsed_version.description or versioned_model_node.description,
+                    columns={},  # TODO: flatten columns based on include/exclude
+                    meta=unparsed_version.meta or versioned_model_node.meta,
+                    docs=unparsed_version.docs or versioned_model_node.docs,
+                    config=unparsed_version.config or versioned_model_node.config,
+                    access=unparsed_version.access or versioned_model_node.access,
+                    version=unparsed_version.name,
+                    latest_version=patch.latest_version,
+                )
+                versioned_model_node.patch(versioned_model_patch)
+            self.manifest.rebuild_ref_lookup()  # TODO this doesn't seem to work for ref resolution
+            return
+
         # handle disabled nodes
         if unique_id is None:
             # Node might be disabled. Following call returns list of matching disabled nodes

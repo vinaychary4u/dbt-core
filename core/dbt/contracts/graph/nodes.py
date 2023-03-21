@@ -15,6 +15,7 @@ from typing import (
 
 from dbt.dataclass_schema import dbtClassMixin, ExtensibleDbtClassMixin
 
+# from dbt.helper_types import IncludeExclude
 from dbt.clients.system import write_file
 from dbt.contracts.files import FileHash
 from dbt.contracts.graph.unparsed import (
@@ -366,6 +367,10 @@ class ParsedNode(NodeInfoMixin, ParsedNodeMandatory, SerializableType):
         self.created_at = time.time()
         self.description = patch.description
         self.columns = patch.columns
+        # TODO - these are model specific
+        self.version = patch.version
+        self.latest_version = patch.latest_version
+        self.name = patch.name
         # This might not be the ideal place to validate the "access" field,
         # but at this point we have the information we need to properly
         # validate and we don't before this.
@@ -487,6 +492,8 @@ class HookNode(CompiledNode):
 class ModelNode(CompiledNode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Model]})
     access: AccessType = AccessType.Protected
+    version: Optional[str] = None
+    latest_version: Optional[str] = None
 
 
 # TODO: rm?
@@ -1164,6 +1171,8 @@ class ParsedPatch(HasYamlMetadata, Replaceable):
 class ParsedNodePatch(ParsedPatch):
     columns: Dict[str, ColumnInfo]
     access: Optional[str]
+    version: Optional[str]
+    latest_version: Optional[str]
 
 
 @dataclass

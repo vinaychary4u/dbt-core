@@ -145,13 +145,25 @@ class HasConfig:
 
 
 @dataclass
+class UnparsedVersion(HasConfig, HasDocs):
+    defined_in: Optional[str] = None
+    columns: Sequence[Union[dbt.helper_types.IncludeExclude, UnparsedColumn]] = field(
+        default_factory=list
+    )
+    # TODO: all other model configs? Not sure HasDocs is the right thing to use here
+
+
+@dataclass
 class UnparsedAnalysisUpdate(HasConfig, HasColumnDocs, HasDocs, HasYamlMetadata):
-    pass
+    latest_version: Optional[str] = None
+    versions: Sequence[UnparsedVersion] = field(default_factory=list)
 
 
 @dataclass
 class UnparsedNodeUpdate(HasConfig, HasColumnTests, HasTests, HasYamlMetadata):
     quote_columns: Optional[bool] = None
+    latest_version: Optional[str] = None
+    versions: Sequence[UnparsedVersion] = field(default_factory=list)
 
 
 @dataclass

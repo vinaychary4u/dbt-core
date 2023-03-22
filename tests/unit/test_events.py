@@ -126,6 +126,9 @@ sample_values = [
     types.MetricAttributesRenamed(metric_name=""),
     types.ExposureNameDeprecation(exposure=""),
     types.InternalDeprecation(name="", reason="", suggested_action="", version=""),
+    types.EnvironmentVariableRenamed(old_name="", new_name=""),
+    types.ConfigLogPathDeprecation(deprecated_path=""),
+    types.ConfigTargetPathDeprecation(deprecated_path=""),
     # E - DB Adapter ======================
     types.AdapterEventDebug(),
     types.AdapterEventInfo(),
@@ -172,6 +175,7 @@ sample_values = [
     types.HooksRunning(num_hooks=0, hook_type=""),
     types.FinishedRunningStats(stat_line="", execution="", execution_time=0),
     # I - Project parsing ======================
+    types.InputFileDiffError(category="testing", file_id="my_file"),
     types.InvalidValueForField(field_name="test", field_value="test"),
     types.ValidationWarning(resource_type="model", field_name="access", node_name="my_macro"),
     types.ParsePerfInfoPath(path=""),
@@ -295,6 +299,7 @@ sample_values = [
     types.NodeFinished(node_info=types.NodeInfo()),
     types.QueryCancelationUnsupported(type=""),
     types.ConcurrencyLine(num_threads=0, target_name=""),
+    types.CompiledNode(node_name="", compiled=""),
     types.WritingInjectedSQLForNode(node_info=types.NodeInfo()),
     types.NodeCompiling(node_info=types.NodeInfo()),
     types.NodeExecuting(node_info=types.NodeInfo()),
@@ -333,7 +338,6 @@ sample_values = [
     types.MainKeyboardInterrupt(),
     types.MainEncounteredError(exc=""),
     types.MainStackTrace(stack_trace=""),
-    types.SystemErrorRetrievingModTime(path=""),
     types.SystemCouldNotWrite(path="", reason="", exc=""),
     types.SystemExecutingCmd(cmd=[""]),
     types.SystemStdOut(bmsg=b""),

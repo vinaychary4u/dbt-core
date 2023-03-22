@@ -393,6 +393,57 @@ class InternalDeprecation(WarnLevel, pt.InternalDeprecation):
         return warning_tag(msg)
 
 
+@dataclass
+class EnvironmentVariableRenamed(WarnLevel, pt.EnvironmentVariableRenamed):  # noqa
+    def code(self):
+        return "D009"
+
+    def message(self):
+        description = (
+            f"The environment variable `{self.old_name}` has been renamed as `{self.new_name}`.\n"
+            f"If `{self.old_name}` is currently set, its value will be used instead of `{self.new_name}`.\n"
+            f"Set `{self.new_name}` and unset `{self.old_name}` to avoid this deprecation warning and "
+            "ensure it works properly in a future release."
+        )
+        return line_wrap_message(warning_tag(f"Deprecated functionality\n\n{description}"))
+
+
+@dataclass
+class ConfigLogPathDeprecation(WarnLevel, pt.ConfigSourcePathDeprecation):  # noqa
+    def code(self):
+        return "D010"
+
+    def message(self):
+        output = "logs"
+        cli_flag = "--log-path"
+        env_var = "DBT_LOG_PATH"
+        description = (
+            f"The `{self.deprecated_path}` config in `dbt_project.yml` has been deprecated, "
+            f"and will no longer be supported in a future version of dbt-core. "
+            f"If you wish to write dbt {output} to a custom directory, please use "
+            f"the {cli_flag} CLI flag or {env_var} env var instead."
+        )
+        return line_wrap_message(warning_tag(f"Deprecated functionality\n\n{description}"))
+
+
+@dataclass
+class ConfigTargetPathDeprecation(WarnLevel, pt.ConfigSourcePathDeprecation):  # noqa
+    def code(self):
+        return "D011"
+
+    def message(self):
+        output = "artifacts"
+        cli_flag = "--target-path"
+        env_var = "DBT_TARGET_PATH"
+        description = (
+            f"The `{self.deprecated_path}` config in `dbt_project.yml` has been deprecated, "
+            f"and will no longer be supported in a future version of dbt-core. "
+            f"If you wish to write dbt {output} to a custom directory, please use "
+            f"the {cli_flag} CLI flag or {env_var} env var instead."
+        )
+        return line_wrap_message(warning_tag(f"Deprecated functionality\n\n{description}"))
+
+
 # =======================================================
 # E - DB Adapter
 # =======================================================
@@ -768,7 +819,16 @@ class FinishedRunningStats(InfoLevel, pt.FinishedRunningStats):
 # =======================================================
 
 
-# Skipping I001, I002, I003, I004, I005, I006, I007
+@dataclass
+class InputFileDiffError(DebugLevel, pt.InputFileDiffError):
+    def code(self):
+        return "I001"
+
+    def message(self) -> str:
+        return f"Error processing file diff: {self.category}, {self.file_id}"
+
+
+# Skipping I002, I003, I004, I005, I006, I007
 
 
 @dataclass
@@ -1687,7 +1747,13 @@ class ConcurrencyLine(InfoLevel, pt.ConcurrencyLine):  # noqa
         return f"Concurrency: {self.num_threads} threads (target='{self.target_name}')"
 
 
-# Skipped Q028
+@dataclass
+class CompiledNode(InfoLevel, pt.CompiledNode):
+    def code(self):
+        return "Q028"
+
+    def message(self) -> str:
+        return f"Compiled node '{self.node_name}' is:\n{self.compiled}"
 
 
 @dataclass
@@ -1891,13 +1957,7 @@ class MainStackTrace(ErrorLevel, pt.MainStackTrace):
         return self.stack_trace
 
 
-@dataclass
-class SystemErrorRetrievingModTime(ErrorLevel, pt.SystemErrorRetrievingModTime):
-    def code(self):
-        return "Z004"
-
-    def message(self) -> str:
-        return f"Error retrieving modification time for file {self.path}"
+# Skipped Z004
 
 
 @dataclass
@@ -2288,7 +2348,7 @@ class ListCmdOut(InfoLevel, pt.ListCmdOut):
 
 
 # The Note event provides a way to log messages which aren't likely to be useful as more structured events.
-# For conslole formatting text like empty lines and separator bars, use the Formatting event instead.
+# For console formatting text like empty lines and separator bars, use the Formatting event instead.
 @dataclass
 class Note(InfoLevel, pt.Note):
     def code(self):

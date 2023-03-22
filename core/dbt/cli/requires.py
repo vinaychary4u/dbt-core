@@ -40,6 +40,9 @@ def preflight(func):
         flags_dict_str = cast_dict_to_dict_of_strings(get_flag_dict())
         fire_event(MainReportArgs(args=flags_dict_str))
 
+        # Deprecation warnings
+        flags.fire_deprecations()
+
         if active_user is not None:  # mypy appeasement, always true
             fire_event(MainTrackingUserState(user_state=active_user.state()))
 

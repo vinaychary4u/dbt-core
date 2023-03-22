@@ -305,7 +305,7 @@ message ConfigDataPathDeprecationMsg {
     ConfigDataPathDeprecation data = 2;
 }
 
-//D005
+// D005
 message AdapterDeprecationWarning {
     string old_name = 1;
     string new_name = 2;
@@ -316,7 +316,7 @@ message AdapterDeprecationWarningMsg {
     AdapterDeprecationWarning data = 2;
 }
 
-//D006
+// D006
 message MetricAttributesRenamed {
     string metric_name = 1;
 }
@@ -326,7 +326,7 @@ message MetricAttributesRenamedMsg {
     MetricAttributesRenamed data = 2;
 }
 
-//D007
+// D007
 message ExposureNameDeprecation {
     string exposure = 1;
 }
@@ -336,7 +336,7 @@ message ExposureNameDeprecationMsg {
     ExposureNameDeprecation data = 2;
 }
 
-//D008
+// D008
 message InternalDeprecation {
     string name = 1;
     string reason = 2;
@@ -347,6 +347,37 @@ message InternalDeprecation {
 message InternalDeprecationMsg {
     EventInfo info = 1;
     InternalDeprecation data = 2;
+}
+
+// D009
+message EnvironmentVariableRenamed {
+    string old_name = 1;
+    string new_name = 2;
+}
+
+message EnvironmentVariableRenamedMsg {
+    EventInfo info = 1;
+    EnvironmentVariableRenamed data = 2;
+}
+
+// D010
+message ConfigLogPathDeprecation {
+    string deprecated_path = 1;
+}
+
+message ConfigLogPathDeprecationMsg {
+    EventInfo info = 1;
+    ConfigLogPathDeprecation data = 2;
+}
+
+// D011
+message ConfigTargetPathDeprecation {
+    string deprecated_path = 1;
+}
+
+message ConfigTargetPathDeprecationMsg {
+    EventInfo info = 1;
+    ConfigTargetPathDeprecation data = 2;
 }
 
 // E - DB Adapter
@@ -762,7 +793,18 @@ message FinishedRunningStatsMsg {
 
 // I - Project parsing
 
-// Skipping I001, I002, I003, I004, I005, I006, I007
+// I001
+message InputFileDiffError {
+    string category = 1;
+    string file_id = 2;
+}
+
+message InputFileDiffErrorMsg {
+    EventInfo info = 1;
+    InputFileDiffError data = 2;
+}
+
+// Skipping I002, I003, I004, I005, I006, I007
 
 // I008
 message InvalidValueForField {
@@ -1600,7 +1642,16 @@ message ConcurrencyLineMsg {
     ConcurrencyLine data = 2;
 }
 
-// Skipped Q028
+// Q028
+message CompiledNode {
+    string node_name = 1;
+    string compiled = 2;
+}
+
+message CompiledNodeMsg {
+    EventInfo info = 1;
+    CompiledNode data = 2;
+}
 
 // Q029
 message WritingInjectedSQLForNode {
@@ -1808,15 +1859,7 @@ message MainStackTraceMsg {
     MainStackTrace data = 2;
 }
 
-// Z004
-message SystemErrorRetrievingModTime {
-    string path = 1;
-}
-
-message SystemErrorRetrievingModTimeMsg {
-    EventInfo info = 1;
-    SystemErrorRetrievingModTime data = 2;
-}
+// skipping Z004
 
 // Z005
 message SystemCouldNotWrite {

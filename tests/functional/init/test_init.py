@@ -39,7 +39,7 @@ class TestInitProjectWithExistingProfilesYml:
                     f"The profile test already exists in {os.path.join(project.profiles_dir, 'profiles.yml')}. Continue and overwrite it?"
                 ),
                 call.prompt(
-                    "Which database would you like to use?\n[1] postgres\n\n(Don't see the one you want? https://docs.getdbt.com/docs/available-adapters)\n\nEnter a number",
+                    "Which database would you like to use?\n[1] postgres\n\n(Don't see the one you want? https://docs.getdbt.com/docs/supported-data-platforms)\n\nEnter a number",
                     type=click.INT,
                 ),
                 call.prompt(
@@ -116,7 +116,7 @@ class TestInitProjectWithoutExistingProfilesYml:
         manager.assert_has_calls(
             [
                 call.prompt(
-                    "Which database would you like to use?\n[1] postgres\n\n(Don't see the one you want? https://docs.getdbt.com/docs/available-adapters)\n\nEnter a number",
+                    "Which database would you like to use?\n[1] postgres\n\n(Don't see the one you want? https://docs.getdbt.com/docs/supported-data-platforms)\n\nEnter a number",
                     type=click.INT,
                 ),
                 call.prompt(
@@ -187,7 +187,7 @@ class TestInitProjectWithoutExistingProfilesYmlOrTemplate:
         manager.assert_has_calls(
             [
                 call.prompt(
-                    "Which database would you like to use?\n[1] postgres\n\n(Don't see the one you want? https://docs.getdbt.com/docs/available-adapters)\n\nEnter a number",
+                    "Which database would you like to use?\n[1] postgres\n\n(Don't see the one you want? https://docs.getdbt.com/docs/supported-data-platforms)\n\nEnter a number",
                     type=click.INT,
                 ),
             ]
@@ -341,7 +341,7 @@ class TestInitInvalidProfileTemplate:
                     f"The profile test already exists in {os.path.join(project.profiles_dir, 'profiles.yml')}. Continue and overwrite it?"
                 ),
                 call.prompt(
-                    "Which database would you like to use?\n[1] postgres\n\n(Don't see the one you want? https://docs.getdbt.com/docs/available-adapters)\n\nEnter a number",
+                    "Which database would you like to use?\n[1] postgres\n\n(Don't see the one you want? https://docs.getdbt.com/docs/supported-data-platforms)\n\nEnter a number",
                     type=click.INT,
                 ),
                 call.prompt(
@@ -457,7 +457,7 @@ class TestInitOutsideOfProject(TestInitOutsideOfProjectBase):
             [
                 call.prompt("Enter a name for your project (letters, digits, underscore)"),
                 call.prompt(
-                    "Which database would you like to use?\n[1] postgres\n\n(Don't see the one you want? https://docs.getdbt.com/docs/available-adapters)\n\nEnter a number",
+                    "Which database would you like to use?\n[1] postgres\n\n(Don't see the one you want? https://docs.getdbt.com/docs/supported-data-platforms)\n\nEnter a number",
                     type=click.INT,
                 ),
                 call.prompt(
@@ -553,7 +553,7 @@ clean-targets:         # directories to be removed by `dbt clean`
 
 
 # Configuring models
-# Full documentation: https://docs.getdbt.com/docs/configuring-models
+# Full documentation: https://docs.getdbt.com/reference/model-configs
 
 # In this example config, we tell dbt to build all models in the example/
 # directory as views. These settings can be overridden in the individual model
@@ -672,7 +672,7 @@ clean-targets:         # directories to be removed by `dbt clean`
 
 
 # Configuring models
-# Full documentation: https://docs.getdbt.com/docs/configuring-models
+# Full documentation: https://docs.getdbt.com/reference/model-configs
 
 # In this example config, we tell dbt to build all models in the example/
 # directory as views. These settings can be overridden in the individual model

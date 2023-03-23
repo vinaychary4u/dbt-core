@@ -74,7 +74,7 @@ class TestGetVersionInformation:
                 "",
                 "  Your version of dbt-core is out of date!",
                 "  You can find instructions for upgrading here:",
-                "  https://docs.getdbt.com/docs/installation",
+                "  https://docs.getdbt.com/docs/core/installation",
                 "",
                 "Plugins:",
                 f"  - foobar: 1.0.0 - {green('Up to date!')}",
@@ -241,7 +241,7 @@ class TestGetVersionInformation:
                 "",
                 "  At least one plugin is out of date or incompatible with dbt-core.",
                 "  You can find instructions for upgrading here:",
-                "  https://docs.getdbt.com/docs/installation",
+                "  https://docs.getdbt.com/docs/core/installation",
                 "",
                 "",
             ]
@@ -271,7 +271,7 @@ class TestGetVersionInformation:
                 "",
                 "  At least one plugin is out of date or incompatible with dbt-core.",
                 "  You can find instructions for upgrading here:",
-                "  https://docs.getdbt.com/docs/installation",
+                "  https://docs.getdbt.com/docs/core/installation",
                 "",
                 "",
             ]
@@ -301,7 +301,7 @@ class TestGetVersionInformation:
                 "",
                 "  At least one plugin is out of date or incompatible with dbt-core.",
                 "  You can find instructions for upgrading here:",
-                "  https://docs.getdbt.com/docs/installation",
+                "  https://docs.getdbt.com/docs/core/installation",
                 "",
                 "",
             ]
@@ -331,7 +331,7 @@ class TestGetVersionInformation:
                 "",
                 "  At least one plugin is out of date or incompatible with dbt-core.",
                 "  You can find instructions for upgrading here:",
-                "  https://docs.getdbt.com/docs/installation",
+                "  https://docs.getdbt.com/docs/core/installation",
                 "",
                 "",
             ]
@@ -361,7 +361,7 @@ class TestGetVersionInformation:
                 "",
                 "  At least one plugin is out of date or incompatible with dbt-core.",
                 "  You can find instructions for upgrading here:",
-                "  https://docs.getdbt.com/docs/installation",
+                "  https://docs.getdbt.com/docs/core/installation",
                 "",
                 "",
             ]
@@ -391,7 +391,7 @@ class TestGetVersionInformation:
                 "",
                 "  At least one plugin is out of date or incompatible with dbt-core.",
                 "  You can find instructions for upgrading here:",
-                "  https://docs.getdbt.com/docs/installation",
+                "  https://docs.getdbt.com/docs/core/installation",
                 "",
                 "",
             ]
@@ -421,7 +421,7 @@ class TestGetVersionInformation:
                 "",
                 "  At least one plugin is out of date or incompatible with dbt-core.",
                 "  You can find instructions for upgrading here:",
-                "  https://docs.getdbt.com/docs/installation",
+                "  https://docs.getdbt.com/docs/core/installation",
                 "",
                 "",
             ]
@@ -451,7 +451,7 @@ class TestGetVersionInformation:
                 "",
                 "  At least one plugin is out of date or incompatible with dbt-core.",
                 "  You can find instructions for upgrading here:",
-                "  https://docs.getdbt.com/docs/installation",
+                "  https://docs.getdbt.com/docs/core/installation",
                 "",
                 "",
             ]
@@ -481,7 +481,7 @@ class TestGetVersionInformation:
                 "",
                 "  At least one plugin is out of date or incompatible with dbt-core.",
                 "  You can find instructions for upgrading here:",
-                "  https://docs.getdbt.com/docs/installation",
+                "  https://docs.getdbt.com/docs/core/installation",
                 "",
                 "",
             ]
@@ -511,7 +511,7 @@ class TestGetVersionInformation:
                 "",
                 "  At least one plugin is out of date or incompatible with dbt-core.",
                 "  You can find instructions for upgrading here:",
-                "  https://docs.getdbt.com/docs/installation",
+                "  https://docs.getdbt.com/docs/core/installation",
                 "",
                 "",
             ]
@@ -551,7 +551,7 @@ class TestGetVersionInformation:
                 "",
                 "  At least one plugin is out of date or incompatible with dbt-core.",
                 "  You can find instructions for upgrading here:",
-                "  https://docs.getdbt.com/docs/installation",
+                "  https://docs.getdbt.com/docs/core/installation",
                 "",
                 "",
             ]

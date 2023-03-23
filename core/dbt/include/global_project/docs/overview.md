@@ -27,7 +27,7 @@ button at the top-right of this lineage pane, you'll be able to see all of the m
 or are built from, the model you're exploring.
 
 Once expanded, you'll be able to use the `--select` and `--exclude` model selection syntax to filter the
-models in the graph. For more information on model selection, check out the [dbt docs](https://docs.getdbt.com/docs/model-selection-syntax).
+models in the graph. For more information on model selection, check out the [dbt docs](https://docs.getdbt.com/reference/node-selection/syntax).
 
 Note that you can also right-click on models to interactively filter and explore the graph.
 
@@ -36,8 +36,8 @@ Note that you can also right-click on models to interactively filter and explore
 ### More information
 
 - [What is dbt](https://docs.getdbt.com/docs/introduction)?
-- Read the [dbt viewpoint](https://docs.getdbt.com/docs/viewpoint)
-- [Installation](https://docs.getdbt.com/docs/installation)
+- Read the [dbt viewpoint](https://docs.getdbt.com/community/resources/viewpoint)
+- [Installation](https://docs.getdbt.com/docs/core/installation)
 - Join the [dbt Community](https://www.getdbt.com/community/) for questions and discussion
 
 {% enddocs %}

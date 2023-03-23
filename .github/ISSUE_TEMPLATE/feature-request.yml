@@ -18,7 +18,7 @@ body:
         For "big ideas" about future capabilities of dbt, we ask that you open a
         [discussion](https://github.com/dbt-labs/dbt-core/discussions) in the "Ideas" category instead.
       options:
-        - label: I have read the [expectations for open source contributors](https://docs.getdbt.com/docs/contributing/oss-expectations)
+        - label: I have read the [expectations for open source contributors](https://docs.getdbt.com/community/resources/oss-expectations)
           required: true
         - label: I have searched the existing issues, and I could not find an existing issue for this feature
           required: true

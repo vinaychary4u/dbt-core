@@ -130,7 +130,7 @@ class LogDbtProfileError(ErrorLevel):
         msg += """
 For more information on configuring profiles, please consult the dbt docs:
 
-https://docs.getdbt.com/docs/configure-your-profile
+https://docs.getdbt.com/docs/core/connection-profiles
 """
         return msg
 
@@ -305,7 +305,7 @@ class AdapterDeprecationWarning(WarnLevel):
             f"The adapter function `adapter.{self.old_name}` is deprecated and will be removed in "
             f"a future release of dbt. Please use `adapter.{self.new_name}` instead. "
             f"\n\nDocumentation for {self.new_name} can be found here:"
-            f"\n\nhttps://docs.getdbt.com/docs/adapter"
+            f"\n\nhttps://docs.getdbt.com/reference/dbt-jinja-functions/adapter"
         )
         return line_wrap_message(warning_tag(f"Deprecated functionality\n\n{description}"))
 
@@ -2060,7 +2060,7 @@ class EnsureGitInstalled(ErrorLevel):
         return (
             "Make sure git is installed on your machine. More "
             "information: "
-            "https://docs.getdbt.com/docs/package-management"
+            "https://docs.getdbt.com/docs/build/packages"
         )
 
 

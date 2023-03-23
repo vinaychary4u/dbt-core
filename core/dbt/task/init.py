@@ -37,7 +37,7 @@ from dbt.include.global_project import PROJECT_NAME as GLOBAL_PROJECT_NAME
 
 from dbt.task.base import BaseTask, move_to_nearest_project_dir
 
-DOCS_URL = "https://docs.getdbt.com/docs/configure-your-profile"
+DOCS_URL = "https://docs.getdbt.com/docs/core/connection-profiles"
 SLACK_URL = "https://community.getdbt.com/"
 
 # This file is not needed for the starter project but exists for finding the resource path
@@ -224,7 +224,7 @@ class InitTask(BaseTask):
         prompt_msg = (
             "Which database would you like to use?\n"
             + "\n".join([f"[{n+1}] {v}" for n, v in enumerate(available_adapters)])
-            + "\n\n(Don't see the one you want? https://docs.getdbt.com/docs/available-adapters)"
+            + "\n\n(Don't see the one you want? https://docs.getdbt.com/docs/supported-data-platforms)"
             + "\n\nEnter a number"
         )
         numeric_choice = click.prompt(prompt_msg, type=click.INT)
@@ -281,7 +281,7 @@ class InitTask(BaseTask):
         # create a new project and set up the user's profile.
         available_adapters = list(_get_adapter_plugin_names())
         if not len(available_adapters):
-            print("No adapters available. Go to https://docs.getdbt.com/docs/available-adapters")
+            print("No adapters available. Go to https://docs.getdbt.com/docs/supported-data-platforms")
             sys.exit(1)
         project_name = self.get_valid_project_name()
         project_path = Path(project_name)

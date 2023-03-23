@@ -14,12 +14,12 @@ dbt is the T in ELT. Organize, cleanse, denormalize, filter, rename, and pre-agg
 ## dbt-postgres
 
 The `dbt-postgres` package contains all of the code enabling dbt to work with a Postgres database. For
-more information on using dbt with Postgres, consult [the docs](https://docs.getdbt.com/docs/profile-postgres).
+more information on using dbt with Postgres, consult [the docs](https://docs.getdbt.com/reference/warehouse-setups/postgres-setup).
 
 ## Getting started
 
-- [Install dbt](https://docs.getdbt.com/docs/installation)
-- Read the [introduction](https://docs.getdbt.com/docs/introduction/) and [viewpoint](https://docs.getdbt.com/docs/about/viewpoint/)
+- [Install dbt](https://docs.getdbt.com/docs/core/installation)
+- Read the [introduction](https://docs.getdbt.com/docs/introduction/) and [viewpoint](https://docs.getdbt.com/community/resources/viewpoint)
 
 ## Join the dbt Community
 

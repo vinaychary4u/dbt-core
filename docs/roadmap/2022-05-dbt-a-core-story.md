@@ -63,7 +63,7 @@ It's true that many of the people now building dbt aren't themselves users of it
 
 Welcome to the official program for "dbt: A Core Story," the devised theatre piece where everyone has a part to play. First, a few housekeeping items.
 
-We'll be releasing a new minor version of dbt Core every 3 months: April, July, August, January (2023). We put out our new [adapter](https://docs.getdbt.com/docs/available-adapters) versions at the same time. Adapters maintained by other people might be available for upgrade a few weeks later. For each new minor version, we put up a ["migration guide"](https://docs.getdbt.com/docs/guides/migration-guide) in the docs.
+We'll be releasing a new minor version of dbt Core every 3 months: April, July, August, January (2023). We put out our new [adapter](https://docs.getdbt.com/docs/supported-data-platforms) versions at the same time. Adapters maintained by other people might be available for upgrade a few weeks later. For each new minor version, we put up a ["migration guide"](https://docs.getdbt.com/guides/migration/versions) in the docs.
 
 Everything we work on is public on GitHub. I attach issues to [milestones](https://github.com/dbt-labs/dbt-core/milestones) for upcoming releases. We're using [discussions](https://github.com/dbt-labs/dbt-core/discussions) now for bigger-picture conversations—stuff we're thinking about, even if we can't write the code for it right away. If the dbt Community Slack feels overwhelming, discussions still feel, for now, like a slower-paced forum for dreaming up ideas, talking through caveats and rough edges. I really welcome your voices there.
 
@@ -91,7 +91,7 @@ At the same time, I was learning a **ton** about dbt—what it is today, what it
 
 So, for both reasons, I've been sharing the load with the engineering team building dbt Core. This requires more time, and process, but it also requires a level of rigor and organization that I didn't have when it was just me. Bugs don't get lost in the shuffle, and get resolved more quickly.
 
-Is this groundbreaking stuff? No, but it is major-version-one stuff. Is every one of these issues game-changing? No, but they matter a lot to the person who opens them—and I believe it matters a lot to you, a person who has invested meaningfully in standardizing on dbt Core. You should want to know that that core dbt functionality is well maintained, to know that when you run into a bug or have an idea there will be a human on the other end to receive and respond to it. To that end, I want to share a new doc we put together over the past few months: [Expectations for OSS Contributors](https://docs.getdbt.com/docs/contributing/oss-expectations).
+Is this groundbreaking stuff? No, but it is major-version-one stuff. Is every one of these issues game-changing? No, but they matter a lot to the person who opens them—and I believe it matters a lot to you, a person who has invested meaningfully in standardizing on dbt Core. You should want to know that that core dbt functionality is well maintained, to know that when you run into a bug or have an idea there will be a human on the other end to receive and respond to it. To that end, I want to share a new doc we put together over the past few months: [Expectations for OSS Contributors](https://docs.getdbt.com/community/resources/oss-expectations).
 
 It took some doing, but we now live in a world where:
 - every issue gets a timely response
@@ -102,7 +102,7 @@ I care about making contribution accessible, and making dbt a thing we can keep 
 
 ### Scene 3: v1.1 (Gloria Casarez)
 
-At the end of April, [we released v1.1](https://github.com/dbt-labs/dbt-core/releases/tag/v1.1.0), named for Gloria Casarez, the activist and advocate for the rights of LGBTQ+ people in Philadelphia. This release had [some good stuff in it](https://docs.getdbt.com/docs/guides/migration-guide/upgrading-to-v1.1), including a few boundary-pushing community contributions—but I'll be the first to admit that it was a lighter release than others in recent memory. The biggest work was sharpening our tools, and sharpening the team. We'd rather do this work upfront, so we can build and ship the bigger stuff, with alacrity and assurance.
+At the end of April, [we released v1.1](https://github.com/dbt-labs/dbt-core/releases/tag/v1.1.0), named for Gloria Casarez, the activist and advocate for the rights of LGBTQ+ people in Philadelphia. This release had [some good stuff in it](https://docs.getdbt.com/guides/migration/versions/upgrading-to-v1.1), including a few boundary-pushing community contributions—but I'll be the first to admit that it was a lighter release than others in recent memory. The biggest work was sharpening our tools, and sharpening the team. We'd rather do this work upfront, so we can build and ship the bigger stuff, with alacrity and assurance.
 
 ## Act II: Ergonomic interfaces (May–July)
 
@@ -128,7 +128,7 @@ If you've hung around the `dbt-core` GitHub repo lately, you may have seen that 
 
 Not long ago, we had one team (one person), one codebase, one tightly coupled application that did all of the things, from beginning to end, without clear stopping points in the middle. Now, I'm truly lucky to work with a team of talented software engineers, as we try to make the experience of developing and interfacing with `dbt-core` as no-bs as it is to use. We believe the highest-leverage way to do this is by splitting up the team into specialties, and the codebase into modular interfaces.
 
-For too long now, the [docs for dbt's "Python API"](https://docs.getdbt.com/docs/running-a-dbt-project/dbt-api) have cautioned:
+For too long now, we have cautioned:
 
 > It _is_ possible to import and invoke dbt as a Python module. This API is still not contracted or documented, and it is liable to change in future versions of `dbt-core` without warning. Please use caution when upgrading across versions of dbt if you choose to run dbt in this manner!
 

@@ -46,7 +46,7 @@ Hopefully, you're already well aware of, and happily making use of, the capabili
 
 I got to see a very small number of you a few months ago at a London dbt meetup, where I presented May's edition of roadmap. I'm looking forward—we're all (!) looking forward—to seeing and talking with many more of you in October for [Coalesce](https://coalesce.getdbt.com/). For those who are able and comfortable to make the trip to New Orleans, London, or Sydney—and for all the many more who are planning on a "classic Coalesce" experience, from the comfort of your laptop—we're very excited to have you.
 
-The big thing coming in dbt Core v1.3 is support for Python models. You already knew that. All the details are in [the beta docs](https://docs.getdbt.com/docs/building-a-dbt-project/building-models/python-models), so give 'em a read now if you haven't yet.
+The big thing coming in dbt Core v1.3 is support for Python models. You already knew that. All the details are in [the beta docs](https://docs.getdbt.com/docs/build/python-models), so give 'em a read now if you haven't yet.
 
 There are a couple of FAQs (Frequently Associated Qualms) that I want to address, here and now, in case you're thinking one of them:
 

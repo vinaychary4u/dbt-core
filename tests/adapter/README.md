@@ -4,7 +4,7 @@
 
 # dbt-tests-adapter
 
-For context and guidance on using this package, please read: ["Testing a new adapter"](https://docs.getdbt.com/docs/contributing/testing-a-new-adapter)
+For context and guidance on using this package, please read: ["Testing a new adapter"](https://docs.getdbt.com/guides/dbt-ecosystem/adapter-development/4-testing-a-new-adapter)
 
 ## What is it?
 
@@ -31,7 +31,7 @@ To install:
 pip install dbt-tests-adapter
 ```
 
-This package is versioned in lockstep with `dbt-core`, and [the same versioning guidelines](https://docs.getdbt.com/docs/core-versions) apply:
+This package is versioned in lockstep with `dbt-core`, and [the same versioning guidelines](https://docs.getdbt.com/docs/dbt-versions/core) apply:
 - New "basic" test cases MAY be added in minor versions ONLY. They may not be included in patch releases.
 - Breaking changes to existing test cases MAY be included and communicated as part of minor version upgrades ONLY. They MAY NOT be included in patch releases. We will aim to avoid these whenever possible.
 - New "optional" test cases, and non-breaking fixes to existing test cases, MAY be added in minor or patch versions.

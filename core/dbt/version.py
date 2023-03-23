@@ -74,7 +74,7 @@ def _get_core_msg_lines(installed, latest) -> Tuple[List[List[str]], str]:
         update_info = (
             "  Your version of dbt-core is out of date!\n"
             "  You can find instructions for upgrading here:\n"
-            "  https://docs.getdbt.com/docs/installation"
+            "  https://docs.getdbt.com/docs/core/installation"
         )
 
     return [
@@ -114,7 +114,7 @@ def _get_plugins_msg(installed: dbt.semver.VersionSpecifier) -> str:
         update_msg = (
             "  At least one plugin is out of date or incompatible with dbt-core.\n"
             "  You can find instructions for upgrading here:\n"
-            "  https://docs.getdbt.com/docs/installation"
+            "  https://docs.getdbt.com/docs/core/installation"
         )
         msg_lines += ["", update_msg]
 

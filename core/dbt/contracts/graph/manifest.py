@@ -169,7 +169,9 @@ class RefableLookup(dbtClassMixin):
         if node.resource_type in self._lookup_types:
             if node.name not in self.storage:
                 self.storage[node.name] = {}
+            if node.package_name not in self.storage[node.name]:
                 self.storage[node.name][node.package_name] = []
+
             if node.resource_type in self._versioned_types and node.is_latest_version:
                 # keep latest version at the front of unique id list
                 self.storage[node.name][node.package_name].insert(0, node.unique_id)

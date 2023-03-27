@@ -212,16 +212,26 @@ class BaseResolver(metaclass=abc.ABCMeta):
 
 class BaseRefResolver(BaseResolver):
     @abc.abstractmethod
-    def resolve(self, name: str, package: Optional[str] = None) -> RelationProxy:
+    def resolve(
+        self, name: str, package: Optional[str] = None, version: Optional[str] = None
+    ) -> RelationProxy:
         ...
 
-    def _repack_args(self, name: str, package: Optional[str]) -> List[str]:
-        if package is None:
-            return [name]
-        else:
-            return [package, name]
+    def _repack_args(self, name: str, package: Optional[str], version: Optional[str]) -> List[str]:
+        repacked_args = [name] if package is None else [package, name]
+        if version:
+            repacked_args.append(f"version:{version}")
 
-    def validate_args(self, name: str, package: Optional[str]):
+        return repacked_args
+
+    # TODO: Might not be necessary
+    def _repack_kwargs(self, version: Optional[str]) -> Dict[str, Any]:
+        if version is None:
+            return {}
+        else:
+            return {"version": version}
+
+    def validate_args(self, name: str, package: Optional[str], version: Optional[str]):
         if not isinstance(name, str):
             raise CompilationError(
                 f"The name argument to ref() must be a string, got {type(name)}"
@@ -232,9 +242,15 @@ class BaseRefResolver(BaseResolver):
                 f"The package argument to ref() must be a string or None, got {type(package)}"
             )
 
-    def __call__(self, *args: str) -> RelationProxy:
+        if version is not None and not isinstance(version, str):
+            raise CompilationError(
+                f"The version argument to ref() must be a string or None, got {type(version)}"
+            )
+
+    def __call__(self, *args: str, **kwargs) -> RelationProxy:
         name: str
         package: Optional[str] = None
+        version: Optional[str] = None
 
         if len(args) == 1:
             name = args[0]
@@ -242,8 +258,10 @@ class BaseRefResolver(BaseResolver):
             package, name = args
         else:
             raise RefArgsError(node=self.model, args=args)
-        self.validate_args(name, package)
-        return self.resolve(name, package)
+
+        version = kwargs.get("version")
+        self.validate_args(name, package, version)
+        return self.resolve(name, package, version)
 
 
 class BaseSourceResolver(BaseResolver):
@@ -448,8 +466,10 @@ class RuntimeDatabaseWrapper(BaseDatabaseWrapper):
 
 # `ref` implementations
 class ParseRefResolver(BaseRefResolver):
-    def resolve(self, name: str, package: Optional[str] = None) -> RelationProxy:
-        self.model.refs.append(self._repack_args(name, package))
+    def resolve(
+        self, name: str, package: Optional[str] = None, version: Optional[str] = None
+    ) -> RelationProxy:
+        self.model.refs.append(self._repack_args(name, package, version))
 
         return self.Relation.create_from(self.config, self.model)
 
@@ -458,15 +478,22 @@ ResolveRef = Union[Disabled, ManifestNode]
 
 
 class RuntimeRefResolver(BaseRefResolver):
-    def resolve(self, target_name: str, target_package: Optional[str] = None) -> RelationProxy:
+    def resolve(
+        self,
+        target_name: str,
+        target_package: Optional[str] = None,
+        target_version: Optional[str] = None,
+    ) -> RelationProxy:
         target_model = self.manifest.resolve_ref(
             target_name,
             target_package,
+            target_version,
             self.current_project,
             self.model.package_name,
         )
 
         if target_model is None or isinstance(target_model, Disabled):
+            # TODO: add version to error
             raise TargetNotFoundError(
                 node=self.model,
                 target_name=target_name,
@@ -474,7 +501,7 @@ class RuntimeRefResolver(BaseRefResolver):
                 target_package=target_package,
                 disabled=isinstance(target_model, Disabled),
             )
-        self.validate(target_model, target_name, target_package)
+        self.validate(target_model, target_name, target_package, target_version)
         return self.create_relation(target_model, target_name)
 
     def create_relation(self, target_model: ManifestNode, name: str) -> RelationProxy:
@@ -485,10 +512,14 @@ class RuntimeRefResolver(BaseRefResolver):
             return self.Relation.create_from(self.config, target_model)
 
     def validate(
-        self, resolved: ManifestNode, target_name: str, target_package: Optional[str]
+        self,
+        resolved: ManifestNode,
+        target_name: str,
+        target_package: Optional[str],
+        target_version: Optional[str],
     ) -> None:
         if resolved.unique_id not in self.model.depends_on.nodes:
-            args = self._repack_args(target_name, target_package)
+            args = self._repack_args(target_name, target_package, target_version)
             raise RefBadContextError(node=self.model, args=args)
 
 
@@ -498,6 +529,7 @@ class OperationRefResolver(RuntimeRefResolver):
         resolved: ManifestNode,
         target_name: str,
         target_package: Optional[str],
+        target_version: Optional[str],
     ) -> None:
         pass
 

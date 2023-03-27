@@ -145,19 +145,22 @@ class SourceLookup(dbtClassMixin):
 class RefableLookup(dbtClassMixin):
     # model, seed, snapshot
     _lookup_types: ClassVar[set] = set(NodeType.refable())
+    _versioned_types: ClassVar[set] = set(NodeType.versioned())
 
     # refables are actually unique, so the Dict[PackageName, UniqueID] will
     # only ever have exactly one value, but doing 3 dict lookups instead of 1
     # is not a big deal at all and retains consistency
     def __init__(self, manifest: "Manifest"):
-        self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
+        self.storage: Dict[str, Dict[PackageName, List[UniqueID]]] = {}
         self.populate(manifest)
 
-    def get_unique_id(self, key, package: Optional[PackageName]):
-        return find_unique_id_for_package(self.storage, key, package)
+    def get_unique_id(self, key, package: Optional[PackageName], version: Optional[str]):
+        return self.find_unique_id_for_package_and_version(key, package, version)
 
-    def find(self, key, package: Optional[PackageName], manifest: "Manifest"):
-        unique_id = self.get_unique_id(key, package)
+    def find(
+        self, key, package: Optional[PackageName], version: Optional[str], manifest: "Manifest"
+    ):
+        unique_id = self.get_unique_id(key, package, version)
         if unique_id is not None:
             return self.perform_lookup(unique_id, manifest)
         return None
@@ -166,7 +169,12 @@ class RefableLookup(dbtClassMixin):
         if node.resource_type in self._lookup_types:
             if node.name not in self.storage:
                 self.storage[node.name] = {}
-            self.storage[node.name][node.package_name] = node.unique_id
+                self.storage[node.name][node.package_name] = []
+            if node.resource_type in self._versioned_types and node.is_latest_version:
+                # keep latest version at the front of unique id list
+                self.storage[node.name][node.package_name].insert(0, node.unique_id)
+            else:
+                self.storage[node.name][node.package_name].append(node.unique_id)
 
     def populate(self, manifest):
         for node in manifest.nodes.values():
@@ -178,6 +186,37 @@ class RefableLookup(dbtClassMixin):
                 f"Node {unique_id} found in cache but not found in manifest"
             )
         return manifest.nodes[unique_id]
+
+    def find_unique_id_for_package_and_version(
+        self, key: str, package: Optional[PackageName], version: Optional[str]
+    ):
+        if key not in self.storage:
+            return None
+
+        pkg_dct: Mapping[PackageName, List[UniqueID]] = self.storage[key]
+
+        unique_ids: Optional[List[UniqueID]] = None
+
+        if package is None:
+            if not pkg_dct:
+                return None
+            else:
+                unique_ids = next(iter(pkg_dct.values()))
+        elif package in pkg_dct:
+            unique_ids = pkg_dct[package]
+        else:
+            return None
+
+        if len(unique_ids) >= 1:
+            if version:
+                for unique_id in unique_ids:
+                    if unique_id.endswith(f"v{version}"):
+                        return unique_id
+                return None
+            else:
+                return unique_ids[0]
+        else:
+            return None
 
 
 class MetricLookup(dbtClassMixin):
@@ -899,6 +938,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         self,
         target_model_name: str,
         target_model_package: Optional[str],
+        target_model_version: Optional[str],
         current_project: str,
         node_package: str,
     ) -> MaybeNonSource:
@@ -908,7 +948,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
 
         candidates = _search_packages(current_project, node_package, target_model_package)
         for pkg in candidates:
-            node = self.ref_lookup.find(target_model_name, pkg, self)
+            node = self.ref_lookup.find(target_model_name, pkg, target_model_version, self)
 
             if node is not None and node.config.enabled:
                 return node

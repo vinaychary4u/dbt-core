@@ -101,7 +101,6 @@ class SelectorMethod(metaclass=abc.ABCMeta):
     def parsed_nodes(
         self, included_nodes: Set[UniqueId]
     ) -> Iterator[Tuple[UniqueId, ManifestNode]]:
-
         for key, node in self.manifest.nodes.items():
             unique_id = UniqueId(key)
             if unique_id not in included_nodes:

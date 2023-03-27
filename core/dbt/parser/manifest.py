@@ -1104,7 +1104,7 @@ def _check_resource_uniqueness(
         full_node_name = str(relation)
 
         existing_node = names_resources.get(name)
-        if existing_node is not None:
+        if existing_node is not None and existing_node.version is None:
             raise dbt.exceptions.DuplicateResourceNameError(existing_node, node)
 
         existing_alias = alias_resources.get(full_node_name)
@@ -1197,6 +1197,12 @@ def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposur
         target_model: Optional[Union[Disabled, ManifestNode]] = None
         target_model_name: str
         target_model_package: Optional[str] = None
+        target_model_version: Optional[str] = None
+
+        target_model_version_packed = next((r for r in ref if r.startswith("version:")), None)
+        if target_model_version_packed:
+            ref.remove(target_model_version_packed)
+            target_model_version = target_model_version_packed.split(":")[-1]
 
         if len(ref) == 1:
             target_model_name = ref[0]
@@ -1210,6 +1216,7 @@ def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposur
         target_model = manifest.resolve_ref(
             target_model_name,
             target_model_package,
+            target_model_version,
             current_project,
             exposure.package_name,
         )
@@ -1251,6 +1258,12 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: M
         target_model: Optional[Union[Disabled, ManifestNode]] = None
         target_model_name: str
         target_model_package: Optional[str] = None
+        target_model_version: Optional[str] = None
+
+        target_model_version_packed = next((r for r in ref if r.startswith("version:")), None)
+        if target_model_version_packed:
+            ref.remove(target_model_version_packed)
+            target_model_version = target_model_version_packed.split(":")[-1]
 
         if len(ref) == 1:
             target_model_name = ref[0]
@@ -1264,6 +1277,7 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: M
         target_model = manifest.resolve_ref(
             target_model_name,
             target_model_package,
+            target_model_version,
             current_project,
             metric.package_name,
         )
@@ -1357,6 +1371,12 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
         target_model: Optional[Union[Disabled, ManifestNode]] = None
         target_model_name: str
         target_model_package: Optional[str] = None
+        target_model_version: Optional[str] = None
+
+        target_model_version_raw = next((r for r in ref if r.startswith("version:")), None)
+        if target_model_version_raw:
+            ref.remove(target_model_version_raw)
+            target_model_version = target_model_version_raw.split(":")[-1]
 
         if len(ref) == 1:
             target_model_name = ref[0]
@@ -1367,9 +1387,14 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
                 f"Refs should always be 1 or 2 arguments - got {len(ref)}"
             )
 
+        if target_model_version_raw:
+            # add 'version:' argument back to ref TODO - is there a nicer way to do this..
+            ref.append(target_model_version_raw)
+
         target_model = manifest.resolve_ref(
             target_model_name,
             target_model_package,
+            target_model_version,
             current_project,
             node.package_name,
         )

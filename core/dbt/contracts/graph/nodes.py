@@ -367,9 +367,9 @@ class ParsedNode(NodeInfoMixin, ParsedNodeMandatory, SerializableType):
         self.created_at = time.time()
         self.description = patch.description
         self.columns = patch.columns
-        # TODO - these are model specific
+        # TODO - these are model specific, so is access
         self.version = patch.version
-        self.latest_version = patch.latest_version
+        self.is_latest_version = patch.is_latest_version
         self.name = patch.name
         # This might not be the ideal place to validate the "access" field,
         # but at this point we have the information we need to properly
@@ -493,7 +493,7 @@ class ModelNode(CompiledNode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Model]})
     access: AccessType = AccessType.Protected
     version: Optional[str] = None
-    latest_version: Optional[str] = None
+    is_latest_version: Optional[bool] = None
 
 
 # TODO: rm?
@@ -1172,7 +1172,7 @@ class ParsedNodePatch(ParsedPatch):
     columns: Dict[str, ColumnInfo]
     access: Optional[str]
     version: Optional[str]
-    latest_version: Optional[str]
+    is_latest_version: Optional[bool]
 
 
 @dataclass

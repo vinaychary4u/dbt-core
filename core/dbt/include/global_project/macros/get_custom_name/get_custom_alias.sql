@@ -21,7 +21,7 @@
 
     {%- if custom_alias_name is none -%}
 
-        {{ node.name }}
+        {{ node.name if node.version is none else node.name ~ '_v' ~ node.version }}
 
     {%- else -%}
 

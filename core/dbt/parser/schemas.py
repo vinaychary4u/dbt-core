@@ -352,7 +352,9 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
         """Look up attached node for Testable target nodes other than sources. Can be None if generic test attached to SQL node with no corresponding .sql file."""
         attached_node = None  # type: Optional[Union[ManifestNode, GraphMemberNode]]
         if not isinstance(target, UnpatchedSourceDefinition):
-            attached_node_unique_id = self.manifest.ref_lookup.get_unique_id(target.name, None)
+            attached_node_unique_id = self.manifest.ref_lookup.get_unique_id(
+                target.name, None, None
+            )  # TODO: is it possible to get the version at this point?
             if attached_node_unique_id:
                 attached_node = self.manifest.nodes[attached_node_unique_id]
             else:
@@ -863,13 +865,13 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
             docs=block.target.docs,
             config=block.target.config,
             access=block.target.access,
-            version=block.target.latest_version,  # TODO: does this make any sense
-            latest_version=block.target.latest_version,
+            version=None,  # version set from versioned model patch
+            is_latest_version=None,  # is_latest_version set from versioned_model_patch
         )
         assert isinstance(self.yaml.file, SchemaSourceFile)
         source_file: SchemaSourceFile = self.yaml.file
         if patch.yaml_key in ["models", "seeds", "snapshots"]:
-            unique_id = self.manifest.ref_lookup.get_unique_id(patch.name, None)
+            unique_id = self.manifest.ref_lookup.get_unique_id(patch.name, None, None)
             if unique_id:
                 resource_type = NodeType(unique_id.split(".")[0])
                 if resource_type.pluralize() != patch.yaml_key:
@@ -885,7 +887,7 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
                     return
 
         elif patch.yaml_key == "analyses":
-            unique_id = self.manifest.analysis_lookup.get_unique_id(patch.name, None)
+            unique_id = self.manifest.analysis_lookup.get_unique_id(patch.name, None, None)
         else:
             raise DbtInternalError(
                 f"Unexpected yaml_key {patch.yaml_key} for patch in "
@@ -895,12 +897,16 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
         # patch versioned nodes.
         versions = block.target.versions
         if versions:
+            latest_version = block.target.latest_version or max(
+                [version.name for version in versions]
+            )
             for unparsed_version in versions:
                 versioned_model_name = (
                     unparsed_version.defined_in or f"{patch.name}_v{unparsed_version.name}"
                 )
+                # ref lookup without version - version is not set yet
                 versioned_model_unique_id = self.manifest.ref_lookup.get_unique_id(
-                    versioned_model_name, None
+                    versioned_model_name, None, None
                 )
                 if versioned_model_unique_id is None:
                     warn_or_error(
@@ -916,6 +922,7 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
                     f"model.{patch.package_name}.{patch.name}.v{unparsed_version.name}"
                 )
                 versioned_model_node.fqn[-1] = patch.name  # bleugh
+                versioned_model_node.fqn.append(f"v{unparsed_version.name}")
                 self.manifest.nodes[versioned_model_node.unique_id] = versioned_model_node
                 versioned_model_patch = ParsedNodePatch(
                     name=patch.name,
@@ -929,10 +936,11 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
                     config=unparsed_version.config or versioned_model_node.config,
                     access=unparsed_version.access or versioned_model_node.access,
                     version=unparsed_version.name,
-                    latest_version=patch.latest_version,
+                    is_latest_version=latest_version == unparsed_version.name,
                 )
                 versioned_model_node.patch(versioned_model_patch)
-            self.manifest.rebuild_ref_lookup()  # TODO this doesn't seem to work for ref resolution
+            self.manifest.rebuild_ref_lookup()  # TODO: is this necessary at this point?
+            # TODO - update alias
             return
 
         # handle disabled nodes

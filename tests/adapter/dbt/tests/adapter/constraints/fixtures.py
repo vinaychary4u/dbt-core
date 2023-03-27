@@ -6,9 +6,9 @@ my_model_sql = """
 }}
 
 select
-  1 as id,
   'blue' as color,
-  cast('2019-01-01' as date) as date_day
+  1 as id,
+  '2019-01-01' as date_day
 """
 
 my_model_wrong_order_sql = """
@@ -21,7 +21,7 @@ my_model_wrong_order_sql = """
 select
   'blue' as color,
   1 as id,
-  cast('2019-01-01' as date) as date_day
+  '2019-01-01' as date_day
 """
 
 my_model_wrong_name_sql = """
@@ -32,9 +32,9 @@ my_model_wrong_name_sql = """
 }}
 
 select
-  1 as error,
   'blue' as color,
-  cast('2019-01-01' as date) as date_day
+  1 as error,
+  '2019-01-01' as date_day
 """
 
 my_model_data_type_sql = """
@@ -60,7 +60,7 @@ select
   cast(null as {{ dbt.type_int() }}) as id,
   -- change the color as well (to test rollback)
   'red' as color,
-  cast('2019-01-01' as date) as date_day
+  '2019-01-01' as date_day
 """
 
 model_schema_yml = """
@@ -74,14 +74,17 @@ models:
         quote: true
         data_type: integer
         description: hello
-        constraints: ['not null','primary key']
-        constraints_check: (id > 0)
+        constraints:
+          - type: not_null
+          - type: primary_key
+          - type: check
+            expression: (id > 0)
         tests:
           - unique
       - name: color
         data_type: text
       - name: date_day
-        data_type: date
+        data_type: text
   - name: my_model_error
     config:
       contract: true
@@ -89,14 +92,17 @@ models:
       - name: id
         data_type: integer
         description: hello
-        constraints: ['not null','primary key']
-        constraints_check: (id > 0)
+        constraints:
+          - type: not_null
+          - type: primary_key
+          - type: check
+            expression: (id > 0)
         tests:
           - unique
       - name: color
         data_type: text
       - name: date_day
-        data_type: date
+        data_type: text
   - name: my_model_wrong_order
     config:
       contract: true
@@ -104,14 +110,17 @@ models:
       - name: id
         data_type: integer
         description: hello
-        constraints: ['not null','primary key']
-        constraints_check: (id > 0)
+        constraints:
+          - type: not_null
+          - type: primary_key
+          - type: check
+            expression: (id > 0)
         tests:
           - unique
       - name: color
         data_type: text
       - name: date_day
-        data_type: date
+        data_type: text
   - name: my_model_wrong_name
     config:
       contract: true
@@ -119,14 +128,17 @@ models:
       - name: id
         data_type: integer
         description: hello
-        constraints: ['not null','primary key']
-        constraints_check: (id > 0)
+        constraints:
+          - type: not_null
+          - type: primary_key
+          - type: check
+            expression: (id > 0)
         tests:
           - unique
       - name: color
         data_type: text
       - name: date_day
-        data_type: date
+        data_type: text
 """
 
 model_data_type_schema_yml = """
@@ -150,7 +162,7 @@ my_model_view_sql = """
 select
   1 as id,
   'blue' as color,
-  cast('2019-01-01' as date) as date_day
+  '2019-01-01' as date_day
 """
 
 my_model_view_wrong_order_sql = """
@@ -163,7 +175,7 @@ my_model_view_wrong_order_sql = """
 select
   'blue' as color,
   1 as id,
-  cast('2019-01-01' as date) as date_day
+  '2019-01-01' as date_day
 """
 
 my_model_view_wrong_name_sql = """
@@ -174,9 +186,9 @@ my_model_view_wrong_name_sql = """
 }}
 
 select
-  1 as error,
   'blue' as color,
-  cast('2019-01-01' as date) as date_day
+  1 as error,
+  '2019-01-01' as date_day
 """
 
 my_model_view_with_nulls_sql = """
@@ -191,5 +203,5 @@ select
   cast(null as {{ dbt.type_int() }}) as id,
   -- change the color as well (to test rollback)
   'red' as color,
-  cast('2019-01-01' as date) as date_day
+  '2019-01-01' as date_day
 """

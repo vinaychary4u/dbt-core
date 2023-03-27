@@ -210,6 +210,7 @@ def assert_to_dict(obj, dct):
         dct["created_at"] = 1
     if obj_to_dict != dct:
         compare_dicts(obj_to_dict, dct)
+    # breakpoint()
     assert obj_to_dict == dct
 
 

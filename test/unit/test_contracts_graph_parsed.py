@@ -781,6 +781,8 @@ def basic_parsed_model_patch_dict():
         },
         "config": {},
         "access": "public",
+        "version": "1",
+        "is_latest_version": True,
     }
 
 
@@ -797,6 +799,8 @@ def basic_parsed_model_patch_object():
         meta={},
         config={},
         access="public",
+        version="1",
+        is_latest_version=True,
     )
 
 
@@ -829,6 +833,8 @@ def patched_model_object():
         checksum=FileHash.from_contents(""),
         unrendered_config={},
         access=AccessType.Public,
+        version="1",
+        is_latest_version=True,
     )
 
 
@@ -1911,6 +1917,8 @@ def populated_parsed_node_patch_dict():
         "package_name": "test",
         "config": {},
         "access": "public",
+        "version": "1",
+        "is_latest_version": True,
     }
 
 
@@ -1927,6 +1935,8 @@ def populated_parsed_node_patch_object():
         docs=Docs(show=False),
         config={},
         access="public",
+        version="1",
+        is_latest_version=True,
     )
 
 

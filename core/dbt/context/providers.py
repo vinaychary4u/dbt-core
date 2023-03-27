@@ -224,13 +224,6 @@ class BaseRefResolver(BaseResolver):
 
         return repacked_args
 
-    # TODO: Might not be necessary
-    def _repack_kwargs(self, version: Optional[str]) -> Dict[str, Any]:
-        if version is None:
-            return {}
-        else:
-            return {"version": version}
-
     def validate_args(self, name: str, package: Optional[str], version: Optional[str]):
         if not isinstance(name, str):
             raise CompilationError(

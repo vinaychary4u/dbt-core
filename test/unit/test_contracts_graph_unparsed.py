@@ -418,6 +418,7 @@ class TestUnparsedNodeUpdate(ContractTestCase):
             "meta": {},
             "config": {},
             "constraints": [],
+            "versions": [],
         }
         self.assert_from_dict(minimum, from_dict)
         self.assert_to_dict(minimum, to_dict)
@@ -456,6 +457,7 @@ class TestUnparsedNodeUpdate(ContractTestCase):
             "tests": ["table_test"],
             "meta": {"key": ["value1", "value2"]},
             "constraints": [],
+            "versions": [],
             "columns": [
                 {
                     "name": "x",

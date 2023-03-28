@@ -117,7 +117,6 @@ class ParserRef:
     def __init__(self):
         self.column_info: Dict[str, ColumnInfo] = {}
 
-    # TODO: look into adding versions (VersionInfo from UnparsedVersion) here
     def _add(self, column: HasColumnProps):
         tags: List[str] = []
         tags.extend(getattr(column, "tags", ()))
@@ -951,14 +950,14 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
                     columns=version_refs.column_info,
                     meta=unparsed_version.meta or versioned_model_node.meta,
                     docs=unparsed_version.docs or versioned_model_node.docs,
-                    config=unparsed_version.config or versioned_model_node.config,
+                    config=unparsed_version.config,
                     access=versioned_model_node.access,
                     version=unparsed_version.name,
                     is_latest_version=latest_version == unparsed_version.name,
                 )
                 versioned_model_node.patch(versioned_model_patch)
-                # TODO - update alias
-            self.manifest.rebuild_ref_lookup()  # TODO: is this necessary at this point?
+                self.patch_node_config(versioned_model_node, versioned_model_patch)
+            self.manifest.rebuild_ref_lookup()  # TODO: is this necessary?
             return
 
         # handle disabled nodes

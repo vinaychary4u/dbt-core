@@ -3,7 +3,7 @@ import os
 import pathlib
 
 from abc import ABCMeta, abstractmethod
-from typing import Iterable, Dict, Any, Union, List, Optional, Generic, TypeVar, Type
+from typing import Iterable, Dict, Any, Union, List, Optional, Generic, TypeVar, Type, Sequence
 
 from dbt.dataclass_schema import ValidationError, dbtClassMixin
 
@@ -53,6 +53,7 @@ from dbt.contracts.graph.unparsed import (
     UnparsedMetric,
     UnparsedSourceDefinition,
     UnparsedGroup,
+    UnparsedVersion,
 )
 from dbt.exceptions import (
     CompilationError,
@@ -149,6 +150,21 @@ class ParserRef:
         refs = cls()
         for column in target.columns:
             refs._add(column)
+        return refs
+
+    @classmethod
+    def from_version(
+        cls, base_columns: Sequence[HasColumnProps], version: UnparsedVersion
+    ) -> "ParserRef":
+        refs = cls()
+        for base_column in base_columns:
+            if version.include_exclude.includes(base_column.name):
+                refs._add(base_column)
+
+        for column in version.columns:
+            if isinstance(column, UnparsedColumn):
+                refs._add(column)
+
         return refs
 
 
@@ -890,7 +906,7 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
                 f"file {source_file.path.original_file_path}"
             )
 
-        # patch versioned nodes.
+        # patch versioned nodes
         versions = block.target.versions
         if versions:
             latest_version = block.target.latest_version or max(
@@ -920,13 +936,19 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
                 versioned_model_node.fqn[-1] = patch.name  # bleugh
                 versioned_model_node.fqn.append(f"v{unparsed_version.name}")
                 self.manifest.nodes[versioned_model_node.unique_id] = versioned_model_node
+
+                # flatten columns based on include/exclude
+                version_refs: ParserRef = ParserRef.from_version(
+                    block.target.columns, unparsed_version
+                )
+
                 versioned_model_patch = ParsedNodePatch(
                     name=patch.name,
                     original_file_path=versioned_model_node.original_file_path,
                     yaml_key=patch.yaml_key,
                     package_name=versioned_model_node.package_name,
                     description=unparsed_version.description or versioned_model_node.description,
-                    columns={},  # TODO: flatten columns based on include/exclude
+                    columns=version_refs.column_info,
                     meta=unparsed_version.meta or versioned_model_node.meta,
                     docs=unparsed_version.docs or versioned_model_node.docs,
                     config=unparsed_version.config or versioned_model_node.config,
@@ -935,8 +957,8 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
                     is_latest_version=latest_version == unparsed_version.name,
                 )
                 versioned_model_node.patch(versioned_model_patch)
+                # TODO - update alias
             self.manifest.rebuild_ref_lookup()  # TODO: is this necessary at this point?
-            # TODO - update alias
             return
 
         # handle disabled nodes

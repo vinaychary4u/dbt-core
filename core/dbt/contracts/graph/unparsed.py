@@ -148,7 +148,22 @@ class UnparsedVersion(HasConfig, HasColumnProps):
     columns: Sequence[Union[dbt.helper_types.IncludeExclude, UnparsedColumn]] = field(
         default_factory=list
     )
-    # TODO: all other model configs? Not sure HasDocs is the right thing to use here
+    # TODO: all other model configs? Not sure HasColumnProps is the right thing to use here
+
+    @property
+    def include_exclude(self) -> dbt.helper_types.IncludeExclude:
+        return self._include_exclude
+
+    def __post_init__(self):
+        has_include_exclude = False
+        self._include_exclude = dbt.helper_types.IncludeExclude(include=[])
+        for column in self.columns:
+            if isinstance(column, dbt.helper_types.IncludeExclude):
+                if not has_include_exclude:
+                    self._include_exclude = column
+                    has_include_exclude = True
+                else:
+                    raise ParsingError("version can have at most one include/exclude element")
 
 
 @dataclass

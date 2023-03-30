@@ -622,6 +622,19 @@ snapshot_freshness.hidden = True
 cli.commands["source"].add_command(snapshot_freshness, "snapshot-freshness")  # type: ignore
 
 
+@cli.command("list-metrics")
+def list_metrics(ctx, **kwargs):
+    """Lists metrics defined in YAML files."""
+    mf_client = ctx.obj["mf_client"]
+    if mf_client is not None:
+        return mf_client.list_metrics()
+    else:
+        raise Exception("Please install `metricflow` to use this command.")
+
+
+# Other possible commands to add: list-dimensions, get-dimension-values, query, validate-configs
+
+
 # dbt test
 @cli.command("test")
 @click.pass_context

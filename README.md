@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/dbt-labs/dbt-core/fa1ea14ddfb1d5ae319d5141844910dd53ab2834/etc/dbt-core.svg" alt="dbt logo" width="750"/>
+  <img src="https://user-images.githubusercontent.com/13897643/229090021-e72301f5-4914-4f02-b20e-1ca9ca3d80bb.png" alt="dbt logo" width="300"/>
 </p>
 <p align="center">
   <a href="https://github.com/dbt-labs/dbt-core/actions/workflows/main.yml">
@@ -7,32 +7,56 @@
   </a>
 </p>
 
-**[dbt](https://www.getdbt.com/)** enables data analysts and engineers to transform their data using the same practices that software engineers use to build applications.
+Allô ! **[dbt](https://www.getdbt.com/)** est le meilleur way for tous les « data analysts » et ingénieurs to transform leur data utilisant les mêmes « best practices » que les software engineers utilisent pour construire leurs applications.
 
 ![architecture](https://github.com/dbt-labs/dbt-core/blob/202cb7e51e218c7b29eb3b11ad058bd56b7739de/etc/dbt-transform.png)
 
-## Understanding dbt
+## Comprendre dbt
 
-Analysts using dbt can transform their data by simply writing select statements, while dbt handles turning these statements into tables and views in a data warehouse.
+Les gens qui utilisent dbt peuvent transformer leur data simplement par écrire les statements de `select`. dbt prendre soin de tout, en fait, transformer ces statements dans tables et views dans le « data warehouse ».
 
-These select statements, or "models", form a dbt project. Models frequently build on top of one another – dbt makes it easy to [manage relationships](https://docs.getdbt.com/docs/ref) between models, and [visualize these relationships](https://docs.getdbt.com/docs/documentation), as well as assure the quality of your transformations through [testing](https://docs.getdbt.com/docs/testing).
+Ces `select` statements, ou « modèles », constituent un projet de dbt. Les modèles sont comme des amis, se construé un au dessus d'autre – et dbt le rendre facile de [gérer les relations](https://docs.getdbt.com/docs/ref) entre les modèles, et de [visualizer ces relations](https://docs.getdbt.com/docs/documentation), et ne pas oublier, contrôler la qualité de vos transformations gràce au [testing](https://docs.getdbt.com/docs/testing).
 
 ![dbt dag](https://raw.githubusercontent.com/dbt-labs/dbt-core/6c6649f9129d5d108aa3b0526f634cd8f3a9d1ed/etc/dbt-dag.png)
+
+## dbt ... en français !
+
+Pour cette poisson d'avril, on a decidé d'offrir le meilleur « framework » de « data transformation » conforment avec les besoins de la francophonie.
+
+| en anglais | -> en français ! |
+| --- | --- |
+| build | bâtir |
+| clean | ménage-de-printemps |
+| compile | interpréter |
+| debug | ça-va |
+| deps | colis |
+| docs generate | papiers imprimer |
+| docs serve | papiers svp |
+| init | on-y-va |
+| list (ls) | fais-l’appel (c’est-qui) |
+| ls | c’est-qui |
+| parse | c’est-quoi |
+| run | matérialiser-modèles |
+| run-operation | effectuer-l'opération |
+| seed | épépiner |
+| snapshot | photomaton |
+| source freshness | fraîcheur-a-la-source |
+| test | contrôler |
 
 ## Getting started
 
 - [Install dbt](https://docs.getdbt.com/docs/get-started/installation)
-- Read the [introduction](https://docs.getdbt.com/docs/introduction/) and [viewpoint](https://docs.getdbt.com/docs/about/viewpoint/)
+- Lire [l'introduction](https://docs.getdbt.com/docs/introduction/) et [viewpoint](https://docs.getdbt.com/docs/about/viewpoint/) (tout en anglais malheureusement)
 
-## Join the dbt Community
+## Rejoindre-nous !
 
-- Be part of the conversation in the [dbt Community Slack](http://community.getdbt.com/)
-- Read more on the [dbt Community Discourse](https://discourse.getdbt.com)
+- [dbt Community Slack](http://community.getdbt.com/)
+- [dbt Community Discourse](https://discourse.getdbt.com)
 
-## Reporting bugs and contributing code
+## Signaler les bugs et contribuer le codage
 
-- Want to report a bug or request a feature? Let us know on [Slack](http://community.getdbt.com/), or open [an issue](https://github.com/dbt-labs/dbt-core/issues/new)
-- Want to help us build dbt? Check out the [Contributing Guide](https://github.com/dbt-labs/dbt-core/blob/HEAD/CONTRIBUTING.md)
+- Ouvrir [un issue](https://github.com/dbt-labs/dbt-core/issues/new)
+- Lire la [Guide de Contribution](https://github.com/dbt-labs/dbt-core/blob/HEAD/CONTRIBUTING.md)
 
 ## Code of Conduct
 

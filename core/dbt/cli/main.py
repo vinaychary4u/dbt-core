@@ -71,10 +71,10 @@ class dbtRunner:
 
 # dbt
 @click.group(
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings={"help_option_names": ["-h", "--help", "--aidez-moi-svp"]},
     invoke_without_command=True,
     no_args_is_help=True,
-    epilog="Specify one of these sub-commands and you can find more help from there.",
+    epilog="Choissisez une sous-commande et plus d'aide arrivera.",
 )
 @click.pass_context
 @p.send_anonymous_usage_stats
@@ -106,13 +106,11 @@ class dbtRunner:
 @p.warn_error_options
 @p.write_json
 def cli(ctx, **kwargs):
-    """An ELT tool for managing your SQL transformations and data models.
-    For more documentation on these commands, visit: docs.getdbt.com
-    """
+    """Le meilleur framework modern pour la transformation des données"""
 
 
 # dbt build
-@cli.command("build")
+@cli.command("build", hidden=True)
 @click.pass_context
 @p.defer
 @p.deprecated_defer
@@ -157,7 +155,7 @@ def build(ctx, **kwargs):
 
 
 # dbt clean
-@cli.command("clean")
+@cli.command("clean", hidden=True)
 @click.pass_context
 @p.profile
 @p.profiles_dir
@@ -178,14 +176,14 @@ def clean(ctx, **kwargs):
 
 
 # dbt docs
-@cli.group()
+@cli.group(hidden=True)
 @click.pass_context
 def docs(ctx, **kwargs):
     """Generate or serve the documentation website for your project"""
 
 
 # dbt docs generate
-@docs.command("generate")
+@docs.command("generate", hidden=True)
 @click.pass_context
 @p.compile_docs
 @p.defer
@@ -225,7 +223,7 @@ def docs_generate(ctx, **kwargs):
 
 
 # dbt docs serve
-@docs.command("serve")
+@docs.command("serve", hidden=True)
 @click.pass_context
 @p.browser
 @p.port
@@ -254,7 +252,7 @@ def docs_serve(ctx, **kwargs):
 
 
 # dbt compile
-@cli.command("compile")
+@cli.command("compile", hidden=True)
 @click.pass_context
 @p.defer
 @p.deprecated_defer
@@ -299,7 +297,7 @@ def compile(ctx, **kwargs):
 
 
 # dbt debug
-@cli.command("debug")
+@cli.command("debug", hidden=True)
 @click.pass_context
 @p.config_dir
 @p.profile
@@ -323,7 +321,7 @@ def debug(ctx, **kwargs):
 
 
 # dbt deps
-@cli.command("deps")
+@cli.command("deps", hidden=True)
 @click.pass_context
 @p.profile
 @p.profiles_dir
@@ -343,7 +341,7 @@ def deps(ctx, **kwargs):
 
 
 # dbt init
-@cli.command("init")
+@cli.command("init", hidden=True)
 @click.pass_context
 # for backwards compatibility, accept 'project_name' as an optional positional argument
 @click.argument("project_name", required=False)
@@ -365,7 +363,7 @@ def init(ctx, **kwargs):
 
 
 # dbt list
-@cli.command("list")
+@cli.command("list", hidden=True)
 @click.pass_context
 @p.exclude
 @p.indirect_selection
@@ -408,7 +406,7 @@ cli.add_command(ls, "ls")
 
 
 # dbt parse
-@cli.command("parse")
+@cli.command("parse", hidden=True)
 @click.pass_context
 @p.compile_parse
 @p.profile
@@ -433,7 +431,7 @@ def parse(ctx, **kwargs):
 
 
 # dbt run
-@cli.command("run")
+@cli.command("run", hidden=True)
 @click.pass_context
 @p.defer
 @p.deprecated_defer
@@ -474,7 +472,7 @@ def run(ctx, **kwargs):
 
 
 # dbt run operation
-@cli.command("run-operation")
+@cli.command("run-operation", hidden=True)
 @click.pass_context
 @click.argument("macro")
 @p.args
@@ -503,7 +501,7 @@ def run_operation(ctx, **kwargs):
 
 
 # dbt seed
-@cli.command("seed")
+@cli.command("seed", hidden=True)
 @click.pass_context
 @p.exclude
 @p.full_refresh
@@ -539,7 +537,7 @@ def seed(ctx, **kwargs):
 
 
 # dbt snapshot
-@cli.command("snapshot")
+@cli.command("snapshot", hidden=True)
 @click.pass_context
 @p.defer
 @p.deprecated_defer
@@ -576,14 +574,14 @@ def snapshot(ctx, **kwargs):
 
 
 # dbt source
-@cli.group()
+@cli.group(hidden=True)
 @click.pass_context
 def source(ctx, **kwargs):
     """Manage your project's sources"""
 
 
 # dbt source freshness
-@source.command("freshness")
+@source.command("freshness", hidden=True)
 @click.pass_context
 @p.exclude
 @p.output_path  # TODO: Is this ok to re-use?  We have three different output params, how much can we consolidate?
@@ -623,7 +621,7 @@ cli.commands["source"].add_command(snapshot_freshness, "snapshot-freshness")  # 
 
 
 # dbt test
-@cli.command("test")
+@cli.command("test", hidden=True)
 @click.pass_context
 @p.defer
 @p.deprecated_defer
@@ -667,3 +665,22 @@ def test(ctx, **kwargs):
 # Support running as a module
 if __name__ == "__main__":
     cli()
+
+# en français !
+traductions = [
+    {"anglais": "build", "français": "bâtir", "explication": "S'occuper de tout dans le DAG"},
+    {
+        "anglais": "clean",
+        "français": "ménage-de-printemps",
+        "explication": "Vider l'armoire de tout que manque de joie",
+    },
+    # rest is TODO
+    # nested subcommands ('docs generate' & 'source freshness') will be slightly trickier
+]
+
+for traduction in traductions:
+    copied = copy(cli.commands[traduction["anglais"]])
+    copied.hidden = False
+    copied.help = traduction["explication"]
+    copied.name = traduction["français"]
+    cli.add_command(copied, traduction["français"])

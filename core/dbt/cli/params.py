@@ -12,6 +12,7 @@ args = click.option(
     envvar=None,
     help="Supply arguments to the macro. This dictionary will be mapped to the keyword arguments defined in the selected macro. This argument should be a YAML string, eg. '{my_variable: my_value}'",
     type=YAML(),
+    hidden=True,
 )
 
 browser = click.option(
@@ -19,12 +20,14 @@ browser = click.option(
     envvar=None,
     help="Wether or not to open a local web browser after starting the server",
     default=True,
+    hidden=True,
 )
 
 cache_selected_only = click.option(
     "--cache-selected-only/--no-cache-selected-only",
     envvar="DBT_CACHE_SELECTED_ONLY",
     help="Pre cache database objects relevant to selected resource only.",
+    hidden=True,
 )
 
 introspect = click.option(
@@ -32,6 +35,7 @@ introspect = click.option(
     envvar="DBT_INTROSPECT",
     help="Whether to scaffold introspective queries as part of compilation",
     default=True,
+    hidden=True,
 )
 
 compile_docs = click.option(
@@ -39,6 +43,7 @@ compile_docs = click.option(
     envvar=None,
     help="Whether or not to run 'dbt compile' as part of docs generation",
     default=True,
+    hidden=True,
 )
 
 compile_parse = click.option(
@@ -46,6 +51,7 @@ compile_parse = click.option(
     envvar=None,
     help="TODO: No help text currently available",
     default=True,
+    hidden=True,
 )
 
 config_dir = click.option(
@@ -53,6 +59,7 @@ config_dir = click.option(
     envvar=None,
     help="If specified, DBT will show path information for this project",
     type=click.STRING,
+    hidden=True,
 )
 
 debug = click.option(
@@ -60,6 +67,7 @@ debug = click.option(
     "-d/ ",
     envvar="DBT_DEBUG",
     help="Display debug logging during dbt execution. Useful for debugging and making bug reports.",
+    hidden=True,
 )
 
 # flag was previously named DEFER_MODE
@@ -67,6 +75,7 @@ defer = click.option(
     "--defer/--no-defer",
     envvar="DBT_DEFER",
     help="If set, defer to the state variable for resolving unselected nodes.",
+    hidden=True,
 )
 
 deprecated_defer = click.option(
@@ -90,6 +99,7 @@ exclude = click.option(
     cls=MultiOption,
     multiple=True,
     help="Specify the nodes to exclude.",
+    hidden=True,
 )
 
 fail_fast = click.option(
@@ -97,18 +107,21 @@ fail_fast = click.option(
     "-x/ ",
     envvar="DBT_FAIL_FAST",
     help="Stop execution on first failure.",
+    hidden=True,
 )
 
 favor_state = click.option(
     "--favor-state/--no-favor-state",
     envvar="DBT_FAVOR_STATE",
     help="If set, defer to the argument provided to the state flag for resolving unselected nodes, even if the node(s) exist as a database object in the current environment.",
+    hidden=True,
 )
 
 deprecated_favor_state = click.option(
     "--deprecated-favor-state",
     envvar="DBT_FAVOR_STATE_MODE",
     help="Internal flag for deprecating old env var.",
+    hidden=True,
 )
 
 full_refresh = click.option(
@@ -117,6 +130,7 @@ full_refresh = click.option(
     envvar="DBT_FULL_REFRESH",
     help="If specified, dbt will drop incremental models and fully-recalculate the incremental table from the model definition.",
     is_flag=True,
+    hidden=True,
 )
 
 indirect_selection = click.option(
@@ -125,12 +139,14 @@ indirect_selection = click.option(
     help="Select all tests that are adjacent to selected resources, even if they those resources have been explicitly selected.",
     type=click.Choice(["eager", "cautious", "buildable", "empty"], case_sensitive=False),
     default="eager",
+    hidden=True,
 )
 
 log_cache_events = click.option(
     "--log-cache-events/--no-log-cache-events",
     help="Enable verbose adapter cache logging.",
     envvar="DBT_LOG_CACHE_EVENTS",
+    hidden=True,
 )
 
 log_format = click.option(
@@ -139,6 +155,7 @@ log_format = click.option(
     help="Specify the log format, overriding the command's default.",
     type=click.Choice(["text", "debug", "json", "default"], case_sensitive=False),
     default="default",
+    hidden=True,
 )
 
 log_format_file = click.option(
@@ -147,6 +164,7 @@ log_format_file = click.option(
     help="Specify the file log format, overriding the command's default and the value of --log-format.",
     type=click.Choice(["text", "debug", "json", "default"], case_sensitive=False),
     default="debug",
+    hidden=True,
 )
 
 log_level = click.option(
@@ -155,6 +173,7 @@ log_level = click.option(
     help="Specify the minimum severity of events that are logged.",
     type=click.Choice(["debug", "info", "warn", "error", "none"], case_sensitive=False),
     default="info",
+    hidden=True,
 )
 
 log_level_file = click.option(
@@ -163,6 +182,7 @@ log_level_file = click.option(
     help="Specify the minimum severity of events that are logged to file, overriding the value of --log-level-file.",
     type=click.Choice(["debug", "info", "warn", "error", "none"], case_sensitive=False),
     default="debug",
+    hidden=True,
 )
 
 log_path = click.option(
@@ -171,6 +191,7 @@ log_path = click.option(
     help="Configure the 'log-path'. Only applies this setting for the current run. Overrides the 'DBT_LOG_PATH' if it is set.",
     default=None,
     type=click.Path(resolve_path=True, path_type=Path),
+    hidden=True,
 )
 
 macro_debugging = click.option(
@@ -185,6 +206,7 @@ output = click.option(
     help="TODO: No current help text",
     type=click.Choice(["json", "name", "path", "selector"], case_sensitive=False),
     default="selector",
+    hidden=True,
 )
 
 output_keys = click.option(
@@ -198,6 +220,7 @@ output_keys = click.option(
     cls=MultiOption,
     multiple=True,
     default=[],
+    hidden=True,
 )
 
 output_path = click.option(
@@ -207,6 +230,7 @@ output_path = click.option(
     help="Specify the output path for the json report. By default, outputs to 'target/sources.json'",
     type=click.Path(file_okay=True, dir_okay=False, writable=True),
     default=PurePath.joinpath(Path.cwd(), "target/sources.json"),
+    hidden=True,
 )
 
 parse_only = click.option(
@@ -214,6 +238,7 @@ parse_only = click.option(
     envvar=None,
     help="TODO:  No help text currently available",
     is_flag=True,
+    hidden=True,
 )
 
 partial_parse = click.option(
@@ -221,6 +246,7 @@ partial_parse = click.option(
     envvar="DBT_PARTIAL_PARSE",
     help="Allow for partial parsing by looking for and writing to a pickle file in the target directory. This overrides the user configuration file.",
     default=True,
+    hidden=True,
 )
 
 port = click.option(
@@ -229,6 +255,7 @@ port = click.option(
     help="Specify the port number for the docs server",
     default=8080,
     type=click.INT,
+    hidden=True,
 )
 
 print = click.option(
@@ -236,6 +263,7 @@ print = click.option(
     envvar="DBT_PRINT",
     help="Output all {{ print() }} macro calls.",
     default=True,
+    hidden=True,
 )
 
 deprecated_print = click.option(
@@ -253,12 +281,14 @@ printer_width = click.option(
     help="Sets the width of terminal output",
     type=click.INT,
     default=80,
+    hidden=True,
 )
 
 profile = click.option(
     "--profile",
     envvar=None,
     help="Which profile to load. Overrides setting in dbt_project.yml.",
+    hidden=True,
 )
 
 profiles_dir = click.option(
@@ -267,6 +297,7 @@ profiles_dir = click.option(
     help="Which directory to look in for the profiles.yml file. If not set, dbt will look in the current working directory first, then HOME/.dbt/",
     default=default_profiles_dir,
     type=click.Path(exists=True),
+    hidden=True,
 )
 
 # `dbt debug` uses this because it implements custom behaviour for non-existent profiles.yml directories
@@ -276,6 +307,7 @@ profiles_dir_exists_false = click.option(
     help="Which directory to look in for the profiles.yml file. If not set, dbt will look in the current working directory first, then HOME/.dbt/",
     default=default_profiles_dir,
     type=click.Path(exists=False),
+    hidden=True,
 )
 
 project_dir = click.option(
@@ -284,12 +316,14 @@ project_dir = click.option(
     help="Which directory to look in for the dbt_project.yml file. Default is the current working directory and its parents.",
     default=default_project_dir,
     type=click.Path(exists=True),
+    hidden=True,
 )
 
 quiet = click.option(
     "--quiet/--no-quiet",
     envvar="DBT_QUIET",
     help="Suppress all non-error logging to stdout. Does not affect {{ print() }} macro calls.",
+    hidden=True,
 )
 
 record_timing_info = click.option(
@@ -298,6 +332,7 @@ record_timing_info = click.option(
     envvar=None,
     help="When this option is passed, dbt will output low-level timing stats to the specified file. Example: `--record-timing-info output.profile`",
     type=click.Path(exists=False),
+    hidden=True,
 )
 
 resource_type = click.option(
@@ -323,6 +358,7 @@ resource_type = click.option(
     cls=MultiOption,
     multiple=True,
     default=(),
+    hidden=True,
 )
 
 model_decls = ("-m", "--models", "--model")
@@ -335,7 +371,9 @@ select_attrs = {
     "type": tuple,
 }
 
-inline = click.option("--inline", envvar=None, help="Pass SQL inline to dbt compile and preview")
+inline = click.option(
+    "--inline", envvar=None, help="Pass SQL inline to dbt compile and preview", hidden=True
+)
 
 # `--select` and `--models` are analogous for most commands except `dbt list` for legacy reasons.
 # Most CLI arguments should use the combined `select` option that aliases `--models` to `--select`.
@@ -346,7 +384,10 @@ raw_select = click.option(*select_decls, **select_attrs)
 select = click.option(*select_decls, *model_decls, **select_attrs)
 
 selector = click.option(
-    "--selector", envvar=None, help="The selector name to use, as defined in selectors.yml"
+    "--selector",
+    envvar=None,
+    help="The selector name to use, as defined in selectors.yml",
+    hidden=True,
 )
 
 send_anonymous_usage_stats = click.option(
@@ -354,10 +395,15 @@ send_anonymous_usage_stats = click.option(
     envvar="DBT_SEND_ANONYMOUS_USAGE_STATS",
     help="Send anonymous usage stats to dbt Labs.",
     default=True,
+    hidden=True,
 )
 
 show = click.option(
-    "--show", envvar=None, help="Show a sample of the loaded data in the terminal", is_flag=True
+    "--show",
+    envvar=None,
+    help="Show a sample of the loaded data in the terminal",
+    is_flag=True,
+    hidden=True,
 )
 
 # TODO:  The env var is a correction!
@@ -374,7 +420,12 @@ single_threaded = click.option(
 )
 
 skip_profile_setup = click.option(
-    "--skip-profile-setup", "-s", envvar=None, help="Skip interactive profile setup.", is_flag=True
+    "--skip-profile-setup",
+    "-s",
+    envvar=None,
+    help="Skip interactive profile setup.",
+    is_flag=True,
+    hidden=True,
 )
 
 state = click.option(
@@ -388,6 +439,7 @@ state = click.option(
         resolve_path=True,
         path_type=Path,
     ),
+    hidden=True,
 )
 
 deprecated_state = click.option(
@@ -409,6 +461,7 @@ static_parser = click.option(
     envvar="DBT_STATIC_PARSER",
     help="Use the static parser.",
     default=True,
+    hidden=True,
 )
 
 store_failures = click.option(
@@ -416,10 +469,15 @@ store_failures = click.option(
     envvar="DBT_STORE_FAILURES",
     help="Store test results (failing rows) in the database",
     is_flag=True,
+    hidden=True,
 )
 
 target = click.option(
-    "--target", "-t", envvar=None, help="Which target to load for the given profile"
+    "--target",
+    "-t",
+    envvar=None,
+    help="Which target to load for the given profile",
+    hidden=True,
 )
 
 target_path = click.option(
@@ -427,6 +485,7 @@ target_path = click.option(
     envvar="DBT_TARGET_PATH",
     help="Configure the 'target-path'. Only applies this setting for the current run. Overrides the 'DBT_TARGET_PATH' if it is set.",
     type=click.Path(),
+    hidden=True,
 )
 
 threads = click.option(
@@ -435,6 +494,7 @@ threads = click.option(
     help="Specify number of threads to use while executing models. Overrides settings in profiles.yml.",
     default=None,
     type=click.INT,
+    hidden=True,
 )
 
 use_colors = click.option(
@@ -442,6 +502,7 @@ use_colors = click.option(
     envvar="DBT_USE_COLORS",
     help="Specify whether log output is colorized.",
     default=True,
+    hidden=True,
 )
 
 use_colors_file = click.option(
@@ -449,12 +510,14 @@ use_colors_file = click.option(
     envvar="DBT_USE_COLORS_FILE",
     help="Specify whether log file output is colorized overriding --use-colors/--no-use-colors.",
     default=True,
+    hidden=True,
 )
 
 use_experimental_parser = click.option(
     "--use-experimental-parser/--no-use-experimental-parser",
     envvar="DBT_USE_EXPERIMENTAL_PARSER",
     help="Enable experimental parsing features.",
+    hidden=True,
 )
 
 vars = click.option(
@@ -463,6 +526,7 @@ vars = click.option(
     help="Supply variables to the project. This argument overrides variables defined in your dbt_project.yml file. This argument should be a YAML string, eg. '{my_variable: my_value}'",
     type=YAML(),
     default="{}",
+    hidden=True,
 )
 
 
@@ -480,7 +544,7 @@ version = click.option(
     callback=_version_callback,
     envvar=None,
     expose_value=False,
-    help="Show version information",
+    help="Quelle version ?",
     is_eager=True,
     is_flag=True,
 )
@@ -490,6 +554,7 @@ version_check = click.option(
     envvar="DBT_VERSION_CHECK",
     help="Ensure dbt's version matches the one specified in the dbt_project.yml file ('require-dbt-version')",
     default=True,
+    hidden=True,
 )
 
 warn_error = click.option(
@@ -498,6 +563,7 @@ warn_error = click.option(
     help="If dbt would normally warn, instead raise an exception. Examples include --select that selects nothing, deprecations, configurations with no associated models, invalid test configurations, and missing sources/refs in tests.",
     default=None,
     is_flag=True,
+    hidden=True,
 )
 
 warn_error_options = click.option(
@@ -507,6 +573,7 @@ warn_error_options = click.option(
     help="""If dbt would normally warn, instead raise an exception based on include/exclude configuration. Examples include --select that selects nothing, deprecations, configurations with no associated models, invalid test configurations,
     and missing sources/refs in tests. This argument should be a YAML string, with keys 'include' or 'exclude'. eg. '{"include": "all", "exclude": ["NoNodesForSelectionCriteria"]}'""",
     type=WarnErrorOptionsType(),
+    hidden=True,
 )
 
 write_json = click.option(
@@ -514,6 +581,7 @@ write_json = click.option(
     envvar="DBT_WRITE_JSON",
     help="Writing the manifest and run_results.json files to disk",
     default=True,
+    hidden=True,
 )
 
 write_manifest = click.option(
@@ -521,4 +589,5 @@ write_manifest = click.option(
     envvar=None,
     help="TODO: No help text currently available",
     default=True,
+    hidden=True,
 )

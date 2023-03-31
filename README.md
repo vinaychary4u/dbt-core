@@ -13,15 +13,15 @@ Allô ! **[dbt](https://www.getdbt.com/)** est le meilleur way for tous les « d
 
 ## Comprendre dbt
 
-Les gens qui utilisent dbt peuvent transformer leur data simplement par écrire les statements de `select`. dbt prendre soin de tout, en fait, transformer ces statements dans tables et views dans le « data warehouse ».
+Les gens qui utilisent dbt peuvent transformer leur data simplement en écrivant des `select` statements. dbt prend soin de tout, ensuite, pour transformer ces statements dans des tables et views dans la « data warehouse ».
 
-Ces `select` statements, ou « modèles », constituent un projet de dbt. Les modèles sont comme des amis, se construé un au dessus d'autre – et dbt le rendre facile de [gérer les relations](https://docs.getdbt.com/docs/ref) entre les modèles, et de [visualizer ces relations](https://docs.getdbt.com/docs/documentation), et ne pas oublier, contrôler la qualité de vos transformations gràce au [testing](https://docs.getdbt.com/docs/testing).
+Ces `select` statements, ou « modèles », constituent un projet de dbt. Les modèles sont comme des amis, construits les uns au dessus des autres – et dbt rend facile le fait de [gérer les relations](https://docs.getdbt.com/docs/ref) entre les modèles, et de [visualizer ces relations](https://docs.getdbt.com/docs/documentation), sans oublier, de contrôler la qualité de vos transformations gràce au [testing](https://docs.getdbt.com/docs/testing).
 
 ![dbt dag](https://raw.githubusercontent.com/dbt-labs/dbt-core/6c6649f9129d5d108aa3b0526f634cd8f3a9d1ed/etc/dbt-dag.png)
 
 ## dbt ... en français !
 
-Pour cette poisson d'avril, on a decidé d'offrir le meilleur « framework » de « data transformation » conforment avec les besoins de la francophonie.
+Pour ce poisson d'avril, on a decidé d'offrir le meilleur « framework » de « data transformation » conformant aux besoins de la francophonie.
 
 | en anglais | -> en français ! |
 | --- | --- |
@@ -56,7 +56,7 @@ Pour cette poisson d'avril, on a decidé d'offrir le meilleur « framework » de
 ## Signaler les bugs et contribuer le codage
 
 - Ouvrir [un issue](https://github.com/dbt-labs/dbt-core/issues/new)
-- Lire la [Guide de Contribution](https://github.com/dbt-labs/dbt-core/blob/HEAD/CONTRIBUTING.md)
+- Lire le [Guide de Contribution](https://github.com/dbt-labs/dbt-core/blob/HEAD/CONTRIBUTING.md)
 
 ## Code of Conduct
 

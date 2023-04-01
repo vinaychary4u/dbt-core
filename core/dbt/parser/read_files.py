@@ -13,6 +13,7 @@ from dbt.contracts.files import (
 )
 from dbt.config import Project
 from dbt.dataclass_schema import dbtClassMixin
+from dbt.parser.languages import get_file_extensions
 from dbt.parser.schemas import yaml_from_file, schema_file_keys
 from dbt.exceptions import ParsingError
 from dbt.parser.search import filesystem_search
@@ -366,6 +367,7 @@ class ReadFilesFromDiff:
 
 
 def get_file_types_for_project(project):
+    model_extensions = get_file_extensions()
     file_types = {
         ParseFileType.Macro: {
             "paths": project.macro_paths,
@@ -374,7 +376,7 @@ def get_file_types_for_project(project):
         },
         ParseFileType.Model: {
             "paths": project.model_paths,
-            "extensions": [".sql", ".py"],
+            "extensions": model_extensions,
             "parser": "ModelParser",
         },
         ParseFileType.Snapshot: {

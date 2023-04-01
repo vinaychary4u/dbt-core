@@ -3,7 +3,6 @@ import threading
 import time
 import traceback
 from abc import ABCMeta, abstractmethod
-from contextlib import nullcontext
 from datetime import datetime
 from typing import Type, Union, Dict, Any, Optional
 
@@ -309,9 +308,18 @@ class BaseRunner(metaclass=ABCMeta):
             failures=None,
         )
 
+    # some modeling languages don't need database connections for compilation,
+    # only for runtime (materialization)
+    def needs_connection(self):
+        return True
+
     def compile_and_execute(self, manifest, ctx):
+        from contextlib import nullcontext
+
         result = None
-        with self.adapter.connection_for(self.node) if get_flags().INTROSPECT else nullcontext():
+        with self.adapter.connection_for(
+            self.node
+        ) if self.needs_connection() and get_flags().INTROSPECT else nullcontext():
             ctx.node.update_event_status(node_status=RunningStatus.Compiling)
             fire_event(
                 NodeCompiling(

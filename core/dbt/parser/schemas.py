@@ -275,6 +275,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
                 path=path,
                 original_file_path=target.original_file_path,
                 raw_code=raw_code,
+                language="sql",
             )
             raise TestConfigError(exc, node)
 

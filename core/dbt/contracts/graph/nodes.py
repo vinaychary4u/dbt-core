@@ -517,6 +517,7 @@ class CompiledNode(ParsedNode):
     so all ManifestNodes except SeedNode."""
 
     language: str = "sql"
+    compiled_language: str = "sql"
     refs: List[RefArgs] = field(default_factory=list)
     sources: List[List[str]] = field(default_factory=list)
     metrics: List[List[str]] = field(default_factory=list)

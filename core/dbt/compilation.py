@@ -30,10 +30,12 @@ from dbt.graph import Graph
 from dbt.events.functions import fire_event
 from dbt.events.types import FoundStats, WritingInjectedSQLForNode
 from dbt.events.contextvars import get_node_info
-from dbt.node_types import NodeType, ModelLanguage
+from dbt.node_types import NodeType
 from dbt.events.format import pluralize
 import dbt.tracking
 import dbt.task.list as list_task
+
+from dbt.parser.languages import get_language_provider_by_name
 
 graph_file_name = "graph.gpickle"
 
@@ -350,25 +352,22 @@ class Compiler:
         if extra_context is None:
             extra_context = {}
 
-        if node.language == ModelLanguage.python:
-            context = self._create_node_context(node, manifest, extra_context)
+        data = node.to_dict(omit_none=True)
+        data.update(
+            {
+                "compiled": False,
+                "compiled_code": None,
+                "compiled_language": None,
+                "extra_ctes_injected": False,
+                "extra_ctes": [],
+            }
+        )
 
-            postfix = jinja.get_rendered(
-                "{{ py_script_postfix(model) }}",
-                context,
-                node,
-            )
-            # we should NOT jinja render the python model's 'raw code'
-            node.compiled_code = f"{node.raw_code}\n\n{postfix}"
+        context = self._create_node_context(node, manifest, extra_context)
+        provider = get_language_provider_by_name(node.language)
 
-        else:
-            context = self._create_node_context(node, manifest, extra_context)
-            node.compiled_code = jinja.get_rendered(
-                node.raw_code,
-                context,
-                node,
-            )
-
+        node.compiled_code = provider.get_compiled_code(node, context)
+        node.compiled_language = provider.compiled_language()
         node.compiled = True
 
         # relation_name is set at parse time, except for tests without store_failures,
@@ -506,6 +505,8 @@ class Compiler:
         fire_event(WritingInjectedSQLForNode(node_info=get_node_info()))
 
         if node.compiled_code:
+            # TODO: should compiled_path extension depend on the compiled_language?
+            # e.g. "model.prql" (source) -> "model.sql" (compiled)
             node.compiled_path = node.write_node(
                 self.config.target_path, "compiled", node.compiled_code
             )

@@ -22,6 +22,7 @@ class ParseFileType(StrEnum):
     Documentation = "docs"
     Schema = "schema"
     Hook = "hook"  # not a real filetype, from dbt_project.yml
+    language: str = "sql"
 
 
 parse_file_type_to_parser = {
@@ -192,6 +193,7 @@ class SourceFile(BaseSourceFile):
     docs: List[str] = field(default_factory=list)
     macros: List[str] = field(default_factory=list)
     env_vars: List[str] = field(default_factory=list)
+    language: str = "sql"
 
     @classmethod
     def big_seed(cls, path: FilePath) -> "SourceFile":

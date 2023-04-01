@@ -80,9 +80,12 @@ class SelectionCriteria:
 
     @classmethod
     def default_method(cls, value: str) -> MethodName:
+        from dbt.parser.languages import get_file_extensions
+
+        extensions = tuple(get_file_extensions() + [".csv"])
         if _probably_path(value):
             return MethodName.Path
-        elif value.lower().endswith((".sql", ".py", ".csv")):
+        elif value.lower().endswith(extensions):
             return MethodName.File
         else:
             return MethodName.FQN

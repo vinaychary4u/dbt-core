@@ -49,7 +49,7 @@ def source(*args, dbt_load_df_function):
     {% set config_dbt_used = zip(model.config.config_keys_used, model.config.config_keys_defaults) | list %}
     {%- for key, default in config_dbt_used -%}
         {# weird type testing with enum, would be much easier to write this logic in Python! #}
-        {%- if key == "language" -%}
+        {%- if key in ("language", "compiled_language") -%}
           {%- set value = "python" -%}
         {%- endif -%}
         {%- set value = model.config.get(key, default) -%}

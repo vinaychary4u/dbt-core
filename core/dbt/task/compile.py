@@ -22,6 +22,12 @@ class CompileRunner(BaseRunner):
     def after_execute(self, result):
         pass
 
+    def needs_connection(self):
+        from dbt.parser.languages import get_language_provider_by_name
+
+        provider = get_language_provider_by_name(self.node.language)
+        return provider.needs_compile_time_connection()
+
     def execute(self, compiled_node, manifest):
         return RunResult(
             node=compiled_node,

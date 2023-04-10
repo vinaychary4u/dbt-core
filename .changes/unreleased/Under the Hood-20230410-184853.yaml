@@ -1,0 +1,6 @@
+kind: Under the Hood
+body: Add node_info to CompiledNode, ShowNode events
+time: 2023-04-10T18:48:53.848405+02:00
+custom:
+  Author: jtcohen6
+  Issue: "7305"

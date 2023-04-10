@@ -1767,7 +1767,7 @@ message CommandCompletedMsg {
 
 // Q041
 message ShowNode {
-    string node_name = 1;
+    NodeInfo node_info = 1;
     string preview = 2;
     bool is_inline = 3;
     string output_format = 4;
@@ -1780,7 +1780,7 @@ message ShowNodeMsg {
 
 // Q042
 message CompiledNode {
-    string node_name = 1;
+    NodeInfo node_info = 1;
     string compiled = 2;
     bool is_inline = 3;
     string output_format = 4;

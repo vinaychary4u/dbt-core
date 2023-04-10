@@ -77,7 +77,7 @@ class ShowTask(CompileTask):
 
             fire_event(
                 ShowNode(
-                    node_name=result.node.name,
+                    node_info=result.node.node_info,
                     preview=output.getvalue(),
                     is_inline=is_inline,
                     output_format=self.args.output,

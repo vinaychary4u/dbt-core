@@ -22,6 +22,7 @@ from dbt.adapters.factory import (
     get_adapter_package_names,
 )
 from dbt.helper_types import PathSet
+from dbt.clients.yaml_helper import load_yaml_text
 from dbt.events.functions import fire_event, get_invocation_id, warn_or_error
 from dbt.events.types import (
     PartialParsingErrorProcessingFile,
@@ -40,7 +41,14 @@ from dbt.logger import DbtProcessState
 from dbt.node_types import NodeType, AccessType
 from dbt.clients.jinja import get_rendered, MacroStack
 from dbt.clients.jinja_static import statically_extract_macro_calls
-from dbt.clients.system import make_directory, path_exists, read_json, write_file
+from dbt.clients.system import (
+    make_directory,
+    path_exists,
+    read_json,
+    write_file,
+    resolve_path_from_base,
+    load_file_contents,
+)
 from dbt.config import Project, RuntimeConfig
 from dbt.context.docs import generate_runtime_docs_context
 from dbt.context.macro_resolver import MacroResolver, TestMacroNamespace
@@ -72,6 +80,7 @@ from dbt.contracts.graph.nodes import (
 )
 from dbt.contracts.graph.unparsed import NodeVersion
 from dbt.contracts.util import Writable
+from dbt.contracts.publication import Publication, PublicationMetadata, PublicModel, Dependencies
 from dbt.exceptions import TargetNotFoundError, AmbiguousAliasError
 from dbt.parser.base import Parser
 from dbt.parser.analysis import AnalysisParser
@@ -91,6 +100,7 @@ from dbt.version import __version__
 from dbt.dataclass_schema import StrEnum, dbtClassMixin
 
 MANIFEST_FILE_NAME = "manifest.json"
+DEPENDENCIES_FILE_NAME = "dependencies.yml"
 PARTIAL_PARSE_FILE_NAME = "partial_parse.msgpack"
 PARSING_STATE = DbtProcessState("parsing")
 PERF_INFO_FILE_NAME = "perf_info.json"
@@ -444,6 +454,7 @@ class ManifestLoader:
 
             # write out the fully parsed manifest
             self.write_manifest_for_partial_parse()
+            self.write_artifacts()
 
         return self.manifest
 
@@ -598,6 +609,86 @@ class ManifestLoader:
                 fp.write(manifest_msgpack)
         except Exception:
             raise
+
+    def write_artifacts(self):
+        # write out manifest.json
+        # TODO: check for overlap with parse command writing manifest
+        write_manifest(self.manifest, self.root_project.target_path)
+
+        # Note: this is not the right place to do this. Just doing here for ease
+        # of implementation. To be moved later.
+        self.build_dependencies()
+
+        # build publication metadata
+        metadata = PublicationMetadata(
+            adapter_type=self.root_project.credentials.type,
+            quoting=self.root_project.quoting,
+        )
+
+        # get a list of public model ids first so it can be used in constructing dependencies
+        public_model_ids = []
+        for node in self.manifest.nodes.values():
+            if node.resource_type == NodeType.Model and node.access == AccessType.Public:
+                public_model_ids.append(node.unique_id)
+
+        set_of_public_unique_ids = set(public_model_ids)
+
+        # Get the Graph object from the Linker
+        from dbt.compilation import Linker
+
+        linker = Linker()
+        graph = linker.get_graph(self.manifest)
+
+        public_models = {}
+        for unique_id in public_model_ids:
+            model = self.manifest.nodes[unique_id]
+            # public_dependencies is the intersection of all parent nodes plus public nodes
+            public_dependencies = []
+            # parents is a set
+            parents = graph.select_parents({unique_id})
+            public_dependencies = parents.intersection(set_of_public_unique_ids)
+
+            public_model = PublicModel(
+                relation_name=model.relation_name,
+                latest=False,  # not a node field yet
+                public_dependencies=list(public_dependencies),
+            )
+            public_models[unique_id] = public_model
+
+        # TODO: get dependencies from dependencies.yml. When is it loaded? here?
+        dependencies = []
+        publication = Publication(
+            metadata=metadata,
+            project_name=self.root_project.project_name,
+            public_models=public_models,
+            dependencies=dependencies,
+        )
+        # write out publication artifact <project_name>_publication.json
+        publication_file_name = f"{self.root_project.project_name}_publication.json"
+        path = os.path.join(self.root_project.target_path, publication_file_name)
+        publication.write(path)
+
+    def build_dependencies(self):
+        dependencies_filepath = resolve_path_from_base(
+            "dependencies.yml", self.root_project.project_root
+        )
+        if path_exists(dependencies_filepath):
+            contents = load_file_contents(dependencies_filepath)
+            dependencies_dict = load_yaml_text(contents)
+            dependencies = Dependencies.from_dict(dependencies_dict)
+            self.manifest.dependencies = dependencies
+        else:
+            self.manifest.dependencies = None
+        if self.manifest.dependencies:
+            for project in self.manifest.dependencies.projects:
+                # look for a <project_name>_publication.json file for every project in the 'publications' dir
+                publication_file_name = f"{project.name}_publication.json"
+                # TODO: eventually we'll implement publications_dir config
+                path = os.path.join("publications", publication_file_name)
+                if os.path.exists(path):
+                    print(f"--- found a publication_file matching {project.name}")
+                else:
+                    print(f"--- did not find a publication_file matching {project.name}")
 
     def is_partial_parsable(self, manifest: Manifest) -> Tuple[bool, Optional[str]]:
         """Compare the global hashes of the read-in parse results' values to

@@ -184,11 +184,7 @@ class TestBasicStaticParser(BasicExperimentalParser):
 
         manifest = get_manifest()
         node = manifest.nodes["model.test.model_a"]
-<<<<<<< HEAD
         assert node.refs == [["model_b"]]
-=======
-        assert node.refs == [RefArgs(name="model_a")]
->>>>>>> main
         assert node.sources == [["my_src", "my_tbl"]]
         assert node.config._extra == {"x": True}
         assert node.config.tags == ["hello", "world"]

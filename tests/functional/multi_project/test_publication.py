@@ -1,7 +1,9 @@
 import pytest
+import pathlib
 
-from dbt.tests.util import run_dbt, get_artifact, write_file
+from dbt.tests.util import run_dbt, get_artifact, write_file, get_manifest
 from dbt.contracts.publication import Publication
+from dbt.exceptions import PublicationConfigNotFound
 
 
 model_one_sql = """
@@ -29,6 +31,45 @@ models:
 """
 
 
+dependencies_yml = """
+projects:
+    - name: marketing
+      environment: dev
+"""
+
+marketing_pub_json = """
+{
+  "project_name": "marketing",
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/publication/v1.json",
+    "dbt_version": "1.5.0",
+    "generated_at": "2023-04-13T17:17:58.128706Z",
+    "invocation_id": "56e3126f-78c7-470c-8eb0-c94af7c3eaac",
+    "env": {},
+    "adapter_type": "postgres",
+    "quoting": {
+      "database": true,
+      "schema": true,
+      "identifier": true
+    }
+  },
+  "public_models": {
+    "model.marketing.fct_one": {
+      "relation_name": '"dbt"."test_schema"."fct_one"',
+      "latest": false,
+      "public_dependencies": []
+    },
+    "model.marketing.fct_two": {
+      "relation_name": '"dbt"."test_schema"."fct_two"',
+      "latest": false,
+      "public_dependencies": ["model.test.fct_one"]
+    }
+  },
+  "dependencies": []
+}
+"""
+
+
 class TestPublicationArtifact:
     @pytest.fixture(scope="class")
     def models(self):
@@ -52,15 +93,6 @@ class TestPublicationArtifact:
         ]
 
 
-dependencies_yml = """
-projects:
-    - name: finance
-      environment: dev
-    - name: marketing
-      environment: dev
-"""
-
-
 class TestDependenciesYml:
     @pytest.fixture(scope="class")
     def models(self):
@@ -74,5 +106,16 @@ class TestDependenciesYml:
     def test_dependencies(self, project):
         write_file(dependencies_yml, "dependencies.yml")
 
+        # Depdencies lists "marketing" project, but no publication file found
+        with pytest.raises(PublicationConfigNotFound):
+            run_dbt(["run"])
+
+        # Write out publication file and try again
+        m_pub_json = marketing_pub_json.replace("test_schema", project.test_schema)
+        (pathlib.Path(project.project_root) / "publications").mkdir(parents=True, exist_ok=True)
+        write_file(m_pub_json, project.project_root, "publications", "marketing_publication.json")
+
         results = run_dbt(["run"])
         assert len(results) == 3
+        manifest = get_manifest(project.project_root)
+        assert manifest.publications

@@ -81,7 +81,7 @@ from dbt.contracts.graph.nodes import (
 from dbt.contracts.graph.unparsed import NodeVersion
 from dbt.contracts.util import Writable
 from dbt.contracts.publication import Publication, PublicationMetadata, PublicModel, Dependencies
-from dbt.exceptions import TargetNotFoundError, AmbiguousAliasError
+from dbt.exceptions import TargetNotFoundError, AmbiguousAliasError, PublicationConfigNotFound
 from dbt.parser.base import Parser
 from dbt.parser.analysis import AnalysisParser
 from dbt.parser.generic_test import GenericTestParser
@@ -452,9 +452,10 @@ class ManifestLoader:
                 self.manifest._parsing_info.static_analysis_path_count
             )
 
+            # Following adds publications to manifest too...
+            self.write_artifacts()
             # write out the fully parsed manifest
             self.write_manifest_for_partial_parse()
-            self.write_artifacts()
 
         return self.manifest
 
@@ -686,9 +687,14 @@ class ManifestLoader:
                 # TODO: eventually we'll implement publications_dir config
                 path = os.path.join("publications", publication_file_name)
                 if os.path.exists(path):
-                    print(f"--- found a publication_file matching {project.name}")
+                    contents = load_file_contents(path)
+                    pub_dict = load_yaml_text(contents)
+                    pub_obj = Publication.from_dict(pub_dict)
+                    self.manifest.publications[project.name] = pub_obj
                 else:
-                    print(f"--- did not find a publication_file matching {project.name}")
+                    raise PublicationConfigNotFound(
+                        project=project.name, file_name=publication_file_name
+                    )
 
     def is_partial_parsable(self, manifest: Manifest) -> Tuple[bool, Optional[str]]:
         """Compare the global hashes of the read-in parse results' values to

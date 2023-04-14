@@ -651,7 +651,7 @@ class ManifestLoader:
 
             public_model = PublicModel(
                 relation_name=model.relation_name,
-                latest=False,  # not a node field yet
+                is_latest_version=model.is_latest_version,
                 public_dependencies=list(public_dependencies),
             )
             public_models[unique_id] = public_model

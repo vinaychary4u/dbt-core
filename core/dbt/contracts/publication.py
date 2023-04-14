@@ -27,7 +27,7 @@ class PublicationMetadata(BaseArtifactMetadata):
 @dataclass
 class PublicModel(dbtClassMixin):
     relation_name: str
-    latest: bool = False  # not implemented yet
+    is_latest_version: bool = False
     # list of model unique_ids
     public_dependencies: List[str] = field(default_factory=list)
 

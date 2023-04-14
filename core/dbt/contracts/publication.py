@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 
 from dbt.contracts.util import BaseArtifactMetadata, ArtifactMixin, schema_version
 from dbt.contracts.graph.unparsed import NodeVersion
+from dbt.contracts.graph.nodes import ManifestOrPublicNode
 from dbt.node_types import NodeType, AccessType
 
 
@@ -27,7 +28,9 @@ class PublicationMetadata(BaseArtifactMetadata):
 
 
 @dataclass
-class PublicModel(dbtClassMixin):
+class PublicModel(dbtClassMixin, ManifestOrPublicNode):
+    name: str
+    package_name: str
     unique_id: str
     relation_name: str
     version: Optional[NodeVersion] = None  # It's not totally clear if we actually need this
@@ -44,6 +47,13 @@ class PublicModel(dbtClassMixin):
     @property
     def access(self):
         return AccessType.Public
+
+    @property
+    def search_name(self):
+        if self.version is None:
+            return self.name
+        else:
+            return f"{self.name}.v{self.version}"
 
 
 @dataclass

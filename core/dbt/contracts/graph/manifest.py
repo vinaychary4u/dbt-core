@@ -22,7 +22,7 @@ from typing import (
 from typing_extensions import Protocol
 from uuid import UUID
 
-from dbt.contracts.publication import Dependencies, Publication
+from dbt.contracts.publication import Dependencies, Publication, PublicModel
 
 from dbt.contracts.graph.nodes import (
     Macro,
@@ -37,6 +37,7 @@ from dbt.contracts.graph.nodes import (
     GraphMemberNode,
     ResultNode,
     BaseNode,
+    ManifestOrPublicNode,
 )
 from dbt.contracts.graph.unparsed import SourcePatch, NodeVersion
 from dbt.contracts.graph.manifest_upgrade import upgrade_manifest_json
@@ -156,6 +157,7 @@ class RefableLookup(dbtClassMixin):
     def __init__(self, manifest: "Manifest"):
         self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
         self.populate(manifest)
+        self.populate_public_nodes(manifest)
 
     def get_unique_id(self, key, package: Optional[PackageName], version: Optional[NodeVersion]):
         if version:
@@ -174,7 +176,7 @@ class RefableLookup(dbtClassMixin):
             return self.perform_lookup(unique_id, manifest)
         return None
 
-    def add_node(self, node: ManifestNode):
+    def add_node(self, node: ManifestOrPublicNode):
         if node.resource_type in self._lookup_types:
             if node.name not in self.storage:
                 self.storage[node.name] = {}
@@ -192,12 +194,21 @@ class RefableLookup(dbtClassMixin):
         for node in manifest.nodes.values():
             self.add_node(node)
 
-    def perform_lookup(self, unique_id: UniqueID, manifest) -> ManifestNode:
-        if unique_id not in manifest.nodes:
+    def populate_public_nodes(self, manifest):
+        for external_package in manifest.publications.values():
+            for node in external_package.public_models:
+                self.add_node(node)
+
+    def perform_lookup(self, unique_id: UniqueID, manifest) -> ManifestOrPublicNode:
+        if unique_id in manifest.nodes:
+            node = manifest.nodes[unique_id]
+        if unique_id in manifest.external_nodes:
+            node = manifest.external_nodes[unique_id]
+        if not node:
             raise dbt.exceptions.DbtInternalError(
                 f"Node {unique_id} found in cache but not found in manifest"
             )
-        return manifest.nodes[unique_id]
+        return node
 
 
 class MetricLookup(dbtClassMixin):
@@ -279,7 +290,7 @@ class AnalysisLookup(RefableLookup):
     _versioned_types: ClassVar[set] = set()
 
 
-def _search_packages(
+def _packages_to_search(
     current_project: str,
     node_package: str,
     target_package: Optional[str] = None,
@@ -637,6 +648,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     env_vars: MutableMapping[str, str] = field(default_factory=dict)
     dependencies: Optional[Dependencies] = None
     publications: MutableMapping[str, Publication] = field(default_factory=dict)
+    external_nodes: MutableMapping[str, PublicModel] = field(default_factory=dict)
 
     _doc_lookup: Optional[DocLookup] = field(
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
@@ -921,7 +933,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self._analysis_lookup = AnalysisLookup(self)
         return self._analysis_lookup
 
-    # Called by dbt.parser.manifest._resolve_refs_for_exposure
+    # Called by dbt.parser.manifest._process_refs_for_exposure, _process_refs_for_metric,
     # and dbt.parser.manifest._process_refs_for_node
     def resolve_ref(
         self,
@@ -935,11 +947,15 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         node: Optional[ManifestNode] = None
         disabled: Optional[List[ManifestNode]] = None
 
-        candidates = _search_packages(current_project, node_package, target_model_package)
+        candidates = _packages_to_search(current_project, node_package, target_model_package)
         for pkg in candidates:
             node = self.ref_lookup.find(target_model_name, pkg, target_model_version, self)
 
-            if node is not None and node.config.enabled:
+            if (
+                node is not None
+                and (hasattr(node, "config") and node.config.enabled)
+                or isinstance(node, PublicModel)
+            ):
                 return node
 
             # it's possible that the node is disabled
@@ -960,7 +976,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         node_package: str,
     ) -> MaybeParsedSource:
         search_name = f"{target_source_name}.{target_table_name}"
-        candidates = _search_packages(current_project, node_package)
+        candidates = _packages_to_search(current_project, node_package)
 
         source: Optional[SourceDefinition] = None
         disabled: Optional[List[SourceDefinition]] = None
@@ -990,7 +1006,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         metric: Optional[Metric] = None
         disabled: Optional[List[Metric]] = None
 
-        candidates = _search_packages(current_project, node_package, target_metric_package)
+        candidates = _packages_to_search(current_project, node_package, target_metric_package)
         for pkg in candidates:
             metric = self.metric_lookup.find(target_metric_name, pkg, self)
 
@@ -1016,7 +1032,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         resolve_ref except the is_enabled checks are unnecessary as docs are
         always enabled.
         """
-        candidates = _search_packages(current_project, node_package, package)
+        candidates = _packages_to_search(current_project, node_package, package)
 
         for pkg in candidates:
             result = self.doc_lookup.find(name, pkg, self)

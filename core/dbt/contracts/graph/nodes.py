@@ -62,6 +62,12 @@ from .model_config import (
     EmptySnapshotConfig,
     SnapshotConfig,
 )
+import sys
+
+if sys.version_info >= (3, 8):
+    from typing import Protocol
+else:
+    from typing_extensions import Protocol
 
 
 # =====================================================================
@@ -1332,6 +1338,30 @@ class ParsedMacroPatch(ParsedPatch):
 # ====================================
 # Node unions/categories
 # ====================================
+
+
+class ManifestOrPublicNode(Protocol):
+    name: str
+    package_name: str
+    unique_id: str
+    version: Optional[NodeVersion]
+    relation_name: str
+
+    @property
+    def is_latest_version(self):
+        pass
+
+    @property
+    def resource_type(self):
+        pass
+
+    @property
+    def access(self):
+        pass
+
+    @property
+    def search_name(self):
+        pass
 
 
 # ManifestNode without SeedNode, which doesn't have the

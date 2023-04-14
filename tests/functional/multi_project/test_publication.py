@@ -55,6 +55,8 @@ marketing_pub_json = """
   },
   "public_models": {
     "model.marketing.fct_one": {
+      "name": "fct_one",
+      "package_name": "marketing",
       "unique_id": "model.marketing.fct_one",
       "relation_name": '"dbt"."test_schema"."fct_one"',
       "version": null,
@@ -62,6 +64,8 @@ marketing_pub_json = """
       "public_dependencies": []
     },
     "model.marketing.fct_two": {
+      "name": "fct_two",
+      "package_name": "marketing",
       "unique_id": "model.marketing.fct_two",
       "relation_name": '"dbt"."test_schema"."fct_two"',
       "version": null,

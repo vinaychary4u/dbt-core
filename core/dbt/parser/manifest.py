@@ -650,6 +650,8 @@ class ManifestLoader:
             public_dependencies = parents.intersection(set_of_public_unique_ids)
 
             public_model = PublicModel(
+                name=model.name,
+                package_name=model.package_name,
                 unique_id=model.unique_id,
                 relation_name=model.relation_name,
                 version=model.version,
@@ -693,6 +695,9 @@ class ManifestLoader:
                     pub_dict = load_yaml_text(contents)
                     pub_obj = Publication.from_dict(pub_dict)
                     self.manifest.publications[project.name] = pub_obj
+                    # Add to dictionary of external_nodes
+                    for external_node in pub_obj.public_models.values():
+                        self.manifest.external_nodes[external_node.unique_id] = external_node
                 else:
                     raise PublicationConfigNotFound(
                         project=project.name, file_name=publication_file_name

@@ -414,7 +414,7 @@ class ManifestLoader:
                     project, project_parser_files[project.project_name], parser_types
                 )
 
-            self.process_nodes()
+            self.cleanup_disabled()
 
             self._perf_info.parse_project_elapsed = time.perf_counter() - start_parse_projects
 
@@ -650,6 +650,7 @@ class ManifestLoader:
             public_dependencies = parents.intersection(set_of_public_unique_ids)
 
             public_model = PublicModel(
+                unique_id=model.unique_id,
                 relation_name=model.relation_name,
                 version=model.version,
                 is_latest_version=model.is_latest_version,
@@ -1091,7 +1092,7 @@ class ManifestLoader:
                 continue
             _process_sources_for_exposure(self.manifest, current_project, exposure)
 
-    def process_nodes(self):
+    def cleanup_disabled(self):
         # make sure the nodes are in the manifest.nodes or the disabled dict,
         # correctly now that the schema files are also parsed
         disabled_nodes = []
@@ -1486,11 +1487,6 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
         target_model_id = target_model.unique_id
 
         node.depends_on.nodes.append(target_model_id)
-        # TODO: I think this is extraneous, node should already be the same
-        # as manifest.nodes[node.unique_id] (we're mutating node here, not
-        # making a new one)
-        # Q: could we stop doing this?
-        manifest.update_node(node)
 
 
 def _process_sources_for_exposure(manifest: Manifest, current_project: str, exposure: Exposure):

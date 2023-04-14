@@ -464,6 +464,8 @@ class ParseRefResolver(BaseRefResolver):
     ) -> RelationProxy:
         self.model.refs.append(self._repack_args(name, package, version))
 
+        # I don't understand what the point of this is. The "ref" is for a different
+        # model, not this one.
         return self.Relation.create_from(self.config, self.model)
 
 

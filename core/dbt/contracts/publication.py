@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 
 from dbt.contracts.util import BaseArtifactMetadata, ArtifactMixin, schema_version
 from dbt.contracts.graph.unparsed import NodeVersion
+from dbt.node_types import NodeType, AccessType
 
 
 @dataclass
@@ -27,11 +28,22 @@ class PublicationMetadata(BaseArtifactMetadata):
 
 @dataclass
 class PublicModel(dbtClassMixin):
+    unique_id: str
     relation_name: str
     version: Optional[NodeVersion] = None  # It's not totally clear if we actually need this
     is_latest_version: bool = False
     # list of model unique_ids
     public_dependencies: List[str] = field(default_factory=list)
+
+    # Adding to simplify some ref resolution code for now.
+    @property
+    def resource_type(self):
+        return NodeType.Model
+
+    # Adding to simplify some ref resolution code for now.
+    @property
+    def access(self):
+        return AccessType.Public
 
 
 @dataclass

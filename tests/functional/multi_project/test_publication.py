@@ -1,7 +1,7 @@
 import pytest
 import pathlib
 
-from dbt.tests.util import run_dbt, get_artifact, write_file, get_manifest
+from dbt.tests.util import run_dbt, get_artifact, write_file
 from dbt.contracts.publication import Publication
 from dbt.exceptions import PublicationConfigNotFound
 
@@ -110,14 +110,15 @@ class TestDependenciesYml:
 
         # Depdencies lists "marketing" project, but no publication file found
         with pytest.raises(PublicationConfigNotFound):
-            run_dbt(["run"])
+            run_dbt(["parse"])
 
         # Write out publication file and try again
         m_pub_json = marketing_pub_json.replace("test_schema", project.test_schema)
         (pathlib.Path(project.project_root) / "publications").mkdir(parents=True, exist_ok=True)
         write_file(m_pub_json, project.project_root, "publications", "marketing_publication.json")
 
-        results = run_dbt(["run"])
-        assert len(results) == 3
-        manifest = get_manifest(project.project_root)
+        manifest = run_dbt(["parse"])
         assert manifest.publications
+        assert "marketing" in manifest.publications
+        public_model = manifest.publications["marketing"].public_models["model.marketing.fct_one"]
+        assert public_model

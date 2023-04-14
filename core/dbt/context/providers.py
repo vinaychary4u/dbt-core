@@ -465,7 +465,8 @@ class ParseRefResolver(BaseRefResolver):
         self.model.refs.append(self._repack_args(name, package, version))
 
         # I don't understand what the point of this is. The "ref" is for a different
-        # model, not this one.
+        # model, not this one. I guess since we can get the real relation, we're just
+        # passing back some miscellaneous relation.
         return self.Relation.create_from(self.config, self.model)
 
 

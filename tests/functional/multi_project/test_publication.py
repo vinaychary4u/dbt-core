@@ -77,6 +77,10 @@ marketing_pub_json = """
 }
 """
 
+ext_node_model_sql = """
+select * from {{ ref('marketing', 'fct_one') }}
+"""
+
 
 class TestPublicationArtifact:
     @pytest.fixture(scope="class")
@@ -133,3 +137,12 @@ class TestDependenciesYml:
         resolved_node = manifest.resolve_ref("fct_one", "marketing", None, "test", "test")
         assert resolved_node
         assert isinstance(resolved_node, PublicModel)
+        assert resolved_node.unique_id == "model.marketing.fct_one"
+
+        # add new model that references external_node
+        write_file(ext_node_model_sql, project.project_root, "models", "ext_node_model.sql")
+        manifest = run_dbt(["parse"])
+
+        model_id = "model.test.ext_node_model"
+        model = manifest.nodes[model_id]
+        assert model.depends_on.external_nodes == ["model.marketing.fct_one"]

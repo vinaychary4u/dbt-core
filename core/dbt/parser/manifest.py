@@ -1491,7 +1491,10 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
 
         target_model_id = target_model.unique_id
 
-        node.depends_on.nodes.append(target_model_id)
+        if isinstance(target_model, PublicModel):
+            node.depends_on.external_nodes.append(target_model_id)
+        else:
+            node.depends_on.nodes.append(target_model_id)
 
 
 def _process_sources_for_exposure(manifest: Manifest, current_project: str, exposure: Exposure):

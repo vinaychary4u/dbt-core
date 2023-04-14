@@ -56,11 +56,13 @@ marketing_pub_json = """
   "public_models": {
     "model.marketing.fct_one": {
       "relation_name": '"dbt"."test_schema"."fct_one"',
+      "version": null,
       "is_latest_version": false,
       "public_dependencies": []
     },
     "model.marketing.fct_two": {
       "relation_name": '"dbt"."test_schema"."fct_two"',
+      "version": null,
       "is_latest_version": false,
       "public_dependencies": ["model.test.fct_one"]
     }

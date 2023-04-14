@@ -433,6 +433,9 @@ class ManifestLoader:
             # copy the selectors from the root_project to the manifest
             self.manifest.selectors = self.root_project.manifest_selectors
 
+            # load the publication artifacts and create the external nodes
+            self.build_external_nodes()
+
             # update the refs, sources, docs and metrics depends_on.nodes
             # These check the created_at time on the nodes to
             # determine whether they need processing.
@@ -616,10 +619,6 @@ class ManifestLoader:
         # TODO: check for overlap with parse command writing manifest
         write_manifest(self.manifest, self.root_project.target_path)
 
-        # Note: this is not the right place to do this. Just doing here for ease
-        # of implementation. To be moved later.
-        self.build_dependencies()
-
         # build publication metadata
         metadata = PublicationMetadata(
             adapter_type=self.root_project.credentials.type,
@@ -673,7 +672,7 @@ class ManifestLoader:
         path = os.path.join(self.root_project.target_path, publication_file_name)
         publication.write(path)
 
-    def build_dependencies(self):
+    def build_external_nodes(self):
         dependencies_filepath = resolve_path_from_base(
             "dependencies.yml", self.root_project.project_root
         )
@@ -702,6 +701,7 @@ class ManifestLoader:
                     raise PublicationConfigNotFound(
                         project=project.name, file_name=publication_file_name
                     )
+            self.manifest.ref_lookup.populate_external_nodes(self.manifest)
 
     def is_partial_parsable(self, manifest: Manifest) -> Tuple[bool, Optional[str]]:
         """Compare the global hashes of the read-in parse results' values to

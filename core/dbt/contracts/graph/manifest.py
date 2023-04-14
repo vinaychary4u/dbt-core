@@ -157,7 +157,7 @@ class RefableLookup(dbtClassMixin):
     def __init__(self, manifest: "Manifest"):
         self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
         self.populate(manifest)
-        self.populate_public_nodes(manifest)
+        self.populate_external_nodes(manifest)
 
     def get_unique_id(self, key, package: Optional[PackageName], version: Optional[NodeVersion]):
         if version:
@@ -194,10 +194,9 @@ class RefableLookup(dbtClassMixin):
         for node in manifest.nodes.values():
             self.add_node(node)
 
-    def populate_public_nodes(self, manifest):
-        for external_package in manifest.publications.values():
-            for node in external_package.public_models:
-                self.add_node(node)
+    def populate_external_nodes(self, manifest):
+        for node in manifest.external_nodes.values():
+            self.add_node(node)
 
     def perform_lookup(self, unique_id: UniqueID, manifest) -> ManifestOrPublicNode:
         if unique_id in manifest.nodes:

@@ -2,7 +2,7 @@ import pytest
 import pathlib
 
 from dbt.tests.util import run_dbt, get_artifact, write_file
-from dbt.contracts.publication import Publication
+from dbt.contracts.publication import Publication, PublicModel
 from dbt.exceptions import PublicationConfigNotFound
 
 
@@ -128,3 +128,8 @@ class TestDependenciesYml:
         assert "marketing" in manifest.publications
         public_model = manifest.publications["marketing"].public_models["model.marketing.fct_one"]
         assert public_model
+
+        # target_model_name, target_model_package, target_model_version, current_project, node_package
+        resolved_node = manifest.resolve_ref("fct_one", "marketing", None, "test", "test")
+        assert resolved_node
+        assert isinstance(resolved_node, PublicModel)

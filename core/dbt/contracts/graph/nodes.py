@@ -255,11 +255,15 @@ class MacroDependsOn(dbtClassMixin, Replaceable):
 @dataclass
 class DependsOn(MacroDependsOn):
     nodes: List[str] = field(default_factory=list)
-    public_nodes: List[str] = field(default_factory=list)
 
     def add_node(self, value: str):
         if value not in self.nodes:
             self.nodes.append(value)
+
+
+@dataclass
+class ModelDependsOn(DependsOn):
+    public_nodes: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -573,7 +577,7 @@ class CompiledNode(ParsedNode):
 
     @property
     def depends_on_public_nodes(self):
-        return self.depends_on.public_nodes
+        return []
 
     @property
     def depends_on_macros(self):
@@ -673,10 +677,15 @@ class ModelNode(CompiledNode):
     constraints: List[ModelLevelConstraint] = field(default_factory=list)
     version: Optional[NodeVersion] = None
     latest_version: Optional[NodeVersion] = None
+    depends_on: ModelDependsOn = field(default_factory=ModelDependsOn)
 
     @property
     def is_latest_version(self):
         return self.version and self.version == self.latest_version
+
+    @property
+    def depends_on_public_nodes(self):
+        return self.depends_on.public_nodes
 
     @property
     def search_name(self):

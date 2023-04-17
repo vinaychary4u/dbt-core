@@ -646,9 +646,9 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     source_patches: MutableMapping[SourceKey, SourcePatch] = field(default_factory=dict)
     disabled: MutableMapping[str, List[GraphMemberNode]] = field(default_factory=dict)
     env_vars: MutableMapping[str, str] = field(default_factory=dict)
+    public_nodes: MutableMapping[str, PublicModel] = field(default_factory=dict)
     dependencies: Optional[Dependencies] = None
     publications: MutableMapping[str, Publication] = field(default_factory=dict)
-    public_nodes: MutableMapping[str, PublicModel] = field(default_factory=dict)
 
     _doc_lookup: Optional[DocLookup] = field(
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
@@ -804,6 +804,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             selectors={k: _deepcopy(v) for k, v in self.selectors.items()},
             metadata=self.metadata,
             disabled={k: _deepcopy(v) for k, v in self.disabled.items()},
+            public_nodes={k: _deepcopy(v) for k, v in self.public_nodes.items()},
             files={k: _deepcopy(v) for k, v in self.files.items()},
             state_check=_deepcopy(self.state_check),
         )
@@ -861,6 +862,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             selectors=self.selectors,
             metadata=self.metadata,
             disabled=self.disabled,
+            public_nodes=self.public_nodes,
             child_map=self.child_map,
             parent_map=self.parent_map,
             group_map=self.group_map,
@@ -1189,6 +1191,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self.source_patches,
             self.disabled,
             self.env_vars,
+            self.public_nodes,
             self._doc_lookup,
             self._source_lookup,
             self._ref_lookup,
@@ -1212,7 +1215,7 @@ AnyManifest = Union[Manifest, MacroManifest]
 
 
 @dataclass
-@schema_version("manifest", 9)
+@schema_version("manifest", 10)
 class WritableManifest(ArtifactMixin):
     nodes: Mapping[UniqueID, ManifestNode] = field(
         metadata=dict(description=("The nodes defined in the dbt project and its dependencies"))
@@ -1258,6 +1261,9 @@ class WritableManifest(ArtifactMixin):
             description="A mapping from group names to their nodes",
         )
     )
+    public_nodes: Mapping[UniqueID, PublicModel] = field(
+        metadata=dict(description=("The public models used in the dbt project"))
+    )
     metadata: ManifestMetadata = field(
         metadata=dict(
             description="Metadata about the manifest",
@@ -1272,13 +1278,14 @@ class WritableManifest(ArtifactMixin):
             ("manifest", 6),
             ("manifest", 7),
             ("manifest", 8),
+            ("manifest", 9),
         ]
 
     @classmethod
     def upgrade_schema_version(cls, data):
         """This overrides the "upgrade_schema_version" call in VersionedSchema (via
         ArtifactMixin) to modify the dictionary passed in from earlier versions of the manifest."""
-        if get_manifest_schema_version(data) <= 8:
+        if get_manifest_schema_version(data) <= 9:
             data = upgrade_manifest_json(data)
         return cls.from_dict(data)
 

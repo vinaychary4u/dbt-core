@@ -572,6 +572,10 @@ class CompiledNode(ParsedNode):
         return self.depends_on.nodes
 
     @property
+    def depends_on_public_nodes(self):
+        return self.depends_on.public_nodes
+
+    @property
     def depends_on_macros(self):
         return self.depends_on.macros
 
@@ -785,6 +789,10 @@ Error raised for '{self.unique_id}', which has these hooks defined: \n{hook_list
 
     @property
     def depends_on_nodes(self):
+        return []
+
+    @property
+    def depends_on_public_nodes(self):
         return []
 
     @property
@@ -1122,6 +1130,10 @@ class SourceDefinition(NodeInfoMixin, ParsedSourceMandatory):
         return []
 
     @property
+    def depends_on_public_nodes(self):
+        return []
+
+    @property
     def depends_on(self):
         return DependsOn(macros=[], nodes=[])
 
@@ -1169,6 +1181,10 @@ class Exposure(GraphNode):
     @property
     def depends_on_nodes(self):
         return self.depends_on.nodes
+
+    @property
+    def depends_on_public_nodes(self):
+        return []
 
     @property
     def search_name(self):
@@ -1261,6 +1277,10 @@ class Metric(GraphNode):
     @property
     def depends_on_nodes(self):
         return self.depends_on.nodes
+
+    @property
+    def depends_on_public_nodes(self):
+        return []
 
     @property
     def search_name(self):

@@ -616,7 +616,7 @@ class ManifestLoader:
 
     def write_artifacts(self):
         # write out manifest.json
-        # TODO: check for overlap with parse command writing manifest
+        # The following will also cause the parent and child maps to be built
         write_manifest(self.manifest, self.root_project.target_path)
 
         # build publication metadata

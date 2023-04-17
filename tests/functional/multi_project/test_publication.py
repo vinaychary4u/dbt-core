@@ -144,8 +144,11 @@ class TestDependenciesYml:
         manifest = run_dbt(["parse"])
 
         model_id = "model.test.ext_node_model"
+        public_model_id = "model.marketing.fct_one"
         model = manifest.nodes[model_id]
-        assert model.depends_on.public_nodes == ["model.marketing.fct_one"]
+        assert model.depends_on.public_nodes == [public_model_id]
+        assert public_model_id in manifest.parent_map
+        assert manifest.parent_map[model_id] == [public_model_id]
 
         # Create the relation for the public node (fct_one)
         project.run_sql(f'create table "{project.test_schema}"."fct_one" (id integer)')

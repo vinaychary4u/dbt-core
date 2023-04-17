@@ -33,17 +33,17 @@ class PublicModel(dbtClassMixin, ManifestOrPublicNode):
     package_name: str
     unique_id: str
     relation_name: str
-    version: Optional[NodeVersion] = None  # It's not totally clear if we actually need this
+    version: Optional[NodeVersion] = None
     is_latest_version: bool = False
     # list of model unique_ids
     public_dependencies: List[str] = field(default_factory=list)
 
-    # Adding to simplify some ref resolution code for now.
+    # Needed for ref resolution code
     @property
     def resource_type(self):
         return NodeType.Model
 
-    # Adding to simplify some ref resolution code for now.
+    # Needed for ref resolution code
     @property
     def access(self):
         return AccessType.Public
@@ -54,6 +54,14 @@ class PublicModel(dbtClassMixin, ManifestOrPublicNode):
             return self.name
         else:
             return f"{self.name}.v{self.version}"
+
+    @property
+    def depends_on_nodes(self):
+        return []
+
+    @property
+    def depends_on_public_nodes(self):
+        return []
 
 
 @dataclass

@@ -366,7 +366,8 @@ def build_node_edges(nodes: List[ManifestNode]):
     forward_edges: Dict[str, List[str]] = {n.unique_id: [] for n in nodes}
     for node in nodes:
         backward_edges[node.unique_id] = node.depends_on_nodes[:]
-        for unique_id in node.depends_on_nodes:
+        backward_edges[node.unique_id].extend(node.depends_on_public_nodes[:])
+        for unique_id in backward_edges[node.unique_id]:
             if unique_id in forward_edges.keys():
                 forward_edges[unique_id].append(node.unique_id)
     return _sort_values(forward_edges), _sort_values(backward_edges)
@@ -816,6 +817,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                 self.sources.values(),
                 self.exposures.values(),
                 self.metrics.values(),
+                self.public_nodes.values(),
             )
         )
         forward_edges, backward_edges = build_node_edges(edge_members)

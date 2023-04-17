@@ -245,6 +245,27 @@ class BaseRelation(FakeAPIObject, Hashable):
         )
 
     @classmethod
+    def create_from_relation_name(cls: Type[Self], config: HasQuoting, relation_name: str) -> Self:
+        parts = relation_name.split(".")
+        if len(parts) == 3:
+            (database, schema, identifier) = parts
+        else:
+            database = None
+            (schema, identifier) = parts
+
+        if database:
+            database = database.strip('"').strip("'")
+        schema = schema.strip('"').strip("'")
+        identifier = identifier.strip('"').strip("'")
+
+        return cls.create(
+            database=database,
+            schema=schema,
+            identifier=identifier,
+            quote_policy=config.quoting,
+        )
+
+    @classmethod
     def create_from(
         cls: Type[Self],
         config: HasQuoting,

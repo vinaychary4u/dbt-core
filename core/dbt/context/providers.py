@@ -40,6 +40,7 @@ from dbt.contracts.graph.nodes import (
     RefArgs,
 )
 from dbt.contracts.graph.metrics import MetricReference, ResolvedMetricReference
+from dbt.contracts.publication import PublicModel
 from dbt.contracts.graph.unparsed import NodeVersion
 from dbt.events.functions import get_metadata_vars
 from dbt.exceptions import (
@@ -464,9 +465,7 @@ class ParseRefResolver(BaseRefResolver):
     ) -> RelationProxy:
         self.model.refs.append(self._repack_args(name, package, version))
 
-        # I don't understand what the point of this is. The "ref" is for a different
-        # model, not this one. I guess since we can get the real relation, we're just
-        # passing back some miscellaneous relation.
+        # This is not the ref for the "name" passed in, but for the current model.
         return self.Relation.create_from(self.config, self.model)
 
 
@@ -504,6 +503,8 @@ class RuntimeRefResolver(BaseRefResolver):
         if target_model.is_ephemeral_model:
             self.model.set_cte(target_model.unique_id, None)
             return self.Relation.create_ephemeral_from_node(self.config, target_model)
+        elif isinstance(target_model, PublicModel):
+            return self.Relation.create_from_relation_name(self.config, target_model.relation_name)
         else:
             return self.Relation.create_from(self.config, target_model)
 

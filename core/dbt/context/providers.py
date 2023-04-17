@@ -500,11 +500,11 @@ class RuntimeRefResolver(BaseRefResolver):
         return self.create_relation(target_model)
 
     def create_relation(self, target_model: ManifestNode) -> RelationProxy:
-        if target_model.is_ephemeral_model:
+        if isinstance(target_model, PublicModel):
+            return self.Relation.create_from_relation_name(self.config, target_model.relation_name)
+        elif target_model.is_ephemeral_model:
             self.model.set_cte(target_model.unique_id, None)
             return self.Relation.create_ephemeral_from_node(self.config, target_model)
-        elif isinstance(target_model, PublicModel):
-            return self.Relation.create_from_relation_name(self.config, target_model.relation_name)
         else:
             return self.Relation.create_from(self.config, target_model)
 
@@ -515,7 +515,10 @@ class RuntimeRefResolver(BaseRefResolver):
         target_package: Optional[str],
         target_version: Optional[NodeVersion],
     ) -> None:
-        if resolved.unique_id not in self.model.depends_on.nodes:
+        if (
+            resolved.unique_id not in self.model.depends_on.nodes
+            and resolved.unique_id not in self.model.depends_on.public_nodes
+        ):
             args = self._repack_args(target_name, target_package, target_version)
             raise RefBadContextError(node=self.model, args=args)
 

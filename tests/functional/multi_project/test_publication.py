@@ -139,10 +139,16 @@ class TestDependenciesYml:
         assert isinstance(resolved_node, PublicModel)
         assert resolved_node.unique_id == "model.marketing.fct_one"
 
-        # add new model that references external_node
+        # add new model that references external_node and parse
         write_file(ext_node_model_sql, project.project_root, "models", "ext_node_model.sql")
         manifest = run_dbt(["parse"])
 
         model_id = "model.test.ext_node_model"
         model = manifest.nodes[model_id]
         assert model.depends_on.public_nodes == ["model.marketing.fct_one"]
+
+        # Create the relation for the public node (fct_one)
+        project.run_sql(f'create table "{project.test_schema}"."fct_one" (id integer)')
+        project.run_sql(f'insert into "{project.test_schema}"."fct_one" values (1), (2)')
+        results = run_dbt(["run"])
+        assert len(results) == 4

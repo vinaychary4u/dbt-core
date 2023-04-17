@@ -15,8 +15,6 @@ from dbt.cli.exceptions import (
     DbtInternalException,
     DbtUsageException,
 )
-from dbt.config.profile import Profile
-from dbt.config.project import Project
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.results import (
     CatalogArtifact,
@@ -64,13 +62,9 @@ class dbtRunnerResult:
 class dbtRunner:
     def __init__(
         self,
-        project: Project = None,
-        profile: Profile = None,
         manifest: Manifest = None,
         callbacks: List[Callable[[EventMsg], None]] = None,
     ):
-        self.project = project
-        self.profile = profile
         self.manifest = manifest
 
         if callbacks is None:
@@ -81,8 +75,6 @@ class dbtRunner:
         try:
             dbt_ctx = cli.make_context(cli.name, args)
             dbt_ctx.obj = {
-                "project": self.project,
-                "profile": self.profile,
                 "manifest": self.manifest,
                 "callbacks": self.callbacks,
             }
@@ -134,9 +126,9 @@ class dbtRunner:
     epilog="Specify one of these sub-commands and you can find more help from there.",
 )
 @click.pass_context
-@p.send_anonymous_usage_stats
 @p.cache_selected_only
 @p.debug
+@p.deprecated_print
 @p.enable_legacy_logger
 @p.fail_fast
 @p.log_cache_events
@@ -147,11 +139,12 @@ class dbtRunner:
 @p.log_path
 @p.macro_debugging
 @p.partial_parse
+@p.populate_cache
 @p.print
-@p.deprecated_print
 @p.printer_width
 @p.quiet
 @p.record_timing_info
+@p.send_anonymous_usage_stats
 @p.single_threaded
 @p.static_parser
 @p.use_colors
@@ -201,7 +194,7 @@ def cli(ctx, **kwargs):
 @requires.runtime_config
 @requires.manifest
 def build(ctx, **kwargs):
-    """Run all Seeds, Models, Snapshots, and tests in DAG order"""
+    """Run all seeds, models, snapshots, and tests in DAG order"""
     task = BuildTask(
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
@@ -322,7 +315,6 @@ def docs_serve(ctx, **kwargs):
 @p.show_output_format
 @p.indirect_selection
 @p.introspect
-@p.parse_only
 @p.profile
 @p.profiles_dir
 @p.project_dir
@@ -369,7 +361,6 @@ def compile(ctx, **kwargs):
 @p.show_limit
 @p.indirect_selection
 @p.introspect
-@p.parse_only
 @p.profile
 @p.profiles_dir
 @p.project_dir
@@ -416,7 +407,8 @@ def show(ctx, **kwargs):
 @requires.postflight
 @requires.preflight
 def debug(ctx, **kwargs):
-    """Show some helpful information about dbt for debugging. Not to be confused with the --debug option which increases verbosity."""
+    """Test the database connection and show information for debugging purposes. Not to be confused with the --debug option which increases verbosity."""
+
     task = DebugTask(
         ctx.obj["flags"],
         None,
@@ -515,7 +507,6 @@ cli.add_command(ls, "ls")
 # dbt parse
 @cli.command("parse")
 @click.pass_context
-@p.compile_parse
 @p.profile
 @p.profiles_dir
 @p.project_dir
@@ -524,7 +515,6 @@ cli.add_command(ls, "ls")
 @p.threads
 @p.vars
 @p.version_check
-@p.write_manifest
 @requires.postflight
 @requires.preflight
 @requires.profile

@@ -145,4 +145,4 @@ class TestDependenciesYml:
 
         model_id = "model.test.ext_node_model"
         model = manifest.nodes[model_id]
-        assert model.depends_on.external_nodes == ["model.marketing.fct_one"]
+        assert model.depends_on.public_nodes == ["model.marketing.fct_one"]

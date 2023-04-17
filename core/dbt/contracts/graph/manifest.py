@@ -157,7 +157,7 @@ class RefableLookup(dbtClassMixin):
     def __init__(self, manifest: "Manifest"):
         self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
         self.populate(manifest)
-        self.populate_external_nodes(manifest)
+        self.populate_public_nodes(manifest)
 
     def get_unique_id(self, key, package: Optional[PackageName], version: Optional[NodeVersion]):
         if version:
@@ -194,15 +194,15 @@ class RefableLookup(dbtClassMixin):
         for node in manifest.nodes.values():
             self.add_node(node)
 
-    def populate_external_nodes(self, manifest):
-        for node in manifest.external_nodes.values():
+    def populate_public_nodes(self, manifest):
+        for node in manifest.public_nodes.values():
             self.add_node(node)
 
     def perform_lookup(self, unique_id: UniqueID, manifest) -> ManifestOrPublicNode:
         if unique_id in manifest.nodes:
             node = manifest.nodes[unique_id]
-        if unique_id in manifest.external_nodes:
-            node = manifest.external_nodes[unique_id]
+        if unique_id in manifest.public_nodes:
+            node = manifest.public_nodes[unique_id]
         if not node:
             raise dbt.exceptions.DbtInternalError(
                 f"Node {unique_id} found in cache but not found in manifest"
@@ -647,7 +647,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     env_vars: MutableMapping[str, str] = field(default_factory=dict)
     dependencies: Optional[Dependencies] = None
     publications: MutableMapping[str, Publication] = field(default_factory=dict)
-    external_nodes: MutableMapping[str, PublicModel] = field(default_factory=dict)
+    public_nodes: MutableMapping[str, PublicModel] = field(default_factory=dict)
 
     _doc_lookup: Optional[DocLookup] = field(
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}

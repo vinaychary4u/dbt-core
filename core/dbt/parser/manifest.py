@@ -434,7 +434,7 @@ class ManifestLoader:
             self.manifest.selectors = self.root_project.manifest_selectors
 
             # load the publication artifacts and create the external nodes
-            self.build_external_nodes()
+            self.build_public_nodes()
 
             # update the refs, sources, docs and metrics depends_on.nodes
             # These check the created_at time on the nodes to
@@ -672,7 +672,7 @@ class ManifestLoader:
         path = os.path.join(self.root_project.target_path, publication_file_name)
         publication.write(path)
 
-    def build_external_nodes(self):
+    def build_public_nodes(self):
         dependencies_filepath = resolve_path_from_base(
             "dependencies.yml", self.root_project.project_root
         )
@@ -694,14 +694,14 @@ class ManifestLoader:
                     pub_dict = load_yaml_text(contents)
                     pub_obj = Publication.from_dict(pub_dict)
                     self.manifest.publications[project.name] = pub_obj
-                    # Add to dictionary of external_nodes
+                    # Add to dictionary of public_nodes
                     for external_node in pub_obj.public_models.values():
-                        self.manifest.external_nodes[external_node.unique_id] = external_node
+                        self.manifest.public_nodes[external_node.unique_id] = external_node
                 else:
                     raise PublicationConfigNotFound(
                         project=project.name, file_name=publication_file_name
                     )
-            self.manifest.ref_lookup.populate_external_nodes(self.manifest)
+            self.manifest.ref_lookup.populate_public_nodes(self.manifest)
 
     def is_partial_parsable(self, manifest: Manifest) -> Tuple[bool, Optional[str]]:
         """Compare the global hashes of the read-in parse results' values to
@@ -1492,7 +1492,7 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
         target_model_id = target_model.unique_id
 
         if isinstance(target_model, PublicModel):
-            node.depends_on.external_nodes.append(target_model_id)
+            node.depends_on.public_nodes.append(target_model_id)
         else:
             node.depends_on.nodes.append(target_model_id)
 

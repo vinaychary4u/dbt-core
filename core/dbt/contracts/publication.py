@@ -17,7 +17,7 @@ class DependentProjects(dbtClassMixin):
 
 @dataclass
 class Dependencies(dbtClassMixin):
-    projects: list[DependentProjects] = field(default_factory=list)
+    projects: List[DependentProjects] = field(default_factory=list)
 
 
 @dataclass

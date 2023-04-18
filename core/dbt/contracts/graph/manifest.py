@@ -22,7 +22,7 @@ from typing import (
 from typing_extensions import Protocol
 from uuid import UUID
 
-from dbt.contracts.publication import Dependencies, Publication, PublicModel
+from dbt.contracts.publication import Dependencies, PublicationConfig, PublicModel
 
 from dbt.contracts.graph.nodes import (
     Macro,
@@ -648,7 +648,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     env_vars: MutableMapping[str, str] = field(default_factory=dict)
     public_nodes: MutableMapping[str, PublicModel] = field(default_factory=dict)
     dependencies: Optional[Dependencies] = None
-    publications: MutableMapping[str, Publication] = field(default_factory=dict)
+    publications: MutableMapping[str, PublicationConfig] = field(default_factory=dict)
 
     _doc_lookup: Optional[DocLookup] = field(
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}

@@ -80,7 +80,13 @@ from dbt.contracts.graph.nodes import (
 )
 from dbt.contracts.graph.unparsed import NodeVersion
 from dbt.contracts.util import Writable
-from dbt.contracts.publication import Publication, PublicationMetadata, PublicModel, Dependencies
+from dbt.contracts.publication import (
+    PublicationConfig,
+    PublicationArtifact,
+    PublicationMetadata,
+    PublicModel,
+    Dependencies,
+)
 from dbt.exceptions import TargetNotFoundError, AmbiguousAliasError, PublicationConfigNotFound
 from dbt.parser.base import Parser
 from dbt.parser.analysis import AnalysisParser
@@ -656,12 +662,13 @@ class ManifestLoader:
                 version=model.version,
                 is_latest_version=model.is_latest_version,
                 public_dependencies=list(public_dependencies),
+                generated_at=metadata.generated_at,
             )
             public_models[unique_id] = public_model
 
         # TODO: get dependencies from dependencies.yml. When is it loaded? here?
         dependencies = []
-        publication = Publication(
+        publication = PublicationArtifact(
             metadata=metadata,
             project_name=self.root_project.project_name,
             public_models=public_models,
@@ -692,11 +699,17 @@ class ManifestLoader:
                 if os.path.exists(path):
                     contents = load_file_contents(path)
                     pub_dict = load_yaml_text(contents)
-                    pub_obj = Publication.from_dict(pub_dict)
-                    self.manifest.publications[project.name] = pub_obj
-                    # Add to dictionary of public_nodes
-                    for external_node in pub_obj.public_models.values():
-                        self.manifest.public_nodes[external_node.unique_id] = external_node
+                    PublicationArtifact.validate(pub_dict)
+                    # separate out the public_models
+                    public_models = pub_dict.pop("public_models")
+                    # Create the PublicationConfig to store in internal manifest
+                    pub_config = PublicationConfig.from_dict(pub_dict)
+                    self.manifest.publications[project.name] = pub_config
+                    # Add to dictionary of public_nodes and save id in PublicationConfig
+                    for public_model_dict in public_models.values():
+                        public_node = PublicModel.from_dict(public_model_dict)
+                        self.manifest.public_nodes[public_node.unique_id] = public_node
+                        pub_config.public_model_ids.append(public_node.unique_id)
                 else:
                     raise PublicationConfigNotFound(
                         project=project.name, file_name=publication_file_name

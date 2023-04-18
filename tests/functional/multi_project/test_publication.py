@@ -2,7 +2,7 @@ import pytest
 import pathlib
 
 from dbt.tests.util import run_dbt, get_artifact, write_file
-from dbt.contracts.publication import Publication, PublicModel
+from dbt.contracts.publication import PublicationArtifact, PublicModel
 from dbt.exceptions import PublicationConfigNotFound
 
 
@@ -61,7 +61,8 @@ marketing_pub_json = """
       "relation_name": '"dbt"."test_schema"."fct_one"',
       "version": null,
       "is_latest_version": false,
-      "public_dependencies": []
+      "public_dependencies": [],
+      "generated_at": "2023-04-13T17:17:58.128706Z",
     },
     "model.marketing.fct_two": {
       "name": "fct_two",
@@ -70,7 +71,8 @@ marketing_pub_json = """
       "relation_name": '"dbt"."test_schema"."fct_two"',
       "version": null,
       "is_latest_version": false,
-      "public_dependencies": ["model.test.fct_one"]
+      "public_dependencies": ["model.test.fct_one"],
+      "generated_at": "2023-04-13T17:17:58.128706Z",
     }
   },
   "dependencies": []
@@ -97,7 +99,7 @@ class TestPublicationArtifact:
         assert len(results) == 3
 
         publication_dict = get_artifact(project.project_root, "target", "test_publication.json")
-        publication = Publication.from_dict(publication_dict)
+        publication = PublicationArtifact.from_dict(publication_dict)
         assert publication
         assert len(publication.public_models) == 2
         assert publication.public_models["model.test.model_three"].public_dependencies == [
@@ -130,8 +132,7 @@ class TestDependenciesYml:
         manifest = run_dbt(["parse"])
         assert manifest.publications
         assert "marketing" in manifest.publications
-        public_model = manifest.publications["marketing"].public_models["model.marketing.fct_one"]
-        assert public_model
+        assert "model.marketing.fct_one" in manifest.publications["marketing"].public_model_ids
 
         # target_model_name, target_model_package, target_model_version, current_project, node_package
         resolved_node = manifest.resolve_ref("fct_one", "marketing", None, "test", "test")

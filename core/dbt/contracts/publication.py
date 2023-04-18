@@ -1,4 +1,5 @@
 from typing import Optional, List, Dict, Any
+from datetime import datetime
 from dbt.dataclass_schema import dbtClassMixin
 
 from dataclasses import dataclass, field
@@ -22,7 +23,9 @@ class Dependencies(dbtClassMixin):
 
 @dataclass
 class PublicationMetadata(BaseArtifactMetadata):
-    dbt_schema_version: str = field(default_factory=lambda: str(Publication.dbt_schema_version))
+    dbt_schema_version: str = field(
+        default_factory=lambda: str(PublicationArtifact.dbt_schema_version)
+    )
     adapter_type: Optional[str] = None
     quoting: Dict[str, Any] = field(default_factory=dict)
 
@@ -37,6 +40,7 @@ class PublicModel(dbtClassMixin, ManifestOrPublicNode):
     is_latest_version: bool = False
     # list of model unique_ids
     public_dependencies: List[str] = field(default_factory=list)
+    generated_at: datetime = field(default_factory=datetime.utcnow)
 
     # Needed for ref resolution code
     @property
@@ -71,8 +75,16 @@ class PublicationMandatory:
 
 @dataclass
 @schema_version("publication", 1)
-class Publication(ArtifactMixin, PublicationMandatory):
+class PublicationArtifact(ArtifactMixin, PublicationMandatory):
     public_models: Dict[str, PublicModel] = field(default_factory=dict)
     metadata: PublicationMetadata = field(default_factory=PublicationMetadata)
     # list of project name strings
     dependencies: List[str] = field(default_factory=list)
+
+
+@dataclass
+class PublicationConfig(ArtifactMixin, PublicationMandatory):
+    metadata: PublicationMetadata = field(default_factory=PublicationMetadata)
+    # list of project name strings
+    dependencies: List[str] = field(default_factory=list)
+    public_model_ids: List[str] = field(default_factory=list)

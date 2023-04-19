@@ -67,7 +67,7 @@ class TestList:
             "json": {
                 "name": "my_snapshot",
                 "package_name": "test",
-                "depends_on": {"nodes": [], "macros": []},
+                "depends_on": {"nodes": [], "macros": [], "public_nodes": []},
                 "tags": [],
                 "config": {
                     "enabled": True,
@@ -113,7 +113,7 @@ class TestList:
             "json": {
                 "name": "a",
                 "package_name": "test",
-                "depends_on": {"nodes": [], "macros": []},
+                "depends_on": {"nodes": [], "macros": [], "public_nodes": []},
                 "tags": [],
                 "config": {
                     "enabled": True,
@@ -424,6 +424,7 @@ class TestList:
                     "depends_on": {
                         "nodes": ["model.test.outer"],
                         "macros": ["macro.dbt.test_not_null"],
+                        "public_nodes": [],
                     },
                     "tags": [],
                     "config": {
@@ -451,7 +452,7 @@ class TestList:
                 {
                     "name": "t",
                     "package_name": "test",
-                    "depends_on": {"nodes": [], "macros": []},
+                    "depends_on": {"nodes": [], "macros": [], "public_nodes": []},
                     "tags": [],
                     "config": {
                         "enabled": True,
@@ -481,6 +482,7 @@ class TestList:
                     "depends_on": {
                         "nodes": ["model.test.outer"],
                         "macros": ["macro.dbt.test_unique"],
+                        "public_nodes": [],
                     },
                     "tags": [],
                     "config": {

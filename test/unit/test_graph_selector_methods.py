@@ -9,7 +9,6 @@ from dbt.contracts.files import FileHash
 from dbt.contracts.graph.nodes import (
     DependsOn,
     MacroDependsOn,
-    ModelDependsOn,
     NodeConfig,
     Macro,
     ModelNode,
@@ -113,7 +112,7 @@ def make_model(
         tags=tags,
         refs=ref_values,
         sources=source_values,
-        depends_on=ModelDependsOn(
+        depends_on=DependsOn(
             nodes=depends_on_nodes,
             macros=depends_on_macros,
             public_nodes=[],

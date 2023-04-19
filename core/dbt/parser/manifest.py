@@ -668,6 +668,9 @@ class ManifestLoader:
 
         # TODO: get dependencies from dependencies.yml. When is it loaded? here?
         dependencies = []
+        if self.manifest.dependencies:
+            for project in self.manifest.dependencies.projects:
+                dependencies.append(project.name)
         publication = PublicationArtifact(
             metadata=metadata,
             project_name=self.root_project.project_name,

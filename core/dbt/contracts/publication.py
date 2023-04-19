@@ -32,6 +32,8 @@ class PublicationMetadata(BaseArtifactMetadata):
 
 @dataclass
 class PublicModel(dbtClassMixin, ManifestOrPublicNode):
+    """Used to represent cross-project models"""
+
     name: str
     package_name: str
     unique_id: str
@@ -76,6 +78,8 @@ class PublicationMandatory:
 @dataclass
 @schema_version("publication", 1)
 class PublicationArtifact(ArtifactMixin, PublicationMandatory):
+    """This represents the <project_name>_publication.json artifact"""
+
     public_models: Dict[str, PublicModel] = field(default_factory=dict)
     metadata: PublicationMetadata = field(default_factory=PublicationMetadata)
     # list of project name strings
@@ -84,6 +88,10 @@ class PublicationArtifact(ArtifactMixin, PublicationMandatory):
 
 @dataclass
 class PublicationConfig(ArtifactMixin, PublicationMandatory):
+    """This is for the part of the publication artifact which is stored in
+    the internal manifest. The public_nodes are stored separately in the manifest,
+    and just the unique_ids of the public models are stored here."""
+
     metadata: PublicationMetadata = field(default_factory=PublicationMetadata)
     # list of project name strings
     dependencies: List[str] = field(default_factory=list)

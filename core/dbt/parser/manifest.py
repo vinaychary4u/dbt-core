@@ -440,6 +440,7 @@ class ManifestLoader:
             self.manifest.selectors = self.root_project.manifest_selectors
 
             # load the publication artifacts and create the external nodes
+            # This also loads manifest.dependencies
             self.build_public_nodes()
 
             # update the refs, sources, docs and metrics depends_on.nodes

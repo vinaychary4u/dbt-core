@@ -954,10 +954,8 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         for pkg in candidates:
             node = self.ref_lookup.find(target_model_name, pkg, target_model_version, self)
 
-            if (
-                node is not None
-                and (hasattr(node, "config") and node.config.enabled)
-                or isinstance(node, PublicModel)
+            if node is not None and (
+                (hasattr(node, "config") and node.config.enabled) or node.is_public_node
             ):
                 return node
 

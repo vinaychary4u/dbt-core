@@ -69,6 +69,10 @@ class PublicModel(dbtClassMixin, ManifestOrPublicNode):
     def depends_on_public_nodes(self):
         return []
 
+    @property
+    def is_public_node(self):
+        return True
+
 
 @dataclass
 class PublicationMandatory:

@@ -509,6 +509,10 @@ class ParsedNode(NodeInfoMixin, ParsedNodeMandatory, SerializableType):
             and True
         )
 
+    @property
+    def is_public_node(self):
+        return False
+
 
 @dataclass
 class InjectedCTE(dbtClassMixin, Replaceable):
@@ -1416,6 +1420,10 @@ class ManifestOrPublicNode(Protocol):
 
     @property
     def search_name(self):
+        pass
+
+    @property
+    def is_public_node(self):
         pass
 
 

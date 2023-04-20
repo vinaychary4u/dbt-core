@@ -1508,7 +1508,7 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
 
         target_model_id = target_model.unique_id
 
-        if isinstance(target_model, PublicModel):
+        if target_model.is_public_node:
             node.depends_on.public_nodes.append(target_model_id)
         else:
             node.depends_on.nodes.append(target_model_id)

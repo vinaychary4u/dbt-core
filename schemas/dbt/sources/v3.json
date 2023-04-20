@@ -39,12 +39,12 @@
         },
         "dbt_version": {
           "type": "string",
-          "default": "1.5.0a1"
+          "default": "1.6.0a1"
         },
         "generated_at": {
           "type": "string",
           "format": "date-time",
-          "default": "2023-02-18T14:20:00.362449Z"
+          "default": "2023-04-20T16:03:19.377995Z"
         },
         "invocation_id": {
           "oneOf": [
@@ -55,7 +55,7 @@
               "type": "null"
             }
           ],
-          "default": "b1e277bf-2a2c-4d49-9d37-8d1a72cf26c7"
+          "default": "e9b0e75b-397e-41d6-8ce1-affa98701715"
         },
         "env": {
           "type": "object",
@@ -66,7 +66,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "FreshnessMetadata(dbt_schema_version: str = <factory>, dbt_version: str = '1.5.0a1', generated_at: datetime.datetime = <factory>, invocation_id: Optional[str] = <factory>, env: Dict[str, str] = <factory>)"
+      "description": "FreshnessMetadata(dbt_schema_version: str = <factory>, dbt_version: str = '1.6.0a1', generated_at: datetime.datetime = <factory>, invocation_id: Optional[str] = <factory>, env: Dict[str, str] = <factory>)"
     },
     "SourceFreshnessRuntimeError": {
       "type": "object",

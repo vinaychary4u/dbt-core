@@ -216,12 +216,12 @@
         },
         "dbt_version": {
           "type": "string",
-          "default": "1.5.0b5"
+          "default": "1.6.0a1"
         },
         "generated_at": {
           "type": "string",
           "format": "date-time",
-          "default": "2023-04-12T03:35:01.188035Z"
+          "default": "2023-04-20T16:03:19.381057Z"
         },
         "invocation_id": {
           "oneOf": [
@@ -232,7 +232,7 @@
               "type": "null"
             }
           ],
-          "default": "8aa1596d-f52f-40bc-ad4b-f5e48fc7e6c2"
+          "default": "e9b0e75b-397e-41d6-8ce1-affa98701715"
         },
         "env": {
           "type": "object",
@@ -451,7 +451,7 @@
         },
         "created_at": {
           "type": "number",
-          "default": 1681270501.189703
+          "default": 1682006599.383486
         },
         "config_call_dict": {
           "type": "object",
@@ -1155,7 +1155,7 @@
         },
         "created_at": {
           "type": "number",
-          "default": 1681270501.19095
+          "default": 1682006599.3853672
         },
         "config_call_dict": {
           "type": "object",
@@ -1542,7 +1542,7 @@
         },
         "created_at": {
           "type": "number",
-          "default": 1681270501.191555
+          "default": 1682006599.386244
         },
         "config_call_dict": {
           "type": "object",
@@ -1817,7 +1817,7 @@
         },
         "created_at": {
           "type": "number",
-          "default": 1681270501.192162
+          "default": 1682006599.387119
         },
         "config_call_dict": {
           "type": "object",
@@ -2180,7 +2180,7 @@
         },
         "created_at": {
           "type": "number",
-          "default": 1681270501.192949
+          "default": 1682006599.3882382
         },
         "config_call_dict": {
           "type": "object",
@@ -2445,7 +2445,7 @@
         },
         "created_at": {
           "type": "number",
-          "default": 1681270501.1935291
+          "default": 1682006599.3901162
         },
         "config_call_dict": {
           "type": "object",
@@ -2703,7 +2703,7 @@
         },
         "created_at": {
           "type": "number",
-          "default": 1681270501.19419
+          "default": 1682006599.391119
         },
         "config_call_dict": {
           "type": "object",
@@ -2998,7 +2998,7 @@
         },
         "created_at": {
           "type": "number",
-          "default": 1681270501.1952698
+          "default": 1682006599.392722
         },
         "config_call_dict": {
           "type": "object",
@@ -3485,7 +3485,7 @@
         },
         "created_at": {
           "type": "number",
-          "default": 1681270501.1968079
+          "default": 1682006599.394193
         },
         "config_call_dict": {
           "type": "object",
@@ -3887,7 +3887,7 @@
         },
         "created_at": {
           "type": "number",
-          "default": 1681270501.197819
+          "default": 1682006599.395641
         }
       },
       "additionalProperties": false,
@@ -3997,12 +3997,12 @@
         },
         "dbt_version": {
           "type": "string",
-          "default": "1.5.0b5"
+          "default": "1.6.0a1"
         },
         "generated_at": {
           "type": "string",
           "format": "date-time",
-          "default": "2023-04-12T03:35:01.185979Z"
+          "default": "2023-04-20T16:03:19.377995Z"
         },
         "invocation_id": {
           "oneOf": [
@@ -4013,7 +4013,7 @@
               "type": "null"
             }
           ],
-          "default": "8aa1596d-f52f-40bc-ad4b-f5e48fc7e6c2"
+          "default": "e9b0e75b-397e-41d6-8ce1-affa98701715"
         },
         "env": {
           "type": "object",
@@ -4024,7 +4024,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "FreshnessMetadata(dbt_schema_version: str = <factory>, dbt_version: str = '1.5.0b5', generated_at: datetime.datetime = <factory>, invocation_id: Optional[str] = <factory>, env: Dict[str, str] = <factory>)"
+      "description": "FreshnessMetadata(dbt_schema_version: str = <factory>, dbt_version: str = '1.6.0a1', generated_at: datetime.datetime = <factory>, invocation_id: Optional[str] = <factory>, env: Dict[str, str] = <factory>)"
     },
     "SourceFreshnessRuntimeError": {
       "type": "object",
@@ -4366,7 +4366,7 @@
         },
         "created_at": {
           "type": "number",
-          "default": 1681270501.198105
+          "default": 1682006599.396068
         },
         "supported_languages": {
           "oneOf": [
@@ -4606,7 +4606,7 @@
         },
         "created_at": {
           "type": "number",
-          "default": 1681270501.198782
+          "default": 1682006599.3970711
         }
       },
       "additionalProperties": false,
@@ -4826,7 +4826,7 @@
         },
         "created_at": {
           "type": "number",
-          "default": 1681270501.199492
+          "default": 1682006599.398029
         },
         "group": {
           "oneOf": [

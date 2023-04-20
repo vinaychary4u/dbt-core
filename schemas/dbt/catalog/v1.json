@@ -48,12 +48,12 @@
         },
         "dbt_version": {
           "type": "string",
-          "default": "1.5.0a1"
+          "default": "1.6.0a1"
         },
         "generated_at": {
           "type": "string",
           "format": "date-time",
-          "default": "2023-02-09T23:46:55.265093Z"
+          "default": "2023-04-20T16:03:19.379945Z"
         },
         "invocation_id": {
           "oneOf": [
@@ -64,7 +64,7 @@
               "type": "null"
             }
           ],
-          "default": "e6a9b266-203d-4fec-93af-fb8f55423a6b"
+          "default": "e9b0e75b-397e-41d6-8ce1-affa98701715"
         },
         "env": {
           "type": "object",
@@ -75,7 +75,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "CatalogMetadata(dbt_schema_version: str = <factory>, dbt_version: str = '1.5.0a1', generated_at: datetime.datetime = <factory>, invocation_id: Optional[str] = <factory>, env: Dict[str, str] = <factory>)"
+      "description": "CatalogMetadata(dbt_schema_version: str = <factory>, dbt_version: str = '1.6.0a1', generated_at: datetime.datetime = <factory>, invocation_id: Optional[str] = <factory>, env: Dict[str, str] = <factory>)"
     },
     "CatalogTable": {
       "type": "object",

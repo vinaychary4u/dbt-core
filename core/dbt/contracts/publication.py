@@ -73,6 +73,10 @@ class PublicModel(dbtClassMixin, ManifestOrPublicNode):
     def is_public_node(self):
         return True
 
+    @property
+    def is_versioned(self):
+        return self.version is not None
+
 
 @dataclass
 class PublicationMandatory:

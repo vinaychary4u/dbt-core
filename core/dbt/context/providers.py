@@ -40,7 +40,6 @@ from dbt.contracts.graph.nodes import (
     RefArgs,
 )
 from dbt.contracts.graph.metrics import MetricReference, ResolvedMetricReference
-from dbt.contracts.publication import PublicModel
 from dbt.contracts.graph.unparsed import NodeVersion
 from dbt.events.functions import get_metadata_vars
 from dbt.exceptions import (
@@ -500,7 +499,7 @@ class RuntimeRefResolver(BaseRefResolver):
         return self.create_relation(target_model)
 
     def create_relation(self, target_model: ManifestNode) -> RelationProxy:
-        if isinstance(target_model, PublicModel):
+        if target_model.is_public_node:
             return self.Relation.create_from_relation_name(self.config, target_model.relation_name)
         elif target_model.is_ephemeral_model:
             self.model.set_cte(target_model.unique_id, None)

@@ -265,6 +265,10 @@ class DependsOn(MacroDependsOn):
         if value not in self.nodes:
             self.nodes.append(value)
 
+    def add_public_node(self, value: str):
+        if value not in self.public_nodes:
+            self.public_nodes.append(value)
+
 
 @dataclass
 class ParsedNodeMandatory(GraphNode, HasRelationMetadata, Replaceable):

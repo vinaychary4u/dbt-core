@@ -3,7 +3,7 @@ import pathlib
 
 from dbt.tests.util import run_dbt, get_artifact, write_file
 from dbt.contracts.publication import PublicationArtifact, PublicModel
-from dbt.exceptions import PublicationConfigNotFound
+from dbt.exceptions import PublicationConfigNotFound, TargetNotFoundError
 
 
 model_one_sql = """
@@ -141,18 +141,32 @@ class TestDependenciesYml:
         assert resolved_node.unique_id == "model.marketing.fct_one"
 
         # add new model that references external_node and parse
-        write_file(ext_node_model_sql, project.project_root, "models", "ext_node_model.sql")
+        write_file(ext_node_model_sql, project.project_root, "models", "test_model_one.sql")
         manifest = run_dbt(["parse"])
 
-        model_id = "model.test.ext_node_model"
+        model_id = "model.test.test_model_one"
         public_model_id = "model.marketing.fct_one"
         model = manifest.nodes[model_id]
         assert model.depends_on.public_nodes == [public_model_id]
         assert public_model_id in manifest.parent_map
         assert manifest.parent_map[model_id] == [public_model_id]
+        # check that publication configs contain correct list of public model unique_ids
+        assert manifest.publications["marketing"].public_model_ids == [
+            "model.marketing.fct_one",
+            "model.marketing.fct_two",
+        ]
+        assert len(manifest.public_nodes) == 2
 
         # Create the relation for the public node (fct_one)
         project.run_sql(f'create table "{project.test_schema}"."fct_one" (id integer)')
         project.run_sql(f'insert into "{project.test_schema}"."fct_one" values (1), (2)')
         results = run_dbt(["run"])
         assert len(results) == 4
+
+        # Change public node name from fct_one to fct_three
+        m_pub_json = m_pub_json.replace("fct_one", "fct_three")
+        write_file(m_pub_json, project.project_root, "publications", "marketing_publication.json")
+        write_file(ext_node_model_sql, project.project_root, "models", "test_model_two.sql")
+        # test_model_one references a missing public model
+        with pytest.raises(TargetNotFoundError):
+            manifest = run_dbt(["parse"])

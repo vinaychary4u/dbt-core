@@ -684,6 +684,9 @@ class ManifestLoader:
         publication.write(path)
 
     def build_public_nodes(self):
+        public_nodes_partially_parsing = False
+
+        # Load the dependencies from the dependencies.yml file
         dependencies_filepath = resolve_path_from_base(
             "dependencies.yml", self.root_project.project_root
         )
@@ -694,6 +697,27 @@ class ManifestLoader:
             self.manifest.dependencies = dependencies
         else:
             self.manifest.dependencies = None
+
+        # collect the names of the projects for later use
+        dependent_project_names = []
+        if self.manifest.dependencies:
+            for project in self.manifest.dependencies.projects:
+                dependent_project_names.append(project.name)
+
+        # clean up previous publications that are no longer specified
+        # and save previous publications, for later removal of references
+        saved_manifest_publications = {}
+        if self.manifest.publications:
+            for project_name, publication in self.manifest.publications.items():
+                if project_name not in dependent_project_names:
+                    remove_dependent_project_references(self.manifest, publication)
+                    self.manifest.publications.pop(project_name)
+                    public_nodes_partially_parsing = True
+            saved_manifest_publications = self.manifest.publications
+            self.manifest.publications = {}
+            # Empty public_nodes since we're re-generating them all
+            self.manifest.public_nodes = {}
+
         if self.manifest.dependencies:
             for project in self.manifest.dependencies.projects:
                 # look for a <project_name>_publication.json file for every project in the 'publications' dir
@@ -718,7 +742,22 @@ class ManifestLoader:
                     raise PublicationConfigNotFound(
                         project=project.name, file_name=publication_file_name
                     )
-            self.manifest.ref_lookup.populate_public_nodes(self.manifest)
+
+        # Now that we've loaded the current publications and public_nodes, look for
+        # changed publications so we can reset the public_nodes references
+        for project_name, publication in self.manifest.publications.items():
+            if (
+                project_name in saved_manifest_publications
+                and publication.metadata.generated_at
+                != saved_manifest_publications[project_name].metadata.generated_at
+            ):
+                remove_dependent_project_references(
+                    self.manifest, saved_manifest_publications[project_name]
+                )
+                public_nodes_partially_parsing = True
+
+        if self.manifest.public_nodes or public_nodes_partially_parsing:
+            self.manifest.rebuild_ref_lookup()
 
     def is_partial_parsable(self, manifest: Manifest) -> Tuple[bool, Optional[str]]:
         """Compare the global hashes of the read-in parse results' values to
@@ -1349,7 +1388,7 @@ def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposur
 
         target_model_id = target_model.unique_id
 
-        exposure.depends_on.nodes.append(target_model_id)
+        exposure.depends_on.add_node(target_model_id)
         manifest.update_exposure(exposure)
 
 
@@ -1401,7 +1440,7 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: M
 
         target_model_id = target_model.unique_id
 
-        metric.depends_on.nodes.append(target_model_id)
+        metric.depends_on.add_node(target_model_id)
         manifest.update_metric(metric)
 
 
@@ -1509,9 +1548,20 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
         target_model_id = target_model.unique_id
 
         if target_model.is_public_node:
-            node.depends_on.public_nodes.append(target_model_id)
+            node.depends_on.add_public_node(target_model_id)
         else:
-            node.depends_on.nodes.append(target_model_id)
+            node.depends_on.add_node(target_model_id)
+
+
+def remove_dependent_project_references(manifest: Manifest, publication: PublicationConfig):
+    for unique_id in publication.public_model_ids:
+        for child_id in manifest.child_map[unique_id]:
+            print(f"--- child_id: {child_id}")
+            node = manifest.expect(child_id)
+            if hasattr(node.depends_on, "public_nodes"):
+                node.depends_on.public_nodes.remove(unique_id)  # type: ignore
+                # set created_at so process_refs happens
+                node.created_at = time.time()
 
 
 def _process_sources_for_exposure(manifest: Manifest, current_project: str, exposure: Exposure):

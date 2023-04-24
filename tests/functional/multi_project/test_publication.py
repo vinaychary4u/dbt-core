@@ -163,10 +163,12 @@ class TestDependenciesYml:
         results = run_dbt(["run"])
         assert len(results) == 4
 
+        # Test for only publication artifact has changed, no partial parsing
         # Change public node name from fct_one to fct_three
         m_pub_json = m_pub_json.replace("fct_one", "fct_three")
+        # Change generated_at field
+        m_pub_json = m_pub_json.replace("04-13", "04-24")
         write_file(m_pub_json, project.project_root, "publications", "marketing_publication.json")
-        write_file(ext_node_model_sql, project.project_root, "models", "test_model_two.sql")
         # test_model_one references a missing public model
         with pytest.raises(TargetNotFoundError):
             manifest = run_dbt(["parse"])

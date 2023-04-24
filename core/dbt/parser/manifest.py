@@ -462,6 +462,19 @@ class ManifestLoader:
                 self.manifest._parsing_info.static_analysis_path_count
             )
 
+        # Load dependencies, load the publication artifacts and create the external nodes.
+        # Reprocess refs if changes.
+        public_nodes_changed = False
+        if skip_parsing:
+            # If we didn't skip parsing, this will have already run because it must run
+            # before process_refs. If we did skip parsing, then it's possible that only
+            # publications have changed and we need to run this to capture that.
+            self.manifest.build_parent_and_child_maps()
+            public_nodes_changed = self.build_public_nodes()
+            if public_nodes_changed:
+                self.process_refs(self.root_project.project_name)
+
+        if not skip_parsing or public_nodes_changed:
             # Following adds publications to manifest too...
             self.write_artifacts()
             # write out the fully parsed manifest
@@ -684,7 +697,7 @@ class ManifestLoader:
         publication.write(path)
 
     def build_public_nodes(self):
-        public_nodes_partially_parsing = False
+        public_nodes_rebuilt = False
 
         # Load the dependencies from the dependencies.yml file
         dependencies_filepath = resolve_path_from_base(
@@ -712,7 +725,7 @@ class ManifestLoader:
                 if project_name not in dependent_project_names:
                     remove_dependent_project_references(self.manifest, publication)
                     self.manifest.publications.pop(project_name)
-                    public_nodes_partially_parsing = True
+                    public_nodes_rebuilt = True
             saved_manifest_publications = self.manifest.publications
             self.manifest.publications = {}
             # Empty public_nodes since we're re-generating them all
@@ -754,10 +767,13 @@ class ManifestLoader:
                 remove_dependent_project_references(
                     self.manifest, saved_manifest_publications[project_name]
                 )
-                public_nodes_partially_parsing = True
+                public_nodes_rebuilt = True
+            elif project_name not in saved_manifest_publications:
+                public_nodes_rebuilt = True
 
-        if self.manifest.public_nodes or public_nodes_partially_parsing:
+        if public_nodes_rebuilt:
             self.manifest.rebuild_ref_lookup()
+        return public_nodes_rebuilt
 
     def is_partial_parsable(self, manifest: Manifest) -> Tuple[bool, Optional[str]]:
         """Compare the global hashes of the read-in parse results' values to

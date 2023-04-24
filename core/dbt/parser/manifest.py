@@ -24,6 +24,7 @@ from dbt.adapters.factory import (
 from dbt.helper_types import PathSet
 from dbt.clients.yaml_helper import load_yaml_text
 from dbt.events.functions import fire_event, get_invocation_id, warn_or_error
+from dbt.events.helpers import datetime_to_json_string
 from dbt.events.types import (
     PartialParsingErrorProcessingFile,
     PartialParsingError,
@@ -36,6 +37,7 @@ from dbt.events.types import (
     NodeNotFoundOrDisabled,
     StateCheckVarsHash,
     Note,
+    PublicationArtifactChanged,
 )
 from dbt.logger import DbtProcessState
 from dbt.node_types import NodeType, AccessType
@@ -680,7 +682,6 @@ class ManifestLoader:
             )
             public_models[unique_id] = public_model
 
-        # TODO: get dependencies from dependencies.yml. When is it loaded? here?
         dependencies = []
         if self.manifest.dependencies:
             for project in self.manifest.dependencies.projects:
@@ -697,6 +698,9 @@ class ManifestLoader:
         publication.write(path)
 
     def build_public_nodes(self):
+        """This method loads the dependencies from dependencies.yml, reads in the
+        the publication artifacts and adds the PublicModels to the manifest
+        "public_nodes" dictionary."""
         public_nodes_rebuilt = False
 
         # Load the dependencies from the dependencies.yml file
@@ -712,6 +716,7 @@ class ManifestLoader:
         else:
             self.manifest.dependencies = None
 
+        # Return if there weren't any dependencies before and aren't any now.
         if saved_manifest_dependencies is None and self.manifest.dependencies is None:
             return public_nodes_rebuilt
 
@@ -729,6 +734,15 @@ class ManifestLoader:
                 if project_name not in dependent_project_names:
                     remove_dependent_project_references(self.manifest, publication)
                     self.manifest.publications.pop(project_name)
+                    fire_event(
+                        PublicationArtifactChanged(
+                            action="removed",
+                            project_name=project_name,
+                            generated_at=datetime_to_json_string(
+                                publication.metadata.generated_at
+                            ),
+                        )
+                    )
                     public_nodes_rebuilt = True
             saved_manifest_publications = self.manifest.publications
             self.manifest.publications = {}
@@ -771,8 +785,22 @@ class ManifestLoader:
                 remove_dependent_project_references(
                     self.manifest, saved_manifest_publications[project_name]
                 )
+                fire_event(
+                    PublicationArtifactChanged(
+                        action="updated",
+                        project_name=project_name,
+                        generated_at=datetime_to_json_string(publication.metadata.generated_at),
+                    )
+                )
                 public_nodes_rebuilt = True
             elif project_name not in saved_manifest_publications:
+                fire_event(
+                    PublicationArtifactChanged(
+                        action="added",
+                        project_name=project_name,
+                        generated_at=datetime_to_json_string(publication.metadata.generated_at),
+                    )
+                )
                 public_nodes_rebuilt = True
 
         if public_nodes_rebuilt:

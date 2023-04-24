@@ -703,6 +703,7 @@ class ManifestLoader:
         dependencies_filepath = resolve_path_from_base(
             "dependencies.yml", self.root_project.project_root
         )
+        saved_manifest_dependencies = self.manifest.dependencies
         if path_exists(dependencies_filepath):
             contents = load_file_contents(dependencies_filepath)
             dependencies_dict = load_yaml_text(contents)
@@ -710,6 +711,9 @@ class ManifestLoader:
             self.manifest.dependencies = dependencies
         else:
             self.manifest.dependencies = None
+
+        if saved_manifest_dependencies is None and self.manifest.dependencies is None:
+            return public_nodes_rebuilt
 
         # collect the names of the projects for later use
         dependent_project_names = []
@@ -1572,7 +1576,6 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
 def remove_dependent_project_references(manifest: Manifest, publication: PublicationConfig):
     for unique_id in publication.public_model_ids:
         for child_id in manifest.child_map[unique_id]:
-            print(f"--- child_id: {child_id}")
             node = manifest.expect(child_id)
             if hasattr(node.depends_on, "public_nodes"):
                 node.depends_on.public_nodes.remove(unique_id)  # type: ignore

@@ -172,3 +172,11 @@ class TestDependenciesYml:
         # test_model_one references a missing public model
         with pytest.raises(TargetNotFoundError):
             manifest = run_dbt(["parse"])
+
+        # Add another public reference
+        m_pub_json = m_pub_json.replace("fct_three", "fct_one")
+        m_pub_json = m_pub_json.replace("04-13", "04-25")
+        write_file(m_pub_json, project.project_root, "publications", "marketing_publication.json")
+        write_file(ext_node_model_sql, project.project_root, "models", "test_model_two.sql")
+        results = run_dbt(["run"])
+        assert len(results) == 5

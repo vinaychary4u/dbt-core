@@ -475,6 +475,8 @@ class ManifestLoader:
             public_nodes_changed = self.build_public_nodes()
             if public_nodes_changed:
                 self.process_refs(self.root_project.project_name)
+                # Rebuild parent and child maps because they may haave changed
+                self.manifest.build_parent_and_child_maps()
 
         if not skip_parsing or public_nodes_changed:
             # Following adds publications to manifest too...

@@ -39,10 +39,14 @@ class PublicModel(dbtClassMixin, ManifestOrPublicNode):
     unique_id: str
     relation_name: str
     version: Optional[NodeVersion] = None
-    is_latest_version: bool = False
+    latest_version: Optional[NodeVersion] = None
     # list of model unique_ids
     public_dependencies: List[str] = field(default_factory=list)
     generated_at: datetime = field(default_factory=datetime.utcnow)
+
+    @property
+    def is_latest_version(self) -> bool:
+        return self.version is not None and self.version == self.latest_version
 
     # Needed for ref resolution code
     @property

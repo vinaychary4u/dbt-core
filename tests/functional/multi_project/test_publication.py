@@ -60,7 +60,7 @@ marketing_pub_json = """
       "unique_id": "model.marketing.fct_one",
       "relation_name": '"dbt"."test_schema"."fct_one"',
       "version": null,
-      "is_latest_version": false,
+      "latest_version": null,
       "public_dependencies": [],
       "generated_at": "2023-04-13T17:17:58.128706Z",
     },
@@ -70,7 +70,7 @@ marketing_pub_json = """
       "unique_id": "model.marketing.fct_two",
       "relation_name": '"dbt"."test_schema"."fct_two"',
       "version": null,
-      "is_latest_version": false,
+      "latest_version": null,
       "public_dependencies": ["model.test.fct_one"],
       "generated_at": "2023-04-13T17:17:58.128706Z",
     }

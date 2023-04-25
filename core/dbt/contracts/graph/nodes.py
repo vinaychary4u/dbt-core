@@ -1412,6 +1412,7 @@ class ManifestOrPublicNode(Protocol):
     package_name: str
     unique_id: str
     version: Optional[NodeVersion]
+    latest_version: Optional[NodeVersion]
     relation_name: str
 
     @property

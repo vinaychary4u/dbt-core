@@ -676,7 +676,7 @@ class ManifestLoader:
                 unique_id=model.unique_id,
                 relation_name=model.relation_name,
                 version=model.version,
-                is_latest_version=model.is_latest_version,
+                latest_version=model.latest_version,
                 public_dependencies=list(public_dependencies),
                 generated_at=metadata.generated_at,
             )
@@ -1437,7 +1437,6 @@ def _process_refs_for_exposure(manifest: Manifest, current_project: str, exposur
         target_model_id = target_model.unique_id
 
         exposure.depends_on.add_node(target_model_id)
-        manifest.update_exposure(exposure)
 
 
 def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: Metric):
@@ -1489,7 +1488,6 @@ def _process_refs_for_metric(manifest: Manifest, current_project: str, metric: M
         target_model_id = target_model.unique_id
 
         metric.depends_on.add_node(target_model_id)
-        manifest.update_metric(metric)
 
 
 def _process_metrics_for_node(
@@ -1538,7 +1536,7 @@ def _process_metrics_for_node(
 
         target_metric_id = target_metric.unique_id
 
-        node.depends_on.nodes.append(target_metric_id)
+        node.depends_on.add_node(target_metric_id)
 
 
 def _process_refs_for_node(manifest: Manifest, current_project: str, node: ManifestNode):
@@ -1630,8 +1628,7 @@ def _process_sources_for_exposure(manifest: Manifest, current_project: str, expo
             )
             continue
         target_source_id = target_source.unique_id
-        exposure.depends_on.nodes.append(target_source_id)
-        manifest.update_exposure(exposure)
+        exposure.depends_on.add_node(target_source_id)
 
 
 def _process_sources_for_metric(manifest: Manifest, current_project: str, metric: Metric):
@@ -1653,8 +1650,7 @@ def _process_sources_for_metric(manifest: Manifest, current_project: str, metric
             )
             continue
         target_source_id = target_source.unique_id
-        metric.depends_on.nodes.append(target_source_id)
-        manifest.update_metric(metric)
+        metric.depends_on.add_node(target_source_id)
 
 
 def _process_sources_for_node(manifest: Manifest, current_project: str, node: ManifestNode):
@@ -1682,8 +1678,7 @@ def _process_sources_for_node(manifest: Manifest, current_project: str, node: Ma
             )
             continue
         target_source_id = target_source.unique_id
-        node.depends_on.nodes.append(target_source_id)
-        manifest.update_node(node)
+        node.depends_on.add_node(target_source_id)
 
 
 # This is called in task.rpc.sql_commands when a "dynamic" node is

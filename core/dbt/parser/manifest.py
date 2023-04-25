@@ -4,7 +4,19 @@ from dataclasses import field
 from datetime import datetime
 import os
 import traceback
-from typing import Dict, Optional, Mapping, Callable, Any, List, Type, Union, Tuple, Set
+from typing import (
+    Dict,
+    Optional,
+    Mapping,
+    Callable,
+    Any,
+    List,
+    Type,
+    Union,
+    Tuple,
+    Set,
+    MutableMapping,
+)
 from itertools import chain
 import time
 from dbt.events.base_types import EventLevel
@@ -475,8 +487,7 @@ class ManifestLoader:
             public_nodes_changed = self.build_public_nodes()
             if public_nodes_changed:
                 self.process_refs(self.root_project.project_name)
-                # Rebuild parent and child maps because they may haave changed
-                self.manifest.build_parent_and_child_maps()
+                # parent and child maps will be rebuilt by write_manifest
 
         if not skip_parsing or public_nodes_changed:
             # Following adds publications to manifest too...
@@ -668,8 +679,7 @@ class ManifestLoader:
             model = self.manifest.nodes[unique_id]
             # public_dependencies is the intersection of all parent nodes plus public nodes
             public_dependencies = []
-            # parents is a set
-            parents = graph.select_parents({unique_id})
+            parents: set = graph.select_parents({unique_id})
             public_dependencies = parents.intersection(set_of_public_unique_ids)
 
             public_model = PublicModel(
@@ -699,10 +709,11 @@ class ManifestLoader:
         path = os.path.join(self.root_project.target_path, publication_file_name)
         publication.write(path)
 
-    def build_public_nodes(self):
+    def build_public_nodes(self) -> bool:
         """This method loads the dependencies from dependencies.yml, reads in the
         the publication artifacts and adds the PublicModels to the manifest
-        "public_nodes" dictionary."""
+        "public_nodes" dictionary. It returns a boolean that indicates that
+        public nodes have been rebuilt."""
         public_nodes_rebuilt = False
 
         # Load the dependencies from the dependencies.yml file
@@ -718,9 +729,9 @@ class ManifestLoader:
         else:
             self.manifest.dependencies = None
 
-        # Return if there weren't any dependencies before and aren't any now.
+        # Return False if there weren't any dependencies before and aren't any now.
         if saved_manifest_dependencies is None and self.manifest.dependencies is None:
-            return public_nodes_rebuilt
+            return False
 
         # collect the names of the projects for later use
         dependent_project_names = []
@@ -730,7 +741,7 @@ class ManifestLoader:
 
         # clean up previous publications that are no longer specified
         # and save previous publications, for later removal of references
-        saved_manifest_publications = {}
+        saved_manifest_publications: MutableMapping[str, PublicationConfig] = {}
         if self.manifest.publications:
             for project_name, publication in self.manifest.publications.items():
                 if project_name not in dependent_project_names:

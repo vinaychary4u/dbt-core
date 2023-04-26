@@ -959,10 +959,6 @@ class Macro(BaseNode):
     def depends_on_macros(self):
         return self.depends_on.macros
 
-    @property
-    def depends_on_public_nodes(self):
-        return []
-
 
 # ====================================
 # Documentation node
@@ -1200,7 +1196,7 @@ class Exposure(GraphNode):
 
     @property
     def depends_on_public_nodes(self):
-        return []
+        return self.depends_on.public_nodes
 
     @property
     def search_name(self):
@@ -1296,7 +1292,7 @@ class Metric(GraphNode):
 
     @property
     def depends_on_public_nodes(self):
-        return []
+        return self.depends_on.public_nodes
 
     @property
     def search_name(self):

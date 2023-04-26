@@ -455,7 +455,9 @@ class ManifestLoader:
 
             # load the publication artifacts and create the external nodes
             # This also loads manifest.dependencies
-            self.build_public_nodes()
+            public_nodes_changed = self.build_public_nodes()
+            if public_nodes_changed:
+                self.manifest.rebuild_ref_lookup()
 
             # update the refs, sources, docs and metrics depends_on.nodes
             # These check the created_at time on the nodes to
@@ -486,6 +488,7 @@ class ManifestLoader:
             self.manifest.build_parent_and_child_maps()
             public_nodes_changed = self.build_public_nodes()
             if public_nodes_changed:
+                self.manifest.rebuild_ref_lookup()
                 self.process_refs(self.root_project.project_name)
                 # parent and child maps will be rebuilt by write_manifest
 
@@ -714,7 +717,7 @@ class ManifestLoader:
         the publication artifacts and adds the PublicModels to the manifest
         "public_nodes" dictionary. It returns a boolean that indicates that
         public nodes have been rebuilt."""
-        public_nodes_rebuilt = False
+        public_nodes_changed = False
 
         # Load the dependencies from the dependencies.yml file
         dependencies_filepath = resolve_path_from_base(
@@ -756,7 +759,7 @@ class ManifestLoader:
                             ),
                         )
                     )
-                    public_nodes_rebuilt = True
+                    public_nodes_changed = True
             saved_manifest_publications = self.manifest.publications
             self.manifest.publications = {}
             # Empty public_nodes since we're re-generating them all
@@ -805,7 +808,7 @@ class ManifestLoader:
                         generated_at=datetime_to_json_string(publication.metadata.generated_at),
                     )
                 )
-                public_nodes_rebuilt = True
+                public_nodes_changed = True
             elif project_name not in saved_manifest_publications:
                 fire_event(
                     PublicationArtifactChanged(
@@ -814,11 +817,9 @@ class ManifestLoader:
                         generated_at=datetime_to_json_string(publication.metadata.generated_at),
                     )
                 )
-                public_nodes_rebuilt = True
+                public_nodes_changed = True
 
-        if public_nodes_rebuilt:
-            self.manifest.rebuild_ref_lookup()
-        return public_nodes_rebuilt
+        return public_nodes_changed
 
     def is_partial_parsable(self, manifest: Manifest) -> Tuple[bool, Optional[str]]:
         """Compare the global hashes of the read-in parse results' values to

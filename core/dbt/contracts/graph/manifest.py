@@ -227,9 +227,9 @@ class RefableLookup(dbtClassMixin):
     def perform_lookup(self, unique_id: UniqueID, manifest) -> ManifestOrPublicNode:
         if unique_id in manifest.nodes:
             node = manifest.nodes[unique_id]
-        if unique_id in manifest.public_nodes:
+        elif unique_id in manifest.public_nodes:
             node = manifest.public_nodes[unique_id]
-        if not node:
+        else:
             raise dbt.exceptions.DbtInternalError(
                 f"Node {unique_id} found in cache but not found in manifest"
             )

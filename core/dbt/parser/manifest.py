@@ -653,9 +653,7 @@ class ManifestLoader:
             raise
 
     def write_artifacts(self):
-        # write out manifest.json
-        # The following will also cause the parent and child maps to be built
-        write_manifest(self.manifest, self.root_project.target_path)
+        # The manifest.json is written out in a task, so we're not writing it here
 
         # build publication metadata
         metadata = PublicationMetadata(

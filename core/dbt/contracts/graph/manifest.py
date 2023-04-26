@@ -707,6 +707,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             "metrics": {k: v.to_dict(omit_none=False) for k, v in self.metrics.items()},
             "nodes": {k: v.to_dict(omit_none=False) for k, v in self.nodes.items()},
             "sources": {k: v.to_dict(omit_none=False) for k, v in self.sources.items()},
+            "public_nodes": {k: v.to_dict(omit_none=False) for k, v in self.public_nodes.items()},
         }
 
     def build_disabled_by_file_id(self):

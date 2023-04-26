@@ -61,7 +61,7 @@ marketing_pub_json = """
       "relation_name": '"dbt"."test_schema"."fct_one"',
       "version": null,
       "latest_version": null,
-      "public_dependencies": [],
+      "public_node_dependencies": [],
       "generated_at": "2023-04-13T17:17:58.128706Z",
     },
     "model.marketing.fct_two": {
@@ -71,7 +71,7 @@ marketing_pub_json = """
       "relation_name": '"dbt"."test_schema"."fct_two"',
       "version": null,
       "latest_version": null,
-      "public_dependencies": ["model.test.fct_one"],
+      "public_node_dependencies": ["model.test.fct_one"],
       "generated_at": "2023-04-13T17:17:58.128706Z",
     }
   },
@@ -102,7 +102,7 @@ class TestPublicationArtifact:
         publication = PublicationArtifact.from_dict(publication_dict)
         assert publication
         assert len(publication.public_models) == 2
-        assert publication.public_models["model.test.model_three"].public_dependencies == [
+        assert publication.public_models["model.test.model_three"].public_node_dependencies == [
             "model.test.model_one"
         ]
 

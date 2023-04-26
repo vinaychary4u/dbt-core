@@ -11,14 +11,14 @@ from dbt.node_types import NodeType, AccessType
 
 
 @dataclass
-class DependentProjects(dbtClassMixin):
+class ProjectDependency(dbtClassMixin):
     name: str
     environment: str
 
 
 @dataclass
-class Dependencies(dbtClassMixin):
-    projects: List[DependentProjects] = field(default_factory=list)
+class ProjectDependencies(dbtClassMixin):
+    projects: List[ProjectDependency] = field(default_factory=list)
 
 
 @dataclass
@@ -41,7 +41,7 @@ class PublicModel(dbtClassMixin, ManifestOrPublicNode):
     version: Optional[NodeVersion] = None
     latest_version: Optional[NodeVersion] = None
     # list of model unique_ids
-    public_dependencies: List[str] = field(default_factory=list)
+    public_node_dependencies: List[str] = field(default_factory=list)
     generated_at: datetime = field(default_factory=datetime.utcnow)
 
     @property

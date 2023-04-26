@@ -99,7 +99,7 @@ from dbt.contracts.publication import (
     PublicationArtifact,
     PublicationMetadata,
     PublicModel,
-    Dependencies,
+    ProjectDependencies,
 )
 from dbt.exceptions import TargetNotFoundError, AmbiguousAliasError, PublicationConfigNotFound
 from dbt.parser.base import Parser
@@ -678,10 +678,10 @@ class ManifestLoader:
         public_models = {}
         for unique_id in public_model_ids:
             model = self.manifest.nodes[unique_id]
-            # public_dependencies is the intersection of all parent nodes plus public nodes
-            public_dependencies = []
+            # public_node_dependencies is the intersection of all parent nodes plus public nodes
+            public_node_dependencies = []
             parents: set = graph.select_parents({unique_id})
-            public_dependencies = parents.intersection(set_of_public_unique_ids)
+            public_node_dependencies = parents.intersection(set_of_public_unique_ids)
 
             public_model = PublicModel(
                 name=model.name,
@@ -690,14 +690,14 @@ class ManifestLoader:
                 relation_name=model.relation_name,
                 version=model.version,
                 latest_version=model.latest_version,
-                public_dependencies=list(public_dependencies),
+                public_node_dependencies=list(public_node_dependencies),
                 generated_at=metadata.generated_at,
             )
             public_models[unique_id] = public_model
 
         dependencies = []
-        if self.manifest.dependencies:
-            for project in self.manifest.dependencies.projects:
+        if self.manifest.project_dependencies:
+            for project in self.manifest.project_dependencies.projects:
                 dependencies.append(project.name)
         publication = PublicationArtifact(
             metadata=metadata,
@@ -721,23 +721,23 @@ class ManifestLoader:
         dependencies_filepath = resolve_path_from_base(
             "dependencies.yml", self.root_project.project_root
         )
-        saved_manifest_dependencies = self.manifest.dependencies
+        saved_manifest_dependencies = self.manifest.project_dependencies
         if path_exists(dependencies_filepath):
             contents = load_file_contents(dependencies_filepath)
             dependencies_dict = load_yaml_text(contents)
-            dependencies = Dependencies.from_dict(dependencies_dict)
-            self.manifest.dependencies = dependencies
+            dependencies = ProjectDependencies.from_dict(dependencies_dict)
+            self.manifest.project_dependencies = dependencies
         else:
-            self.manifest.dependencies = None
+            self.manifest.project_dependencies = None
 
         # Return False if there weren't any dependencies before and aren't any now.
-        if saved_manifest_dependencies is None and self.manifest.dependencies is None:
+        if saved_manifest_dependencies is None and self.manifest.project_dependencies is None:
             return False
 
         # collect the names of the projects for later use
         dependent_project_names = []
-        if self.manifest.dependencies:
-            for project in self.manifest.dependencies.projects:
+        if self.manifest.project_dependencies:
+            for project in self.manifest.project_dependencies.projects:
                 dependent_project_names.append(project.name)
 
         # clean up previous publications that are no longer specified
@@ -763,8 +763,8 @@ class ManifestLoader:
             # Empty public_nodes since we're re-generating them all
             self.manifest.public_nodes = {}
 
-        if self.manifest.dependencies:
-            for project in self.manifest.dependencies.projects:
+        if self.manifest.project_dependencies:
+            for project in self.manifest.project_dependencies.projects:
                 # look for a <project_name>_publication.json file for every project in the 'publications' dir
                 publication_file_name = f"{project.name}_publication.json"
                 # TODO: eventually we'll implement publications_dir config

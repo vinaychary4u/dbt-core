@@ -34,7 +34,6 @@ models:
 dependencies_yml = """
 projects:
     - name: marketing
-      environment: dev
 """
 
 marketing_pub_json = """
@@ -59,6 +58,9 @@ marketing_pub_json = """
       "package_name": "marketing",
       "unique_id": "model.marketing.fct_one",
       "relation_name": '"dbt"."test_schema"."fct_one"',
+      "database": "dbt",
+      "schema": "test_schema",
+      "identifier": "fct_one",
       "version": null,
       "latest_version": null,
       "public_node_dependencies": [],

@@ -1410,6 +1410,9 @@ class ManifestOrPublicNode(Protocol):
     version: Optional[NodeVersion]
     latest_version: Optional[NodeVersion]
     relation_name: str
+    database: Optional[str]
+    schema: Optional[str]
+    identifier: Optional[str]
 
     @property
     def is_latest_version(self):
@@ -1433,6 +1436,10 @@ class ManifestOrPublicNode(Protocol):
 
     @property
     def is_versioned(self):
+        pass
+
+    @property
+    def alias(self):
         pass
 
 

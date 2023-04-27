@@ -13,7 +13,6 @@ from dbt.node_types import NodeType, AccessType
 @dataclass
 class ProjectDependency(dbtClassMixin):
     name: str
-    environment: str
 
 
 @dataclass
@@ -38,6 +37,9 @@ class PublicModel(dbtClassMixin, ManifestOrPublicNode):
     package_name: str
     unique_id: str
     relation_name: str
+    database: Optional[str] = None
+    schema: Optional[str] = None
+    identifier: Optional[str] = None
     version: Optional[NodeVersion] = None
     latest_version: Optional[NodeVersion] = None
     # list of model unique_ids
@@ -80,6 +82,10 @@ class PublicModel(dbtClassMixin, ManifestOrPublicNode):
     @property
     def is_versioned(self):
         return self.version is not None
+
+    @property
+    def alias(self):
+        return self.identifier
 
 
 @dataclass

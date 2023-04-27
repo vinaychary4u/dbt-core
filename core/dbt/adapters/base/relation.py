@@ -227,7 +227,7 @@ class BaseRelation(FakeAPIObject, Hashable):
     def create_from_node(
         cls: Type[Self],
         config: HasQuoting,
-        node: ManifestNode,
+        node,
         quote_policy: Optional[Dict[str, bool]] = None,
         **kwargs: Any,
     ) -> Self:
@@ -242,28 +242,6 @@ class BaseRelation(FakeAPIObject, Hashable):
             identifier=node.alias,
             quote_policy=quote_policy,
             **kwargs,
-        )
-
-    @classmethod
-    def create_from_relation_name(cls: Type[Self], quoting: dict, relation_name: str) -> Self:
-        include_policy = cls.get_default_include_policy()
-        quote_char = cls.create().quote_character
-        parts = [part.strip(quote_char) for part in relation_name.split(".")]
-
-        database = schema = identifier = None
-
-        if include_policy["database"]:
-            database = parts.pop(0)
-        if include_policy["schema"]:
-            schema = parts.pop(0)
-        if include_policy["identifier"]:
-            identifier = parts.pop(0)
-
-        return cls.create(
-            database=database,
-            schema=schema,
-            identifier=identifier,
-            quote_policy=quoting,
         )
 
     @classmethod

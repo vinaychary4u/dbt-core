@@ -697,9 +697,16 @@ class ManifestLoader:
             public_models[unique_id] = public_model
 
         dependencies = []
+        # Get dependencies from dependencies.yml
         if self.manifest.project_dependencies:
             for project in self.manifest.project_dependencies.projects:
                 dependencies.append(project.name)
+        # Get dependencies from publication dependencies
+        for project in self.manifest.publications.values():
+            for project_name in project.dependencies:
+                if project_name not in dependencies:
+                    dependencies.append(project_name)
+
         publication = PublicationArtifact(
             metadata=metadata,
             project_name=self.root_project.project_name,

@@ -84,6 +84,7 @@ from dbt.contracts.graph.manifest import (
     ManifestStateCheck,
     ParsingInfo,
 )
+from dbt.graph.graph import UniqueId
 from dbt.contracts.graph.nodes import (
     SourceDefinition,
     Macro,
@@ -492,7 +493,7 @@ class ManifestLoader:
 
         if not skip_parsing or public_nodes_changed:
             # Following adds publications to manifest too...
-            self.write_artifacts()
+            write_publication_artifact(self.root_project, self.manifest)
             # write out the fully parsed manifest
             self.write_manifest_for_partial_parse()
 
@@ -649,74 +650,6 @@ class ManifestLoader:
                 fp.write(manifest_msgpack)
         except Exception:
             raise
-
-    def write_artifacts(self):
-        # The manifest.json is written out in a task, so we're not writing it here
-
-        # build publication metadata
-        metadata = PublicationMetadata(
-            adapter_type=self.root_project.credentials.type,
-            quoting=self.root_project.quoting,
-        )
-
-        # get a list of public model ids first so it can be used in constructing dependencies
-        public_model_ids = []
-        for node in self.manifest.nodes.values():
-            if node.resource_type == NodeType.Model and node.access == AccessType.Public:
-                public_model_ids.append(node.unique_id)
-
-        set_of_public_unique_ids = set(public_model_ids)
-
-        # Get the Graph object from the Linker
-        from dbt.compilation import Linker
-
-        linker = Linker()
-        graph = linker.get_graph(self.manifest)
-
-        public_models = {}
-        for unique_id in public_model_ids:
-            model = self.manifest.nodes[unique_id]
-            # public_node_dependencies is the intersection of all parent nodes plus public nodes
-            public_node_dependencies = []
-            parents: set = graph.select_parents({unique_id})
-            public_node_dependencies = parents.intersection(set_of_public_unique_ids)
-
-            public_model = PublicModel(
-                name=model.name,
-                package_name=model.package_name,
-                unique_id=model.unique_id,
-                relation_name=model.relation_name,
-                database=model.database,
-                schema=model.schema,
-                identifier=model.alias,
-                version=model.version,
-                latest_version=model.latest_version,
-                public_node_dependencies=list(public_node_dependencies),
-                generated_at=metadata.generated_at,
-            )
-            public_models[unique_id] = public_model
-
-        dependencies = []
-        # Get dependencies from dependencies.yml
-        if self.manifest.project_dependencies:
-            for project in self.manifest.project_dependencies.projects:
-                dependencies.append(project.name)
-        # Get dependencies from publication dependencies
-        for project in self.manifest.publications.values():
-            for project_name in project.dependencies:
-                if project_name not in dependencies:
-                    dependencies.append(project_name)
-
-        publication = PublicationArtifact(
-            metadata=metadata,
-            project_name=self.root_project.project_name,
-            public_models=public_models,
-            dependencies=dependencies,
-        )
-        # write out publication artifact <project_name>_publication.json
-        publication_file_name = f"{self.root_project.project_name}_publication.json"
-        path = os.path.join(self.root_project.target_path, publication_file_name)
-        publication.write(path)
 
     def build_public_nodes(self) -> bool:
         """This method loads the dependencies from dependencies.yml, reads in the
@@ -1721,6 +1654,74 @@ def process_node(config: RuntimeConfig, manifest: Manifest, node: ManifestNode):
     _process_refs_for_node(manifest, config.project_name, node)
     ctx = generate_runtime_docs_context(config, node, manifest, config.project_name)
     _process_docs_for_node(ctx, node)
+
+
+def write_publication_artifact(root_project: RuntimeConfig, manifest: Manifest):
+    # The manifest.json is written out in a task, so we're not writing it here
+
+    # build publication metadata
+    metadata = PublicationMetadata(
+        adapter_type=root_project.credentials.type,
+        quoting=root_project.quoting,
+    )
+
+    # get a list of public model ids first so it can be used in constructing dependencies
+    public_model_ids = []
+    for node in manifest.nodes.values():
+        if node.resource_type == NodeType.Model and node.access == AccessType.Public:
+            public_model_ids.append(node.unique_id)
+
+    set_of_public_model_ids = set(public_model_ids)
+
+    # Get the Graph object from the Linker
+    from dbt.compilation import Linker
+
+    linker = Linker()
+    graph = linker.get_graph(manifest)
+
+    public_models = {}
+    for unique_id in public_model_ids:
+        model = manifest.nodes[unique_id]
+        # public_node_dependencies is the intersection of all parent nodes plus public nodes
+        parents: Set[UniqueId] = graph.select_parents({UniqueId(unique_id)})
+        public_node_dependencies: Set[UniqueId] = parents.intersection(set_of_public_model_ids)
+
+        public_model = PublicModel(
+            name=model.name,
+            package_name=model.package_name,
+            unique_id=model.unique_id,
+            relation_name=dbt.utils.cast_to_str(model.relation_name),
+            database=model.database,
+            schema=model.schema,
+            identifier=model.alias,
+            version=model.version,
+            latest_version=model.latest_version,
+            public_node_dependencies=list(public_node_dependencies),
+            generated_at=metadata.generated_at,
+        )
+        public_models[unique_id] = public_model
+
+    dependencies = []
+    # Get dependencies from dependencies.yml
+    if manifest.project_dependencies:
+        for dep_project in manifest.project_dependencies.projects:
+            dependencies.append(dep_project.name)
+    # Get dependencies from publication dependencies
+    for pub_project in manifest.publications.values():
+        for project_name in pub_project.dependencies:
+            if project_name not in dependencies:
+                dependencies.append(project_name)
+
+    publication = PublicationArtifact(
+        metadata=metadata,
+        project_name=root_project.project_name,
+        public_models=public_models,
+        dependencies=dependencies,
+    )
+    # write out publication artifact <project_name>_publication.json
+    publication_file_name = f"{root_project.project_name}_publication.json"
+    path = os.path.join(root_project.target_path, publication_file_name)
+    publication.write(path)
 
 
 def write_manifest(manifest: Manifest, target_path: str):

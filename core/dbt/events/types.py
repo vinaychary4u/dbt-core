@@ -788,7 +788,7 @@ class InputFileDiffError(DebugLevel):
         return f"Error processing file diff: {self.category}, {self.file_id}"
 
 
-class PublicationArtifactChanged(WarnLevel):
+class PublicationArtifactChanged(DebugLevel):
     def code(self):
         return "I002"
 

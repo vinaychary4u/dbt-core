@@ -33,6 +33,7 @@ from dbt.adapters.factory import (
     get_relation_class_by_name,
     get_adapter_package_names,
 )
+from dbt.constants import DEPENDENCIES_FILE_NAME, MANIFEST_FILE_NAME, PARTIAL_PARSE_FILE_NAME
 from dbt.helper_types import PathSet
 from dbt.clients.yaml_helper import load_yaml_text
 from dbt.events.functions import fire_event, get_invocation_id, warn_or_error
@@ -119,9 +120,6 @@ from dbt.version import __version__
 
 from dbt.dataclass_schema import StrEnum, dbtClassMixin
 
-MANIFEST_FILE_NAME = "manifest.json"
-DEPENDENCIES_FILE_NAME = "dependencies.yml"
-PARTIAL_PARSE_FILE_NAME = "partial_parse.msgpack"
 PARSING_STATE = DbtProcessState("parsing")
 PERF_INFO_FILE_NAME = "perf_info.json"
 
@@ -719,7 +717,7 @@ class ManifestLoader:
 
         # Load the dependencies from the dependencies.yml file
         dependencies_filepath = resolve_path_from_base(
-            "dependencies.yml", self.root_project.project_root
+            DEPENDENCIES_FILE_NAME, self.root_project.project_root
         )
         saved_manifest_dependencies = self.manifest.project_dependencies
         if path_exists(dependencies_filepath):

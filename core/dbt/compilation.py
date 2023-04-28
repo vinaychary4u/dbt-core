@@ -1,4 +1,6 @@
 import argparse
+import json
+
 import networkx as nx  # type: ignore
 import os
 import pickle
@@ -27,8 +29,8 @@ from dbt.exceptions import (
     DbtRuntimeError,
 )
 from dbt.graph import Graph
-from dbt.events.functions import fire_event
-from dbt.events.types import FoundStats, WritingInjectedSQLForNode
+from dbt.events.functions import fire_event, get_invocation_id
+from dbt.events.types import FoundStats, Note, WritingInjectedSQLForNode
 from dbt.events.contextvars import get_node_info
 from dbt.node_types import NodeType, ModelLanguage
 from dbt.events.format import pluralize
@@ -248,6 +250,25 @@ class Linker:
     def get_graph(self, manifest: Manifest) -> Graph:
         self.link_graph(manifest)
         return Graph(self.graph)
+
+    def get_graph_summary(self, manifest: Manifest) -> Dict[int, Dict[str, Any]]:
+        """Create a smaller summary of the graph, suitable for basic diagnostics
+        and performance tuning. The summary includes only the edge structure,
+        node types, and node names. Each of the n nodes is assigned an integer
+        index 0, 1, 2,..., n-1 for compactness"""
+        graph_nodes = dict()
+        index_dict = dict()
+        for node_index, node_name in enumerate(self.graph):
+            index_dict[node_name] = node_index
+            data = manifest.expect(node_name).to_dict(omit_none=True)
+            graph_nodes[node_index] = {"name": node_name, "type": data["resource_type"]}
+
+        for node_index, node in graph_nodes.items():
+            successors = [index_dict[n] for n in self.graph.successors(node["name"])]
+            if successors:
+                node["succ"] = [index_dict[n] for n in self.graph.successors(node["name"])]
+
+        return graph_nodes
 
 
 class Compiler:
@@ -479,7 +500,33 @@ class Compiler:
     def compile(self, manifest: Manifest, write=True, add_test_edges=False) -> Graph:
         self.initialize()
         linker = Linker()
-        linker.link_graph(manifest, add_test_edges)
+        linker.link_graph(manifest)
+
+        # Create a file containing basic information about graph structure,
+        # supporting diagnostics and performance analysis.
+        summaries: Dict = dict()
+        summaries["_invocation_id"] = get_invocation_id()
+        summaries["linked"] = linker.get_graph_summary(manifest)
+
+        if add_test_edges:
+            manifest.build_parent_and_child_maps()
+            linker.add_test_edges(manifest)
+
+            # Create another diagnostic summary, just as above, but this time
+            # including the test edges.
+            summaries["with_test_edges"] = linker.get_graph_summary(manifest)
+
+        with open(os.path.join(self.config.target_path, "graph_summary.json"), "w") as out_stream:
+            try:
+                out_stream.write(json.dumps(summaries))
+            except Exception as e:  # This is non-essential information, so merely note failures.
+                fire_event(
+                    Note(
+                        msg=f"An error was encountered writing the graph summary information: {e}"
+                    )
+                )
+
+        stats = _generate_stats(manifest)
 
         if write:
             self.write_graph_file(linker, manifest)

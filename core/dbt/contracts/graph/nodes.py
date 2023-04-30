@@ -843,11 +843,25 @@ class TestMetadata(dbtClassMixin, Replaceable):
     namespace: Optional[str] = None
 
 
+@dataclass
+class UnitTestMetadata(dbtClassMixin, Replaceable):
+    # kwargs are the args that are left in the test builder after
+    # removing configs. They are set from the test builder when
+    # the test node is created.
+    kwargs: Dict[str, Any] = field(default_factory=dict)
+    namespace: Optional[str] = None
+
+
 # This has to be separated out because it has no default and so
 # has to be included as a superclass, not an attribute
 @dataclass
 class HasTestMetadata(dbtClassMixin):
     test_metadata: TestMetadata
+
+
+@dataclass
+class HasUnitTestMetadata(dbtClassMixin):
+    unit_test_metadata: UnitTestMetadata
 
 
 @dataclass
@@ -869,6 +883,25 @@ class GenericTestNode(TestShouldStoreFailures, CompiledNode, HasTestMetadata):
     @property
     def test_node_type(self):
         return "generic"
+
+
+@dataclass
+class UnitTestNode(TestShouldStoreFailures, CompiledNode, HasUnitTestMetadata):
+    resource_type: NodeType = field(metadata={"restrict": [NodeType.Unit]})
+    # file_key_name: Optional[str] = None
+    # Was not able to make mypy happy and keep the code working. We need to
+    # refactor the various configs.
+    attached_node: Optional[str] = None
+
+    def same_contents(self, other) -> bool:
+        if other is None:
+            return False
+
+        return self.same_config(other) and self.same_fqn(other) and True
+
+    @property
+    def test_node_type(self):
+        return "unit"
 
 
 # ====================================
@@ -1403,7 +1436,4 @@ Resource = Union[
     Group,
 ]
 
-TestNode = Union[
-    SingularTestNode,
-    GenericTestNode,
-]
+TestNode = Union[SingularTestNode, GenericTestNode, UnitTestNode]

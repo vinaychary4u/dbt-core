@@ -24,6 +24,7 @@ from dbt.context.providers import (
     generate_parse_exposure,
     generate_parse_metrics,
     generate_test_context,
+    generate_parser_model_context,
 )
 from dbt.context.macro_resolver import MacroResolver
 from dbt.contracts.files import FileHash, SchemaSourceFile
@@ -43,6 +44,8 @@ from dbt.contracts.graph.nodes import (
     ConstraintType,
     ModelNode,
     ModelLevelConstraint,
+    UnitTestNode,
+    UnitTestMetadata,
 )
 from dbt.contracts.graph.unparsed import (
     HasColumnDocs,
@@ -600,6 +603,11 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
             if "groups" in dct:
                 group_parser = GroupParser(self, yaml_block)
                 group_parser.parse()
+
+            # parse groups
+            if "unit" in dct:
+                unit_test_parser = UnitTestParser(self, yaml_block)
+                unit_test_parser.parse()
 
 
 Parsed = TypeVar("Parsed", UnpatchedSourceDefinition, ParsedNodePatch, ParsedMacroPatch)
@@ -1271,7 +1279,7 @@ class ExposureParser(YamlReader):
             config=config,
             unrendered_config=unrendered_config,
         )
-        ctx = generate_parse_exposure(
+        ctx = generate_parser_model_context(
             parsed,
             self.root_project,
             self.schema_parser.manifest,
@@ -1470,3 +1478,110 @@ class GroupParser(YamlReader):
                 raise YamlParseDictError(self.yaml.path, self.key, data, exc)
 
             self.parse_group(unparsed)
+
+
+from dbt.contracts.graph.unparsed import UnparsedUnitTestSuite
+from dbt.contracts.graph.nodes import NodeConfig, TestConfig
+
+
+class UnitTestParser(YamlReader):
+    def __init__(self, schema_parser: SchemaParser, yaml: YamlBlock):
+        super().__init__(schema_parser, yaml, "unit")
+        self.schema_parser = schema_parser
+        self.yaml = yaml
+
+    def parse_unit_test(self, unparsed: UnparsedUnitTestSuite):
+        package_name = self.project.project_name
+        path = self.yaml.path.relative_path
+
+        for unit_test in unparsed.tests:
+            unit_test_unique_id = f"unit.{package_name}.{unparsed.name}__{unit_test.name}"
+            input_nodes = []
+            original_input_node_ids = []
+            for input in unit_test.inputs:
+                input_name = f"{unparsed.name}__{unit_test.name}__{input.name}"
+                input_unique_id = f"model.{package_name}.{input_name}"
+                # would need to search across, refs, sources, public models
+                original_input_node = self.manifest.ref_lookup.find(
+                    input.name, package_name, None, self.manifest
+                )
+                original_input_node_ids.append(original_input_node.unique_id)
+                # for public models - we won't have raw code but will have relation name which could also be used to get column names
+                def build_raw_code(rows, column_names) -> str:
+                    return ("{{{{ get_fixture_sql({rows}, {column_names}) }}}}").format(
+                        rows=rows, column_names=column_names
+                    )
+
+                input_node = ModelNode(
+                    raw_code=build_raw_code(input.rows, list(original_input_node.columns.keys())),
+                    resource_type=NodeType.Model,
+                    package_name=package_name,
+                    path=path,
+                    # original_file_path=self.yaml.path.original_file_path,
+                    original_file_path=f"models_unit_test/{input_name}.sql",
+                    unique_id=input_unique_id,
+                    name=input_name,
+                    config=NodeConfig(materialized="ephemeral"),
+                    database="",
+                    schema="",
+                    alias=input_name,
+                    fqn=input_unique_id.split("."),
+                    checksum=FileHash(
+                        name="sha256",
+                        checksum="f8f57c9e32eafaacfb002a4d03a47ffb412178f58f49ba58fd6f436f09f8a1d6",
+                    ),
+                )
+                input_nodes.append(input_node)
+
+            actual_node = self.manifest.ref_lookup.perform_lookup(
+                f"model.{package_name}.{unparsed.name}", self.manifest
+            )
+
+            unit_test_node = UnitTestNode(
+                resource_type=NodeType.Unit,
+                package_name=package_name,
+                path=f"{unparsed.name}.sql",
+                # original_file_path=self.yaml.path.original_file_path,
+                original_file_path=f"models_unit_test/{unparsed.name}.sql",
+                unique_id=unit_test_unique_id,
+                name=f"{unparsed.name}__{unit_test.name}",
+                config=TestConfig(
+                    materialized="unit", _extra={"expected_rows": unit_test.expected_output.rows}
+                ),
+                raw_code=actual_node.raw_code,
+                database="",
+                schema="",
+                alias=f"{unparsed.name}__{unit_test.name}",
+                fqn=unit_test_unique_id.split("."),
+                checksum=FileHash(
+                    name="sha256",
+                    checksum="f8f57c9e32eafaacfb002a4d03a47ffb412178f58f49ba58fd6f436f09f8a1d6",
+                ),
+                attached_node=actual_node.unique_id,
+                unit_test_metadata=UnitTestMetadata(),
+            )
+
+            ctx = generate_parse_exposure(
+                unit_test_node,
+                self.root_project,
+                self.schema_parser.manifest,
+                package_name,
+            )
+            get_rendered(actual_node.raw_code, ctx, unit_test_node, capture_macros=True)
+            # unit_test_node now has a populated refs/sources/metrics
+
+            # during compilation, refs will resolve to fixtures,
+            # so add original input node ids to depends on explicitly
+            unit_test_node.depends_on.nodes += original_input_node_ids
+
+            self.manifest.add_unit_test(unit_test_node, input_nodes)
+
+    def parse(self):
+        for data in self.get_key_dicts():
+            try:
+                UnparsedUnitTestSuite.validate(data)
+                unparsed = UnparsedUnitTestSuite.from_dict(data)
+            except (ValidationError, JSONValidationError) as exc:
+                raise YamlParseDictError(self.yaml.path, self.key, data, exc)
+
+            self.parse_unit_test(unparsed)

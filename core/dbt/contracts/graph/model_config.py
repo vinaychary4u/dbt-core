@@ -633,6 +633,7 @@ RESOURCE_TYPES: Dict[NodeType, Type[BaseConfig]] = {
     NodeType.Source: SourceConfig,
     NodeType.Seed: SeedConfig,
     NodeType.Test: TestConfig,
+    NodeType.Unit: TestConfig,
     NodeType.Model: NodeConfig,
     NodeType.Snapshot: SnapshotConfig,
 }

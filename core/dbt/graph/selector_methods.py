@@ -18,6 +18,7 @@ from dbt.contracts.graph.nodes import (
     ResultNode,
     ManifestNode,
     ModelNode,
+    UnitTestNode,
 )
 from dbt.contracts.graph.unparsed import UnparsedVersion
 from dbt.contracts.state import PreviousState
@@ -435,6 +436,8 @@ class TestTypeSelectorMethod(SelectorMethod):
             search_type = GenericTestNode
         elif selector in ("singular", "data"):
             search_type = SingularTestNode
+        elif selector in ("unit"):
+            search_type = UnitTestNode
         else:
             raise DbtRuntimeError(
                 f'Invalid test type selector {selector}: expected "generic" or ' '"singular"'

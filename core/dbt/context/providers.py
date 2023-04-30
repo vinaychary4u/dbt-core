@@ -38,6 +38,7 @@ from dbt.contracts.graph.nodes import (
     Resource,
     ManifestNode,
     RefArgs,
+    UnitTestNode,
 )
 from dbt.contracts.graph.metrics import MetricReference, ResolvedMetricReference
 from dbt.contracts.graph.unparsed import NodeVersion
@@ -477,6 +478,8 @@ class RuntimeRefResolver(BaseRefResolver):
         target_package: Optional[str] = None,
         target_version: Optional[NodeVersion] = None,
     ) -> RelationProxy:
+        if isinstance(self.model, UnitTestNode):
+            target_name = f"{self.model.name}__{target_name}"
         target_model = self.manifest.resolve_ref(
             target_name,
             target_package,
@@ -1310,7 +1313,7 @@ class ModelContext(ProviderContext):
 
     @contextproperty
     def pre_hooks(self) -> List[Dict[str, Any]]:
-        if self.model.resource_type in [NodeType.Source, NodeType.Test]:
+        if self.model.resource_type in [NodeType.Source, NodeType.Test, NodeType.Unit]:
             return []
         # TODO CT-211
         return [
@@ -1319,7 +1322,7 @@ class ModelContext(ProviderContext):
 
     @contextproperty
     def post_hooks(self) -> List[Dict[str, Any]]:
-        if self.model.resource_type in [NodeType.Source, NodeType.Test]:
+        if self.model.resource_type in [NodeType.Source, NodeType.Test, NodeType.Unit]:
             return []
         # TODO CT-211
         return [

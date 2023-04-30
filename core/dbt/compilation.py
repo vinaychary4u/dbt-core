@@ -20,6 +20,7 @@ from dbt.contracts.graph.nodes import (
     GraphMemberNode,
     InjectedCTE,
     SeedNode,
+    UnitTestNode,
 )
 from dbt.exceptions import (
     GraphDependencyNotFoundError,
@@ -178,13 +179,16 @@ class Compiler:
         manifest: Manifest,
         extra_context: Dict[str, Any],
     ) -> Dict[str, Any]:
-
         context = generate_runtime_model_context(node, self.config, manifest)
         context.update(extra_context)
 
         if isinstance(node, GenericTestNode):
             # for test nodes, add a special keyword args value to the context
             jinja.add_rendered_test_kwargs(context, node)
+
+        elif isinstance(node, UnitTestNode):
+            # for test nodes, add a special keyword args value to the context
+            jinja.add_rendered_unit_test_kwargs(context, node)
 
         return context
 

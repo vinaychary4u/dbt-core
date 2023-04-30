@@ -652,3 +652,32 @@ class UnparsedGroup(dbtClassMixin, Replaceable):
         super(UnparsedGroup, cls).validate(data)
         if data["owner"].get("name") is None and data["owner"].get("email") is None:
             raise ValidationError("Group owner must have at least one of 'name' or 'email'.")
+
+
+@dataclass
+class UnparsedFixture(dbtClassMixin):
+    defaults: Optional[Dict[str, str]] = field(default_factory=dict)
+    rows: List[Dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
+class UnparsedInputFixtureMandatory:
+    name: str = ""
+
+
+@dataclass
+class UnparsedInputFixture(UnparsedInputFixtureMandatory, UnparsedFixture):
+    pass
+
+
+@dataclass
+class UnparsedUnitTestCase(dbtClassMixin):
+    name: str
+    inputs: Sequence[UnparsedInputFixture]
+    expected_output: UnparsedFixture
+
+
+@dataclass
+class UnparsedUnitTestSuite(dbtClassMixin):
+    name: str
+    tests: Sequence[UnparsedUnitTestCase]

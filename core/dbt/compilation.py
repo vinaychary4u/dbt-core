@@ -186,10 +186,6 @@ class Compiler:
             # for test nodes, add a special keyword args value to the context
             jinja.add_rendered_test_kwargs(context, node)
 
-        elif isinstance(node, UnitTestNode):
-            # for test nodes, add a special keyword args value to the context
-            jinja.add_rendered_unit_test_kwargs(context, node)
-
         return context
 
     def add_ephemeral_prefix(self, name: str):

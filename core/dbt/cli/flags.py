@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from importlib import import_module
 from multiprocessing import get_context
 from pprint import pformat as pf
-from typing import Callable, Dict, List, Set, Union
+from typing import Any, Callable, Dict, List, Set, Union
 
 from click import Context, get_current_context
 from click.core import Command, Group, ParameterSource
@@ -12,6 +12,7 @@ from dbt.cli.exceptions import DbtUsageException
 from dbt.cli.resolvers import default_log_path, default_project_dir
 from dbt.config.profile import read_user_config
 from dbt.contracts.project import UserConfig
+from dbt.exceptions import DbtInternalError
 from dbt.deprecations import renamed_env_var
 from dbt.helper_types import WarnErrorOptions
 
@@ -277,3 +278,85 @@ class Flags:
         # It is necessary to remove this attr from the class so it does
         # not get pickled when written to disk as json.
         object.__delattr__(self, "deprecated_env_var_warnings")
+
+    @classmethod
+    def from_dict_for_cmd(cls, cmd: str, d: Dict[str, Any]) -> "Flags":
+        arg_list = get_args_for_cmd_from_dict(cmd, d)
+        ctx = args_to_context(arg_list)
+        flags = cls(ctx=ctx)
+        flags.fire_deprecations()
+        return flags
+
+
+def get_args_for_cmd_from_dict(cmd: str, d: Dict[str, Any]) -> List[str]:
+    """Given a command name and a dict, returns a list of strings representing
+    the CLI arguments that for a command. The order of this list is consistent with
+    which flags are expected at the parent level vs the command level.
+
+    e.g. fn("run", {"defer": True, "print": False}) -> ["--no-print", "run", "--defer"]
+
+    The result of this function can be passed in to the args_to_context function
+    to produce a click context to instantiate Flags with.
+    """
+
+    cmd_args = get_args_for_cmd(cmd)
+    parent_args = get_args_for_cmd("cli")
+    default_args = [x.lower() for x in FLAGS_DEFAULTS.keys()]
+
+    res = [cmd]
+
+    for k, v in d.items():
+        k = k.lower()
+
+        # if a "which" value exists in the args dict, it should match the cmd arg
+        if k == "which":
+            if v != cmd.lower():
+                raise DbtInternalError(f"cmd '{cmd}' does not match value of which '{v}'")
+            continue
+
+        # param was assigned from defaults and should not be included
+        if k not in cmd_args + parent_args and k in default_args:
+            continue
+
+        # if the param is in parent args, it should come before the arg name
+        # e.g. ["--print", "run"] vs ["run", "--print"]
+        add_fn = res.append
+        if k in parent_args:
+            add_fn = lambda x: res.insert(0, x)
+
+        spinal_cased = k.replace("_", "-")
+
+        if v in (None, False):
+            add_fn(f"--no-{spinal_cased}")
+        elif v is True:
+            add_fn(f"--{spinal_cased}")
+        else:
+            add_fn(f"--{spinal_cased}={v}")
+
+    return res
+
+
+def get_args_for_cmd(name: str) -> List[str]:
+    """Given the string name of a command, return a list of strings representing
+    the params that command takes. This function will not return params assigned
+    to a parent click click when passed the name of a child click command.
+
+    e.g. fn("run") -> ["defer", "favor_state", "exclude", ...]
+    """
+    import dbt.cli.main as cli
+    CMD_DICT = {
+        "build": cli.build,
+        "cli": cli.cli,
+        "compile": cli.compile,
+        "freshness": cli.freshness,
+        "generate": cli.docs_generate,
+        "run": cli.run,
+        "seed": cli.seed,
+        "show": cli.show,
+        "snapshot": cli.snapshot,
+        "test": cli.test,
+    }
+    cmd = CMD_DICT.get(name, None)
+    if cmd is None:
+        raise DbtInternalError(f"No command found for name '{name}'")
+    return [x.name for x in cmd.params if not x.name.lower().startswith("deprecated_")]

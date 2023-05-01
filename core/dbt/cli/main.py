@@ -31,6 +31,7 @@ from dbt.task.freshness import FreshnessTask
 from dbt.task.generate import GenerateTask
 from dbt.task.init import InitTask
 from dbt.task.list import ListTask
+from dbt.task.retry import RetryTask
 from dbt.task.run import RunTask
 from dbt.task.run_operation import RunOperationTask
 from dbt.task.seed import SeedTask
@@ -525,6 +526,45 @@ def parse(ctx, **kwargs):
     # manifest generation and writing happens in @requires.manifest
 
     return ctx.obj["manifest"], True
+
+
+# chenyu: it is actually kind of confusing what arguments I need to include here, some of
+# them are for project profile, feels like they should be defined alongside those decorators
+# dbt retry
+@cli.command("retry")
+@click.pass_context
+@p.defer
+@p.deprecated_defer
+@p.fail_fast
+@p.favor_state
+@p.deprecated_favor_state
+@p.indirect_selection #?
+@p.profile
+@p.profiles_dir
+@p.project_dir
+@p.state_required
+@p.deprecated_state
+@p.store_failures #?
+@p.target
+@p.target_path
+@p.threads
+@p.vars #?
+@requires.preflight
+@requires.profile
+@requires.project
+@requires.runtime_config
+@requires.manifest
+def retry(ctx, **kwargs):
+    """Rerun a previous failed command given a previous run result artifact"""
+    task = RetryTask(
+        ctx.obj["flags"],
+        ctx.obj["runtime_config"],
+        ctx.obj["manifest"],
+    )
+
+    results = task.run()
+    success = task.interpret_results(results)
+    return results, success
 
 
 # dbt run

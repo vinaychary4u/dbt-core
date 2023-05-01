@@ -7,6 +7,7 @@ from dbt.cli.exceptions import (
     ResultExit,
 )
 from dbt.cli.flags import Flags
+from dbt.cli.utils import get_profile, get_project
 from dbt.config import RuntimeConfig
 from dbt.config.runtime import load_project, load_profile, UnsetProfile
 from dbt.events.functions import fire_event, LOG_VERSION, set_invocation_id, setup_event_logger
@@ -132,12 +133,7 @@ def profile(func):
         ctx = args[0]
         assert isinstance(ctx, Context)
 
-        flags = ctx.obj["flags"]
-        # TODO: Generalize safe access to flags.THREADS:
-        # https://github.com/dbt-labs/dbt-core/issues/6259
-        threads = getattr(flags, "THREADS", None)
-        profile = load_profile(flags.PROJECT_DIR, flags.VARS, flags.PROFILE, flags.TARGET, threads)
-        ctx.obj["profile"] = profile
+        ctx.obj["profile"] = get_profile(ctx.obj["flags"])
 
         return func(*args, **kwargs)
 
@@ -155,9 +151,7 @@ def project(func):
             raise DbtProjectError("profile required for project")
 
         flags = ctx.obj["flags"]
-        project = load_project(
-            flags.PROJECT_DIR, flags.VERSION_CHECK, ctx.obj["profile"], flags.VARS
-        )
+        project = get_project(flags, ctx.obj["profile"])
         ctx.obj["project"] = project
 
         if dbt.tracking.active_user is not None:

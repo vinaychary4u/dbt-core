@@ -492,7 +492,7 @@ class ManifestLoader:
                 # parent and child maps will be rebuilt by write_manifest
 
         if not skip_parsing or public_nodes_changed:
-            # Following adds publications to manifest too...
+            # Write out the <project_name>_publication.json file for this project
             write_publication_artifact(self.root_project, self.manifest)
             # write out the fully parsed manifest
             self.write_manifest_for_partial_parse()
@@ -659,6 +659,11 @@ class ManifestLoader:
         public_nodes_changed = False
 
         # Load the dependencies from the dependencies.yml file
+        # TODO: dependencies might be better in the RuntimeConfig and
+        # loaded somewhere earlier, but leaving this here for later refactoring.
+        # Loading it elsewhere would make it harder to detect that there were
+        # no dependencies previously and still are none, though that could be
+        # inferred from the manifest publication configs.
         dependencies_filepath = resolve_path_from_base(
             DEPENDENCIES_FILE_NAME, self.root_project.project_root
         )
@@ -676,17 +681,17 @@ class ManifestLoader:
             return False
 
         # collect the names of the projects for later use
-        dependent_project_names = []
+        project_dependency_names = []
         if self.manifest.project_dependencies:
             for project in self.manifest.project_dependencies.projects:
-                dependent_project_names.append(project.name)
+                project_dependency_names.append(project.name)
 
         # clean up previous publications that are no longer specified
         # and save previous publications, for later removal of references
         saved_manifest_publications: MutableMapping[str, PublicationConfig] = {}
         if self.manifest.publications:
             for project_name, publication in self.manifest.publications.items():
-                if project_name not in dependent_project_names:
+                if project_name not in project_dependency_names:
                     remove_dependent_project_references(self.manifest, publication)
                     self.manifest.publications.pop(project_name)
                     fire_event(
@@ -705,29 +710,7 @@ class ManifestLoader:
             self.manifest.public_nodes = {}
 
         if self.manifest.project_dependencies:
-            for project in self.manifest.project_dependencies.projects:
-                # look for a <project_name>_publication.json file for every project in the 'publications' dir
-                publication_file_name = f"{project.name}_publication.json"
-                # TODO: eventually we'll implement publications_dir config
-                path = os.path.join("publications", publication_file_name)
-                if os.path.exists(path):
-                    contents = load_file_contents(path)
-                    pub_dict = load_yaml_text(contents)
-                    PublicationArtifact.validate(pub_dict)
-                    # separate out the public_models
-                    public_models = pub_dict.pop("public_models")
-                    # Create the PublicationConfig to store in internal manifest
-                    pub_config = PublicationConfig.from_dict(pub_dict)
-                    self.manifest.publications[project.name] = pub_config
-                    # Add to dictionary of public_nodes and save id in PublicationConfig
-                    for public_model_dict in public_models.values():
-                        public_node = PublicModel.from_dict(public_model_dict)
-                        self.manifest.public_nodes[public_node.unique_id] = public_node
-                        pub_config.public_model_ids.append(public_node.unique_id)
-                else:
-                    raise PublicationConfigNotFound(
-                        project=project.name, file_name=publication_file_name
-                    )
+            self.load_new_public_nodes()
 
         # Now that we've loaded the current publications and public_nodes, look for
         # changed publications so we can reset the public_nodes references
@@ -759,6 +742,31 @@ class ManifestLoader:
                 public_nodes_changed = True
 
         return public_nodes_changed
+
+    def load_new_public_nodes(self):
+        for project in self.manifest.project_dependencies.projects:
+            # look for a <project_name>_publication.json file for every project in the 'publications' dir
+            publication_file_name = f"{project.name}_publication.json"
+            # TODO: eventually we'll implement publications_dir config
+            path = os.path.join("publications", publication_file_name)
+            if os.path.exists(path):
+                contents = load_file_contents(path)
+                pub_dict = load_yaml_text(contents)
+                PublicationArtifact.validate(pub_dict)
+                # separate out the public_models
+                public_models = pub_dict.pop("public_models")
+                # Create the PublicationConfig to store in internal manifest
+                pub_config = PublicationConfig.from_dict(pub_dict)
+                self.manifest.publications[project.name] = pub_config
+                # Add to dictionary of public_nodes and save id in PublicationConfig
+                for public_model_dict in public_models.values():
+                    public_node = PublicModel.from_dict(public_model_dict)
+                    self.manifest.public_nodes[public_node.unique_id] = public_node
+                    pub_config.public_node_ids.append(public_node.unique_id)
+            else:
+                raise PublicationConfigNotFound(
+                    project=project.name, file_name=publication_file_name
+                )
 
     def is_partial_parsable(self, manifest: Manifest) -> Tuple[bool, Optional[str]]:
         """Compare the global hashes of the read-in parse results' values to
@@ -1553,7 +1561,7 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
 
 
 def remove_dependent_project_references(manifest: Manifest, publication: PublicationConfig):
-    for unique_id in publication.public_model_ids:
+    for unique_id in publication.public_node_ids:
         for child_id in manifest.child_map[unique_id]:
             node = manifest.expect(child_id)
             if hasattr(node.depends_on, "public_nodes"):
@@ -1665,13 +1673,12 @@ def write_publication_artifact(root_project: RuntimeConfig, manifest: Manifest):
         quoting=root_project.quoting,
     )
 
-    # get a list of public model ids first so it can be used in constructing dependencies
-    public_model_ids = []
-    for node in manifest.nodes.values():
-        if node.resource_type == NodeType.Model and node.access == AccessType.Public:
-            public_model_ids.append(node.unique_id)
-
-    set_of_public_model_ids = set(public_model_ids)
+    # get a set of public model ids first so it can be used in constructing dependencies
+    public_node_ids = {
+        node.unique_id
+        for node in manifest.nodes.values()
+        if node.resource_type == NodeType.Model and node.access == AccessType.Public
+    }
 
     # Get the Graph object from the Linker
     from dbt.compilation import Linker
@@ -1680,11 +1687,11 @@ def write_publication_artifact(root_project: RuntimeConfig, manifest: Manifest):
     graph = linker.get_graph(manifest)
 
     public_models = {}
-    for unique_id in public_model_ids:
+    for unique_id in public_node_ids:
         model = manifest.nodes[unique_id]
         # public_node_dependencies is the intersection of all parent nodes plus public nodes
         parents: Set[UniqueId] = graph.select_parents({UniqueId(unique_id)})
-        public_node_dependencies: Set[UniqueId] = parents.intersection(set_of_public_model_ids)
+        public_node_dependencies: Set[UniqueId] = parents.intersection(public_node_ids)
 
         public_model = PublicModel(
             name=model.name,

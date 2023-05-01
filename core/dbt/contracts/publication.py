@@ -113,4 +113,4 @@ class PublicationConfig(ArtifactMixin, PublicationMandatory):
     metadata: PublicationMetadata = field(default_factory=PublicationMetadata)
     # list of project name strings
     dependencies: List[str] = field(default_factory=list)
-    public_model_ids: List[str] = field(default_factory=list)
+    public_node_ids: List[str] = field(default_factory=list)

@@ -134,7 +134,7 @@ class TestDependenciesYml:
         manifest = run_dbt(["parse"])
         assert manifest.publications
         assert "marketing" in manifest.publications
-        assert "model.marketing.fct_one" in manifest.publications["marketing"].public_model_ids
+        assert "model.marketing.fct_one" in manifest.publications["marketing"].public_node_ids
 
         # target_model_name, target_model_package, target_model_version, current_project, node_package
         resolved_node = manifest.resolve_ref("fct_one", "marketing", None, "test", "test")
@@ -153,7 +153,7 @@ class TestDependenciesYml:
         assert public_model_id in manifest.parent_map
         assert manifest.parent_map[model_id] == [public_model_id]
         # check that publication configs contain correct list of public model unique_ids
-        assert manifest.publications["marketing"].public_model_ids == [
+        assert manifest.publications["marketing"].public_node_ids == [
             "model.marketing.fct_one",
             "model.marketing.fct_two",
         ]

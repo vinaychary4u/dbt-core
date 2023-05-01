@@ -620,8 +620,6 @@ def extract_toplevel_blocks(
 
 
 GENERIC_TEST_KWARGS_NAME = "_dbt_generic_test_kwargs"
-UNIT_TEST_KWARGS_NAME = "_dbt_unit_test_kwargs"
-
 
 def add_rendered_test_kwargs(
     context: Dict[str, Any],
@@ -653,19 +651,6 @@ def add_rendered_test_kwargs(
     # when the test node was created in _parse_generic_test.
     kwargs = deep_map_render(_convert_function, node.test_metadata.kwargs)
     context[GENERIC_TEST_KWARGS_NAME] = kwargs
-
-
-def add_rendered_unit_test_kwargs(
-    context: Dict[str, Any],
-    node: UnitTestNode,
-    capture_macros: bool = False,
-) -> None:
-    """Render each of the test kwargs in the given context using the native
-    renderer, then insert that value into the given context as the special test
-    keyword arguments member.
-    """
-    context[UNIT_TEST_KWARGS_NAME] = node.unit_test_metadata.kwargs
-
 
 def get_supported_languages(node: jinja2.nodes.Macro) -> List[ModelLanguage]:
     if "materialization" not in node.name:

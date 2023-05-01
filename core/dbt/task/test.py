@@ -189,8 +189,6 @@ class TestRunner(CompileRunner):
 
     def execute(self, test: TestNode, manifest: Manifest):
         result = self.execute_test(test, manifest)
-
-        severity = test.config.severity.upper()
         thread_id = threading.current_thread().name
         num_errors = pluralize(result.failures, "result")
 
@@ -203,6 +201,7 @@ class TestRunner(CompileRunner):
                 message = result.diff
                 failures = result.failures
         else:
+            severity = test.config.severity.upper()
             if severity == "ERROR" and result.should_error:
                 status = TestStatus.Fail
                 message = f"Got {num_errors}, configured to fail if {test.config.error_if}"

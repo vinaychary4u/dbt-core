@@ -2043,7 +2043,7 @@ class SQLCompiledPath(InfoLevel):
         return "Z026"
 
     def message(self) -> str:
-        return f"  compiled Code at {self.path}"
+        return f"  compiled code at {self.path}"
 
 
 class CheckNodeTestFailure(InfoLevel):

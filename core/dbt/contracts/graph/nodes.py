@@ -886,18 +886,9 @@ class GenericTestNode(TestShouldStoreFailures, CompiledNode, HasTestMetadata):
 
 
 @dataclass
-class UnitTestNode(TestShouldStoreFailures, CompiledNode, HasUnitTestMetadata):
+class UnitTestNode(CompiledNode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Unit]})
-    # file_key_name: Optional[str] = None
-    # Was not able to make mypy happy and keep the code working. We need to
-    # refactor the various configs.
     attached_node: Optional[str] = None
-
-    def same_contents(self, other) -> bool:
-        if other is None:
-            return False
-
-        return self.same_config(other) and self.same_fqn(other) and True
 
     @property
     def test_node_type(self):

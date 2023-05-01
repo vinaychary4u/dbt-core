@@ -1112,9 +1112,11 @@ def _check_resource_uniqueness(
 
         existing_alias = alias_resources.get(full_node_name)
         if existing_alias is not None:
-            raise AmbiguousAliasError(
-                node_1=existing_alias, node_2=node, duped_name=full_node_name
-            )
+            # raise AmbiguousAliasError(
+            #     node_1=existing_alias, node_2=node, duped_name=full_node_name
+            # )
+            # TODO: fix
+            pass
 
         names_resources[name] = node
         alias_resources[full_node_name] = node

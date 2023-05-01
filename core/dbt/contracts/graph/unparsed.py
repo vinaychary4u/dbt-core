@@ -655,29 +655,27 @@ class UnparsedGroup(dbtClassMixin, Replaceable):
 
 
 @dataclass
-class UnparsedFixture(dbtClassMixin):
-    defaults: Optional[Dict[str, str]] = field(default_factory=dict)
+class UnparsedInputFixture(dbtClassMixin):
+    input: str
     rows: List[Dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
-class UnparsedInputFixtureMandatory:
-    name: str = ""
-
-
-@dataclass
-class UnparsedInputFixture(UnparsedInputFixtureMandatory, UnparsedFixture):
-    pass
-
+class UnparsedUnitTestOverrides(dbtClassMixin):
+    macros: Dict[str, Any] = field(default_factory=dict)
+    vars: Dict[str, Any] = field(default_factory=dict)
+    env_vars: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class UnparsedUnitTestCase(dbtClassMixin):
     name: str
-    inputs: Sequence[UnparsedInputFixture]
-    expected_output: UnparsedFixture
+    given: Sequence[UnparsedInputFixture]
+    expect: List[Dict[str, Any]]
+    description: str = ""
+    overrides: Optional[UnparsedUnitTestOverrides] = None
 
 
 @dataclass
 class UnparsedUnitTestSuite(dbtClassMixin):
-    name: str
+    model: str # name of the model being unit tested
     tests: Sequence[UnparsedUnitTestCase]

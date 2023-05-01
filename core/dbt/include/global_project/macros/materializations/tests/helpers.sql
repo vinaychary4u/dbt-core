@@ -19,15 +19,24 @@
 {%- endmacro %}
 
 {% macro default__get_unit_test_sql(main_sql, expected_fixture_sql, expected_column_names) -%}
-    select
-      {% for expected_column_name in expected_column_names %}{{expected_column_name}}{% if not loop.last -%},{% endif %}{%- endfor -%}, "actual" as actual_or_expected
-    from (
-      {{ main_sql }}
-    ) dbt_internal_unit_test_actual
-    union all
-    select
-      {% for expected_column_name in expected_column_names %}{{expected_column_name}}{% if not loop.last -%},{% endif %}{%- endfor -%}, "expected" as actual_or_expected
-    from (
-      {{ expected_fixture_sql }}
-    ) dbt_internal_unit_test_expected
+-- Build actual result given inputs
+with dbt_internal_unit_test_actual AS (
+  select
+    {% for expected_column_name in expected_column_names %}{{expected_column_name}}{% if not loop.last -%},{% endif %}{%- endfor -%}, "actual" as actual_or_expected
+  from (
+    {{ main_sql }}
+  )
+),
+-- Build expected result
+dbt_internal_unit_test_expected AS (
+  select
+    {% for expected_column_name in expected_column_names %}{{expected_column_name}}{% if not loop.last -%}, {% endif %}{%- endfor -%}, "expected" as actual_or_expected
+  from (
+    {{ expected_fixture_sql }}
+  )
+)
+-- Union actual and expected results
+select * from dbt_internal_unit_test_actual
+union all 
+select * from dbt_internal_unit_test_expected
 {%- endmacro %}

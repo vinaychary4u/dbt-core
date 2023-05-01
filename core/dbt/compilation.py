@@ -176,7 +176,7 @@ class Linker:
             else:
                 raise GraphDependencyNotFoundError(node, dependency)
 
-    def link_graph(self, manifest: Manifest, add_test_edges: bool = False):
+    def link_graph(self, manifest: Manifest):
         for source in manifest.sources.values():
             self.add_node(source.unique_id)
         for node in manifest.nodes.values():
@@ -190,10 +190,6 @@ class Linker:
 
         if cycle:
             raise RuntimeError("Found a cycle: {}".format(cycle))
-
-        if add_test_edges:
-            manifest.build_parent_and_child_maps()
-            self.add_test_edges(manifest)
 
     def add_test_edges(self, manifest: Manifest) -> None:
         """This method adds additional edges to the DAG. For a given non-test
@@ -245,7 +241,7 @@ class Linker:
                     # is a subset of all upstream nodes of the current node,
                     # add an edge from the upstream test to the current node.
                     if test_depends_on.issubset(upstream_nodes):
-                        self.graph.add_edge(upstream_test, node_id)
+                        self.graph.add_edge(upstream_test, node_id, edge_type="parent_test")
 
     def get_graph(self, manifest: Manifest) -> Graph:
         self.link_graph(manifest)

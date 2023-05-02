@@ -109,7 +109,7 @@ class TestPublicationArtifact:
         ]
 
 
-class TestDependenciesYml:
+class TestPublicationArtifacts:
     @pytest.fixture(scope="class")
     def models(self):
         return {
@@ -119,7 +119,7 @@ class TestDependenciesYml:
             "models.yml": models_yml,
         }
 
-    def test_dependencies(self, project):
+    def test_pub_artifacts(self, project):
         write_file(dependencies_yml, "dependencies.yml")
 
         # Depdencies lists "marketing" project, but no publication file found
@@ -182,3 +182,30 @@ class TestDependenciesYml:
         write_file(ext_node_model_sql, project.project_root, "models", "test_model_two.sql")
         results = run_dbt(["run"])
         assert len(results) == 5
+
+
+class TestDependencies:
+    @pytest.fixture(scope="class")
+    def models(self):
+        return {
+            "model_one.sql": model_one_sql,
+            "model_two.sql": model_two_sql,
+            "model_three.sql": model_three_sql,
+            "models.yml": models_yml,
+        }
+
+    @pytest.fixture(scope="class")
+    def models_alt(self):
+        return {
+            "model_alt.sql": "select 1 as fun",
+        }
+
+    def test_multi_projects(self, project, project_alt):
+        # run the base project. args will have the project_dir for this project, so
+        # we don't have to supply it.
+        results = run_dbt(["run"])
+        assert len(results) == 3
+
+        # run the alternate project by using the alternate project root
+        results = run_dbt(["run", "--project-dir", str(project_alt.project_root)])
+        assert len(results) == 1

@@ -7,6 +7,7 @@
 # - run unit and integration tests against given commit;
 # - build and package that SHA;
 # - release it to GitHub and PyPI with that specific build;
+# - call Docker image release workflow (not run for testing)
 #
 # **why?**
 # Ensure an automated and tested release process
@@ -208,6 +209,23 @@ jobs:
     secrets:
       PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
       TEST_PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
+
+  docker-core-release:
+    name: Docker dbt-core Release
+    if: ${{ !inputs.test_run }}
+    needs: [pypi-release]
+
+    uses: dbt-labs/dbt-core/.github/workflows/release-docker.yml@main
+    with:
+      package: dbt-core
+
+  docker-postgres-release:
+    name: Docker dbt-postgres Release
+    needs: [docker-core-release]
+
+    uses: dbt-labs/dbt-core/.github/workflows/release-docker.yml@main
+    with:
+      package: dbt-postgres
 
   slack-notification:
     name: Slack Notification

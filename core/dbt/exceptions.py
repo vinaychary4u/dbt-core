@@ -1,14 +1,12 @@
 import builtins
 import json
 import re
-from typing import Any, Dict, List, Mapping, NoReturn, Optional, Union
+import io
+import agate
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 from dbt.dataclass_schema import ValidationError
-from dbt.internal_deprecations import deprecated
-from dbt.events.functions import warn_or_error
 from dbt.events.helpers import env_secrets, scrub_secrets
-from dbt.events.types import JinjaLogWarning
-from dbt.events.contextvars import get_node_info
 from dbt.node_types import NodeType
 from dbt.ui import line_wrap_message
 
@@ -209,6 +207,47 @@ class CompilationError(DbtRuntimeError):
             )
 
 
+class ContractBreakingChangeError(DbtRuntimeError):
+    CODE = 10016
+    MESSAGE = "Breaking Change to Contract"
+
+    def __init__(
+        self, contract_enforced_disabled, columns_removed, column_type_changes, node=None
+    ):
+        self.contract_enforced_disabled = contract_enforced_disabled
+        self.columns_removed = columns_removed
+        self.column_type_changes = column_type_changes
+        super().__init__(self.message(), node)
+
+    @property
+    def type(self):
+        return "Breaking Change to Contract"
+
+    def message(self):
+        breaking_changes = []
+        if self.contract_enforced_disabled:
+            breaking_changes.append("The contract's enforcement has been disabled.")
+        if self.columns_removed:
+            columns_removed_str = "\n  - ".join(self.columns_removed)
+            breaking_changes.append(f"Columns were removed: \n - {columns_removed_str}")
+        if self.column_type_changes:
+            column_type_changes_str = "\n  - ".join(
+                [f"{c[0]} ({c[1]} -> {c[2]})" for c in self.column_type_changes]
+            )
+            breaking_changes.append(
+                f"Columns with data_type changes: \n - {column_type_changes_str}"
+            )
+
+        reasons = "\n\n".join(breaking_changes)
+
+        return (
+            "While comparing to previous project state, dbt detected a breaking change to an enforced contract."
+            f"\n\n{reasons}\n\n"
+            "Consider making an additive (non-breaking) change instead, if possible.\n"
+            "Otherwise, create a new model version: https://docs.getdbt.com/docs/collaborate/govern/model-versions"
+        )
+
+
 class RecursionError(DbtRuntimeError):
     pass
 
@@ -333,6 +372,20 @@ class DbtSelectorsError(DbtConfigError):
 
 class DbtProfileError(DbtConfigError):
     pass
+
+
+class PublicationConfigNotFound(DbtConfigError):
+    def __init__(self, project=None, file_name=None):
+        self.project = project
+        self.file_name = file_name
+        msg = self.message()
+        super().__init__(msg, project=project)
+
+    def message(self):
+        return (
+            f"A dependency on project {self.project} was specified, "
+            f"but file {self.file_name} was not found."
+        )
 
 
 class SemverError(Exception):
@@ -875,7 +928,8 @@ class MetricArgsError(CompilationError):
 class RefBadContextError(CompilationError):
     def __init__(self, node, args):
         self.node = node
-        self.args = args
+        self.args = args.positional_args  # type: ignore
+        self.kwargs = args.keyword_args  # type: ignore
         super().__init__(msg=self.get_message())
 
     def get_message(self) -> str:
@@ -889,7 +943,15 @@ class RefBadContextError(CompilationError):
             model_name = self.node.name
 
         ref_args = ", ".join("'{}'".format(a) for a in self.args)
-        ref_string = f"{{{{ ref({ref_args}) }}}}"
+
+        keyword_args = ""
+        if self.kwargs:
+            keyword_args = ", ".join(
+                "{}='{}'".format(k, v) for k, v in self.kwargs.items()  # type: ignore
+            )
+            keyword_args = "," + keyword_args
+
+        ref_string = f"{{{{ ref({ref_args}{keyword_args}) }}}}"
 
         msg = f"""dbt was unable to infer all dependencies for the model "{model_name}".
 This typically happens when ref() is placed within a conditional block.
@@ -967,6 +1029,17 @@ class DuplicateMacroNameError(CompilationError):
             f"change the name of one of these macros:\n- {self.node_1.unique_id} "
             f"({self.node_1.original_file_path})\n- {self.node_2.unique_id} ({self.node_2.original_file_path})"
         )
+
+        return msg
+
+
+class MacroResultAlreadyLoadedError(CompilationError):
+    def __init__(self, result_name):
+        self.result_name = result_name
+        super().__init__(msg=self.get_message())
+
+    def get_message(self) -> str:
+        msg = f"The 'statement' result named '{self.result_name}' has already been loaded into a variable"
 
         return msg
 
@@ -1272,12 +1345,14 @@ class TargetNotFoundError(CompilationError):
         target_name: str,
         target_kind: str,
         target_package: Optional[str] = None,
+        target_version: Optional[Union[str, float]] = None,
         disabled: Optional[bool] = None,
     ):
         self.node = node
         self.target_name = target_name
         self.target_kind = target_kind
         self.target_package = target_package
+        self.target_version = target_version
         self.disabled = disabled
         super().__init__(msg=self.get_message())
 
@@ -1293,13 +1368,17 @@ class TargetNotFoundError(CompilationError):
         else:
             reason = "was not found"
 
+        target_version_string = ""
+        if self.target_version is not None:
+            target_version_string = f"with version '{self.target_version}' "
+
         target_package_string = ""
         if self.target_package is not None:
-            target_package_string = f"in package '{self.target_package}' "
+            target_package_string = f"in package or project '{self.target_package}' "
 
         msg = (
             f"{resource_type_title} '{unique_id}' ({original_file_path}) depends on a "
-            f"{self.target_kind} named '{self.target_name}' {target_package_string}which {reason}"
+            f"{self.target_kind} named '{self.target_name}' {target_version_string}{target_package_string}which {reason}"
         )
         return msg
 
@@ -2130,14 +2209,65 @@ class ContractError(CompilationError):
         self.sql_columns = sql_columns
         super().__init__(msg=self.get_message())
 
+    def get_mismatches(self) -> agate.Table:
+        # avoid a circular import
+        from dbt.clients.agate_helper import table_from_data_flat
+
+        column_names = ["column_name", "definition_type", "contract_type", "mismatch_reason"]
+        # list of mismatches
+        mismatches: List[Dict[str, str]] = []
+        # track sql cols so we don't need another for loop later
+        sql_col_set = set()
+        # for each sql col list
+        for sql_col in self.sql_columns:
+            # add sql col to set
+            sql_col_set.add(sql_col["name"])
+            # for each yaml col list
+            for i, yaml_col in enumerate(self.yaml_columns):
+                # if name matches
+                if sql_col["name"] == yaml_col["name"]:
+                    # if type matches
+                    if sql_col["data_type"] == yaml_col["data_type"]:
+                        # its a perfect match! don't include in mismatch table
+                        break
+                    else:
+                        # same name, diff type
+                        row = [
+                            sql_col["name"],
+                            sql_col["data_type"],
+                            yaml_col["data_type"],
+                            "data type mismatch",
+                        ]
+                        mismatches += [dict(zip(column_names, row))]
+                        break
+                # if last loop, then no name match
+                if i == len(self.yaml_columns) - 1:
+                    row = [sql_col["name"], sql_col["data_type"], "", "missing in contract"]
+                    mismatches += [dict(zip(column_names, row))]
+
+        # now add all yaml cols without a match
+        for yaml_col in self.yaml_columns:
+            if yaml_col["name"] not in sql_col_set:
+                row = [yaml_col["name"], "", yaml_col["data_type"], "missing in definition"]
+                mismatches += [dict(zip(column_names, row))]
+
+        mismatches_sorted = sorted(mismatches, key=lambda d: d["column_name"])
+        return table_from_data_flat(mismatches_sorted, column_names)
+
     def get_message(self) -> str:
+        table: agate.Table = self.get_mismatches()
+        # Hack to get Agate table output as string
+        output = io.StringIO()
+        table.print_table(output=output, max_rows=None, max_column_width=50)  # type: ignore
+        mismatches = output.getvalue()
+
         msg = (
-            "Contracts are enabled for this model. "
-            "Please ensure the name, data_type, and number of columns in your `yml` file "
-            "match the columns in your SQL file.\n"
-            f"Schema File Columns: {self.yaml_columns}\n"
-            f"SQL File Columns: {self.sql_columns}"
+            "This model has an enforced contract that failed.\n"
+            "Please ensure the name, data_type, and number of columns in your contract "
+            "match the columns in your model's definition.\n\n"
+            f"{mismatches}"
         )
+
         return msg
 
 
@@ -2216,468 +2346,3 @@ class RPCLoadException(DbtRuntimeError):
 
     def data(self):
         return {"cause": self.cause, "message": self.msg}
-
-
-# These are copies of what's in dbt/context/exceptions_jinja.py to not immediately break adapters
-# utilizing these functions as exceptions.  These are direct copies to avoid circular imports.
-# They will be removed in 1 (or 2?) versions.  Issue to be created to ensure it happens.
-
-# TODO: add deprecation to functions
-DEPRECATION_VERSION = "1.5.0"
-SUGGESTED_ACTION = "using `raise {exception}` directly instead"
-REASON = "See https://github.com/dbt-labs/dbt-core/issues/6393 for more details"
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="JinjaLogWarning"),
-    reason=REASON,
-)
-def warn(msg, node=None):
-    warn_or_error(JinjaLogWarning(msg=msg, node_info=get_node_info()))
-    return ""
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="MissingConfigError"),
-    reason=REASON,
-)
-def missing_config(model, name) -> NoReturn:
-    raise MissingConfigError(unique_id=model.unique_id, name=name)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="MissingMaterializationError"),
-    reason=REASON,
-)
-def missing_materialization(model, adapter_type) -> NoReturn:
-    materialization = model.config.materialized
-    raise MissingMaterializationError(materialization=materialization, adapter_type=adapter_type)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="MissingRelationError"),
-    reason=REASON,
-)
-def missing_relation(relation, model=None) -> NoReturn:
-    raise MissingRelationError(relation, model)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="AmbiguousAliasError"),
-    reason=REASON,
-)
-def raise_ambiguous_alias(node_1, node_2, duped_name=None) -> NoReturn:
-    raise AmbiguousAliasError(node_1, node_2, duped_name)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="AmbiguousCatalogMatchError"),
-    reason=REASON,
-)
-def raise_ambiguous_catalog_match(unique_id, match_1, match_2) -> NoReturn:
-    raise AmbiguousCatalogMatchError(unique_id, match_1, match_2)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="CacheInconsistencyError"),
-    reason=REASON,
-)
-def raise_cache_inconsistent(message) -> NoReturn:
-    raise CacheInconsistencyError(message)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="DataclassNotDictError"),
-    reason=REASON,
-)
-def raise_dataclass_not_dict(obj) -> NoReturn:
-    raise DataclassNotDictError(obj)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="CompilationError"),
-    reason=REASON,
-)
-def raise_compiler_error(msg, node=None) -> NoReturn:
-    raise CompilationError(msg, node)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="DbtDatabaseError"),
-    reason=REASON,
-)
-def raise_database_error(msg, node=None) -> NoReturn:
-    raise DbtDatabaseError(msg, node)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="DependencyNotFoundError"),
-    reason=REASON,
-)
-def raise_dep_not_found(node, node_description, required_pkg) -> NoReturn:
-    raise DependencyNotFoundError(node, node_description, required_pkg)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="DependencyError"),
-    reason=REASON,
-)
-def raise_dependency_error(msg) -> NoReturn:
-    raise DependencyError(scrub_secrets(msg, env_secrets()))
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="DuplicatePatchPathError"),
-    reason=REASON,
-)
-def raise_duplicate_patch_name(patch_1, existing_patch_path) -> NoReturn:
-    raise DuplicatePatchPathError(patch_1, existing_patch_path)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="DuplicateResourceNameError"),
-    reason=REASON,
-)
-def raise_duplicate_resource_name(node_1, node_2) -> NoReturn:
-    raise DuplicateResourceNameError(node_1, node_2)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="PropertyYMLError"),
-    reason=REASON,
-)
-def raise_invalid_property_yml_version(path, issue) -> NoReturn:
-    raise PropertyYMLError(path, issue)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="NotImplementedError"),
-    reason=REASON,
-)
-def raise_not_implemented(msg) -> NoReturn:
-    raise NotImplementedError(msg)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="RelationWrongTypeError"),
-    reason=REASON,
-)
-def relation_wrong_type(relation, expected_type, model=None) -> NoReturn:
-    raise RelationWrongTypeError(relation, expected_type, model)
-
-
-# these were implemented in core so deprecating here by calling the new exception directly
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="DuplicateAliasError"),
-    reason=REASON,
-)
-def raise_duplicate_alias(
-    kwargs: Mapping[str, Any], aliases: Mapping[str, str], canonical_key: str
-) -> NoReturn:
-    raise DuplicateAliasError(kwargs, aliases, canonical_key)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="DuplicateSourcePatchNameError"),
-    reason=REASON,
-)
-def raise_duplicate_source_patch_name(patch_1, patch_2):
-    raise DuplicateSourcePatchNameError(patch_1, patch_2)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="DuplicateMacroPatchNameError"),
-    reason=REASON,
-)
-def raise_duplicate_macro_patch_name(patch_1, existing_patch_path):
-    raise DuplicateMacroPatchNameError(patch_1, existing_patch_path)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="DuplicateMacroNameError"),
-    reason=REASON,
-)
-def raise_duplicate_macro_name(node_1, node_2, namespace) -> NoReturn:
-    raise DuplicateMacroNameError(node_1, node_2, namespace)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="ApproximateMatchError"),
-    reason=REASON,
-)
-def approximate_relation_match(target, relation):
-    raise ApproximateMatchError(target, relation)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="RelationReturnedMultipleResultsError"),
-    reason=REASON,
-)
-def get_relation_returned_multiple_results(kwargs, matches):
-    raise RelationReturnedMultipleResultsError(kwargs, matches)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="OperationError"),
-    reason=REASON,
-)
-def system_error(operation_name):
-    raise OperationError(operation_name)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="InvalidMaterializationArgError"),
-    reason=REASON,
-)
-def invalid_materialization_argument(name, argument):
-    raise MaterializationArgError(name, argument)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="BadSpecError"),
-    reason=REASON,
-)
-def bad_package_spec(repo, spec, error_message):
-    raise BadSpecError(spec, repo, error_message)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="CommandResultError"),
-    reason=REASON,
-)
-def raise_git_cloning_error(error: CommandResultError) -> NoReturn:
-    raise error
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="UnknownGitCloningProblemError"),
-    reason=REASON,
-)
-def raise_git_cloning_problem(repo) -> NoReturn:
-    raise UnknownGitCloningProblemError(repo)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="MacroDispatchArgError"),
-    reason=REASON,
-)
-def macro_invalid_dispatch_arg(macro_name) -> NoReturn:
-    raise MacroDispatchArgError(macro_name)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="GraphDependencyNotFoundError"),
-    reason=REASON,
-)
-def dependency_not_found(node, dependency):
-    raise GraphDependencyNotFoundError(node, dependency)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="TargetNotFoundError"),
-    reason=REASON,
-)
-def target_not_found(
-    node,
-    target_name: str,
-    target_kind: str,
-    target_package: Optional[str] = None,
-    disabled: Optional[bool] = None,
-) -> NoReturn:
-    raise TargetNotFoundError(
-        node=node,
-        target_name=target_name,
-        target_kind=target_kind,
-        target_package=target_package,
-        disabled=disabled,
-    )
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="DocTargetNotFoundError"),
-    reason=REASON,
-)
-def doc_target_not_found(
-    model, target_doc_name: str, target_doc_package: Optional[str] = None
-) -> NoReturn:
-    raise DocTargetNotFoundError(
-        node=model, target_doc_name=target_doc_name, target_doc_package=target_doc_package
-    )
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="DocArgsError"),
-    reason=REASON,
-)
-def doc_invalid_args(model, args) -> NoReturn:
-    raise DocArgsError(node=model, args=args)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="RefBadContextError"),
-    reason=REASON,
-)
-def ref_bad_context(model, args) -> NoReturn:
-    raise RefBadContextError(node=model, args=args)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="MetricArgsError"),
-    reason=REASON,
-)
-def metric_invalid_args(model, args) -> NoReturn:
-    raise MetricArgsError(node=model, args=args)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="RefArgsError"),
-    reason=REASON,
-)
-def ref_invalid_args(model, args) -> NoReturn:
-    raise RefArgsError(node=model, args=args)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="BooleanError"),
-    reason=REASON,
-)
-def invalid_bool_error(got_value, macro_name) -> NoReturn:
-    raise BooleanError(return_value=got_value, macro_name=macro_name)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="MacroArgTypeError"),
-    reason=REASON,
-)
-def invalid_type_error(method_name, arg_name, got_value, expected_type) -> NoReturn:
-    """Raise a InvalidMacroArgType when an adapter method available to macros
-    has changed.
-    """
-    raise MacroArgTypeError(method_name, arg_name, got_value, expected_type)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="SecretEnvVarLocationError"),
-    reason=REASON,
-)
-def disallow_secret_env_var(env_var_name) -> NoReturn:
-    """Raise an error when a secret env var is referenced outside allowed
-    rendering contexts"""
-    raise SecretEnvVarLocationError(env_var_name)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="ParsingError"),
-    reason=REASON,
-)
-def raise_parsing_error(msg, node=None) -> NoReturn:
-    raise ParsingError(msg, node)
-
-
-# These are the exceptions functions that were not called within dbt-core but will remain
-# here deprecated to give a chance for adapters to rework
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="UnrecognizedCredentialTypeError"),
-    reason=REASON,
-)
-def raise_unrecognized_credentials_type(typename, supported_types):
-    raise UnrecognizedCredentialTypeError(typename, supported_types)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="PatchTargetNotFoundError"),
-    reason=REASON,
-)
-def raise_patch_targets_not_found(patches):
-    raise PatchTargetNotFoundError(patches)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="RelationReturnedMultipleResultsError"),
-    reason=REASON,
-)
-def multiple_matching_relations(kwargs, matches):
-    raise RelationReturnedMultipleResultsError(kwargs, matches)
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="MaterializationNotAvailableError"),
-    reason=REASON,
-)
-def materialization_not_available(model, adapter_type):
-    materialization = model.config.materialized
-    raise MaterializationNotAvailableError(
-        materialization=materialization, adapter_type=adapter_type
-    )
-
-
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action=SUGGESTED_ACTION.format(exception="MacroNotFoundError"),
-    reason=REASON,
-)
-def macro_not_found(model, target_macro_id):
-    raise MacroNotFoundError(node=model, target_macro_id=target_macro_id)
-
-
-# adapters use this to format messages.  it should be deprecated but live on for now
-# TODO: What should the message here be?
-@deprecated(
-    version=DEPRECATION_VERSION,
-    suggested_action="Format this message in the adapter",
-    reason="`validator_error_message` is now a mathod on DbtRuntimeError",
-)
-def validator_error_message(exc):
-    """Given a dbt.dataclass_schema.ValidationError (which is basically a
-    jsonschema.ValidationError), return the relevant parts as a string
-    """
-    if not isinstance(exc, dbt.dataclass_schema.ValidationError):
-        return str(exc)
-    path = "[%s]" % "][".join(map(repr, exc.relative_path))
-    return "at path {}: {}".format(path, exc.message)

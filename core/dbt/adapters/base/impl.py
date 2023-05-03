@@ -2,40 +2,45 @@ import abc
 from concurrent.futures import as_completed, Future
 from contextlib import contextmanager
 from datetime import datetime
+from enum import Enum
 import time
 from itertools import chain
 from typing import (
-    Optional,
-    Tuple,
-    Callable,
-    Iterable,
-    Type,
-    Dict,
     Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
     List,
     Mapping,
-    Iterator,
+    Optional,
     Set,
+    Tuple,
+    Type,
+    Union,
 )
+
+from dbt.contracts.graph.nodes import ColumnLevelConstraint, ConstraintType, ModelLevelConstraint
 
 import agate
 import pytz
 
 from dbt.exceptions import (
     DbtInternalError,
+    DbtRuntimeError,
+    DbtValidationError,
     MacroArgTypeError,
     MacroResultError,
-    QuoteConfigTypeError,
     NotImplementedError,
     NullRelationCacheAttemptedError,
     NullRelationDropAttemptedError,
+    QuoteConfigTypeError,
     RelationReturnedMultipleResultsError,
     RenameToNoneAttemptedError,
-    DbtRuntimeError,
     SnapshotTargetIncompleteError,
     SnapshotTargetNotSnapshotTableError,
-    UnexpectedNullError,
     UnexpectedNonTimestampError,
+    UnexpectedNullError,
 )
 
 from dbt.adapters.protocol import AdapterConfig, ConnectionManagerProtocol
@@ -50,6 +55,8 @@ from dbt.events.types import (
     CodeExecution,
     CodeExecutionStatus,
     CatalogGenerationError,
+    ConstraintNotSupported,
+    ConstraintNotEnforced,
 )
 from dbt.utils import filter_null_values, executor, cast_to_str, AttrDict
 
@@ -63,11 +70,17 @@ from dbt.adapters.base.relation import (
 )
 from dbt.adapters.base import Column as BaseColumn
 from dbt.adapters.base import Credentials
-from dbt.adapters.cache import RelationsCache, _make_ref_key_msg
+from dbt.adapters.cache import RelationsCache, _make_ref_key_dict
 
 
 GET_CATALOG_MACRO_NAME = "get_catalog"
 FRESHNESS_MACRO_NAME = "collect_freshness"
+
+
+class ConstraintSupport(str, Enum):
+    ENFORCED = "enforced"
+    NOT_ENFORCED = "not_enforced"
+    NOT_SUPPORTED = "not_supported"
 
 
 def _expect_row_value(key: str, row: agate.Row):
@@ -200,6 +213,14 @@ class BaseAdapter(metaclass=AdapterMeta):
     # A set of clobber config fields accepted by this adapter
     # for use in materializations
     AdapterSpecificConfigs: Type[AdapterConfig] = AdapterConfig
+
+    CONSTRAINT_SUPPORT = {
+        ConstraintType.check: ConstraintSupport.NOT_SUPPORTED,
+        ConstraintType.not_null: ConstraintSupport.ENFORCED,
+        ConstraintType.unique: ConstraintSupport.NOT_ENFORCED,
+        ConstraintType.primary_key: ConstraintSupport.NOT_ENFORCED,
+        ConstraintType.foreign_key: ConstraintSupport.ENFORCED,
+    }
 
     def __init__(self, config):
         self.config = config
@@ -715,11 +736,23 @@ class BaseAdapter(metaclass=AdapterMeta):
         # we can't build the relations cache because we don't have a
         # manifest so we can't run any operations.
         relations = self.list_relations_without_caching(schema_relation)
+
+        # if the cache is already populated, add this schema in
+        # otherwise, skip updating the cache and just ignore
+        if self.cache:
+            for relation in relations:
+                self.cache.add(relation)
+            if not relations:
+                # it's possible that there were no relations in some schemas. We want
+                # to insert the schemas we query into the cache's `.schemas` attribute
+                # so we can check it later
+                self.cache.update_schemas([(database, schema)])
+
         fire_event(
             ListRelations(
                 database=cast_to_str(database),
                 schema=schema,
-                relations=[_make_ref_key_msg(x) for x in relations],
+                relations=[_make_ref_key_dict(x) for x in relations],
             )
         )
 
@@ -1261,6 +1294,110 @@ class BaseAdapter(metaclass=AdapterMeta):
 
         # This returns a callable macro
         return model_context[macro_name]
+
+    @classmethod
+    def _parse_column_constraint(cls, raw_constraint: Dict[str, Any]) -> ColumnLevelConstraint:
+        try:
+            ColumnLevelConstraint.validate(raw_constraint)
+            return ColumnLevelConstraint.from_dict(raw_constraint)
+        except Exception:
+            raise DbtValidationError(f"Could not parse constraint: {raw_constraint}")
+
+    @classmethod
+    def render_column_constraint(cls, constraint: ColumnLevelConstraint) -> Optional[str]:
+        """Render the given constraint as DDL text. Should be overriden by adapters which need custom constraint
+        rendering."""
+        if constraint.type == ConstraintType.check and constraint.expression:
+            return f"check {constraint.expression}"
+        elif constraint.type == ConstraintType.not_null:
+            return "not null"
+        elif constraint.type == ConstraintType.unique:
+            return "unique"
+        elif constraint.type == ConstraintType.primary_key:
+            return "primary key"
+        elif constraint.type == ConstraintType.foreign_key:
+            return "foreign key"
+        elif constraint.type == ConstraintType.custom and constraint.expression:
+            return constraint.expression
+        else:
+            return None
+
+    @available
+    @classmethod
+    def render_raw_columns_constraints(cls, raw_columns: Dict[str, Dict[str, Any]]) -> List:
+        rendered_column_constraints = []
+
+        for v in raw_columns.values():
+            rendered_column_constraint = [f"{v['name']} {v['data_type']}"]
+            for con in v.get("constraints", None):
+                constraint = cls._parse_column_constraint(con)
+                c = cls.process_parsed_constraint(constraint, cls.render_column_constraint)
+                if c is not None:
+                    rendered_column_constraint.append(c)
+            rendered_column_constraints.append(" ".join(rendered_column_constraint))
+
+        return rendered_column_constraints
+
+    @classmethod
+    def process_parsed_constraint(
+        cls, parsed_constraint: Union[ColumnLevelConstraint, ModelLevelConstraint], render_func
+    ) -> Optional[str]:
+        if (
+            parsed_constraint.warn_unsupported
+            and cls.CONSTRAINT_SUPPORT[parsed_constraint.type] == ConstraintSupport.NOT_SUPPORTED
+        ):
+            warn_or_error(
+                ConstraintNotSupported(constraint=parsed_constraint.type.value, adapter=cls.type())
+            )
+        if (
+            parsed_constraint.warn_unenforced
+            and cls.CONSTRAINT_SUPPORT[parsed_constraint.type] == ConstraintSupport.NOT_ENFORCED
+        ):
+            warn_or_error(
+                ConstraintNotEnforced(constraint=parsed_constraint.type.value, adapter=cls.type())
+            )
+        if cls.CONSTRAINT_SUPPORT[parsed_constraint.type] != ConstraintSupport.NOT_SUPPORTED:
+            return render_func(parsed_constraint)
+
+        return None
+
+    @classmethod
+    def _parse_model_constraint(cls, raw_constraint: Dict[str, Any]) -> ModelLevelConstraint:
+        try:
+            ModelLevelConstraint.validate(raw_constraint)
+            c = ModelLevelConstraint.from_dict(raw_constraint)
+            return c
+        except Exception:
+            raise DbtValidationError(f"Could not parse constraint: {raw_constraint}")
+
+    @available
+    @classmethod
+    def render_raw_model_constraints(cls, raw_constraints: List[Dict[str, Any]]) -> List[str]:
+        return [c for c in map(cls.render_raw_model_constraint, raw_constraints) if c is not None]
+
+    @classmethod
+    def render_raw_model_constraint(cls, raw_constraint: Dict[str, Any]) -> Optional[str]:
+        constraint = cls._parse_model_constraint(raw_constraint)
+        return cls.process_parsed_constraint(constraint, cls.render_model_constraint)
+
+    @classmethod
+    def render_model_constraint(cls, constraint: ModelLevelConstraint) -> Optional[str]:
+        """Render the given constraint as DDL text. Should be overriden by adapters which need custom constraint
+        rendering."""
+        constraint_prefix = f"constraint {constraint.name} " if constraint.name else ""
+        column_list = ", ".join(constraint.columns)
+        if constraint.type == ConstraintType.check and constraint.expression:
+            return f"{constraint_prefix}check {constraint.expression}"
+        elif constraint.type == ConstraintType.unique:
+            return f"{constraint_prefix}unique ({column_list})"
+        elif constraint.type == ConstraintType.primary_key:
+            return f"{constraint_prefix}primary key ({column_list})"
+        elif constraint.type == ConstraintType.foreign_key:
+            return f"{constraint_prefix}foreign key ({column_list})"
+        elif constraint.type == ConstraintType.custom and constraint.expression:
+            return f"{constraint_prefix}{constraint.expression}"
+        else:
+            return None
 
 
 COLUMNS_EQUAL_SQL = """

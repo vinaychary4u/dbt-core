@@ -18,7 +18,8 @@ from dbt.events.functions import (
     stop_capture_stdout_logs,
     reset_metadata_vars,
 )
-from dbt.events.test_types import IntegrationTestDebug
+from dbt.events.base_types import EventLevel
+from dbt.events.types import Note
 
 
 # =============================================================================
@@ -91,13 +92,19 @@ def run_dbt(args: List[str] = None, expect_pass=True):
         args.extend(["--project-dir", project_dir])
     if profiles_dir and "--profiles-dir" not in args:
         args.extend(["--profiles-dir", profiles_dir])
+
     dbt = dbtRunner()
-    res, success = dbt.invoke(args)
+    res = dbt.invoke(args)
+
+    # the exception is immediately raised to be caught in tests
+    # using a pattern like `with pytest.raises(SomeException):`
+    if res.exception is not None:
+        raise res.exception
 
     if expect_pass is not None:
-        assert success == expect_pass, "dbt exit state did not match expected"
+        assert res.success == expect_pass, "dbt exit state did not match expected"
 
-    return res
+    return res.result
 
 
 # Use this if you need to capture the command logs in a test.
@@ -275,7 +282,7 @@ def run_sql_with_adapter(adapter, sql, fetch=None):
     sql = sql.format(**kwargs)
 
     msg = f'test connection "__test" executing: {sql}'
-    fire_event(IntegrationTestDebug(msg=msg))
+    fire_event(Note(msg=msg), level=EventLevel.DEBUG)
     with get_connection(adapter) as conn:
         return adapter.run_sql_for_tests(sql, fetch, conn)
 
@@ -321,7 +328,7 @@ def relation_from_name(adapter, name: str):
 
 
 # Ensure that models with different materialiations have the
-# corrent table/view.
+# current table/view.
 # Uses:
 #   adapter.list_relations_without_caching
 def check_relation_types(adapter, relation_to_type):

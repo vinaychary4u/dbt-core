@@ -86,7 +86,7 @@ def populated_node_config_dict():
         "grants": {},
         "packages": [],
         "docs": {"show": True},
-        "contract": False,
+        "contract": {"enforced": False},
     }
 
 
@@ -150,7 +150,7 @@ def base_parsed_model_dict():
         "refs": [],
         "sources": [],
         "metrics": [],
-        "depends_on": {"macros": [], "nodes": []},
+        "depends_on": {"macros": [], "nodes": [], "public_nodes": []},
         "database": "test_db",
         "description": "",
         "schema": "test_schema",
@@ -169,12 +169,12 @@ def base_parsed_model_dict():
             "meta": {},
             "grants": {},
             "docs": {"show": True},
-            "contract": False,
+            "contract": {"enforced": False},
             "packages": [],
         },
         "deferred": False,
         "docs": {"show": True},
-        "contract": False,
+        "contract": {"enforced": False},
         "columns": {},
         "meta": {},
         "checksum": {
@@ -185,6 +185,7 @@ def base_parsed_model_dict():
         "config_call_dict": {},
         "access": AccessType.Protected.value,
         "yaml_config_dict": {},
+        "constraints": [],
     }
 
 
@@ -256,7 +257,7 @@ def complex_parsed_model_dict():
         "refs": [],
         "sources": [],
         "metrics": [],
-        "depends_on": {"macros": [], "nodes": ["model.test.bar"]},
+        "depends_on": {"macros": [], "nodes": ["model.test.bar"], "public_nodes": []},
         "database": "test_db",
         "deferred": True,
         "description": "My parsed node",
@@ -277,17 +278,18 @@ def complex_parsed_model_dict():
             "meta": {},
             "grants": {},
             "docs": {"show": True},
-            "contract": False,
+            "contract": {"enforced": False},
             "packages": [],
         },
         "docs": {"show": True},
-        "contract": False,
+        "contract": {"enforced": False},
         "columns": {
             "a": {
                 "name": "a",
                 "description": "a text field",
                 "meta": {},
                 "tags": [],
+                "constraints": [],
             },
         },
         "checksum": {
@@ -302,6 +304,7 @@ def complex_parsed_model_dict():
         "config_call_dict": {},
         "access": AccessType.Protected.value,
         "yaml_config_dict": {},
+        "constraints": [],
     }
 
 
@@ -355,7 +358,7 @@ def complex_parsed_model_object():
     "grants": {},
     "packages": [],
     "docs": {"show": True},
-    "contract": False,
+    "contract": {"enforced": False},
     "post-hook": [{"sql": 'insert into blah(a, b) select "1", 1', "transaction": True}],
     "pre-hook": [],
 }
@@ -523,7 +526,7 @@ def basic_parsed_seed_dict():
             "meta": {},
             "grants": {},
             "docs": {"show": True},
-            "contract": False,
+            "contract": {"enforced": False},
             "packages": [],
         },
         "deferred": False,
@@ -614,13 +617,19 @@ def complex_parsed_seed_dict():
             "meta": {},
             "grants": {},
             "docs": {"show": True},
-            "contract": False,
+            "contract": {"enforced": False},
             "packages": [],
         },
         "deferred": False,
         "docs": {"show": True},
         "columns": {
-            "a": {"name": "a", "description": "a column description", "meta": {}, "tags": []}
+            "a": {
+                "name": "a",
+                "description": "a column description",
+                "meta": {},
+                "tags": [],
+                "constraints": [],
+            }
         },
         "meta": {"foo": 1000},
         "checksum": {
@@ -771,10 +780,13 @@ def basic_parsed_model_patch_dict():
                 "description": "a text field",
                 "meta": {},
                 "tags": [],
+                "constraints": [],
             },
         },
         "config": {},
         "access": "public",
+        "version": "1",
+        "latest_version": "1",
     }
 
 
@@ -791,6 +803,8 @@ def basic_parsed_model_patch_object():
         meta={},
         config={},
         access="public",
+        version="1",
+        latest_version="1",
     )
 
 
@@ -823,6 +837,8 @@ def patched_model_object():
         checksum=FileHash.from_contents(""),
         unrendered_config={},
         access=AccessType.Public,
+        version="1",
+        latest_version="1",
     )
 
 
@@ -874,7 +890,7 @@ def base_parsed_hook_dict():
         "refs": [],
         "sources": [],
         "metrics": [],
-        "depends_on": {"macros": [], "nodes": []},
+        "depends_on": {"macros": [], "nodes": [], "public_nodes": []},
         "database": "test_db",
         "deferred": False,
         "description": "",
@@ -894,11 +910,11 @@ def base_parsed_hook_dict():
             "meta": {},
             "grants": {},
             "docs": {"show": True},
-            "contract": False,
+            "contract": {"enforced": False},
             "packages": [],
         },
         "docs": {"show": True},
-        "contract": False,
+        "contract": {"enforced": False},
         "columns": {},
         "meta": {},
         "checksum": {
@@ -955,7 +971,7 @@ def complex_parsed_hook_dict():
         "refs": [],
         "sources": [],
         "metrics": [],
-        "depends_on": {"macros": [], "nodes": ["model.test.bar"]},
+        "depends_on": {"macros": [], "nodes": ["model.test.bar"], "public_nodes": []},
         "deferred": False,
         "database": "test_db",
         "description": "My parsed node",
@@ -976,17 +992,18 @@ def complex_parsed_hook_dict():
             "meta": {},
             "grants": {},
             "docs": {"show": True},
-            "contract": False,
+            "contract": {"enforced": False},
             "packages": [],
         },
         "docs": {"show": True},
-        "contract": False,
+        "contract": {"enforced": False},
         "columns": {
             "a": {
                 "name": "a",
                 "description": "a text field",
                 "meta": {},
                 "tags": [],
+                "constraints": [],
             },
         },
         "index": 13,
@@ -1112,7 +1129,7 @@ def basic_parsed_schema_test_dict():
         "refs": [],
         "sources": [],
         "metrics": [],
-        "depends_on": {"macros": [], "nodes": []},
+        "depends_on": {"macros": [], "nodes": [], "public_nodes": []},
         "deferred": False,
         "database": "test_db",
         "description": "",
@@ -1132,7 +1149,7 @@ def basic_parsed_schema_test_dict():
             "schema": "dbt_test__audit",
         },
         "docs": {"show": True},
-        "contract": False,
+        "contract": {"enforced": False},
         "columns": {},
         "test_metadata": {
             "name": "foo",
@@ -1191,7 +1208,7 @@ def complex_parsed_schema_test_dict():
         "refs": [],
         "sources": [],
         "metrics": [],
-        "depends_on": {"macros": [], "nodes": ["model.test.bar"]},
+        "depends_on": {"macros": [], "nodes": ["model.test.bar"], "public_nodes": []},
         "database": "test_db",
         "deferred": False,
         "description": "My parsed node",
@@ -1212,13 +1229,14 @@ def complex_parsed_schema_test_dict():
             "schema": "dbt_test__audit",
         },
         "docs": {"show": False},
-        "contract": False,
+        "contract": {"enforced": False},
         "columns": {
             "a": {
                 "name": "a",
                 "description": "a text field",
                 "meta": {},
                 "tags": [],
+                "constraints": [],
             },
         },
         "column_name": "id",
@@ -1331,7 +1349,7 @@ def basic_timestamp_snapshot_config_dict():
         "grants": {},
         "packages": [],
         "docs": {"show": True},
-        "contract": False,
+        "contract": {"enforced": False},
     }
 
 
@@ -1368,7 +1386,7 @@ def complex_timestamp_snapshot_config_dict():
         "grants": {},
         "packages": [],
         "docs": {"show": True},
-        "contract": False,
+        "contract": {"enforced": False},
     }
 
 
@@ -1433,7 +1451,7 @@ def basic_check_snapshot_config_dict():
         "grants": {},
         "packages": [],
         "docs": {"show": True},
-        "contract": False,
+        "contract": {"enforced": False},
     }
 
 
@@ -1470,7 +1488,7 @@ def complex_set_snapshot_config_dict():
         "grants": {},
         "packages": [],
         "docs": {"show": True},
-        "contract": False,
+        "contract": {"enforced": False},
     }
 
 
@@ -1560,7 +1578,7 @@ def basic_timestamp_snapshot_dict():
         "refs": [],
         "sources": [],
         "metrics": [],
-        "depends_on": {"macros": [], "nodes": []},
+        "depends_on": {"macros": [], "nodes": [], "public_nodes": []},
         "deferred": False,
         "database": "test_db",
         "description": "",
@@ -1585,11 +1603,11 @@ def basic_timestamp_snapshot_dict():
             "meta": {},
             "grants": {},
             "docs": {"show": True},
-            "contract": False,
+            "contract": {"enforced": False},
             "packages": [],
         },
         "docs": {"show": True},
-        "contract": False,
+        "contract": {"enforced": False},
         "columns": {},
         "meta": {},
         "checksum": {
@@ -1707,7 +1725,7 @@ def basic_check_snapshot_dict():
         "refs": [],
         "sources": [],
         "metrics": [],
-        "depends_on": {"macros": [], "nodes": []},
+        "depends_on": {"macros": [], "nodes": [], "public_nodes": []},
         "database": "test_db",
         "deferred": False,
         "description": "",
@@ -1732,11 +1750,11 @@ def basic_check_snapshot_dict():
             "meta": {},
             "grants": {},
             "docs": {"show": True},
-            "contract": False,
+            "contract": {"enforced": False},
             "packages": [],
         },
         "docs": {"show": True},
-        "contract": False,
+        "contract": {"enforced": False},
         "columns": {},
         "meta": {},
         "checksum": {
@@ -1894,6 +1912,7 @@ def populated_parsed_node_patch_dict():
                 "description": "a text field",
                 "meta": {},
                 "tags": [],
+                "constraints": [],
             },
         },
         "docs": {"show": False},
@@ -1902,6 +1921,8 @@ def populated_parsed_node_patch_dict():
         "package_name": "test",
         "config": {},
         "access": "public",
+        "version": "1",
+        "latest_version": "1",
     }
 
 
@@ -1918,6 +1939,8 @@ def populated_parsed_node_patch_object():
         docs=Docs(show=False),
         config={},
         access="public",
+        version="1",
+        latest_version="1",
     )
 
 
@@ -2277,6 +2300,7 @@ def basic_parsed_exposure_dict():
         "depends_on": {
             "nodes": [],
             "macros": [],
+            "public_nodes": [],
         },
         "refs": [],
         "sources": [],
@@ -2336,6 +2360,7 @@ def complex_parsed_exposure_dict():
         "depends_on": {
             "nodes": ["models.test.my_model"],
             "macros": [],
+            "public_nodes": [],
         },
         "refs": [],
         "sources": [],
@@ -2469,6 +2494,7 @@ def basic_parsed_metric_dict():
         "depends_on": {
             "nodes": [],
             "macros": [],
+            "public_nodes": [],
         },
     }
 

@@ -37,7 +37,7 @@ from dbt.events.types import (
     NothingToDo,
 )
 from dbt.events.contextvars import log_contextvars
-from dbt.contracts.graph.nodes import SourceDefinition, ResultNode
+from dbt.contracts.graph.nodes import ResultNode
 from dbt.contracts.results import NodeStatus, RunExecutionResult, RunningStatus
 from dbt.contracts.state import PreviousState
 from dbt.exceptions import (
@@ -198,7 +198,7 @@ class GraphRunnableTask(ConfiguredTask):
                     fire_event(
                         NodeFinished(
                             node_info=runner.node.node_info,
-                            run_result=result.to_msg(),
+                            run_result=result.to_msg_dict(),
                         )
                     )
             # `_event_status` dict is only used for logging.  Make sure
@@ -295,11 +295,6 @@ class GraphRunnableTask(ConfiguredTask):
         if self.manifest is None:
             raise DbtInternalError("manifest was None in _handle_result")
 
-        if isinstance(node, SourceDefinition):
-            self.manifest.update_source(node)
-        else:
-            self.manifest.update_node(node)
-
         if result.status in self.MARK_DEPENDENT_ERRORS_STATUSES:
             if is_ephemeral:
                 cause = result
@@ -371,6 +366,9 @@ class GraphRunnableTask(ConfiguredTask):
             self._skipped_children[dep_node_id] = cause
 
     def populate_adapter_cache(self, adapter, required_schemas: Set[BaseRelation] = None):
+        if not self.args.populate_cache:
+            return
+
         start_populate_cache = time.perf_counter()
         if get_flags().CACHE_SELECTED_ONLY is True:
             adapter.set_relations_cache(self.manifest, required_schemas=required_schemas)
@@ -439,11 +437,11 @@ class GraphRunnableTask(ConfiguredTask):
 
         # We have other result types here too, including FreshnessResult
         if isinstance(result, RunExecutionResult):
-            result_msgs = [result.to_msg() for result in result.results]
+            result_msgs = [result.to_msg_dict() for result in result.results]
             fire_event(
                 EndRunResult(
                     results=result_msgs,
-                    generated_at=result.generated_at,
+                    generated_at=result.generated_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
                     elapsed_time=result.elapsed_time,
                     success=GraphRunnableTask.interpret_results(result.results),
                 )

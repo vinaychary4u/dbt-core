@@ -9,9 +9,10 @@
   {%- elif unlogged -%}
     unlogged
   {%- endif %} table {{ relation }}
-  {% if config.get('contract', False) %}
+  {% set contract_config = config.get('contract') %}
+  {% if contract_config.enforced %}
     {{ get_assert_columns_equivalent(sql) }}
-    {{ get_columns_spec_ddl() }} ;
+    {{ get_table_columns_and_constraints() }} ;
     insert into {{ relation }} {{ get_column_names() }}
     {%- set sql = get_select_subquery(sql) %}
   {% else %}

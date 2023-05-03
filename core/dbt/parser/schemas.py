@@ -3,13 +3,15 @@ import os
 import pathlib
 
 from abc import ABCMeta, abstractmethod
-from typing import Iterable, Dict, Any, Union, List, Optional, Generic, TypeVar, Type
+from typing import Iterable, Dict, Any, Union, List, Optional, Generic, TypeVar, Type, Callable
+from dataclasses import dataclass, field
 
 from dbt.dataclass_schema import ValidationError, dbtClassMixin
 
 from dbt.adapters.factory import get_adapter, get_adapter_package_names
 from dbt.clients.jinja import get_rendered, add_rendered_test_kwargs
 from dbt.clients.yaml_helper import load_yaml_text
+from dbt.context.providers import RefArgs
 from dbt.parser.schema_renderer import SchemaYamlRenderer
 from dbt.context.context_config import (
     ContextConfig,
@@ -29,6 +31,7 @@ from dbt.contracts.graph.model_config import MetricConfig, ExposureConfig
 from dbt.contracts.graph.nodes import (
     ParsedNodePatch,
     ColumnInfo,
+    ColumnLevelConstraint,
     GenericTestNode,
     ParsedMacroPatch,
     UnpatchedSourceDefinition,
@@ -37,20 +40,25 @@ from dbt.contracts.graph.nodes import (
     Group,
     ManifestNode,
     GraphMemberNode,
+    ConstraintType,
+    ModelNode,
+    ModelLevelConstraint,
 )
 from dbt.contracts.graph.unparsed import (
     HasColumnDocs,
     HasColumnTests,
-    HasDocs,
+    HasColumnProps,
     SourcePatch,
     UnparsedAnalysisUpdate,
     UnparsedColumn,
     UnparsedMacroUpdate,
     UnparsedNodeUpdate,
+    UnparsedModelUpdate,
     UnparsedExposure,
     UnparsedMetric,
     UnparsedSourceDefinition,
     UnparsedGroup,
+    NodeVersion,
 )
 from dbt.exceptions import (
     CompilationError,
@@ -78,9 +86,11 @@ from dbt.parser.generic_test_builders import (
     TargetBlock,
     YamlBlock,
     TestBlock,
+    VersionedTestBlock,
     Testable,
+    Versioned,
 )
-from dbt.utils import get_pseudo_test_path, coerce_dict_str, md5
+from dbt.utils import get_pseudo_test_path, coerce_dict_str, md5, deep_merge
 
 
 TestDef = Union[str, Dict[str, Any]]
@@ -114,15 +124,7 @@ class ParserRef:
     def __init__(self):
         self.column_info: Dict[str, ColumnInfo] = {}
 
-    def add(
-        self,
-        column: Union[HasDocs, UnparsedColumn],
-        description: str,
-        data_type: Optional[str],
-        constraints: Optional[List[str]],
-        constraints_check: Optional[str],
-        meta: Dict[str, Any],
-    ):
+    def _add(self, column: HasColumnProps):
         tags: List[str] = []
         tags.extend(getattr(column, "tags", ()))
         quote: Optional[bool]
@@ -130,13 +132,20 @@ class ParserRef:
             quote = column.quote
         else:
             quote = None
+
+        if any(
+            c
+            for c in column.constraints
+            if "type" not in c or not ConstraintType.is_valid(c["type"])
+        ):
+            raise ParsingError(f"Invalid constraint type on column {column.name}")
+
         self.column_info[column.name] = ColumnInfo(
             name=column.name,
-            description=description,
-            data_type=data_type,
-            constraints=constraints,
-            constraints_check=constraints_check,
-            meta=meta,
+            description=column.description,
+            data_type=column.data_type,
+            constraints=[ColumnLevelConstraint.from_dict(c) for c in column.constraints],
+            meta=column.meta,
             tags=tags,
             quote=quote,
             _extra=column.extra,
@@ -146,12 +155,14 @@ class ParserRef:
     def from_target(cls, target: Union[HasColumnDocs, HasColumnTests]) -> "ParserRef":
         refs = cls()
         for column in target.columns:
-            description = column.description
-            data_type = column.data_type
-            constraints = column.constraints
-            constraints_check = column.constraints_check
-            meta = column.meta
-            refs.add(column, description, data_type, constraints, constraints_check, meta)
+            refs._add(column)
+        return refs
+
+    @classmethod
+    def from_versioned_target(cls, target: Versioned, version: NodeVersion) -> "ParserRef":
+        refs = cls()
+        for base_column in target.get_columns_for_version(version):
+            refs._add(base_column)
         return refs
 
 
@@ -193,12 +204,14 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
             GenericTestNode.validate(dct)
         return GenericTestNode.from_dict(dct)
 
-    def parse_column_tests(self, block: TestBlock, column: UnparsedColumn) -> None:
+    def parse_column_tests(
+        self, block: TestBlock, column: UnparsedColumn, version: Optional[NodeVersion]
+    ) -> None:
         if not column.tests:
             return
 
         for test in column.tests:
-            self.parse_test(block, test, column)
+            self.parse_test(block, test, column, version)
 
     def create_test_node(
         self,
@@ -273,12 +286,14 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
         tags: List[str],
         column_name: Optional[str],
         schema_file_id: str,
+        version: Optional[NodeVersion],
     ) -> GenericTestNode:
         try:
             builder = TestBuilder(
                 test=test,
                 target=target,
                 column_name=column_name,
+                version=version,
                 package_name=target.package_name,
                 render_ctx=self.render_ctx,
             )
@@ -346,12 +361,14 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
         return node
 
     def _lookup_attached_node(
-        self, target: Testable
+        self, target: Testable, version: Optional[NodeVersion]
     ) -> Optional[Union[ManifestNode, GraphMemberNode]]:
         """Look up attached node for Testable target nodes other than sources. Can be None if generic test attached to SQL node with no corresponding .sql file."""
         attached_node = None  # type: Optional[Union[ManifestNode, GraphMemberNode]]
         if not isinstance(target, UnpatchedSourceDefinition):
-            attached_node_unique_id = self.manifest.ref_lookup.get_unique_id(target.name, None)
+            attached_node_unique_id = self.manifest.ref_lookup.get_unique_id(
+                target.name, None, version
+            )
             if attached_node_unique_id:
                 attached_node = self.manifest.nodes[attached_node_unique_id]
             else:
@@ -401,7 +418,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
                 sources = [builder.target.fqn[-2], builder.target.fqn[-1]]
                 node.sources.append(sources)
             else:  # all other nodes
-                node.refs.append([builder.target.name])
+                node.refs.append(RefArgs(name=builder.target.name, version=builder.version))
         else:
             try:
                 # make a base context that doesn't have the magic kwargs field
@@ -426,7 +443,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
 
         # Set attached_node for generic test nodes, if available.
         # Generic test node inherits attached node's group config value.
-        attached_node = self._lookup_attached_node(builder.target)
+        attached_node = self._lookup_attached_node(builder.target, builder.version)
         if attached_node:
             node.attached_node = attached_node.unique_id
             node.group, node.group = attached_node.group, attached_node.group
@@ -442,6 +459,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
             tags=block.tags,
             column_name=block.column_name,
             schema_file_id=block.file.file_id,
+            version=block.version,
         )
         self.add_test_node(block, node)
         return node
@@ -475,6 +493,7 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
         target_block: TestBlock,
         test: TestDef,
         column: Optional[UnparsedColumn],
+        version: Optional[NodeVersion],
     ) -> None:
         if isinstance(test, str):
             test = {test: {}}
@@ -494,21 +513,33 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
             test=test,
             column_name=column_name,
             tags=column_tags,
+            version=version,
         )
         self.parse_node(block)
 
     def parse_tests(self, block: TestBlock) -> None:
         for column in block.columns:
-            self.parse_column_tests(block, column)
+            self.parse_column_tests(block, column, None)
 
         for test in block.tests:
-            self.parse_test(block, test, None)
+            self.parse_test(block, test, None, None)
+
+    def parse_versioned_tests(self, block: VersionedTestBlock) -> None:
+        if not block.target.versions:
+            self.parse_tests(block)
+        else:
+            for version in block.target.versions:
+                for column in block.target.get_columns_for_version(version.v):
+                    self.parse_column_tests(block, column, version.v)
+
+                for test in block.target.get_tests_for_version(version.v):
+                    self.parse_test(block, test, None, version.v)
 
     def parse_file(self, block: FileBlock, dct: Dict = None) -> None:
         assert isinstance(block.file, SchemaSourceFile)
-        if not dct:
-            dct = yaml_from_file(block.file)
 
+        # If partially parsing, dct should be from pp_dict, otherwise
+        # dict_from_yaml
         if dct:
             # contains the FileBlock and the data (dictionary)
             yaml_block = YamlBlock.from_file_block(block, dct)
@@ -518,25 +549,24 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
             # There are 7 kinds of parsers:
             # Model, Seed, Snapshot, Source, Macro, Analysis, Exposures
 
-            # NonSourceParser.parse(), TestablePatchParser is a variety of
-            # NodePatchParser
+            # ModelPatchParser.parse()
             if "models" in dct:
                 # the models are already in the manifest as nodes when we reach this code,
                 # even if they are disabled in the schema file
-                parser = TestablePatchParser(self, yaml_block, "models")
-                for test_block in parser.parse():
-                    self.parse_tests(test_block)
+                model_parse_result = ModelPatchParser(self, yaml_block, "models").parse()
+                for versioned_test_block in model_parse_result.versioned_test_blocks:
+                    self.parse_versioned_tests(versioned_test_block)
 
             # NonSourceParser.parse()
             if "seeds" in dct:
-                parser = TestablePatchParser(self, yaml_block, "seeds")
-                for test_block in parser.parse():
+                seed_parse_result = TestablePatchParser(self, yaml_block, "seeds").parse()
+                for test_block in seed_parse_result.test_blocks:
                     self.parse_tests(test_block)
 
             # NonSourceParser.parse()
             if "snapshots" in dct:
-                parser = TestablePatchParser(self, yaml_block, "snapshots")
-                for test_block in parser.parse():
+                snapshot_parse_result = TestablePatchParser(self, yaml_block, "snapshots").parse()
+                for test_block in snapshot_parse_result.test_blocks:
                     self.parse_tests(test_block)
 
             # This parser uses SourceParser.parse() which doesn't return
@@ -573,10 +603,20 @@ class SchemaParser(SimpleParser[GenericTestBlock, GenericTestNode]):
 
 
 Parsed = TypeVar("Parsed", UnpatchedSourceDefinition, ParsedNodePatch, ParsedMacroPatch)
-NodeTarget = TypeVar("NodeTarget", UnparsedNodeUpdate, UnparsedAnalysisUpdate)
+NodeTarget = TypeVar("NodeTarget", UnparsedNodeUpdate, UnparsedAnalysisUpdate, UnparsedModelUpdate)
 NonSourceTarget = TypeVar(
-    "NonSourceTarget", UnparsedNodeUpdate, UnparsedAnalysisUpdate, UnparsedMacroUpdate
+    "NonSourceTarget",
+    UnparsedNodeUpdate,
+    UnparsedAnalysisUpdate,
+    UnparsedMacroUpdate,
+    UnparsedModelUpdate,
 )
+
+
+@dataclass
+class ParseResult:
+    test_blocks: List[TestBlock] = field(default_factory=list)
+    versioned_test_blocks: List[VersionedTestBlock] = field(default_factory=list)
 
 
 # abstract base class (ABCMeta)
@@ -662,7 +702,7 @@ class YamlReader(metaclass=ABCMeta):
 
 class YamlDocsReader(YamlReader):
     @abstractmethod
-    def parse(self) -> List[TestBlock]:
+    def parse(self) -> ParseResult:
         raise NotImplementedError("parse is abstract")
 
 
@@ -684,7 +724,7 @@ class SourceParser(YamlDocsReader):
     # to create UnparsedSourceDefinition objects. They are then turned
     # into UnpatchedSourceDefinition objects in 'add_source_definitions'
     # or SourcePatch objects in 'add_source_patch'
-    def parse(self) -> List[TestBlock]:
+    def parse(self) -> ParseResult:
         # get a verified list of dicts for the key handled by this parser
         for data in self.get_key_dicts():
             data = self.project.credentials.translate_aliases(data, recurse=True)
@@ -704,7 +744,7 @@ class SourceParser(YamlDocsReader):
             else:
                 source = self._target_from_dict(UnparsedSourceDefinition, data)
                 self.add_source_definitions(source)
-        return []
+        return ParseResult()
 
     def add_source_definitions(self, source: UnparsedSourceDefinition) -> None:
         package_name = self.project.project_name
@@ -746,9 +786,13 @@ class NonSourceParser(YamlDocsReader, Generic[NonSourceTarget, Parsed]):
     def parse_patch(self, block: TargetBlock[NonSourceTarget], refs: ParserRef) -> None:
         raise NotImplementedError("parse_patch is abstract")
 
-    def parse(self) -> List[TestBlock]:
+    def parse(self) -> ParseResult:
         node: NonSourceTarget
+        # This will always be empty if the node a macro or analysis
         test_blocks: List[TestBlock] = []
+        # This will always be empty if the node is _not_ a model
+        versioned_test_blocks: List[VersionedTestBlock] = []
+
         # get list of 'node' objects
         # UnparsedNodeUpdate (TestablePatchParser, models, seeds, snapshots)
         #      = HasColumnTests, HasTests
@@ -762,8 +806,11 @@ class NonSourceParser(YamlDocsReader, Generic[NonSourceTarget, Parsed]):
             # or a TestBlock (all of the others)
             node_block = self.get_block(node)
             if isinstance(node_block, TestBlock):
-                # TestablePatchParser = models, seeds, snapshots
+                # TestablePatchParser = seeds, snapshots
                 test_blocks.append(node_block)
+            if isinstance(node_block, VersionedTestBlock):
+                # models
+                versioned_test_blocks.append(node_block)
             if isinstance(node, (HasColumnDocs, HasColumnTests)):
                 # UnparsedNodeUpdate and UnparsedAnalysisUpdate
                 refs: ParserRef = ParserRef.from_target(node)
@@ -773,8 +820,7 @@ class NonSourceParser(YamlDocsReader, Generic[NonSourceTarget, Parsed]):
             # There's no unique_id on the node yet so cannot add to disabled dict
             self.parse_patch(node_block, refs)
 
-        # This will always be empty if the node a macro or analysis
-        return test_blocks
+        return ParseResult(test_blocks, versioned_test_blocks)
 
     def get_unparsed_target(self) -> Iterable[NonSourceTarget]:
         path = self.yaml.path.original_file_path
@@ -801,6 +847,7 @@ class NonSourceParser(YamlDocsReader, Generic[NonSourceTarget, Parsed]):
                     self.normalize_meta_attribute(data, path)
                     self.normalize_docs_attribute(data, path)
                     self.normalize_group_attribute(data, path)
+                    self.normalize_contract_attribute(data, path)
                 node = self._target_type().from_dict(data)
             except (ValidationError, JSONValidationError) as exc:
                 raise YamlParseDictError(path, self.key, data, exc)
@@ -832,6 +879,9 @@ class NonSourceParser(YamlDocsReader, Generic[NonSourceTarget, Parsed]):
     def normalize_group_attribute(self, data, path):
         return self.normalize_attribute(data, path, "group")
 
+    def normalize_contract_attribute(self, data, path):
+        return self.normalize_attribute(data, path, "contract")
+
     def patch_node_config(self, node, patch):
         # Get the ContextConfig that's used in calculating the config
         # This must match the model resource_type that's being patched
@@ -862,11 +912,13 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
             docs=block.target.docs,
             config=block.target.config,
             access=block.target.access,
+            version=None,
+            latest_version=None,
         )
         # This used to assert SchemaSourceFile, but removed to support yaml frontmatter
         source_file = self.yaml.file
         if patch.yaml_key in ["models", "seeds", "snapshots"]:
-            unique_id = self.manifest.ref_lookup.get_unique_id(patch.name, None)
+            unique_id = self.manifest.ref_lookup.get_unique_id(patch.name, None, None)
             if unique_id:
                 resource_type = NodeType(unique_id.split(".")[0])
                 if resource_type.pluralize() != patch.yaml_key:
@@ -882,7 +934,7 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
                     return
 
         elif patch.yaml_key == "analyses":
-            unique_id = self.manifest.analysis_lookup.get_unique_id(patch.name, None)
+            unique_id = self.manifest.analysis_lookup.get_unique_id(patch.name, None, None)
         else:
             raise DbtInternalError(
                 f"Unexpected yaml_key {patch.yaml_key} for patch in "
@@ -954,67 +1006,196 @@ class NodePatchParser(NonSourceParser[NodeTarget, ParsedNodePatch], Generic[Node
                 self.patch_node_config(node, patch)
 
             node.patch(patch)
-            self.validate_constraints(node)
+            # TODO: We want to do all the actual patching either in the above node.patch() call
+            # or here, but it will require some thought to the details. For now the patching is
+            # awkwardly split.
+            self.patch_constraints(node, block.target.constraints)
+            node.build_contract_checksum()
 
-    def validate_constraints(self, patched_node):
-        error_messages = []
-        if patched_node.resource_type == "model" and patched_node.config.contract is True:
-            validators = [
-                self.constraints_schema_validator(patched_node),
-                self.constraints_materialization_validator(patched_node),
-                self.constraints_language_validator(patched_node),
-            ]
-            error_messages = [validator for validator in validators if validator != "None"]
+    def patch_constraints(self, node, constraints):
+        contract_config = node.config.get("contract")
+        if isinstance(node, ModelNode) and contract_config.enforced is True:
+            self._validate_constraint_prerequisites(node)
 
-        if error_messages:
-            original_file_path = patched_node.original_file_path
-            raise ParsingError(
-                f"Original File Path: ({original_file_path})\nConstraints must be defined in a `yml` schema configuration file like `schema.yml`.\nOnly the SQL table and view materializations are supported for constraints. \n`data_type` values must be defined for all columns and NOT be null or blank.{self.convert_errors_to_string(error_messages)}"
+            if any(
+                c for c in constraints if "type" not in c or not ConstraintType.is_valid(c["type"])
+            ):
+                raise ParsingError(
+                    f"Invalid constraint type on model {node.name}: "
+                    f"Type must be one of {[ct.value for ct in ConstraintType]}"
+                )
+
+            node.constraints = [ModelLevelConstraint.from_dict(c) for c in constraints]
+
+    def _validate_constraint_prerequisites(self, model_node: ModelNode):
+        errors = []
+        if not model_node.columns:
+            errors.append(
+                "Constraints must be defined in a `yml` schema configuration file like `schema.yml`."
             )
 
-    def convert_errors_to_string(self, error_messages: List[str]):
-        n = len(error_messages)
-        if not n:
-            return ""
-        if n == 1:
-            return error_messages[0]
-        error_messages_string = "".join(error_messages[:-1]) + f"{error_messages[-1]}"
-        return error_messages_string
+        if model_node.config.materialized not in ["table", "view", "incremental"]:
+            errors.append(
+                f"Only table, view, and incremental materializations are supported for constraints, but found '{model_node.config.materialized}'"
+            )
 
-    def constraints_schema_validator(self, patched_node):
-        schema_error = False
-        if patched_node.columns == {}:
-            schema_error = True
-        schema_error_msg = "\n    Schema Error: `yml` configuration does NOT exist"
-        schema_error_msg_payload = f"{schema_error_msg if schema_error else None}"
-        return schema_error_msg_payload
+        if str(model_node.language) != "sql":
+            errors.append(f"Language Error: Expected 'sql' but found '{model_node.language}'")
 
-    def constraints_materialization_validator(self, patched_node):
-        materialization_error = {}
-        if patched_node.config.materialized not in ["table", "view"]:
-            materialization_error = {"materialization": patched_node.config.materialized}
-        materialization_error_msg = f"\n    Materialization Error: {materialization_error}"
-        materialization_error_msg_payload = (
-            f"{materialization_error_msg if materialization_error else None}"
-        )
-        return materialization_error_msg_payload
-
-    def constraints_language_validator(self, patched_node):
-        language_error = {}
-        language = str(patched_node.language)
-        if language != "sql":
-            language_error = {"language": language}
-        language_error_msg = f"\n    Language Error: {language_error}"
-        language_error_msg_payload = f"{language_error_msg if language_error else None}"
-        return language_error_msg_payload
+        if errors:
+            raise ParsingError(
+                f"Constraint validation failed for: ({model_node.original_file_path})\n"
+                + "\n".join(errors)
+            )
 
 
+# TestablePatchParser = seeds, snapshots
 class TestablePatchParser(NodePatchParser[UnparsedNodeUpdate]):
     def get_block(self, node: UnparsedNodeUpdate) -> TestBlock:
         return TestBlock.from_yaml_block(self.yaml, node)
 
     def _target_type(self) -> Type[UnparsedNodeUpdate]:
         return UnparsedNodeUpdate
+
+
+class ModelPatchParser(NodePatchParser[UnparsedModelUpdate]):
+    def get_block(self, node: UnparsedModelUpdate) -> VersionedTestBlock:
+        return VersionedTestBlock.from_yaml_block(self.yaml, node)
+
+    def parse_patch(self, block: TargetBlock[UnparsedModelUpdate], refs: ParserRef) -> None:
+        target = block.target
+        if NodeType.Model.pluralize() != target.yaml_key:
+            warn_or_error(
+                WrongResourceSchemaFile(
+                    patch_name=target.name,
+                    resource_type=NodeType.Model,
+                    plural_resource_type=NodeType.Model.pluralize(),
+                    yaml_key=target.yaml_key,
+                    file_path=target.original_file_path,
+                )
+            )
+            return
+
+        versions = target.versions
+        if not versions:
+            super().parse_patch(block, refs)
+        else:
+            assert isinstance(self.yaml.file, SchemaSourceFile)
+            source_file: SchemaSourceFile = self.yaml.file
+            latest_version = (
+                target.latest_version if target.latest_version is not None else max(versions).v
+            )
+            for unparsed_version in versions:
+                versioned_model_name = (
+                    unparsed_version.defined_in or f"{block.name}_{unparsed_version.formatted_v}"
+                )
+                # ref lookup without version - version is not set yet
+                versioned_model_unique_id = self.manifest.ref_lookup.get_unique_id(
+                    versioned_model_name, None, None
+                )
+
+                versioned_model_node = None
+                add_node_nofile_fn: Callable
+
+                # If this is the latest version, it's allowed to define itself in a model file name that doesn't have a suffix
+                if versioned_model_unique_id is None and unparsed_version.v == latest_version:
+                    versioned_model_unique_id = self.manifest.ref_lookup.get_unique_id(
+                        block.name, None, None
+                    )
+
+                if versioned_model_unique_id is None:
+                    # Node might be disabled. Following call returns list of matching disabled nodes
+                    found_nodes = self.manifest.disabled_lookup.find(versioned_model_name, None)
+                    if found_nodes:
+                        if len(found_nodes) > 1 and target.config.get("enabled"):
+                            # There are multiple disabled nodes for this model and the schema file wants to enable one.
+                            # We have no way to know which one to enable.
+                            resource_type = found_nodes[0].unique_id.split(".")[0]
+                            msg = (
+                                f"Found {len(found_nodes)} matching disabled nodes for "
+                                f"{resource_type} '{target.name}'. Multiple nodes for the same "
+                                "unique id cannot be enabled in the schema file. They must be enabled "
+                                "in `dbt_project.yml` or in the sql files."
+                            )
+                            raise ParsingError(msg)
+                        versioned_model_node = self.manifest.disabled.pop(
+                            found_nodes[0].unique_id
+                        )[0]
+                        add_node_nofile_fn = self.manifest.add_disabled_nofile
+                else:
+                    versioned_model_node = self.manifest.nodes.pop(versioned_model_unique_id)
+                    add_node_nofile_fn = self.manifest.add_node_nofile
+
+                if versioned_model_node is None:
+                    warn_or_error(
+                        NoNodeForYamlKey(
+                            patch_name=versioned_model_name,
+                            yaml_key=target.yaml_key,
+                            file_path=source_file.path.original_file_path,
+                        )
+                    )
+                    continue
+
+                # update versioned node unique_id
+                versioned_model_node_unique_id_old = versioned_model_node.unique_id
+                versioned_model_node.unique_id = (
+                    f"model.{target.package_name}.{target.name}.{unparsed_version.formatted_v}"
+                )
+                # update source file.nodes with new unique_id
+                self.manifest.files[versioned_model_node.file_id].nodes.remove(
+                    versioned_model_node_unique_id_old
+                )
+                self.manifest.files[versioned_model_node.file_id].nodes.append(
+                    versioned_model_node.unique_id
+                )
+
+                # update versioned node fqn
+                versioned_model_node.fqn[-1] = target.name
+                versioned_model_node.fqn.append(unparsed_version.formatted_v)
+
+                # add versioned node back to nodes/disabled
+                add_node_nofile_fn(versioned_model_node)
+
+                # flatten columns based on include/exclude
+                version_refs: ParserRef = ParserRef.from_versioned_target(
+                    block.target, unparsed_version.v
+                )
+
+                versioned_model_patch = ParsedNodePatch(
+                    name=target.name,
+                    original_file_path=target.original_file_path,
+                    yaml_key=target.yaml_key,
+                    package_name=target.package_name,
+                    description=unparsed_version.description or target.description,
+                    columns=version_refs.column_info,
+                    meta=target.meta,
+                    docs=unparsed_version.docs or target.docs,
+                    config=deep_merge(target.config, unparsed_version.config),
+                    access=unparsed_version.access or target.access,
+                    version=unparsed_version.v,
+                    latest_version=latest_version,
+                )
+                # Node patched before config because config patching depends on model name,
+                # which may have been updated in the version patch
+                versioned_model_node.patch(versioned_model_patch)
+                # TODO: We want to do all the actual patching either in the above node.patch() call
+                # or here, but it will require some thought to the details. For now the patching is
+                # awkwardly split.
+                self.patch_constraints(
+                    versioned_model_node, unparsed_version.constraints or target.constraints
+                )
+                versioned_model_node.build_contract_checksum()
+
+                # Includes alias recomputation
+                self.patch_node_config(versioned_model_node, versioned_model_patch)
+                source_file.append_patch(
+                    versioned_model_patch.yaml_key, versioned_model_node.unique_id
+                )
+            self.manifest.rebuild_ref_lookup()
+            self.manifest.rebuild_disabled_lookup()
+
+    def _target_type(self) -> Type[UnparsedModelUpdate]:
+        return UnparsedModelUpdate
 
 
 class AnalysisPatchParser(NodePatchParser[UnparsedAnalysisUpdate]):

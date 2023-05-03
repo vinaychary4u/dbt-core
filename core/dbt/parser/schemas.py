@@ -1491,9 +1491,9 @@ class UnitTestParser(YamlReader):
         self.schema_parser = schema_parser
         self.yaml = yaml
 
-    def _build_raw_code(self, rows, columns) -> str:
-        return ("{{{{ get_fixture_sql({rows}, {columns}) }}}}").format(
-            rows=rows, columns=columns
+    def _build_raw_code(self, rows, column_name_to_data_types) -> str:
+        return ("{{{{ get_fixture_sql({rows}, {column_name_to_data_types}) }}}}").format(
+            rows=rows, column_name_to_data_types=column_name_to_data_types
         )
 
     def parse_unit_test(self, unparsed: UnparsedUnitTestSuite):
@@ -1519,7 +1519,7 @@ class UnitTestParser(YamlReader):
                         input_model_name, input_package_name, None, self.manifest
                     )
                     if original_input_node.config.contract.enforced: 
-                        original_input_node_columns = [{"name": column.name, "data_type": column.data_type} for column in original_input_node.columns]
+                        original_input_node_columns = {column.name: column.data_type for column in original_input_node.columns}
                 elif statically_parsed["sources"]:
                     input_package_name, input_source_name = statically_parsed["sources"][0]
                     original_input_node = self.manifest.source_lookup.find(
@@ -1577,6 +1577,9 @@ class UnitTestParser(YamlReader):
                 attached_node=actual_node.unique_id
             )
 
+            self.schema_parser._update_node_database(unit_test_node, {})
+            self.schema_parser._update_node_schema(unit_test_node, {})
+    
             ctx = generate_parse_exposure(
                 unit_test_node,
                 self.root_project,

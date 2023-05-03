@@ -1,24 +1,36 @@
-{% macro get_fixture_sql(rows, columns) %}
+{% macro get_fixture_sql(rows, column_name_to_data_types) %}
 -- Fixture for {{ model.name }}
 {% set default_row = {} %}
 
-{%- if not columns -%}
+{%- if not column_name_to_data_types -%}
 {%- set columns_in_relation = adapter.get_columns_in_relation(this) -%}
-{%- set columns = [] -%}
+{%- set column_name_to_data_types = {} -%}
 {%- for column in columns_in_relation -%}
-{%- do columns.append({"name": column.name, "data_type": column.dtype}) -%}
+{%- do column_name_to_data_types.update({column.name: column.dtype}) -%}
 {%- endfor -%}
 {%- endif -%}
 
-{%- if not columns -%}
+{%- if not column_name_to_data_types -%}
     {{ exceptions.raise_compiler_error("columns not available for" ~ model.name) }}
 {%- endif -%}
 
-{%- for column in columns -%}
-    {%- do default_row.update({column["name"]: (safe_cast("null", column["data_type"]) | trim )}) -%}
+{%- for column_name, column_type in column_name_to_data_types.items() -%}
+    {%- do default_row.update({column_name: (safe_cast("null", column_type) | trim )}) -%}
 {%- endfor -%}
 
 {%- for row in rows -%}
+
+{#-- wrap yaml strings in quotes--#}
+{%- for column_name, column_value in row.items() -%}
+{% set row_update = {column_name: column_value} %}
+{%- if column_value is string -%}
+{%- set row_update = {column_name: safe_cast(dbt.string_literal(column_value), column_name_to_data_types[column_name]) } -%}
+{%- else -%}
+{%- set row_update = {column_name: safe_cast(column_value, column_name_to_data_types[column_name]) } -%}
+{%- endif -%}
+{%- do row.update(row_update) -%}
+{%- endfor -%}
+
 {%- set default_row_copy = default_row.copy() -%}
 {%- do default_row_copy.update(row) -%}
 select
@@ -38,9 +50,21 @@ union all
 {% endmacro %}
 
 
-{% macro get_expected_sql(rows) %}
+{% macro get_expected_sql(rows, column_name_to_data_types) %}
 
 {%- for row in rows -%}
+
+{#-- wrap yaml strings in quotes--#}
+{%- for column_name, column_value in row.items() -%}
+{% set row_update = {column_name: column_value} %}
+{%- if column_value is string -%}
+{%- set row_update = {column_name: safe_cast(dbt.string_literal(column_value), column_name_to_data_types[column_name]) } -%}
+{%- else -%}
+{%- set row_update = {column_name: safe_cast(column_value, column_name_to_data_types[column_name]) } -%}
+{%- endif -%}
+{%- do row.update(row_update) -%}
+{%- endfor -%}
+
 select
 {%- for column_name, column_value in row.items() %} {{ column_value }} AS {{ column_name }}{% if not loop.last -%}, {%- endif %}
 {%- endfor %}

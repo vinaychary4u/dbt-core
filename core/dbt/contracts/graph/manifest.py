@@ -568,11 +568,11 @@ class MacroMethods:
 
         return candidates.last()
 
-    def find_generate_macro_by_name(
+    def find_default_generate_macro_by_name(
         self, component: str, root_project_name: str
     ) -> Optional[Macro]:
         """
-        The `generate_X_name` macros are similar to regular ones, but ignore
+        The default `generate_X_name` macros are similar to regular ones, and ignore
         imported packages.
             - if there is a `generate_{component}_name` macro in the root
               project, return it
@@ -590,6 +590,21 @@ class MacroMethods:
             filter=filter,
         )
         return candidates.last()
+
+    def find_package_generate_macros_by_name(
+        self, component: str, root_project_name: str
+    ) -> List[Macro]:
+        """
+        Return any `generate_X_name` macros defined in imported packages
+        """
+
+        def filter(candidate: MacroCandidate) -> bool:
+            return candidate.locality == Locality.Imported
+
+        candidates: CandidateList = self._find_macros_by_name(
+            name=f"generate_{component}_name", root_project_name=root_project_name, filter=filter
+        )
+        return [candidate.macro for candidate in candidates]
 
     def _find_macros_by_name(
         self,

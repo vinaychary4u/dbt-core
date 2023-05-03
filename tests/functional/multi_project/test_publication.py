@@ -1,7 +1,8 @@
 import pytest
 import pathlib
+import os
 
-from dbt.tests.util import run_dbt, get_artifact, write_file
+from dbt.tests.util import run_dbt, get_artifact, write_file, copy_file
 from dbt.contracts.publication import PublicationArtifact, PublicModel
 from dbt.exceptions import PublicationConfigNotFound, TargetNotFoundError
 
@@ -122,7 +123,7 @@ class TestPublicationArtifacts:
     def test_pub_artifacts(self, project):
         write_file(dependencies_yml, "dependencies.yml")
 
-        # Depdencies lists "marketing" project, but no publication file found
+        # Dependencies lists "marketing" project, but no publication file found
         with pytest.raises(PublicationConfigNotFound):
             run_dbt(["parse"])
 
@@ -135,6 +136,11 @@ class TestPublicationArtifacts:
         assert manifest.publications
         assert "marketing" in manifest.publications
         assert "model.marketing.fct_one" in manifest.publications["marketing"].public_node_ids
+
+        # Check dependencies in publication_artifact
+        publication_dict = get_artifact(project.project_root, "target", "test_publication.json")
+        publication = PublicationArtifact.from_dict(publication_dict)
+        assert publication.dependencies == ["marketing"]
 
         # target_model_name, target_model_package, target_model_version, current_project, node_package
         resolved_node = manifest.resolve_ref("fct_one", "marketing", None, "test", "test")
@@ -184,13 +190,34 @@ class TestPublicationArtifacts:
         assert len(results) == 5
 
 
-class TestDependencies:
+dependencies_alt_yml = """
+projects:
+    - name: test_alt
+"""
+
+model_alt_yml = """
+models:
+  - name: model_alt
+    description: model alt
+    access: public
+"""
+
+model_alt_ref_sql = """
+select * from {{ ref('test_alt', 'model_alt') }}
+"""
+
+
+# This test case uses the conftest.py in this test directory to allow
+# creating a minimal second project (project_alt) so that we can have two projects in
+# the same test.
+class TestMultiProjects:
     @pytest.fixture(scope="class")
     def models(self):
         return {
             "model_one.sql": model_one_sql,
             "model_two.sql": model_two_sql,
             "model_three.sql": model_three_sql,
+            "model_alt_ref.sql": model_alt_ref_sql,
             "models.yml": models_yml,
         }
 
@@ -198,14 +225,35 @@ class TestDependencies:
     def models_alt(self):
         return {
             "model_alt.sql": "select 1 as fun",
+            "model_alt.yml": model_alt_yml,
         }
 
     def test_multi_projects(self, project, project_alt):
-        # run the base project. args will have the project_dir for this project, so
-        # we don't have to supply it.
-        results = run_dbt(["run"])
-        assert len(results) == 3
-
         # run the alternate project by using the alternate project root
+        # (There is currently a bug where project-dir requires a chdir to work.)
+        os.chdir(project_alt.project_root)
         results = run_dbt(["run", "--project-dir", str(project_alt.project_root)])
         assert len(results) == 1
+
+        # Check publication artifact
+        publication_dict = get_artifact(
+            project_alt.project_root, "target", "test_alt_publication.json"
+        )
+        publication = PublicationArtifact.from_dict(publication_dict)
+        assert len(publication.public_models) == 1
+
+        # copy the publication artifact from test_alt to test project
+        (pathlib.Path(project.project_root) / "publications").mkdir(parents=True, exist_ok=True)
+        target_path = os.path.join(project_alt.project_root, "target")
+        copy_file(
+            target_path,
+            "test_alt_publication.json",
+            project.project_root,
+            ["publications", "test_alt_publication.json"],
+        )
+
+        # run the base project
+        os.chdir(project.project_root)
+        write_file(dependencies_alt_yml, project.project_root, "dependencies.yml")
+        results = run_dbt(["run", "--project-dir", str(project.project_root)])
+        assert len(results) == 4

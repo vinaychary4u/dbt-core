@@ -1549,6 +1549,7 @@ def expected_versions_manifest(project):
                 "access": "protected",
                 "version": 1,
                 "latest_version": 2,
+                "yaml_config_dict": {},
             },
             "model.test.versioned_model.v2": {
                 "alias": "versioned_model_v2",
@@ -1616,6 +1617,7 @@ def expected_versions_manifest(project):
                 "access": "protected",
                 "version": 2,
                 "latest_version": 2,
+                "yaml_config_dict": {},
             },
             "model.test.ref_versioned_model": {
                 "alias": "ref_versioned_model",
@@ -1673,6 +1675,7 @@ def expected_versions_manifest(project):
                 "access": "protected",
                 "version": None,
                 "latest_version": None,
+                "yaml_config_dict": {},
             },
             "test.test.unique_versioned_model_v1_first_name.6138195dec": {
                 "alias": "unique_versioned_model_v1_first_name",

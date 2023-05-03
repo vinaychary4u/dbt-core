@@ -132,7 +132,7 @@ jobs:
           command: build
           args: --release --manifest-path performance/runner/Cargo.toml
       # the cache action automatically caches this binary at the end of the job
-      
+
   model:
     # depends on `latest-runner` as a separate job so that failures in this job do not prevent
     # a successfully tested and built binary from being cached.

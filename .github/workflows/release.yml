@@ -221,6 +221,7 @@ jobs:
 
   docker-postgres-release:
     name: Docker dbt-postgres Release
+    if: ${{ !inputs.test_run }}
     needs: [docker-core-release]
 
     uses: dbt-labs/dbt-core/.github/workflows/release-docker.yml@main

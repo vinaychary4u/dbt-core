@@ -1399,6 +1399,7 @@ ManifestSQLNode = Union[
     SqlNode,
     GenericTestNode,
     SnapshotNode,
+    UnitTestNode,
 ]
 
 # All SQL nodes plus SeedNode (csv files)

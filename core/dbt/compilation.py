@@ -20,7 +20,6 @@ from dbt.contracts.graph.nodes import (
     GraphMemberNode,
     InjectedCTE,
     SeedNode,
-    UnitTestNode,
 )
 from dbt.exceptions import (
     GraphDependencyNotFoundError,
@@ -43,6 +42,7 @@ def print_compile_stats(stats):
     names = {
         NodeType.Model: "model",
         NodeType.Test: "test",
+        NodeType.Unit: "unit test",
         NodeType.Snapshot: "snapshot",
         NodeType.Analysis: "analysis",
         NodeType.Macro: "macro",

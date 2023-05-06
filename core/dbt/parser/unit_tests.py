@@ -26,6 +26,10 @@ from dbt.node_types import NodeType
 # from dbt.context.providers import generate_parse_exposure, get_rendered
 
 
+def _is_model_node(node_id, manifest):
+    return manifest.nodes[node_id].resource_type == NodeType.Model
+
+
 class UnitTestManifestLoader:
     @classmethod
     def load(cls, manifest, root_project) -> Manifest:
@@ -55,7 +59,7 @@ class UnitTestParser(YamlReader):
         path = self.yaml.path.relative_path
         # TODO: fix
         checksum = "f8f57c9e32eafaacfb002a4d03a47ffb412178f58f49ba58fd6f436f09f8a1d6"
-
+        unit_test_node_ids = []
         for unit_test in unparsed.tests:
             input_nodes = []
             original_input_nodes = []
@@ -139,6 +143,18 @@ class UnitTestParser(YamlReader):
                 self.unit_test_manifest.nodes[input_node.unique_id] = input_node
                 # should be a process_refs / process_sources call isntead?
                 unit_test_node.depends_on.nodes.append(input_node.unique_id)
+            unit_test_node_ids.append(unit_test_node.unique_id)
+
+        # find out all nodes that are referenced but not in unittest manifest
+        all_depends_on = set()
+        for node_id in self.unit_test_manifest.nodes:
+            if _is_model_node(node_id, self.unit_test_manifest):
+                all_depends_on.update(self.unit_test_manifest.nodes[node_id].depends_on.nodes)  # type: ignore
+        not_in_manifest = all_depends_on - set(self.unit_test_manifest.nodes.keys())
+
+        # copy those node also over into unit_test_manifest
+        for node_id in not_in_manifest:
+            self.unit_test_manifest.nodes[node_id] = self.manifest.nodes[node_id]
 
     def parse(self):
         for data in self.get_key_dicts():

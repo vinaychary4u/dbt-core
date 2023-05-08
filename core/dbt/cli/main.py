@@ -771,6 +771,7 @@ def test(ctx, **kwargs):
 @p.favor_state
 @p.deprecated_favor_state
 @p.indirect_selection
+@p.show_output_format
 @p.profile
 @p.profiles_dir
 @p.project_dir

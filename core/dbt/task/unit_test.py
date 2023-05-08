@@ -100,7 +100,7 @@ class UnitTestRunner(CompileRunner):
             actual_output = self._agate_table_to_str(actual)
             expected_output = self._agate_table_to_str(expected)
 
-            diff = f"\n\nActual:\n{actual_output}\nExpected:\n{expected_output}"
+            diff = f"\n\nActual:\n{actual_output}\n\nExpected:\n{expected_output}\n"
         return UnitTestResultData(
             diff=diff,
             should_error=should_error,
@@ -144,11 +144,11 @@ class UnitTestRunner(CompileRunner):
     def _agate_table_to_str(self, table) -> str:
         # Hack to get Agate table output as string
         output = io.StringIO()
-        # if self.args.output == "json":
-        #     table.to_json(path=output)
-        # else:
-        table.print_table(output=output, max_rows=None)
-        return output.getvalue()
+        if self.config.args.output == "json":
+            table.to_json(path=output)
+        else:
+            table.print_table(output=output, max_rows=None)
+        return output.getvalue().strip()
 
 
 class UnitTestSelector(ResourceTypeSelector):

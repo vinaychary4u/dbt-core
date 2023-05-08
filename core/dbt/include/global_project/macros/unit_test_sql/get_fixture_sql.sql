@@ -19,17 +19,7 @@
 {%- endfor -%}
 
 {%- for row in rows -%}
-
-{#-- wrap yaml strings in quotes--#}
-{%- for column_name, column_value in row.items() -%}
-{% set row_update = {column_name: column_value} %}
-{%- if column_value is string -%}
-{%- set row_update = {column_name: safe_cast(dbt.string_literal(column_value), column_name_to_data_types[column_name]) } -%}
-{%- else -%}
-{%- set row_update = {column_name: safe_cast(column_value, column_name_to_data_types[column_name]) } -%}
-{%- endif -%}
-{%- do row.update(row_update) -%}
-{%- endfor -%}
+{%- do format_row(row, column_name_to_data_types) -%}
 
 {%- set default_row_copy = default_row.copy() -%}
 {%- do default_row_copy.update(row) -%}
@@ -52,9 +42,26 @@ union all
 
 {% macro get_expected_sql(rows, column_name_to_data_types) %}
 
+{%- if (rows | length) == 0 -%}
+    select * FROM dbt_internal_unit_test_actual
+    limit 0
+{%- else -%}
 {%- for row in rows -%}
+{%- do format_row(row, column_name_to_data_types) -%}
+select
+{%- for column_name, column_value in row.items() %} {{ column_value }} AS {{ column_name }}{% if not loop.last -%}, {%- endif %}
+{%- endfor %}
+{%- if not loop.last %}
+union all
+{% endif %}
+{%- endfor -%}
+{%- endif -%}
 
-{#-- wrap yaml strings in quotes--#}
+{% endmacro %}
+
+{%- macro format_row(row, column_name_to_data_types) -%}
+
+{#-- wrap yaml strings in quotes, apply cast --#}
 {%- for column_name, column_value in row.items() -%}
 {% set row_update = {column_name: column_value} %}
 {%- if column_value is string -%}
@@ -65,17 +72,4 @@ union all
 {%- do row.update(row_update) -%}
 {%- endfor -%}
 
-select
-{%- for column_name, column_value in row.items() %} {{ column_value }} AS {{ column_name }}{% if not loop.last -%}, {%- endif %}
-{%- endfor %}
-{%- if not loop.last %}
-union all
-{% endif %}
-{%- endfor -%}
-
-{%- if (rows | length) == 0 -%}
-    select * FROM dbt_internal_unit_test_actual
-    limit 0
-{%- endif -%}
-
-{% endmacro %}
+{%- endmacro -%}

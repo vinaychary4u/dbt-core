@@ -23,25 +23,40 @@ from dbt.parser.search import FileBlock
 from dbt.contracts.files import FileHash, SchemaSourceFile
 from dbt.node_types import NodeType
 
-# from dbt.context.providers import generate_parse_exposure, get_rendered
+from dbt.context.providers import generate_parse_exposure, get_rendered
 
 
 class UnitTestManifestLoader:
     @classmethod
     def load(cls, manifest, root_project) -> Manifest:
-        collection = Manifest(macros=manifest.macros)
+        unit_test_manifest = Manifest(macros=manifest.macros)
         for file in manifest.files.values():
             block = FileBlock(file)
             if isinstance(file, SchemaSourceFile):
                 dct = file.dict_from_yaml
                 if "unit" in dct:
                     yaml_block = YamlBlock.from_file_block(block, dct)
-                    # TODO: first root_project should be project
+                    # TODO: first root_project should be project, or we should only parse unit tests from root_project
                     schema_parser = SchemaParser(root_project, manifest, root_project)
-                    parser = UnitTestParser(schema_parser, yaml_block, collection)
+                    parser = UnitTestParser(schema_parser, yaml_block, unit_test_manifest)
                     parser.parse()
 
-        return collection
+        model_to_unit_tests = {}
+        for node in unit_test_manifest.nodes.values():
+            if isinstance(node, UnitTestNode):
+                model_name = node.name.split("__")[0]
+                if model_name not in model_to_unit_tests:
+                    model_to_unit_tests[model_name] = [node.unique_id]
+                else:
+                    model_to_unit_tests[model_name].append(node.unique_id)
+
+        for node in unit_test_manifest.nodes.values():
+            if isinstance(node, UnitTestNode):
+                # a unit test should depend on its fixture nodes, and any unit tests on its ref'd nodes
+                for ref in node.refs:
+                    for unique_id in model_to_unit_tests.get(ref.name, []):
+                        node.depends_on.nodes.append(unique_id)
+        return unit_test_manifest
 
 
 class UnitTestParser(YamlReader):
@@ -118,19 +133,20 @@ class UnitTestParser(YamlReader):
                 overrides=unit_test.overrides,
             )
 
-            # ctx = generate_parse_exposure(
-            #     unit_test_node,
-            #     self.root_project,
-            #     self.schema_parser.manifest,
-            #     package_name,
-            # )
-            # get_rendered(actual_node.raw_code, ctx, unit_test_node, capture_macros=True)
+            # TODO: generalize this method
+            ctx = generate_parse_exposure(
+                unit_test_node,  # type: ignore
+                self.root_project,
+                self.schema_parser.manifest,
+                package_name,
+            )
+            get_rendered(unit_test_node.raw_code, ctx, unit_test_node, capture_macros=True)
             # unit_test_node now has a populated refs/sources
 
             # during compilation, refs will resolve to fixtures,
             # so add original input node ids to depends on explicitly to preserve lineage
             for original_input_node in original_input_nodes:
-                # TODO: consider nulling out the original_input_node.raw_code for perf
+                # TODO: consider nulling out the original_input_node.raw_code
                 self.unit_test_manifest.nodes[original_input_node.unique_id] = original_input_node
                 unit_test_node.depends_on.nodes.append(original_input_node.unique_id)
 

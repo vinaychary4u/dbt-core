@@ -69,7 +69,6 @@ from dbt.contracts.graph.nodes import (
     SeedNode,
     ManifestNode,
     ResultNode,
-    UnitTestNode,
 )
 from dbt.contracts.graph.unparsed import NodeVersion
 from dbt.contracts.util import Writable
@@ -1340,15 +1339,9 @@ def _process_refs_for_node(manifest: Manifest, current_project: str, node: Manif
     if isinstance(node, SeedNode):
         return
 
-    unit_test_name = None
-    if isinstance(node, UnitTestNode):
-        unit_test_name = node.name
-
     for ref in node.refs:
         target_model: Optional[Union[Disabled, ManifestNode]] = None
-        target_model_name: str = (
-            ref.name if unit_test_name is None else f"{unit_test_name}__{ref.name}"
-        )
+        target_model_name: str = ref.name
         target_model_package: Optional[str] = ref.package
         target_model_version: Optional[NodeVersion] = ref.version
 

@@ -11,7 +11,10 @@ from dbt.flags import get_flags
 from dbt.adapters.factory import get_adapter
 from dbt.clients import jinja
 from dbt.clients.system import make_directory
-from dbt.context.providers import generate_runtime_model_context
+from dbt.context.providers import (
+    generate_runtime_model_context,
+    generate_runtime_unit_test_context,
+)
 from dbt.contracts.graph.manifest import Manifest, UniqueID
 from dbt.contracts.graph.nodes import (
     ManifestNode,
@@ -20,6 +23,7 @@ from dbt.contracts.graph.nodes import (
     GraphMemberNode,
     InjectedCTE,
     SeedNode,
+    UnitTestNode,
 )
 from dbt.exceptions import (
     GraphDependencyNotFoundError,
@@ -179,7 +183,10 @@ class Compiler:
         manifest: Manifest,
         extra_context: Dict[str, Any],
     ) -> Dict[str, Any]:
-        context = generate_runtime_model_context(node, self.config, manifest)
+        if isinstance(node, UnitTestNode):
+            context = generate_runtime_unit_test_context(node, self.config, manifest)
+        else:
+            context = generate_runtime_model_context(node, self.config, manifest)
         context.update(extra_context)
 
         if isinstance(node, GenericTestNode):

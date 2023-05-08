@@ -25,7 +25,7 @@ from dbt.utils import (
 )
 
 from dbt.clients._jinja_blocks import BlockIterator, BlockData, BlockTag
-from dbt.contracts.graph.nodes import GenericTestNode, UnitTestNode
+from dbt.contracts.graph.nodes import GenericTestNode
 
 from dbt.exceptions import (
     CaughtMacroError,
@@ -330,6 +330,26 @@ class MacroGenerator(BaseMacroGenerator):
             return self.call_macro(*args, **kwargs)
 
 
+class UnitTestMacroGenerator(MacroGenerator):
+    # this makes UnitTestMacroGenerator objects callable like functions
+    def __init__(
+        self,
+        macro_generator: MacroGenerator,
+        call_return_value: Any,
+    ) -> None:
+        super().__init__(
+            macro_generator.macro,
+            macro_generator.context,
+            macro_generator.node,
+            macro_generator.stack,
+        )
+        self.call_return_value = call_return_value
+
+    def __call__(self, *args, **kwargs):
+        with self.track_call():
+            return self.call_return_value
+
+
 class QueryStringGenerator(BaseMacroGenerator):
     def __init__(self, template_str: str, context: Dict[str, Any]) -> None:
         super().__init__(context)
@@ -621,6 +641,7 @@ def extract_toplevel_blocks(
 
 GENERIC_TEST_KWARGS_NAME = "_dbt_generic_test_kwargs"
 
+
 def add_rendered_test_kwargs(
     context: Dict[str, Any],
     node: GenericTestNode,
@@ -651,6 +672,7 @@ def add_rendered_test_kwargs(
     # when the test node was created in _parse_generic_test.
     kwargs = deep_map_render(_convert_function, node.test_metadata.kwargs)
     context[GENERIC_TEST_KWARGS_NAME] = kwargs
+
 
 def get_supported_languages(node: jinja2.nodes.Macro) -> List[ModelLanguage]:
     if "materialization" not in node.name:

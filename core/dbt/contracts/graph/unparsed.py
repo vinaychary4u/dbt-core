@@ -666,6 +666,7 @@ class UnparsedUnitTestOverrides(dbtClassMixin):
     vars: Dict[str, Any] = field(default_factory=dict)
     env_vars: Dict[str, Any] = field(default_factory=dict)
 
+
 @dataclass
 class UnparsedUnitTestCase(dbtClassMixin):
     name: str
@@ -677,5 +678,5 @@ class UnparsedUnitTestCase(dbtClassMixin):
 
 @dataclass
 class UnparsedUnitTestSuite(dbtClassMixin):
-    model: str # name of the model being unit tested
+    model: str  # name of the model being unit tested
     tests: Sequence[UnparsedUnitTestCase]

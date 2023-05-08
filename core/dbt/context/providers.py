@@ -1,4 +1,5 @@
 import abc
+from copy import deepcopy
 import os
 from typing import (
     Callable,
@@ -17,7 +18,7 @@ from typing_extensions import Protocol
 from dbt.adapters.base.column import Column
 from dbt.adapters.factory import get_adapter, get_adapter_package_names, get_adapter_type_names
 from dbt.clients import agate_helper
-from dbt.clients.jinja import get_rendered, MacroGenerator, MacroStack
+from dbt.clients.jinja import get_rendered, MacroGenerator, MacroStack, UnitTestMacroGenerator
 from dbt.config import RuntimeConfig, Project
 from dbt.constants import SECRET_ENV_PREFIX, DEFAULT_ENV_PLACEHOLDER
 from dbt.context.base import contextmember, contextproperty, Var
@@ -478,8 +479,6 @@ class RuntimeRefResolver(BaseRefResolver):
         target_package: Optional[str] = None,
         target_version: Optional[NodeVersion] = None,
     ) -> RelationProxy:
-        if isinstance(self.model, UnitTestNode):
-            target_name = f"{self.model.name}__{target_name}"
         target_model = self.manifest.resolve_ref(
             target_name,
             target_package,
@@ -536,6 +535,17 @@ class OperationRefResolver(RuntimeRefResolver):
             raise OperationsCannotRefEphemeralNodesError(target_model.name, node=self.model)
         else:
             return super().create_relation(target_model)
+
+
+class RuntimeUnitTestRefResolver(RuntimeRefResolver):
+    def resolve(
+        self,
+        target_name: str,
+        target_package: Optional[str] = None,
+        target_version: Optional[NodeVersion] = None,
+    ) -> RelationProxy:
+        target_name = f"{self.model.name}__{target_name}"
+        return super().resolve(target_name, target_package, target_version)
 
 
 # `source` implementations
@@ -642,6 +652,22 @@ class RuntimeVar(ModelConfiguredVar):
     pass
 
 
+class UnitTestVar(RuntimeVar):
+    def __init__(
+        self,
+        context: Dict[str, Any],
+        config: RuntimeConfig,
+        node: Resource,
+    ) -> None:
+        config_copy = None
+        assert isinstance(node, UnitTestNode)
+        if node.overrides and node.overrides.vars:
+            config_copy = deepcopy(config)
+            config_copy.cli_vars.update(node.overrides.vars)
+
+        super().__init__(context, config_copy or config, node=node)
+
+
 # Providers
 class Provider(Protocol):
     execute: bool
@@ -680,6 +706,16 @@ class RuntimeProvider(Provider):
     Var = RuntimeVar
     ref = RuntimeRefResolver
     source = RuntimeSourceResolver
+    metric = RuntimeMetricResolver
+
+
+class RuntimeUnitTestProvider(Provider):
+    execute = True
+    Config = RuntimeConfigObject
+    DatabaseWrapper = RuntimeDatabaseWrapper
+    Var = UnitTestVar
+    ref = RuntimeUnitTestRefResolver
+    source = RuntimeSourceResolver  # TODO: RuntimeUnitTestSourceResolver
     metric = RuntimeMetricResolver
 
 
@@ -1391,6 +1427,25 @@ class ModelContext(ProviderContext):
         return self.db_wrapper.Relation.create_from(self.config, self.model)
 
 
+class UnitTestContext(ModelContext):
+    model: UnitTestNode
+
+    @contextmember
+    def env_var(self, var: str, default: Optional[str] = None) -> str:
+        """The env_var() function. Return the overriden unit test environment variable named 'var'.
+
+        If there is no unit test override, return the environment variable named 'var'.
+
+        If there is no such environment variable set, return the default.
+
+        If the default is None, raise an exception for an undefined variable.
+        """
+        if self.model.overrides and var in self.model.overrides.env_vars:
+            return self.model.overrides.env_vars[var]
+        else:
+            return super().env_var(var, default)
+
+
 # This is called by '_context_for', used in 'render_with_context'
 def generate_parser_model_context(
     model: ManifestNode,
@@ -1433,6 +1488,22 @@ def generate_runtime_macro_context(
 ) -> Dict[str, Any]:
     ctx = MacroContext(macro, config, manifest, OperationProvider(), package_name)
     return ctx.to_dict()
+
+
+def generate_runtime_unit_test_context(
+    unit_test: UnitTestNode,
+    config: RuntimeConfig,
+    manifest: Manifest,
+) -> Dict[str, Any]:
+    ctx = UnitTestContext(unit_test, config, manifest, RuntimeUnitTestProvider(), None)
+    ctx_dict = ctx.to_dict()
+
+    if unit_test.overrides and unit_test.overrides.macros:
+        for macro_name, macro_value in unit_test.overrides.macros.items():
+            macro_generator = ctx_dict.get(macro_name)
+            if macro_generator:
+                ctx_dict[macro_name] = UnitTestMacroGenerator(macro_generator, macro_value)
+    return ctx_dict
 
 
 class ExposureRefResolver(BaseResolver):

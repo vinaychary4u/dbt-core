@@ -7,7 +7,7 @@ import io
 from .compile import CompileRunner
 from .run import RunTask
 
-from dbt.contracts.graph.nodes import ModelNode
+from dbt.contracts.graph.nodes import UnitTestNode
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.results import TestStatus, RunResult
 from dbt.context.providers import generate_runtime_model_context
@@ -65,17 +65,17 @@ class UnitTestRunner(CompileRunner):
     def before_execute(self):
         self.print_start_line()
 
-    def execute_unit_test(self, node: ModelNode, manifest: Manifest) -> UnitTestResultData:
-        test = node
-        context = generate_runtime_model_context(test, self.config, manifest)
+    def execute_unit_test(self, node: UnitTestNode, manifest: Manifest) -> UnitTestResultData:
+        # generate_runtime_unit_test_context not strictly needed - this is to run the 'unit' materialization, not compile the node.compield_code
+        context = generate_runtime_model_context(node, self.config, manifest)
 
         materialization_macro = manifest.find_materialization_macro_by_name(
-            self.config.project_name, test.get_materialization(), self.adapter.type()
+            self.config.project_name, node.get_materialization(), self.adapter.type()
         )
 
         if materialization_macro is None:
             raise MissingMaterializationError(
-                materialization=test.get_materialization(), adapter_type=self.adapter.type()
+                materialization=node.get_materialization(), adapter_type=self.adapter.type()
             )
 
         if "config" not in context:
@@ -107,7 +107,7 @@ class UnitTestRunner(CompileRunner):
             adapter_response=adapter_response,
         )
 
-    def execute(self, node: ModelNode, manifest: Manifest):
+    def execute(self, node: UnitTestNode, manifest: Manifest):
         result = self.execute_unit_test(node, manifest)
         thread_id = threading.current_thread().name
 

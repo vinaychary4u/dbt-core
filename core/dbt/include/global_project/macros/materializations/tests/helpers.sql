@@ -37,6 +37,6 @@ dbt_internal_unit_test_expected AS (
 )
 -- Union actual and expected results
 select * from dbt_internal_unit_test_actual
-union all 
+union all
 select * from dbt_internal_unit_test_expected
 {%- endmacro %}

@@ -73,7 +73,7 @@ from dbt.contracts.graph.nodes import (
 )
 from dbt.contracts.graph.unparsed import NodeVersion
 from dbt.contracts.util import Writable
-from dbt.exceptions import TargetNotFoundError, AmbiguousAliasError
+from dbt.exceptions import TargetNotFoundError
 from dbt.parser.base import Parser
 from dbt.parser.analysis import AnalysisParser
 from dbt.parser.generic_test import GenericTestParser

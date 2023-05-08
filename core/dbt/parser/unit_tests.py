@@ -115,6 +115,7 @@ class UnitTestParser(YamlReader):
                 fqn=unit_test_unique_id.split("."),
                 checksum=FileHash(name="sha256", checksum=checksum),
                 attached_node=actual_node.unique_id,
+                overrides=unit_test.overrides,
             )
 
             # ctx = generate_parse_exposure(

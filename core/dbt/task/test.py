@@ -5,8 +5,7 @@ from dbt.utils import _coerce_decimal
 from dbt.events.format import pluralize
 from dbt.dataclass_schema import dbtClassMixin
 import threading
-from typing import Dict, Any, Optional
-import io
+from typing import Dict, Any
 
 from .compile import CompileRunner
 from .run import RunTask
@@ -60,16 +59,10 @@ class TestResultData(dbtClassMixin):
         return bool(field)
 
 
-@dataclass
-class UnitTestResultData(TestResultData):
-    diff: Optional[str] = None
-    should_error: bool
-    adapter_response: Dict[str, Any]
-
-
 class TestRunner(CompileRunner):
     def describe_node(self):
-        return f"{self.node.resource_type} {self.node.name}"
+        node_name = self.node.name
+        return "test {}".format(node_name)
 
     def print_result_line(self, result):
         model = result.node
@@ -100,23 +93,6 @@ class TestRunner(CompileRunner):
     def before_execute(self):
         self.print_start_line()
 
-    def _get_unit_test_table(self, result_table, actual_or_expected: str):
-        unit_test_table = result_table.where(
-            lambda row: row["actual_or_expected"] == actual_or_expected
-        )
-        columns = list(unit_test_table.columns.keys())
-        columns.remove("actual_or_expected")
-        return unit_test_table.select(columns)
-
-    def _agate_table_to_str(self, table) -> str:
-        # Hack to get Agate table output as string
-        output = io.StringIO()
-        # if self.args.output == "json":
-        #     table.to_json(path=output)
-        # else:
-        table.print_table(output=output, max_rows=None)
-        return output.getvalue()
-
     def execute_test(self, test: TestNode, manifest: Manifest) -> TestResultData:
         context = generate_runtime_model_context(test, self.config, manifest)
 
@@ -141,79 +117,55 @@ class TestRunner(CompileRunner):
         # load results from context
         # could eventually be returned directly by materialization
         result = context["load_result"]("main")
-        adapter_response = result["response"].to_dict(omit_none=True)
         table = result["table"]
-        if test.resource_type == NodeType.Unit:
-            actual = self._get_unit_test_table(table, "actual")
-            expected = self._get_unit_test_table(table, "expected")
-            should_error = actual.rows != expected.rows
-            failures = 1 if should_error else 0
-            diff = None
-            if should_error:
-                actual_output = self._agate_table_to_str(actual)
-                expected_output = self._agate_table_to_str(expected)
-
-                diff = f"\n\nActual:\n{actual_output}\nExpected:\n{expected_output}"
-            return UnitTestResultData(
-                diff=diff,
-                should_error=should_error,
-                should_warn=False,
-                failures=failures,
-                adapter_response=adapter_response,
+        num_rows = len(table.rows)
+        if num_rows != 1:
+            raise DbtInternalError(
+                f"dbt internally failed to execute {test.unique_id}: "
+                f"Returned {num_rows} rows, but expected "
+                f"1 row"
             )
-        else:
-            num_rows = len(table.rows)
-            if num_rows != 1:
-                raise DbtInternalError(
-                    f"dbt internally failed to execute {test.unique_id}: "
-                    f"Returned {num_rows} rows, but expected "
-                    f"1 row"
-                )
-            num_cols = len(table.columns)
-            if num_cols != 3:
-                raise DbtInternalError(
-                    f"dbt internally failed to execute {test.unique_id}: "
-                    f"Returned {num_cols} columns, but expected "
-                    f"3 columns"
-                )
-
-            test_result_dct: PrimitiveDict = dict(
-                zip(
-                    [column_name.lower() for column_name in table.column_names],
-                    map(_coerce_decimal, table.rows[0]),
-                )
+        num_cols = len(table.columns)
+        if num_cols != 3:
+            raise DbtInternalError(
+                f"dbt internally failed to execute {test.unique_id}: "
+                f"Returned {num_cols} columns, but expected "
+                f"3 columns"
             )
-            test_result_dct["adapter_response"] = adapter_response
-            TestResultData.validate(test_result_dct)
-            return TestResultData.from_dict(test_result_dct)
+
+        test_result_dct: PrimitiveDict = dict(
+            zip(
+                [column_name.lower() for column_name in table.column_names],
+                map(_coerce_decimal, table.rows[0]),
+            )
+        )
+        test_result_dct["adapter_response"] = result["response"].to_dict(omit_none=True)
+        TestResultData.validate(test_result_dct)
+        return TestResultData.from_dict(test_result_dct)
 
     def execute(self, test: TestNode, manifest: Manifest):
         result = self.execute_test(test, manifest)
+
+        severity = test.config.severity.upper()
         thread_id = threading.current_thread().name
         num_errors = pluralize(result.failures, "result")
-
-        status = TestStatus.Pass
+        status = None
         message = None
         failures = 0
-        if isinstance(result, UnitTestResultData):
-            if result.should_error:
+        if severity == "ERROR" and result.should_error:
+            status = TestStatus.Fail
+            message = f"Got {num_errors}, configured to fail if {test.config.error_if}"
+            failures = result.failures
+        elif result.should_warn:
+            if get_flags().WARN_ERROR:
                 status = TestStatus.Fail
-                message = result.diff
-                failures = result.failures
+                message = f"Got {num_errors}, configured to fail if {test.config.warn_if}"
+            else:
+                status = TestStatus.Warn
+                message = f"Got {num_errors}, configured to warn if {test.config.warn_if}"
+            failures = result.failures
         else:
-            severity = test.config.severity.upper()
-            if severity == "ERROR" and result.should_error:
-                status = TestStatus.Fail
-                message = f"Got {num_errors}, configured to fail if {test.config.error_if}"
-                failures = result.failures
-            elif result.should_warn:
-                if get_flags().WARN_ERROR:
-                    status = TestStatus.Fail
-                    message = f"Got {num_errors}, configured to fail if {test.config.warn_if}"
-                else:
-                    status = TestStatus.Warn
-                    message = f"Got {num_errors}, configured to warn if {test.config.warn_if}"
-                failures = result.failures
+            status = TestStatus.Pass
 
         return RunResult(
             node=test,
@@ -236,7 +188,7 @@ class TestSelector(ResourceTypeSelector):
             graph=graph,
             manifest=manifest,
             previous_state=previous_state,
-            resource_types=[NodeType.Test, NodeType.Unit],
+            resource_types=[NodeType.Test],
         )
 
 

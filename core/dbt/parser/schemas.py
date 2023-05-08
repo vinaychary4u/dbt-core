@@ -23,7 +23,7 @@ from dbt.context.configured import generate_schema_yml_context, SchemaYamlVars
 from dbt.context.providers import (
     generate_parse_metrics,
     generate_test_context,
-    generate_parser_model_context,
+    generate_parse_exposure,
 )
 from dbt.context.macro_resolver import MacroResolver
 from dbt.contracts.files import FileHash, SchemaSourceFile
@@ -1271,8 +1271,8 @@ class ExposureParser(YamlReader):
             config=config,
             unrendered_config=unrendered_config,
         )
-        ctx = generate_parser_model_context(
-            parsed,  # type: ignore
+        ctx = generate_parse_exposure(
+            parsed,
             self.root_project,
             self.schema_parser.manifest,
             package_name,

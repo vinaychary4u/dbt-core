@@ -73,7 +73,7 @@ from dbt.contracts.graph.nodes import (
 )
 from dbt.contracts.graph.unparsed import NodeVersion
 from dbt.contracts.util import Writable
-from dbt.exceptions import TargetNotFoundError
+from dbt.exceptions import TargetNotFoundError, AmbiguousAliasError
 from dbt.parser.base import Parser
 from dbt.parser.analysis import AnalysisParser
 from dbt.parser.generic_test import GenericTestParser
@@ -1112,11 +1112,9 @@ def _check_resource_uniqueness(
 
         existing_alias = alias_resources.get(full_node_name)
         if existing_alias is not None:
-            # raise AmbiguousAliasError(
-            #     node_1=existing_alias, node_2=node, duped_name=full_node_name
-            # )
-            # TODO: fix
-            pass
+            raise AmbiguousAliasError(
+                node_1=existing_alias, node_2=node, duped_name=full_node_name
+            )
 
         names_resources[name] = node
         alias_resources[full_node_name] = node

@@ -1500,9 +1500,11 @@ def generate_runtime_unit_test_context(
 
     if unit_test.overrides and unit_test.overrides.macros:
         for macro_name, macro_value in unit_test.overrides.macros.items():
-            macro_generator = ctx_dict.get(macro_name)
-            if macro_generator:
-                ctx_dict[macro_name] = UnitTestMacroGenerator(macro_generator, macro_value)
+            context_value = ctx_dict.get(macro_name)
+            if isinstance(context_value, MacroGenerator):
+                ctx_dict[macro_name] = UnitTestMacroGenerator(context_value, macro_value)
+            else:
+                ctx_dict[macro_name] = macro_value
     return ctx_dict
 
 

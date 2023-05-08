@@ -66,6 +66,8 @@ union all
 {% set row_update = {column_name: column_value} %}
 {%- if column_value is string -%}
 {%- set row_update = {column_name: safe_cast(dbt.string_literal(column_value), column_name_to_data_types[column_name]) } -%}
+{%- elif column_value is none -%}
+{%- set row_update = {column_name: safe_cast('null', column_name_to_data_types[column_name]) } -%}
 {%- else -%}
 {%- set row_update = {column_name: safe_cast(column_value, column_name_to_data_types[column_name]) } -%}
 {%- endif -%}

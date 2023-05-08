@@ -35,7 +35,6 @@ from dbt.contracts.graph.nodes import (
     GraphMemberNode,
     ResultNode,
     BaseNode,
-    UnitTestNode,
 )
 from dbt.contracts.graph.unparsed import SourcePatch, NodeVersion
 from dbt.contracts.graph.manifest_upgrade import upgrade_manifest_json
@@ -1117,12 +1116,6 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         _check_duplicates(group, self.groups)
         self.groups[group.unique_id] = group
         source_file.groups.append(group.unique_id)
-
-    def add_unit_test(self, unit_test_node: UnitTestNode, inputs: List[ManifestNode]):
-        # TODO: _check_duplicates(group, self.groups)
-        self.nodes[unit_test_node.unique_id] = unit_test_node
-        for input in inputs:
-            self.nodes[input.unique_id] = input
 
     def add_disabled_nofile(self, node: GraphMemberNode):
         # There can be multiple disabled nodes for the same unique_id

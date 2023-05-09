@@ -15,6 +15,7 @@ from dbt.events.helpers import datetime_to_json_string
 from dbt.logger import TimingProcessor
 from dbt.utils import lowercase, cast_to_str, cast_to_int
 from dbt.dataclass_schema import dbtClassMixin, StrEnum
+from dbt.plugable import get_plugable
 
 import agate
 
@@ -383,6 +384,9 @@ class FreshnessResult(ExecutionResult):
     metadata: FreshnessMetadata
     results: Sequence[FreshnessNodeResult]
 
+    def __post_init__(self):
+        setattr(self.__class__, "write", classmethod(get_plugable("results_writer", "default")))
+
     @classmethod
     def from_node_results(
         cls,
@@ -394,7 +398,9 @@ class FreshnessResult(ExecutionResult):
         return cls(metadata=meta, results=results, elapsed_time=elapsed_time)
 
     def write(self, path):
-        FreshnessExecutionResultArtifact.from_result(self).write(path)
+        ...
+
+    #    FreshnessExecutionResultArtifact.from_result(self).write(path)
 
 
 @dataclass

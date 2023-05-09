@@ -44,6 +44,17 @@ setup(
     test_suite="test",
     entry_points={
         "console_scripts": ["dbt = dbt.cli.main:cli"],
+        # TODO, can we namespace this like modules?
+        # feels like a very useful place for a good naming convention
+        # Or maybe better yet, auto-populate these from a location on disk
+        # since we should only ever have offically sanctioned plugins listed here
+        # TODO, I don't love the "default" naming convention because
+        # it's not actually descriptive. Can we "tag" these in some fashion
+        #  for better selection logic interally?
+        "results_writer": [
+            "default = dbt.plugable.results_writer.to_disk:write",
+            "sqlite3 = dbt.plugable.results_writer.to_sqlite3:write",
+        ],
     },
     install_requires=[
         "Jinja2==3.1.2",

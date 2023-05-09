@@ -25,7 +25,7 @@ with dbt_internal_unit_test_actual AS (
     {% for expected_column_name in expected_column_names %}{{expected_column_name}}{% if not loop.last -%},{% endif %}{%- endfor -%}, {{ dbt.string_literal("actual") }} as actual_or_expected
   from (
     {{ main_sql }}
-  )
+  ) _dbt_internal_unit_test_actual
 ),
 -- Build expected result
 dbt_internal_unit_test_expected AS (
@@ -33,7 +33,7 @@ dbt_internal_unit_test_expected AS (
     {% for expected_column_name in expected_column_names %}{{expected_column_name}}{% if not loop.last -%}, {% endif %}{%- endfor -%}, {{ dbt.string_literal("expected") }} as actual_or_expected
   from (
     {{ expected_fixture_sql }}
-  )
+  ) _dbt_internal_unit_test_expected
 )
 -- Union actual and expected results
 select * from dbt_internal_unit_test_actual

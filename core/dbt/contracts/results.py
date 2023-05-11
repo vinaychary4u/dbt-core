@@ -391,6 +391,9 @@ class FreshnessResult(ExecutionResult):
     metadata: FreshnessMetadata
     results: Sequence[FreshnessNodeResult]
 
+    def __post_init__(self):
+        setattr(self.__class__, "write", classmethod(get_plugable("results_writer", "default")))
+
     @classmethod
     def from_node_results(
         cls,
@@ -402,7 +405,9 @@ class FreshnessResult(ExecutionResult):
         return cls(metadata=meta, results=results, elapsed_time=elapsed_time)
 
     def write(self, path):
-        FreshnessExecutionResultArtifact.from_result(self).write(path)
+        ...
+
+    #    FreshnessExecutionResultArtifact.from_result(self).write(path)
 
 
 @dataclass

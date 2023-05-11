@@ -44,6 +44,31 @@ setup(
     test_suite="test",
     entry_points={
         "console_scripts": ["dbt = dbt.cli.main:cli"],
+        # TODO, can we namespace this like modules?
+        # feels like a very useful place for a good naming convention
+        # Or maybe better yet, auto-populate these from a location on disk
+        # since we should only ever have offically sanctioned plugins listed here
+        #
+        # The more I think about I like that second option.  We can easily scan a
+        # given namespace (dbt.plugable I.E.) and generate ep groups from that.
+        # This reduces the amount of boilerplate we have to write.
+        # TODO, I don't love the "default" naming convention because
+        # it's not actually descriptive. Can we "tag" these in some fashion
+        #  for better selection logic interally?
+        # More thoughts on this-- we can actually skip the "default" plugin and make
+        # that code what's found in the main codebase! This saves some work by making
+        # our plugin system more of a select-a-thing-to-replace-the-existing-fucntion
+        # as opposed to a select-a-thing-from-a-pile-of-things-which-becomes-the-function
+        #
+        # The downside of this approach is that if the plugin system fails to properly
+        # select our plugin, things keep working with the default behavior.
+        # TODO. Consider a generic function name so we have a consistant plugin design
+        # Switching to "execute" for now although I don't love that
+        # (we have a _lot_ of functions with that name in the codebase already)
+        "run_results_writer": [
+            "sqlite3 = dbt.plugable.run_results_writer.sqlite3:execute",
+            "ians_email = dbt.plugable.run_results_writer.ians_email:execute",
+        ],
     },
     install_requires=[
         "Jinja2==3.1.2",

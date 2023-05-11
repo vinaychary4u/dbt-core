@@ -15,6 +15,7 @@ from dbt.events.helpers import datetime_to_json_string
 from dbt.logger import TimingProcessor
 from dbt.utils import lowercase, cast_to_str, cast_to_int
 from dbt.dataclass_schema import dbtClassMixin, StrEnum
+from dbt.plugable import get_plugable
 
 import agate
 
@@ -206,18 +207,25 @@ def process_run_result(result: RunResult) -> RunResultOutput:
 class RunExecutionResult(
     ExecutionResult,
 ):
+    def __post_init__(self):
+        # Imagine this is a flag
+        run_results_writer_flag = "ians_email"
+        if run_results_writer_flag:
+            writer_func = get_plugable("run_results_writer", run_results_writer_flag)
+            # assert write has the same function signature and typing as existing write
+            setattr(self.__class__, "write", classmethod(writer_func))
+
     results: Sequence[RunResult]
     args: Dict[str, Any] = field(default_factory=dict)
     generated_at: datetime = field(default_factory=datetime.utcnow)
 
     def write(self, path: str):
-        writable = RunResultsArtifact.from_execution_results(
+        RunResultsArtifact.from_execution_results(
             results=self.results,
             elapsed_time=self.elapsed_time,
             generated_at=self.generated_at,
             args=self.args,
-        )
-        writable.write(path)
+        ).write(path)
 
 
 @dataclass

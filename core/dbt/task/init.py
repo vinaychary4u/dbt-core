@@ -258,6 +258,11 @@ class InitTask(BaseTask):
         if in_project:
             # When dbt init is run inside an existing project,
             # just setup the user's profile.
+
+            # Ask for adapter only if skip_profile_setup flag is not provided.
+            if self.args.skip_profile_setup:
+                return
+
             fire_event(SettingUpProfile())
             profile_name = self.get_profile_name_from_current_project()
             if not self.check_if_can_write_profile(profile_name=profile_name):

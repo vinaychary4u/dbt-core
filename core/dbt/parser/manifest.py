@@ -1094,29 +1094,67 @@ def _check_resource_uniqueness(
 ) -> None:
     names_resources: Dict[str, ManifestNode] = {}
     alias_resources: Dict[str, ManifestNode] = {}
+    versioned_resources: Dict[str, ManifestNode] = {}
+    unversioned_resources: Dict[str, ManifestNode] = {}
+    duplicate_resources: Dict[str, list] = {}
+    duplicate_aliases: Dict[str, list] = {}
 
     for resource, node in manifest.nodes.items():
         if not node.is_relational:
             continue
 
         name = node.name
+        if node.is_versioned:
+            versioned_resources[name] = node
+        else:
+            unversioned_resources[name] = node
+
+        existing_node = names_resources.get(name)
+        if existing_node is not None:
+            duplicate_resources[name] = [existing_node, node]
+
         # the full node name is really defined by the adapter's relation
         relation_cls = get_relation_class_by_name(config.credentials.type)
         relation = relation_cls.create_from(config=config, node=node)
         full_node_name = str(relation)
 
-        existing_node = names_resources.get(name)
-        if existing_node is not None and not existing_node.is_versioned:
-            raise dbt.exceptions.DuplicateResourceNameError(existing_node, node)
-
         existing_alias = alias_resources.get(full_node_name)
         if existing_alias is not None:
-            raise AmbiguousAliasError(
-                node_1=existing_alias, node_2=node, duped_name=full_node_name
-            )
+            duplicate_aliases[full_node_name] = [existing_alias, node]
 
         names_resources[name] = node
         alias_resources[full_node_name] = node
+
+        # Check for versioned models with unversioned duplicates
+        intersection_versioned = set(versioned_resources.keys()).intersection(
+            set(unversioned_resources.keys())
+        )
+        for name in intersection_versioned:
+            versioned_node = versioned_resources[name]
+            unversioned_node = unversioned_resources[name]
+            raise dbt.exceptions.DuplicateVersionedUnversionedError(
+                versioned_node, unversioned_node
+            )
+
+        # Handle base case of multiple unversioned models with same name.
+        # This is for same name in multiple packages. Same name in the same
+        # package will be caught by _check_duplicates called by add_node.
+        # Version 1.6 will remove the restriction of having the same name in
+        # multiple packages.
+        intersection_unversioned = set(duplicate_resources.keys()) - set(
+            versioned_resources.keys()
+        )
+        for name in intersection_unversioned:
+            existing_node, node = duplicate_resources[name]
+            raise dbt.exceptions.DuplicateResourceNameError(existing_node, node)
+
+        # Handle ambiguous alias error. We've deferred this because we prefer to
+        # issue the DuplicateResourceName error
+        for full_node_name, node_list in duplicate_aliases.items():
+            existing_alias, node = node_list
+            raise AmbiguousAliasError(
+                node_1=existing_alias, node_2=node, duped_name=full_node_name
+            )
 
 
 def _warn_for_unused_resource_config_paths(manifest: Manifest, config: RuntimeConfig) -> None:

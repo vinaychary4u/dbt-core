@@ -182,7 +182,17 @@ class SecretRenderer(BaseRenderer):
         # First, standard Jinja rendering, with special handling for 'secret' environment variables
         # "{{ env_var('DBT_SECRET_ENV_VAR') }}" -> "$$$DBT_SECRET_START$$$DBT_SECRET_ENV_{VARIABLE_NAME}$$$DBT_SECRET_END$$$"
         # This prevents Jinja manipulation of secrets via macros/filters that might leak partial/modified values in logs
-        rendered = super().render_value(value, keypath)
+
+        try:
+            rendered = super().render_value(value, keypath)
+        except Exception as ex:
+            if keypath and "password" in keypath:
+                # Passwords sometimes contain jinja-esque characters, but we
+                # don't want to render them if they aren't valid jinja.
+                rendered = value
+            else:
+                raise ex
+
         # Now, detect instances of the placeholder value ($$$DBT_SECRET_START...DBT_SECRET_END$$$)
         # and replace them with the actual secret value
         if SECRET_ENV_PREFIX in str(rendered):
@@ -205,9 +215,6 @@ class ProfileRenderer(SecretRenderer):
     @property
     def name(self):
         return "Profile"
-
-    def should_render_keypath(self, keypath: Keypath) -> bool:
-        return "password" not in keypath
 
 
 class PackageRenderer(SecretRenderer):

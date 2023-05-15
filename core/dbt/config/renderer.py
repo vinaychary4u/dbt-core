@@ -206,6 +206,9 @@ class ProfileRenderer(SecretRenderer):
     def name(self):
         return "Profile"
 
+    def should_render_keypath(self, keypath: Keypath) -> bool:
+        return "password" not in keypath
+
 
 class PackageRenderer(SecretRenderer):
     @property

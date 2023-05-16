@@ -77,7 +77,6 @@ class OnConfigurationChangeBase(Base):
             messages_not_in_logs,
             -1,
         )
-        return results, logs
 
     def test_model_is_refreshed_with_no_configuration_changes(self, project):
         results, logs = run_dbt_and_capture(
@@ -98,7 +97,6 @@ class OnConfigurationChangeBase(Base):
             messages_not_in_logs,
             -1,
         )
-        return results, logs
 
 
 class OnConfigurationChangeApplyTestsBase(OnConfigurationChangeBase):
@@ -129,7 +127,6 @@ class OnConfigurationChangeApplyTestsBase(OnConfigurationChangeBase):
             messages_not_in_logs,
             -1,
         )
-        return results, logs
 
     def test_model_applies_changes_with_configuration_changes(
         self, project, configuration_changes_apply
@@ -172,7 +169,6 @@ class OnConfigurationChangeSkipTestsBase(OnConfigurationChangeBase):
         self.assert_proper_scenario(
             results, logs, RunStatus.Success, messages_in_logs, messages_not_in_logs, -1
         )
-        return results, logs
 
 
 class OnConfigurationChangeFailTestsBase(OnConfigurationChangeBase):
@@ -192,4 +188,3 @@ class OnConfigurationChangeFailTestsBase(OnConfigurationChangeBase):
         self.assert_proper_scenario(
             results, logs, RunStatus.Error, messages_in_logs, messages_not_in_logs
         )
-        return results, logs

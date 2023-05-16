@@ -20,6 +20,9 @@ that represent their full command path (e.g. `source freshness -> SOURCE_FRESHNE
 ## `flags.py`
 Add the new command to the dictionary within the `command_args` function.
 
+## `dbt/tasks/retry.py`
+If your command is retryable (i.e. produces a `run_results.json` artifact which contains a `results.args` field with a `results.args.which` key), add your command to the `RETRYABLE_TASKS` dictionary.
+
 # Exception Handling
 
 ## `requires.py`

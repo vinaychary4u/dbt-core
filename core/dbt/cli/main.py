@@ -1,6 +1,6 @@
 from copy import copy
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Union
+from typing import Callable, List, Optional
 
 import click
 from click.exceptions import (
@@ -15,12 +15,8 @@ from dbt.cli.exceptions import (
     DbtInternalException,
     DbtUsageException,
 )
+from dbt.cli.types import CombinedResultType
 from dbt.contracts.graph.manifest import Manifest
-from dbt.contracts.results import (
-    CatalogArtifact,
-    RunExecutionResult,
-    RunOperationResultsArtifact,
-)
 from dbt.events.base_types import EventMsg
 from dbt.task.build import BuildTask
 from dbt.task.clean import CleanTask
@@ -31,6 +27,7 @@ from dbt.task.freshness import FreshnessTask
 from dbt.task.generate import GenerateTask
 from dbt.task.init import InitTask
 from dbt.task.list import ListTask
+from dbt.task.retry import RetryTask
 from dbt.task.run import RunTask
 from dbt.task.run_operation import RunOperationTask
 from dbt.task.seed import SeedTask
@@ -47,15 +44,7 @@ class dbtRunnerResult:
     success: bool
 
     exception: Optional[BaseException] = None
-    result: Union[
-        bool,  # debug
-        CatalogArtifact,  # docs generate
-        List[str],  # list/ls
-        Manifest,  # parse
-        None,  # clean, deps, init, source
-        RunExecutionResult,  # build, compile, run, seed, snapshot, test
-        RunOperationResultsArtifact,  # run-operation
-    ] = None
+    result: CombinedResultType = None
 
 
 # Programmatic invocation
@@ -525,6 +514,33 @@ def parse(ctx, **kwargs):
     # manifest generation and writing happens in @requires.manifest
 
     return ctx.obj["manifest"], True
+
+
+# dbt retry
+@cli.command("retry")
+@click.pass_context
+@p.state_required
+@p.deprecated_state
+@requires.postflight
+@requires.retry_setup
+@requires.preflight
+@requires.profile
+@requires.project
+@requires.runtime_config
+@requires.manifest
+def retry(ctx, **kwargs):
+    """Rerun a previous failed command given a previous run result artifact"""
+    task = RetryTask(
+        ctx.obj["flags"],
+        ctx.obj["runtime_config"],
+        ctx.obj["manifest"],
+        ctx.obj["previous_command"],
+        ctx.obj["previous_state"],
+    )
+
+    results = task.run()
+    success = task.interpret_results(results)
+    return results, success
 
 
 # dbt run

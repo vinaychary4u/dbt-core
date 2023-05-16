@@ -69,7 +69,7 @@ from dbt.events.types import Note
 #   run_dbt(["run", "--vars", "seed_name: base"])
 # If the command is expected to fail, pass in "expect_pass=False"):
 #   run_dbt("test"], expect_pass=False)
-def run_dbt(args: List[str] = None, expect_pass=True):
+def run_dbt(args: List[str] = None, expect_pass=True, add_dirs=True):
     # Ignore logbook warnings
     warnings.filterwarnings("ignore", category=DeprecationWarning, module="logbook")
 
@@ -86,12 +86,13 @@ def run_dbt(args: List[str] = None, expect_pass=True):
     from dbt.flags import get_flags
 
     flags = get_flags()
-    project_dir = getattr(flags, "PROJECT_DIR", None)
-    profiles_dir = getattr(flags, "PROFILES_DIR", None)
-    if project_dir and "--project-dir" not in args:
-        args.extend(["--project-dir", project_dir])
-    if profiles_dir and "--profiles-dir" not in args:
-        args.extend(["--profiles-dir", profiles_dir])
+    if add_dirs:
+        project_dir = getattr(flags, "PROJECT_DIR", None)
+        profiles_dir = getattr(flags, "PROFILES_DIR", None)
+        if project_dir and "--project-dir" not in args:
+            args.extend(["--project-dir", project_dir])
+        if profiles_dir and "--profiles-dir" not in args:
+            args.extend(["--profiles-dir", profiles_dir])
 
     dbt = dbtRunner()
     res = dbt.invoke(args)

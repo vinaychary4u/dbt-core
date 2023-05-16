@@ -436,6 +436,20 @@ state = click.option(
     ),
 )
 
+state_required = click.option(
+    "--state",
+    envvar="DBT_STATE",
+    help="If set, use the given directory as the source for JSON files to compare with this project.",
+    required=True,
+    type=click.Path(
+        dir_okay=True,
+        file_okay=False,
+        readable=True,
+        resolve_path=True,
+        path_type=Path,
+    ),
+)
+
 deprecated_state = click.option(
     "--deprecated-state",
     envvar="DBT_ARTIFACT_STATE_PATH",

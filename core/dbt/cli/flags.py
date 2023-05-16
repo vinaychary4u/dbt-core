@@ -285,17 +285,16 @@ class Flags:
 
     @classmethod
     def from_dict(cls, command: CliCommand, args_dict: Dict[str, Any]) -> "Flags":
-        command_arg_list = command_params(command, args_dict)
+        command_arg_list = command_flags(command, args_dict)
         ctx = args_to_context(command_arg_list)
         flags = cls(ctx=ctx)
-        flags.fire_deprecations()
         return flags
 
 
-CommandParams = List[str]
+CommandFlags = List[str]
 
 
-def command_params(command: CliCommand, args_dict: Dict[str, Any]) -> CommandParams:
+def command_flags(command: CliCommand, args_dict: Dict[str, Any]) -> CommandFlags:
     """Given a command and a dict, returns a list of strings representing
     the CLI params for that command. The order of this list is consistent with
     which flags are expected at the parent level vs the command level.
@@ -306,8 +305,9 @@ def command_params(command: CliCommand, args_dict: Dict[str, Any]) -> CommandPar
     to produce a click context to instantiate Flags with.
     """
 
-    cmd_args = set(command_args(command))
-    prnt_args = set(parent_args())
+    cmd_args = command_params(command)
+    prnt_args = parent_params()
+    all_args = dict(cmd_args, **prnt_args)
     default_args = set([x.lower() for x in FLAGS_DEFAULTS.keys()])
 
     res = command.to_list()
@@ -324,45 +324,65 @@ def command_params(command: CliCommand, args_dict: Dict[str, Any]) -> CommandPar
             continue
 
         # param was assigned from defaults and should not be included
-        if k not in (cmd_args | prnt_args) - default_args:
+        if k not in set([x for x in all_args.keys()]) - default_args:
             continue
 
         # if the param is in parent args, it should come before the arg name
         # e.g. ["--print", "run"] vs ["run", "--print"]
         add_fn = res.append
-        if k in prnt_args:
+        if k in prnt_args.keys():
 
             def add_fn(x):
                 res.insert(0, x)
 
         spinal_cased = k.replace("_", "-")
 
-        if v in (None, False):
-            add_fn(f"--no-{spinal_cased}")
-        elif v is True:
-            add_fn(f"--{spinal_cased}")
-        else:
-            add_fn(f"--{spinal_cased}={v}")
+        param = all_args.get(k, None)
+        if param is None:
+            raise DbtInternalError(f"No parameter found for argument '{k}'")
+
+        str_value = format_str_value_for_param(param, v)
+        if str_value is not None:
+            add_fn(str_value)
 
     return res
 
 
-ArgsList = List[str]
+def format_str_value_for_param(param: Parameter, value: Any) -> Optional[str]:
+    if "deprecated_" in param.name:
+        return None
+
+    cli_name = param.opts[0]
+
+    # if a param is a bool and is true, return its cli flag (e.g. --print)
+    # otherwise return a secondary_opt (e.g. --no-print) or None if it doesn't exist
+    if param.is_bool_flag:
+        try:
+            return cli_name if value else param.secondary_opts[0]
+        except IndexError:
+            return None
+
+    # param takes multiple options, but none were passed, so omit param
+    if param.multiple and not value:
+        return None
+
+    return f"{cli_name}={value}"
 
 
-def parent_args() -> ArgsList:
-    """Return a list representing the params the base click command takes."""
+ParamDict = Dict[str, Parameter]
+
+
+def parent_params() -> ParamDict:
+    """Return a dict of the click params the base click command takes."""
     from dbt.cli.main import cli
 
     return format_params(cli.params)
 
 
-def command_args(command: CliCommand) -> ArgsList:
-    """Given a command, return a list of strings representing the params
-    that command takes. This function only returns params assigned to a
-    specific command, not those of its parent command.
-
-    e.g. fn("run") -> ["defer", "favor_state", "exclude", ...]
+def command_params(command: CliCommand) -> ParamDict:
+    """Given a command, return a dict of params that the command takes.
+    This function only returns params assigned to a specific command,
+    not those of its parent command.
     """
     import dbt.cli.main as cli
 
@@ -391,5 +411,5 @@ def command_args(command: CliCommand) -> ArgsList:
     return format_params(click_cmd.params)
 
 
-def format_params(params: List[Parameter]) -> ArgsList:
-    return [str(x.name) for x in params if not str(x.name).lower().startswith("deprecated_")]
+def format_params(params: List[Parameter]) -> ParamDict:
+    return {str(x.name).lower(): x for x in params if not str(x.name).lower().startswith("deprecated_")}

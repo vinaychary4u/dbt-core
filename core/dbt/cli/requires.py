@@ -1,3 +1,9 @@
+from click import Context
+from functools import update_wrapper
+import time
+import traceback
+from typing import Optional
+
 import dbt.tracking
 from dbt.version import installed as installed_version
 from dbt.adapters.factory import adapter_management, register_adapter
@@ -7,8 +13,10 @@ from dbt.cli.exceptions import (
     ResultExit,
 )
 from dbt.cli.flags import Flags
+from dbt.cli.types import Command
 from dbt.config import RuntimeConfig
-from dbt.config.runtime import load_project, load_profile, UnsetProfile
+from dbt.config.runtime import load_profile, load_project, UnsetProfile
+from dbt.contracts.state import PreviousState
 from dbt.events.functions import fire_event, LOG_VERSION, set_invocation_id, setup_event_logger
 from dbt.events.types import (
     CommandCompleted,
@@ -18,17 +26,18 @@ from dbt.events.types import (
 )
 from dbt.events.helpers import get_json_string_utcnow
 from dbt.events.types import MainEncounteredError, MainStackTrace
-from dbt.exceptions import Exception as DbtException, DbtProjectError, FailFastError
+from dbt.exceptions import (
+    Exception as DbtException,
+    DbtInternalError,
+    DbtProjectError,
+    FailFastError
+)
 from dbt.parser.manifest import ManifestLoader, write_manifest
 from dbt.profiler import profiler
 from dbt.tracking import active_user, initialize_from_flags, track_run
 from dbt.utils import cast_dict_to_dict_of_strings
 
-from click import Context
-from functools import update_wrapper
-import time
-import traceback
-
+from dbt.config.runtime import Profile, Project, load_project, load_profile
 
 def preflight(func):
     def wrapper(*args, **kwargs):
@@ -37,7 +46,7 @@ def preflight(func):
         ctx.obj = ctx.obj or {}
 
         # Flags
-        flags = Flags(ctx)
+        flags = ctx.obj.get("flags", Flags(ctx))
         ctx.obj["flags"] = flags
         set_flags(flags)
 
@@ -256,3 +265,39 @@ def manifest(*args0, write=True, write_perf_info=False):
     if len(args0) == 0:
         return outer_wrapper
     return outer_wrapper(args0[0])
+
+
+def retry_setup(func):
+    """A decorator used by click specifically for the retry command. Retry needs to read
+    the --state flag to build a PreviousState from which flags can then be built.
+    """
+    def wrapper(*args, **kwargs):
+        ctx = args[0]
+        assert isinstance(ctx, Context)
+        ctx.obj = ctx.obj or {}
+
+        state = ctx.params.get("state", None)
+        if state is None:
+            raise Exception("no state")
+
+        previous_state = PreviousState(state, state)
+
+        if previous_state.results is None:
+            raise DbtInternalError("Can't retry a command without results in previous state")
+        
+        ctx.obj["previous_state"] = previous_state
+
+        command_name: Optional[str] = previous_state.results.args.get("which", None)
+        if command_name is None:
+            raise DbtInternalError("No 'which' key found in previous result's 'args'")
+
+        command = Command.from_str(command_name)
+        ctx.obj["previous_command"] = command
+
+        flags = Flags.from_dict(command, previous_state.results.args)
+        ctx.obj["flags"] = flags
+
+        return func(*args, **kwargs)
+
+    return update_wrapper(wrapper, func)
+

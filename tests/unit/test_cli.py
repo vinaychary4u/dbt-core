@@ -1,6 +1,6 @@
 import click
 
-from dbt.cli.flags import command_args
+from dbt.cli.flags import command_params
 from dbt.cli.main import cli
 from dbt.cli.types import Command
 
@@ -51,4 +51,4 @@ class TestCLI:
             if isinstance(command, click.Group):
                 continue
             cmd = Command.from_str(command.name)
-            command_args(cmd)
+            command_params(cmd)

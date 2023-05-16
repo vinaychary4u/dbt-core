@@ -85,7 +85,7 @@ macros__macro_override_schema_sql = """
 
 @contextmanager
 def up_one():
-    current_path = os.getcwd()
+    current_path = Path.cwd()
     os.chdir("../")
     try:
         yield

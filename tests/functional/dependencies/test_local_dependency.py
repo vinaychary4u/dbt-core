@@ -152,6 +152,24 @@ class TestSimpleDependency(BaseDependencyTest):
             [f"{project.test_schema}.dep_source_model", f"{project.test_schema}.seed"],
         )
 
+    def test_no_dependency_paths(self, project):
+        run_dbt(["deps"])
+        run_dbt(["seed"])
+
+        # prove dependency does not exist as model in project
+        dep_path = os.path.join("models_local", "model_to_import.sql")
+        results = run_dbt(
+            ["run", "--models", f"+{dep_path}"],
+        )
+        assert len(results) == 0
+
+        # prove model can run when importing that dependency
+        local_path = Path("models") / "my_model.sql"
+        results = run_dbt(
+            ["run", "--models", f"+{local_path}"],
+        )
+        assert len(results) == 2
+
 
 class TestSimpleDependencyRelativePath(BaseDependencyTest):
     def test_local_dependency_relative_path(self, project):

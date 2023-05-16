@@ -8,6 +8,7 @@ import yaml
 
 from pathlib import Path
 from unittest import mock
+from contextlib import contextmanager
 
 import dbt.semver
 import dbt.config
@@ -80,6 +81,16 @@ macros__macro_override_schema_sql = """
 
 {%- endmacro %}
 """
+
+
+@contextmanager
+def up_one():
+    current_path = os.getcwd()
+    os.chdir("../")
+    try:
+        yield
+    finally:
+        os.chdir(current_path)
 
 
 class BaseDependencyTest(object):
@@ -174,12 +185,11 @@ class TestSimpleDependency(BaseDependencyTest):
 class TestSimpleDependencyRelativePath(BaseDependencyTest):
     def test_local_dependency_relative_path(self, project):
         last_dir = Path(project.project_root).name
-        os.chdir("../")
-        _, stdout = run_dbt_and_capture(["deps", "--project-dir", last_dir])
-        assert (
-            "Installed from <local @ local_dependency>" in stdout
-        ), "Test output didn't contain expected string"
-        os.chdir(project.project_root)
+        with up_one():
+            _, stdout = run_dbt_and_capture(["deps", "--project-dir", last_dir])
+            assert (
+                "Installed from <local @ local_dependency>" in stdout
+            ), "Test output didn't contain expected string"
 
 
 class TestMissingDependency(object):

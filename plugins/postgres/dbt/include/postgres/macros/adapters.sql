@@ -95,6 +95,14 @@
       'view' as type
     from pg_views
     where schemaname ilike '{{ schema_relation.schema }}'
+    union all
+    select
+      '{{ schema_relation.database }}' as database,
+      matviewname as name,
+      schemaname as schema,
+      'materialized_view' as type
+    from pg_matviews
+    where schemaname ilike '{{ schema_relation.schema }}'
   {% endcall %}
   {{ return(load_result('list_relations_without_caching').table) }}
 {% endmacro %}
@@ -217,3 +225,8 @@
     where schemaname = '{{ relation.schema }}'
       and tablename = '{{ relation.identifier }}'
 {% endmacro %}
+
+
+{%- macro postgres__get_drop_index_sql(relation, index_name) -%}
+    drop index if exists {{ index_name }};
+{%- endmacro -%}

@@ -10,15 +10,14 @@
     -- parse out all changes that can be applied via alter
     {%- set indexes = configuration_changes.pop("indexes", []) -%}
 
-    -- if there are still changes left, a full refresh is needed
-    {%- if configuration_changes != [] -%}
-        {{- return(get_replace_materialized_view_as_sql(relation, sql, existing_relation, backup_relation, intermediate_relation)) -}}
+    -- if there are no remaining changes, then all changes can be implemented via alter
+    {%- if configuration_changes == {} -%}
 
-    -- otherwise, build the sql statements to apply via alter
-    {%- else -%}
-
-        -- there is only one change that can be applied via alter, so just return it
         {{- return(postgres__update_indexes_on_materialized_view(relation, indexes)) -}}
+
+    -- otherwise, a full refresh is needed
+    {%- else -%}
+        {{- return(get_replace_materialized_view_as_sql(relation, sql, existing_relation, backup_relation, intermediate_relation)) -}}
 
     {%- endif -%}
 
@@ -26,18 +25,18 @@
 
 
 {% macro postgres__get_create_materialized_view_as_sql(relation, sql) %}
-    {{- return(get_create_view_as_sql(relation, sql)) -}}
+    create materialized view if not exists {{ relation }} as {{ sql }};
 {% endmacro %}
 
 
 {% macro postgres__get_replace_materialized_view_as_sql(relation, sql, existing_relation, backup_relation, intermediate_relation) %}
-    {{- get_create_view_as_sql(intermediate_relation, sql) -}}
+    {{- get_create_materialized_view_as_sql(intermediate_relation, sql) -}}
 
     {% if existing_relation is not none %}
-        alter view {{ existing_relation }} rename to {{ backup_relation.include(database=False, schema=False) }};
+        alter materialized view {{ existing_relation }} rename to {{ backup_relation.include(database=False, schema=False) }};
     {% endif %}
 
-    alter view {{ intermediate_relation }} rename to {{ relation.include(database=False, schema=False) }};
+    alter materialized view {{ intermediate_relation }} rename to {{ relation.include(database=False, schema=False) }};
 
 {% endmacro %}
 
@@ -57,11 +56,29 @@
 
 
 {% macro postgres__refresh_materialized_view(relation) %}
-    {{- '' -}}
+    refresh materialized view {{ relation }};
 {% endmacro %}
 
 
-{% macro postgres__update_indexes_on_materialized_view(relation, indexes) %}
+{% macro postgres__update_indexes_on_materialized_view(relation, index_updates) %}
     {{ log("Applying UPDATE INDEXES to: " ~ relation) }}
-    {{- '' -}}
+
+    {% for _index_update in index_updates %}
+        {% set _action = _index_update.get("action") %}
+
+        {% if _action == "drop" %}
+            {% set _index_name = _index_update.get("context") %}
+            {{ postgres__get_drop_index_sql(relation, _index_name) }}
+
+        {% elif _action == "create" %}
+            {% set _index_dict = _index_update.get("context") %}
+            {{ postgres__get_create_index_sql(relation, _index_dict) }}
+
+        {% else %}
+            {{ exceptions.raise_compiler_error(
+                "Unsupported action supplied to postgres__update_indexes_on_materialized_view: " ~ _action)
+            }}
+
+        {% endif %}
+    {% endfor %}
 {% endmacro %}

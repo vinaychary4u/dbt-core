@@ -88,8 +88,10 @@ class Base:
         for record in records:
             self.insert_record(project, record, model)
 
-    def assert_relation_is_materialized_view(self, project, model: Model):
+    def assert_relation_is_materialized_view(self, project, model: Model = None):
+        model = model or self.base_materialized_view
+
         manifest = get_manifest(project.project_root)
-        model = manifest.nodes[f"model.test.{model.name}"]
-        assert model.config.materialized == RelationType.MaterializedView
+        model_metadata = manifest.nodes[f"model.test.{model.name}"]
+        assert model_metadata.config.materialized == RelationType.MaterializedView
         assert len(self.get_records(project, model)) >= 0

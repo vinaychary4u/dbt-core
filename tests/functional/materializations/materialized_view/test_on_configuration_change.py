@@ -4,8 +4,8 @@ import pytest
 
 from dbt.contracts.results import RunStatus
 from dbt.tests.util import relation_from_name
-from dbt.tests.adapter.materialized_view.base import Model, run_model
-from dbt.tests.adapter.materialized_view.on_configuration_change import (
+from tests.adapter.dbt.tests.adapter.materialized_view.base import Model, run_model
+from tests.adapter.dbt.tests.adapter.materialized_view.on_configuration_change import (
     OnConfigurationChangeBase,
     get_project_config,
     set_project_config,

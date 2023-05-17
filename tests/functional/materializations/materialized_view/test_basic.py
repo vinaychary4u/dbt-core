@@ -1,4 +1,4 @@
-from dbt.tests.adapter.materialized_view.base import Base, run_model
+from tests.adapter.dbt.tests.adapter.materialized_view.base import Base, run_model
 
 
 class TestBasic(Base):

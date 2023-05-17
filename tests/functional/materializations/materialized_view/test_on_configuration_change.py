@@ -2,9 +2,8 @@ from copy import deepcopy
 
 import pytest
 
-from dbt.tests.util import relation_from_name
 from dbt.contracts.results import RunStatus
-
+from dbt.tests.util import relation_from_name
 from dbt.tests.adapter.materialized_view.base import Model, run_model
 from dbt.tests.adapter.materialized_view.on_configuration_change import (
     OnConfigurationChangeBase,

@@ -1,54 +1,38 @@
-from copy import deepcopy
-
-import pytest
-
 from dbt.contracts.results import RunStatus
-from dbt.tests.util import relation_from_name
-from tests.adapter.dbt.tests.adapter.materialized_view.base import Model, run_model
-from tests.adapter.dbt.tests.adapter.materialized_view.on_configuration_change import (
-    OnConfigurationChangeBase,
-    get_project_config,
-    set_project_config,
+from tests.adapter.dbt.tests.adapter.materialized_view.base import Base, run_model
+
+from tests.functional.materializations.materialized_view_tests.fixtures import (
+    PostgresOnConfigurationChangeBase,
 )
 
 
-_BASE_TABLE = """
-{{ config(
-    materialized='table',
-    indexes=[{'columns': ['id'], 'type': 'hash'}]
-) }}
-select
-    1 as id,
-    100 as value
-where 0 = 1
-"""
+class TestBasic(Base):
+    def test_relation_is_materialized_view_on_initial_creation(self, project):
+        self.assert_relation_is_materialized_view(project)
+
+    def test_relation_is_materialized_view_when_rerun(self, project):
+        run_model(self.base_materialized_view.name)
+        self.assert_relation_is_materialized_view(project)
+
+    def test_relation_is_materialized_view_on_full_refresh(self, project):
+        run_model(self.base_materialized_view.name, full_refresh=True)
+        self.assert_relation_is_materialized_view(project)
+
+    def test_relation_is_materialized_view_on_update(self, project):
+        run_model(
+            self.base_materialized_view.name, run_args=["--vars", "quoting: {identifier: True}"]
+        )
+        self.assert_relation_is_materialized_view(project)
+
+    def test_updated_base_table_data_only_shows_in_materialized_view_after_rerun(self, project):
+        self.insert_records(project, self.inserted_records)
+        assert self.get_records(project) == self.starting_records
+
+        run_model(self.base_materialized_view.name)
+        assert self.get_records(project) == self.starting_records + self.inserted_records
 
 
-class PostgresOnConfigurationChangeBase(OnConfigurationChangeBase):
-
-    base_table = Model(name="base_table", definition=_BASE_TABLE, columns=["id", "value"])
-
-    starting_records = [(1, 100)]
-    inserted_records = [(2, 200)]
-
-    @pytest.fixture(scope="function")
-    def configuration_changes(self, project):
-        initial_config = get_project_config(project)
-
-        # change the index from `id` to `value`
-        new_config = deepcopy(initial_config)
-        new_config["models"].update({"indexes": [{"columns": ["value"], "type": "hash"}]})
-        set_project_config(project, new_config)
-
-        yield
-
-        # set this back for the next test
-        set_project_config(project, initial_config)
-
-    @pytest.fixture(scope="function")
-    def update_index_message(self, project):
-        return f"Applying UPDATE INDEXES to: {relation_from_name(project.adapter, self.base_materialized_view.name)}"
-
+class OnConfigurationChangeCommon(PostgresOnConfigurationChangeBase):
     def test_full_refresh_takes_precedence_over_any_configuration_changes(
         self, configuration_changes, replace_message, configuration_change_message
     ):
@@ -73,7 +57,7 @@ class PostgresOnConfigurationChangeBase(OnConfigurationChangeBase):
         )
 
 
-class TestOnConfigurationChangeApply(PostgresOnConfigurationChangeBase):
+class TestOnConfigurationChangeApply(OnConfigurationChangeCommon):
 
     on_configuration_change = "apply"
 
@@ -89,7 +73,7 @@ class TestOnConfigurationChangeApply(PostgresOnConfigurationChangeBase):
         )
 
 
-class TestOnConfigurationChangeSkip(PostgresOnConfigurationChangeBase):
+class TestOnConfigurationChangeSkip(OnConfigurationChangeCommon):
 
     on_configuration_change = "skip"
 
@@ -102,7 +86,7 @@ class TestOnConfigurationChangeSkip(PostgresOnConfigurationChangeBase):
         )
 
 
-class TestOnConfigurationChangeFail(PostgresOnConfigurationChangeBase):
+class TestOnConfigurationChangeFail(OnConfigurationChangeCommon):
 
     on_configuration_change = "fail"
 

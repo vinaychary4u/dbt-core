@@ -1,11 +1,36 @@
-from typing import List
+from typing import List, Tuple, Optional
 import os
 from dataclasses import dataclass
 
 import pytest
 
-from dbt.tests.util import run_dbt, get_manifest
+from dbt.tests.util import run_dbt, get_manifest, run_dbt_and_capture
 from dbt.contracts.relation import RelationType
+
+
+def run_model(
+    model: str,
+    run_args: Optional[List[str]] = None,
+    full_refresh: bool = False,
+    expect_pass: bool = True,
+) -> Tuple[list, str]:
+    args = ["--debug", "run", "--models", model]
+    if full_refresh:
+        args.append("--full-refresh")
+    if run_args:
+        args.extend(run_args)
+    return run_dbt_and_capture(args, expect_pass=expect_pass)
+
+
+def assert_message_in_logs(logs: str, message: str, expected_fail: bool = False):
+    # if the logs are json strings, then 'jsonify' the message because of things like escape quotes
+    if os.environ.get("DBT_LOG_FORMAT", "") == "json":
+        message = message.replace(r'"', r"\"")
+
+    if expected_fail:
+        assert message not in logs
+    else:
+        assert message in logs
 
 
 @dataclass
@@ -44,8 +69,9 @@ class Base:
         self.insert_records(project, self.starting_records, self.base_table)
         run_dbt(["run", "--models", self.base_materialized_view.name])
 
-    @staticmethod
-    def get_records(project, model: Model) -> List[tuple]:
+    def get_records(self, project, model: Model = None) -> List[tuple]:
+        model = model or self.base_materialized_view
+
         sql = f"select * from {project.database}.{project.test_schema}.{model.name};"
         return [tuple(row) for row in project.run_sql(sql, fetch="all")]
 
@@ -67,14 +93,3 @@ class Base:
         model = manifest.nodes[f"model.test.{model.name}"]
         assert model.config.materialized == RelationType.MaterializedView
         assert len(self.get_records(project, model)) >= 0
-
-    @staticmethod
-    def assert_message_in_logs(logs: str, message: str, expected_fail: bool = False):
-        # if the logs are json strings, then 'jsonify' the message because of things like escape quotes
-        if os.environ.get("DBT_LOG_FORMAT", "") == "json":
-            message = message.replace(r'"', r"\"")
-
-        if expected_fail:
-            assert message not in logs
-        else:
-            assert message in logs

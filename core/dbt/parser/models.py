@@ -7,9 +7,9 @@ from dbt.events.functions import fire_event_if_test
 from dbt.flags import get_flags
 from dbt.node_types import NodeType, ModelLanguage
 from dbt.parser.base import SimpleSQLParser
-from dbt.parser.search import FileBlock
+from dbt.parser.common import YamlBlock
 from dbt.parser.schemas import SchemaParser, ModelPatchParser
-from dbt.parser.generic_test_builders import YamlBlock
+from dbt.parser.search import FileBlock
 from dbt.clients.jinja import get_rendered
 from dbt.clients.yaml_helper import (
     has_yaml_frontmatter,
@@ -211,7 +211,7 @@ class ModelParser(SimpleSQLParser[ModelNode]):
             schema_parser = SchemaParser(self.project, self.manifest, self.root_project)
             model_parse_result = ModelPatchParser(schema_parser, yaml_block, "models").parse()
             for versioned_test_block in model_parse_result.versioned_test_blocks:
-                schema_parser.parse_versioned_tests(versioned_test_block)
+                schema_parser.generic_test_parser.parse_versioned_tests(versioned_test_block)
 
     @property
     def resource_type(self) -> NodeType:

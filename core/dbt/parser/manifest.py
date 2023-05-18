@@ -51,6 +51,7 @@ from dbt.events.types import (
     StateCheckVarsHash,
     Note,
     PublicationArtifactChanged,
+    PublicationArtifactAvailable,
 )
 from dbt.logger import DbtProcessState
 from dbt.node_types import NodeType, AccessType
@@ -1743,6 +1744,9 @@ def write_publication_artifact(root_project: RuntimeConfig, manifest: Manifest):
         public_models=public_models,
         dependencies=dependencies,
     )
+
+    fire_event(PublicationArtifactAvailable(pub_artifact=publication.to_dict()))
+
     # write out publication artifact <project_name>_publication.json
     publication_file_name = f"{root_project.project_name}_publication.json"
     path = os.path.join(root_project.target_path, publication_file_name)

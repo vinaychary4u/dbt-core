@@ -1398,6 +1398,7 @@ class NoNodesForSelectionCriteria(WarnLevel):
 # Q - Node execution
 # =======================================================
 
+
 class PublicationArtifactAvailable(DebugLevel):
     def code(self):
         return "P001"

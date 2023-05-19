@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Dict, List, Union, Optional
 
 import agate
@@ -8,15 +8,36 @@ from dbt.contracts.graph.model_config import NodeConfig
 from dbt.exceptions import DbtRuntimeError
 
 
-Column = str
-IndexDef = Dict[str, Union[List[Column], str, bool]]
-IndexName = str
+@dataclass(frozen=True, eq=False)
+class PostgresIndex:
+    columns: List[str]
+    type: str = "btree"
+    unique: bool = False
+    name: str = None
+
+    @property
+    def as_config_dict(self) -> dict:
+        config = asdict(self)
+        config.pop("name")
+        return config
+
+    def __eq__(self, other):
+        return all(
+            {
+                self.type == other.type,
+                self.unique == other.unique,
+                set(x.upper() for x in self.columns) == set(x.upper() for x in other.columns),
+            }
+        )
+
+    def __hash__(self):
+        return hash((frozenset(x.upper() for x in self.columns), self.type, self.unique))
 
 
 @dataclass(frozen=True, eq=False, repr=False)
 class PostgresRelation(BaseRelation):
-    index_default_type = "btree"
-    index_default_unique = False
+
+    IndexUpdates = Dict[str, Union[str, PostgresIndex]]
 
     def __post_init__(self):
         # Check for length of Postgres table/view names.
@@ -36,100 +57,49 @@ class PostgresRelation(BaseRelation):
 
     def get_index_updates(
         self, indexes: agate.Table, config: NodeConfig
-    ) -> List[Optional[Dict[str, Union[str, IndexName, IndexDef]]]]:
+    ) -> List[Optional[IndexUpdates]]:
         """
-        Get the indexes that are changing as a result of the new run. There are four scenarios:
+        Get the index updates that will occur as a result of a new run
+
+        There are four scenarios:
 
         1. Indexes are equal > don't return these
-        2. Index is new > create these, no old index
-        3. Index is old > drop these, no new index
-        4. Indexes are not equal > return both
+        2. Index is new > create these
+        3. Index is old > drop these
+        4. Indexes are not equal > drop old, create new
 
-        Returns: a dictionary of indexes in the form:
-        [
-            {"action": "create", "context": {"columns": ["column_1", "column_3"], "type": "hash", "unique": True}},
-        ]  # scenario 2
-        OR
-        [
-            {"action": "drop", "context": "index_abc"},
-        ]  # scenario 3
-        OR
-        [
-            {"action": "drop", "context": "index_abc"},
-            {"action": "create", "context": {"columns": ["column_1", "column_2"], "type": "hash", "unique": True}},
-        ]  # scenario 4
-        """
-        existing_indexes = {
-            index.indexname: self.get_index_config_from_create_statement(index.indexdef)
-            for index in indexes
-        }
+        Returns: a list of index updates in the form {"action": "drop/create", "context": <index>}
 
-        new_indexes = []
-        for index in config.get("indexes", []):
-            new_index = {
-                "columns": sorted(index.pop("columns"), key=lambda x: x.upper()),
-                "type": index.pop("type", self.index_default_type),
-                "unique": index.pop("unique", self.index_default_unique),
+        Example of an index update:
+        {
+            "action": "create",
+            "context": {
+                "name": "",  # we don't know the name since it gets created as a hash at runtime
+                "columns": ["column_1", "column_3"],
+                "type": "hash",
+                "unique": True
             }
-            new_index.update(index)
-            new_indexes.append(new_index)
-
-        updates = [
-            {"action": "drop", "context": index_name}
-            for index_name, index_def in existing_indexes.items()
-            if index_def not in new_indexes
-        ]
-        updates.extend(
-            [
-                {"action": "create", "context": index}
-                for index in new_indexes
-                if index not in existing_indexes.values()
-            ]
-        )
-        return updates
-
-    def get_index_config_from_create_statement(self, create_statement: str) -> IndexDef:
+        },
+        {
+            "action": "drop",
+            "context": {
+                "name": "index_abc",  # we only need this to drop, but we need the rest to compare
+                "columns": ["column_1"],
+                "type": "btree",
+                "unique": True
+            }
+        },
         """
-        Converts the create statement found in `pg_indexes` into the corresponding config provided by the user.
+        # the columns show up as a comma-separated list in the query from postgres
+        for index in indexes:
+            index["columns"] = index["columns"].split(",")
 
-        For example:
-        CREATE UNIQUE INDEX my_view_id_idx ON my_view USING btree (id) ->
-        {'columns': [id], 'type': 'btree', 'unique': True}
+        existing_indexes = set(PostgresIndex(**index) for index in indexes)
+        new_indexes = set(PostgresIndex(**index) for index in config.get("indexes", []))
 
-        Args:
-            create_statement: the create statement found in `pg_indexes`
+        drop_indexes = existing_indexes.difference(new_indexes)
+        create_indexes = new_indexes.difference(existing_indexes)
 
-        Returns:
-            the corresponding config
-        """
-        try:
-            column_clause = create_statement[
-                create_statement.index("(") + 1 : create_statement.index(")")
-            ]
-        except IndexError:
-            raise DbtRuntimeError(
-                f"Malformed index create statement. Columns not contained within '()': '{create_statement}'"
-            )
-
-        columns = [column.strip() for column in column_clause.split(",")]
-        sorted_columns = sorted(columns, key=lambda x: x.upper())
-
-        keywords = create_statement[: create_statement.index("(")]
-        keywords = keywords.strip().split(" ")
-
-        if "unique" in keywords:
-            unique = True
-        else:
-            unique = False
-
-        if "using" in keywords:
-            try:
-                index_type = keywords[keywords.index("using") + 1]
-            except IndexError:
-                raise DbtRuntimeError(
-                    f"Malformed index create statement. USING clause with no type: '{create_statement}'"
-                )
-        else:
-            index_type = self.index_default_type
-
-        return {"column": sorted_columns, "type": index_type, "unique": unique}
+        drop_updates = [{"action": "drop", "context": index} for index in drop_indexes]
+        create_updates = [{"action": "create", "context": index} for index in create_indexes]
+        return drop_updates + create_updates

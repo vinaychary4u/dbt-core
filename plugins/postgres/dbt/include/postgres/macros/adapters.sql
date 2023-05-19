@@ -220,10 +220,28 @@
 
 
 {% macro postgres__get_show_indexes_sql(relation) %}
-    select indexname, indexdef
-    from pg_indexes
-    where schemaname = '{{ relation.schema }}'
-      and tablename = '{{ relation.identifier }}'
+    select
+        i.relname                                   as name,
+        m.amname                                    as type,
+        coalesce(ix.indisunique = 'f', False)       as "unique",
+        array_to_string(array_agg(a.attname), ',')  as columns
+    from pg_index ix
+    join pg_class i
+        on i.oid = ix.indexrelid
+    join pg_am m
+        on m.oid=i.relam
+    join pg_class t
+        on t.oid = ix.indrelid
+    join pg_namespace n
+        on n.oid = t.relnamespace
+    join pg_attribute a
+        on a.attrelid = t.oid
+        and a.attnum = ANY(ix.indkey)
+    where t.relname = '{{ relation.identifier }}'
+      and n.nspname = '{{ relation.schema }}'
+      and t.relkind in ('r', 'm')
+    group by 1, 2, 3
+    order by 1, 2, 3
 {% endmacro %}
 
 

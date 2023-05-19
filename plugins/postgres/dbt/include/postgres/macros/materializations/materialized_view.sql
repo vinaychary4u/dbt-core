@@ -65,14 +65,13 @@
 
     {% for _index_update in index_updates %}
         {% set _action = _index_update.get("action") %}
+        {% set _index = _index_update.get("context") %}
 
         {% if _action == "drop" %}
-            {% set _index_name = _index_update.get("context") %}
-            {{ postgres__get_drop_index_sql(relation, _index_name) }}
+            {{ postgres__get_drop_index_sql(relation, _index.name) }}
 
         {% elif _action == "create" %}
-            {% set _index_dict = _index_update.get("context") %}
-            {{ postgres__get_create_index_sql(relation, _index_dict) }}
+            {{ postgres__get_create_index_sql(relation, _index.as_config_dict) }}
 
         {% else %}
             {{ exceptions.raise_compiler_error(

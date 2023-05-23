@@ -7,7 +7,10 @@ from dbt.tests.util import read_file, write_file, relation_from_name
 from dbt.contracts.graph.model_config import OnConfigurationChangeOption
 from dbt.contracts.results import RunStatus
 
-from dbt.tests.adapter.materialized_view.base import Base, assert_message_in_logs
+from dbt.tests.adapter.materialized_view.base import (
+    Base,
+    assert_message_in_logs,
+)
 
 
 def get_project_config(project):

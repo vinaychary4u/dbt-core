@@ -8,6 +8,13 @@ from dbt.tests.util import run_dbt, get_manifest, run_dbt_and_capture
 from dbt.contracts.relation import RelationType
 
 
+@dataclass
+class Model:
+    name: str
+    definition: str
+    columns: List[str] = None
+
+
 def run_model(
     model: str,
     run_args: Optional[List[str]] = None,
@@ -33,11 +40,29 @@ def assert_message_in_logs(logs: str, message: str, expected_fail: bool = False)
         assert message in logs
 
 
-@dataclass
-class Model:
-    name: str
-    definition: str
-    columns: List[str] = None
+def get_records(project, model: Model) -> List[tuple]:
+    sql = f"select * from {project.database}.{project.test_schema}.{model.name};"
+    return [tuple(row) for row in project.run_sql(sql, fetch="all")]
+
+
+def get_row_count(project, model: Model) -> int:
+    sql = f"select count(*) from {project.database}.{project.test_schema}.{model.name};"
+    return project.run_sql(sql, fetch="one")
+
+
+def insert_record(project, record: tuple, model: Model):
+    sql = f"""
+    insert into {project.database}.{project.test_schema}.{model.name} ({', '.join(model.columns)})
+    values ({','.join(str(value) for value in record)})
+    ;"""
+    project.run_sql(sql)
+
+
+def assert_relation_is_materialized_view(project, model: Model):
+    manifest = get_manifest(project.project_root)
+    model_metadata = manifest.nodes[f"model.test.{model.name}"]
+    assert model_metadata.config.materialized == RelationType.MaterializedView
+    assert len(get_records(project, model)) >= 0
 
 
 class Base:
@@ -49,12 +74,9 @@ class Base:
 
     base_table = Model(
         name="base_table",
-        definition="{{ config(materialized='table') }} select 1 as base_column where 0 = 1",
+        definition="{{ config(materialized='table') }} select 1 as base_column",
         columns=["base_column"],
     )
-
-    starting_records = [(1,)]
-    inserted_records = [(2,)]
 
     @pytest.fixture(scope="class")
     def models(self):
@@ -65,33 +87,4 @@ class Base:
 
     @pytest.fixture(scope="function", autouse=True)
     def setup(self, project):
-        run_dbt(["run", "--models", self.base_table.name])
-        self.insert_records(project, self.starting_records, self.base_table)
-        run_dbt(["run", "--models", self.base_materialized_view.name])
-
-    def get_records(self, project, model: Model = None) -> List[tuple]:
-        model = model or self.base_materialized_view
-
-        sql = f"select * from {project.database}.{project.test_schema}.{model.name};"
-        return [tuple(row) for row in project.run_sql(sql, fetch="all")]
-
-    def insert_record(self, project, record: tuple, model: Model = None):
-        model = model or self.base_table
-
-        sql = f"""
-        insert into {project.database}.{project.test_schema}.{model.name} ({', '.join(model.columns)})
-        values ({','.join(str(value) for value in record)})
-        ;"""
-        project.run_sql(sql)
-
-    def insert_records(self, project, records: List[tuple], model: Model = None):
-        for record in records:
-            self.insert_record(project, record, model)
-
-    def assert_relation_is_materialized_view(self, project, model: Model = None):
-        model = model or self.base_materialized_view
-
-        manifest = get_manifest(project.project_root)
-        model_metadata = manifest.nodes[f"model.test.{model.name}"]
-        assert model_metadata.config.materialized == RelationType.MaterializedView
-        assert len(self.get_records(project, model)) >= 0
+        run_dbt(["run"])

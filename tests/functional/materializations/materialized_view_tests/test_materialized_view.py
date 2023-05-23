@@ -1,5 +1,13 @@
+import pytest
+
 from dbt.contracts.results import RunStatus
-from tests.adapter.dbt.tests.adapter.materialized_view.base import Base, run_model
+from tests.adapter.dbt.tests.adapter.materialized_view.base import (
+    Base,
+    run_model,
+    assert_relation_is_materialized_view,
+    insert_record,
+    get_row_count,
+)
 
 from tests.functional.materializations.materialized_view_tests.fixtures import (
     PostgresOnConfigurationChangeBase,
@@ -8,28 +16,44 @@ from tests.functional.materializations.materialized_view_tests.fixtures import (
 
 class TestBasic(Base):
     def test_relation_is_materialized_view_on_initial_creation(self, project):
-        self.assert_relation_is_materialized_view(project)
+        assert_relation_is_materialized_view(project, self.base_materialized_view)
+        with pytest.raises(AssertionError):
+            assert_relation_is_materialized_view(project, self.base_table)
 
     def test_relation_is_materialized_view_when_rerun(self, project):
         run_model(self.base_materialized_view.name)
-        self.assert_relation_is_materialized_view(project)
+        assert_relation_is_materialized_view(project, self.base_materialized_view)
 
     def test_relation_is_materialized_view_on_full_refresh(self, project):
         run_model(self.base_materialized_view.name, full_refresh=True)
-        self.assert_relation_is_materialized_view(project)
+        assert_relation_is_materialized_view(project, self.base_materialized_view)
 
     def test_relation_is_materialized_view_on_update(self, project):
         run_model(
             self.base_materialized_view.name, run_args=["--vars", "quoting: {identifier: True}"]
         )
-        self.assert_relation_is_materialized_view(project)
+        assert_relation_is_materialized_view(project, self.base_materialized_view)
 
     def test_updated_base_table_data_only_shows_in_materialized_view_after_rerun(self, project):
-        self.insert_records(project, self.inserted_records)
-        assert self.get_records(project) == self.starting_records
+        table_start = get_row_count(project, self.base_table)
+        view_start = get_row_count(project, self.base_materialized_view)
+
+        new_record = (2,)
+        insert_record(project, new_record, self.base_table)
+
+        table_mid = get_row_count(project, self.base_table)
+        view_mid = get_row_count(project, self.base_materialized_view)
+        assert view_start == table_start
+        assert view_mid == table_start
+        assert table_mid > table_start
 
         run_model(self.base_materialized_view.name)
-        assert self.get_records(project) == self.starting_records + self.inserted_records
+
+        table_end = get_row_count(project, self.base_table)
+        view_end = get_row_count(project, self.base_materialized_view)
+        assert table_end == table_mid
+        assert view_end > view_mid
+        assert view_end == table_end
 
 
 class OnConfigurationChangeCommon(PostgresOnConfigurationChangeBase):

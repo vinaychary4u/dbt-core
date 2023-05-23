@@ -19,16 +19,12 @@ _BASE_TABLE = """
 select
     1 as id,
     100 as value
-where 0 = 1
 """
 
 
 class PostgresOnConfigurationChangeBase(OnConfigurationChangeBase):
 
     base_table = Model(name="base_table", definition=_BASE_TABLE, columns=["id", "value"])
-
-    starting_records = [(1, 100)]
-    inserted_records = [(2, 200)]
 
     @pytest.fixture(scope="function")
     def configuration_changes(self, project):

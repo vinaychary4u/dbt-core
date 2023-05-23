@@ -25,6 +25,7 @@ from dbt.exceptions import (
     RelationWrongTypeError,
     ContractError,
     ColumnTypeMissingError,
+    FailFastError,
 )
 
 
@@ -105,6 +106,10 @@ def relation_wrong_type(relation, expected_type, model=None) -> NoReturn:
 
 def column_type_missing(column_names) -> NoReturn:
     raise ColumnTypeMissingError(column_names)
+
+
+def raise_fail_fast_error(msg, node=None) -> NoReturn:
+    raise FailFastError(msg, node=node)
 
 
 # Update this when a new function should be added to the

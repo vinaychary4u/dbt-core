@@ -3,8 +3,8 @@ import os
 
 import pytest
 
-from dbt.tests.util import run_dbt, get_manifest, run_dbt_and_capture
 from dbt.contracts.relation import RelationType
+from dbt.tests.util import run_dbt, get_manifest, run_dbt_and_capture
 
 
 def run_model(
@@ -39,7 +39,7 @@ def get_records(project, model: str) -> List[tuple]:
 
 def get_row_count(project, model: str) -> int:
     sql = f"select count(*) from {project.database}.{project.test_schema}.{model};"
-    return project.run_sql(sql, fetch="one")
+    return project.run_sql(sql, fetch="one")[0]
 
 
 def insert_record(project, record: tuple, model: str, columns: List[str]):
@@ -50,11 +50,11 @@ def insert_record(project, record: tuple, model: str, columns: List[str]):
     project.run_sql(sql)
 
 
-def assert_relation_is_materialized_view(project, model: str):
+def assert_model_exists_and_is_correct_type(project, model: str, relation_type: RelationType):
     manifest = get_manifest(project.project_root)
     model_metadata = manifest.nodes[f"model.test.{model}"]
-    assert model_metadata.config.materialized == RelationType.MaterializedView
-    assert len(get_records(project, model)) >= 0
+    assert model_metadata.config.materialized == relation_type
+    assert get_row_count(project, model) >= 0
 
 
 class Base:

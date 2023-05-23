@@ -71,7 +71,6 @@
             {% set build_sql = get_alter_materialized_view_as_sql(target_relation, configuration_changes, sql, existing_relation, backup_relation, intermediate_relation) %}
         {% elif on_configuration_change == 'skip' %}
             {% set build_sql = '' %}
-            {% do this.update_event_status({'node_status': 'skipped'}) %}
             {{ exceptions.warn("Configuration changes were identified and `on_configuration_change` was set to `skip` for `" ~ target_relation ~ "`") }}
         {% elif on_configuration_change == 'fail' %}
             {{ exceptions.raise_fail_fast_error("Configuration changes were identified and `on_configuration_change` was set to `fail` for `" ~ target_relation ~ "`", target_relation) }}

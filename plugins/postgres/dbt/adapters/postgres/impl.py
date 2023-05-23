@@ -1,55 +1,21 @@
-from datetime import datetime
 from dataclasses import dataclass
 from typing import Optional, Set, List, Any
 from dbt.adapters.base.meta import available
 from dbt.adapters.base.impl import AdapterConfig, ConstraintSupport
+from dbt.adapters.postgres.index import PostgresIndexConfig
 from dbt.adapters.sql import SQLAdapter
 from dbt.adapters.postgres import PostgresConnectionManager
 from dbt.adapters.postgres.column import PostgresColumn
 from dbt.adapters.postgres import PostgresRelation
-from dbt.dataclass_schema import dbtClassMixin, ValidationError
 from dbt.contracts.graph.nodes import ConstraintType
 from dbt.exceptions import (
     CrossDbReferenceProhibitedError,
-    IndexConfigNotDictError,
-    IndexConfigError,
     DbtRuntimeError,
     UnexpectedDbReferenceError,
 )
-import dbt.utils
-
 
 # note that this isn't an adapter macro, so just a single underscore
 GET_RELATIONS_MACRO_NAME = "postgres_get_relations"
-
-
-@dataclass
-class PostgresIndexConfig(dbtClassMixin):
-    columns: List[str]
-    unique: bool = False
-    type: Optional[str] = None
-
-    def render(self, relation):
-        # We append the current timestamp to the index name because otherwise
-        # the index will only be created on every other run. See
-        # https://github.com/dbt-labs/dbt-core/issues/1945#issuecomment-576714925
-        # for an explanation.
-        now = datetime.utcnow().isoformat()
-        inputs = self.columns + [relation.render(), str(self.unique), str(self.type), now]
-        string = "_".join(inputs)
-        return dbt.utils.md5(string)
-
-    @classmethod
-    def parse(cls, raw_index) -> Optional["PostgresIndexConfig"]:
-        if raw_index is None:
-            return None
-        try:
-            cls.validate(raw_index)
-            return cls.from_dict(raw_index)
-        except ValidationError as exc:
-            raise IndexConfigError(exc)
-        except TypeError:
-            raise IndexConfigNotDictError(raw_index)
 
 
 @dataclass

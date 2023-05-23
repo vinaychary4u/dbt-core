@@ -1,4 +1,4 @@
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import Dict, List, Union, Optional
 
 import agate
@@ -7,37 +7,13 @@ from dbt.adapters.base.relation import BaseRelation
 from dbt.contracts.graph.model_config import NodeConfig
 from dbt.exceptions import DbtRuntimeError
 
-
-@dataclass(frozen=True, eq=False)
-class PostgresIndex:
-    columns: List[str]
-    type: str = "btree"
-    unique: bool = False
-    name: str = None
-
-    @property
-    def as_config_dict(self) -> dict:
-        config = asdict(self)
-        config.pop("name")
-        return config
-
-    def __eq__(self, other):
-        return all(
-            {
-                self.type == other.type,
-                self.unique == other.unique,
-                set(x.upper() for x in self.columns) == set(x.upper() for x in other.columns),
-            }
-        )
-
-    def __hash__(self):
-        return hash((frozenset(x.upper() for x in self.columns), self.type, self.unique))
+from dbt.adapters.postgres.index import PostgresIndexConfig
 
 
 @dataclass(frozen=True, eq=False, repr=False)
 class PostgresRelation(BaseRelation):
 
-    IndexUpdates = Dict[str, Union[str, PostgresIndex]]
+    IndexUpdates = Dict[str, Union[str, PostgresIndexConfig]]
 
     def __post_init__(self):
         # Check for length of Postgres table/view names.
@@ -91,11 +67,8 @@ class PostgresRelation(BaseRelation):
         },
         """
         # the columns show up as a comma-separated list in the query from postgres
-        for index in indexes:
-            index["columns"] = index["columns"].split(",")
-
-        existing_indexes = set(PostgresIndex(**index) for index in indexes)
-        new_indexes = set(PostgresIndex(**index) for index in config.get("indexes", []))
+        existing_indexes = set(PostgresIndexConfig.parse(index) for index in indexes)
+        new_indexes = set(PostgresIndexConfig.parse(index) for index in config.get("indexes", []))
 
         drop_indexes = existing_indexes.difference(new_indexes)
         create_indexes = new_indexes.difference(existing_indexes)

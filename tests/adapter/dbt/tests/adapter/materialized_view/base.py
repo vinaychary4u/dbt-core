@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from dbt.contracts.relation import RelationType
+from dbt.dataclass_schema import StrEnum
 from dbt.tests.util import run_dbt, get_manifest, run_dbt_and_capture
 
 
@@ -50,7 +50,9 @@ def insert_record(project, record: tuple, model: str, columns: List[str]):
     project.run_sql(sql)
 
 
-def assert_model_exists_and_is_correct_type(project, model: str, relation_type: RelationType):
+def assert_model_exists_and_is_correct_type(project, model: str, relation_type: StrEnum):
+    # In general, `relation_type` will be of type `RelationType`.
+    # However, in some cases (e.g. `dbt-snowflake`) adapters will have their own `RelationType`.
     manifest = get_manifest(project.project_root)
     model_metadata = manifest.nodes[f"model.test.{model}"]
     assert model_metadata.config.materialized == relation_type

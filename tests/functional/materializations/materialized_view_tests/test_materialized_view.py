@@ -36,25 +36,28 @@ class TestBasic(PostgresBasicBase):
         assert_relation_is_materialized_view(project, "base_materialized_view")
 
     def test_updated_base_table_data_only_shows_in_materialized_view_after_rerun(self, project):
+        # poll database
         table_start = get_row_count(project, "base_table")
         view_start = get_row_count(project, "base_materialized_view")
 
+        # insert new record in table
         new_record = (2,)
         insert_record(project, new_record, "base_table", ["base_column"])
 
+        # poll database
         table_mid = get_row_count(project, "base_table")
         view_mid = get_row_count(project, "base_materialized_view")
-        assert view_start == table_start
-        assert view_mid == table_start
-        assert table_mid > table_start
 
+        # refresh the materialized view
         run_model("base_materialized_view")
 
+        # poll database
         table_end = get_row_count(project, "base_table")
         view_end = get_row_count(project, "base_materialized_view")
-        assert table_end == table_mid
-        assert view_end > view_mid
-        assert view_end == table_end
+
+        # new records were inserted in the table but didn't show up in the view until it was refreshed
+        assert table_start < table_mid == table_end
+        assert view_start == view_mid < view_end
 
 
 class OnConfigurationChangeCommon(PostgresOnConfigurationChangeBase):

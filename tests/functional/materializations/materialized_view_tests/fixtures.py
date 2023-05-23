@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 
 from dbt.tests.util import relation_from_name
-from tests.adapter.dbt.tests.adapter.materialized_view.base import Model
+from tests.adapter.dbt.tests.adapter.materialized_view.base import Base
 from tests.adapter.dbt.tests.adapter.materialized_view.on_configuration_change import (
     OnConfigurationChangeBase,
     get_project_config,
@@ -11,20 +11,39 @@ from tests.adapter.dbt.tests.adapter.materialized_view.on_configuration_change i
 )
 
 
-_BASE_TABLE = """
-{{ config(
-    materialized='table',
-    indexes=[{'columns': ['id'], 'type': 'hash'}]
-) }}
-select
-    1 as id,
-    100 as value
-"""
+class PostgresBasicBase(Base):
+    @pytest.fixture(scope="class")
+    def models(self):
+        base_table = """
+        {{ config(materialized='table') }}
+        select 1 as base_column
+        """
+        base_materialized_view = """
+        {{ config(materialized='materialized_view') }}
+        select * from {{ ref('base_table') }}
+        """
+        return {"base_table.sql": base_table, "base_materialized_view.sql": base_materialized_view}
 
 
 class PostgresOnConfigurationChangeBase(OnConfigurationChangeBase):
-
-    base_table = Model(name="base_table", definition=_BASE_TABLE, columns=["id", "value"])
+    @pytest.fixture(scope="class")
+    def models(self):
+        base_table = """
+        {{ config(
+            materialized='table',
+            indexes=[{'columns': ['id', 'value']}]
+        ) }}
+        select
+            1 as id,
+            100 as value,
+            42 as new_id,
+            4242 as new_value
+        """
+        base_materialized_view = """
+        {{ config(materialized='materialized_view') }}
+        select * from {{ ref('base_table') }}
+        """
+        return {"base_table.sql": base_table, "base_materialized_view.sql": base_materialized_view}
 
     @pytest.fixture(scope="function")
     def configuration_changes(self, project):
@@ -32,7 +51,7 @@ class PostgresOnConfigurationChangeBase(OnConfigurationChangeBase):
 
         # change the index from `id` to `value`
         new_config = deepcopy(initial_config)
-        new_config["models"].update({"indexes": [{"columns": ["value"], "type": "hash"}]})
+        new_config["models"].update({"indexes": [{"columns": ["new_id", "new_value"]}]})
         set_project_config(project, new_config)
 
         yield
@@ -42,4 +61,4 @@ class PostgresOnConfigurationChangeBase(OnConfigurationChangeBase):
 
     @pytest.fixture(scope="function")
     def update_index_message(self, project):
-        return f"Applying UPDATE INDEXES to: {relation_from_name(project.adapter, self.base_materialized_view.name)}"
+        return f"Applying UPDATE INDEXES to: {relation_from_name(project.adapter, 'base_materialized_view')}"

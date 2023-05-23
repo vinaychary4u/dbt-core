@@ -12,14 +12,9 @@ from dbt.exceptions import IndexConfigError, IndexConfigNotDictError
 @dataclass
 class PostgresIndexConfig(dbtClassMixin):
     columns: List[str]
-    unique: Optional[bool] = False
+    unique: bool = False
     type: Optional[str] = "btree"
     name: Optional[str] = None
-
-    def __post_init__(self):
-        # Allow for a string of comma-separated columns to come in from the postgres show indexes query
-        if isinstance(self.columns, str):
-            self.columns = self.columns.split(",")
 
     def render(self, relation):
         # We append the current timestamp to the index name because otherwise

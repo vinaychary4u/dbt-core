@@ -1,18 +1,10 @@
 from typing import List, Tuple, Optional
 import os
-from dataclasses import dataclass
 
 import pytest
 
 from dbt.tests.util import run_dbt, get_manifest, run_dbt_and_capture
 from dbt.contracts.relation import RelationType
-
-
-@dataclass
-class Model:
-    name: str
-    definition: str
-    columns: List[str] = None
 
 
 def run_model(
@@ -40,51 +32,36 @@ def assert_message_in_logs(logs: str, message: str, expected_fail: bool = False)
         assert message in logs
 
 
-def get_records(project, model: Model) -> List[tuple]:
-    sql = f"select * from {project.database}.{project.test_schema}.{model.name};"
+def get_records(project, model: str) -> List[tuple]:
+    sql = f"select * from {project.database}.{project.test_schema}.{model};"
     return [tuple(row) for row in project.run_sql(sql, fetch="all")]
 
 
-def get_row_count(project, model: Model) -> int:
-    sql = f"select count(*) from {project.database}.{project.test_schema}.{model.name};"
+def get_row_count(project, model: str) -> int:
+    sql = f"select count(*) from {project.database}.{project.test_schema}.{model};"
     return project.run_sql(sql, fetch="one")
 
 
-def insert_record(project, record: tuple, model: Model):
+def insert_record(project, record: tuple, model: str, columns: List[str]):
     sql = f"""
-    insert into {project.database}.{project.test_schema}.{model.name} ({', '.join(model.columns)})
+    insert into {project.database}.{project.test_schema}.{model} ({', '.join(columns)})
     values ({','.join(str(value) for value in record)})
     ;"""
     project.run_sql(sql)
 
 
-def assert_relation_is_materialized_view(project, model: Model):
+def assert_relation_is_materialized_view(project, model: str):
     manifest = get_manifest(project.project_root)
-    model_metadata = manifest.nodes[f"model.test.{model.name}"]
+    model_metadata = manifest.nodes[f"model.test.{model}"]
     assert model_metadata.config.materialized == RelationType.MaterializedView
     assert len(get_records(project, model)) >= 0
 
 
 class Base:
-
-    base_materialized_view = Model(
-        name="base_materialized_view",
-        definition="{{ config(materialized='materialized_view') }} select * from {{ ref('base_table') }}",
-    )
-
-    base_table = Model(
-        name="base_table",
-        definition="{{ config(materialized='table') }} select 1 as base_column",
-        columns=["base_column"],
-    )
-
-    @pytest.fixture(scope="class")
-    def models(self):
-        return {
-            f"{model.name}.sql": model.definition
-            for model in [self.base_table, self.base_materialized_view]
-        }
-
     @pytest.fixture(scope="function", autouse=True)
     def setup(self, project):
         run_dbt(["run"])
+
+    @pytest.fixture(scope="class", autouse=True)
+    def project(self, project):
+        yield project

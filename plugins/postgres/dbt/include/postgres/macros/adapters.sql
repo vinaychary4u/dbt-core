@@ -246,5 +246,5 @@
 
 
 {%- macro postgres__get_drop_index_sql(relation, index_name) -%}
-    drop index if exists {{ index_name }};
+    drop index if exists {{ index_name }}
 {%- endmacro -%}

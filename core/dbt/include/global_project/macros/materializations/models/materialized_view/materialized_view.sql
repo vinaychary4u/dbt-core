@@ -73,7 +73,7 @@
             {% set build_sql = '' %}
             {{ exceptions.warn("Configuration changes were identified and `on_configuration_change` was set to `skip` for `" ~ target_relation ~ "`") }}
         {% elif on_configuration_change == 'fail' %}
-            {{ exceptions.raise_fail_fast_error("Configuration changes were identified and `on_configuration_change` was set to `fail` for `" ~ target_relation ~ "`", target_relation) }}
+            {{ exceptions.raise_compiler_error("Configuration changes were identified and `on_configuration_change` was set to `fail` for `" ~ target_relation ~ "`", target_relation) }}
 
         {% else %}
             -- this only happens if the user provides a value other than `apply`, 'skip', 'fail'

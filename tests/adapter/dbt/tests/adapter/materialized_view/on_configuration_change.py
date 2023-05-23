@@ -44,7 +44,7 @@ def assert_proper_scenario(
 
 class OnConfigurationChangeBase(Base):
 
-    on_configuration_change: OnConfigurationChangeOption
+    on_configuration_change: OnConfigurationChangeOption = "apply"
     base_materialized_view = "base_materialized_view"
 
     @pytest.fixture(scope="class")

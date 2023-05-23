@@ -88,9 +88,6 @@ class OnConfigurationChangeCommon(PostgresOnConfigurationChangeBase):
 
 
 class TestOnConfigurationChangeApply(OnConfigurationChangeCommon):
-
-    on_configuration_change = "apply"
-
     def test_model_applies_changes_with_configuration_changes(
         self, configuration_changes, alter_message, update_index_message
     ):

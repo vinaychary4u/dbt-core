@@ -26,6 +26,11 @@
 
 {% macro postgres__get_create_materialized_view_as_sql(relation, sql) %}
     create materialized view if not exists {{ relation }} as {{ sql }};
+
+    {% for _index_dict in config.get('indexes', []) -%}
+        {{- get_create_index_sql(relation, _index_dict) -}}
+    {%- endfor -%}
+
 {% endmacro %}
 
 
@@ -60,24 +65,21 @@
 {% endmacro %}
 
 
-{% macro postgres__update_indexes_on_materialized_view(relation, index_updates) %}
-    {{ log("Applying UPDATE INDEXES to: " ~ relation) }}
+{%- macro postgres__update_indexes_on_materialized_view(relation, index_updates) -%}
+    {{- log("Applying UPDATE INDEXES to: " ~ relation) -}}
 
-    {% for _index_update in index_updates %}
-        {% set _action = _index_update.get("action") %}
-        {% set _index = _index_update.get("context") %}
+    {%- for _index_update in index_updates -%}
+        {%- set _action = _index_update.get("action") -%}
+        {%- set _index = _index_update.get("context") -%}
 
-        {% if _action == "drop" %}
-            {{ postgres__get_drop_index_sql(relation, _index.name) }}
-
-        {% elif _action == "create" %}
+        {%- if _action == "drop" -%}
+            {{ postgres__get_drop_index_sql(relation, _index.name) }};
+        {% elif _action == "create" -%}
             {{ postgres__get_create_index_sql(relation, _index.as_config_dict) }}
-
-        {% else %}
-            {{ exceptions.raise_compiler_error(
+        {% else -%}
+            {{- exceptions.raise_compiler_error(
                 "Unsupported action supplied to postgres__update_indexes_on_materialized_view: " ~ _action)
-            }}
-
-        {% endif %}
-    {% endfor %}
-{% endmacro %}
+            -}}
+        {%- endif -%}
+    {%- endfor -%}
+{%- endmacro -%}

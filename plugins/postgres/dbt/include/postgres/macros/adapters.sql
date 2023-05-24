@@ -223,7 +223,7 @@
     select
         i.relname                                   as name,
         m.amname                                    as type,
-        coalesce(ix.indisunique = 'f', False)       as "unique",
+        ix.indisunique                              as "unique",
         array_to_string(array_agg(a.attname), ',')  as columns
     from pg_index ix
     join pg_class i
@@ -246,5 +246,5 @@
 
 
 {%- macro postgres__get_drop_index_sql(relation, index_name) -%}
-    drop index if exists {{ index_name }}
+    drop index if exists "{{ index_name }}"
 {%- endmacro -%}

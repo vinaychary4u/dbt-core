@@ -14,13 +14,21 @@ from dbt.tests.adapter.materialized_view.base import (
 
 
 def get_project_config(project):
-    current_yaml = read_file(project.project_root, "dbt_project.yml")
-    return yaml.safe_load(current_yaml)
+    file_yaml = read_file(project.project_root, "dbt_project.yml")
+    return yaml.safe_load(file_yaml)
 
 
 def set_project_config(project, config):
-    new_yaml = yaml.safe_dump(config)
-    write_file(new_yaml, project.project_root, "dbt_project.yml")
+    config_yaml = yaml.safe_dump(config)
+    write_file(config_yaml, project.project_root, "dbt_project.yml")
+
+
+def get_model_file(project, model: str) -> str:
+    return read_file(project.project_root, "models", f"{model}.sql")
+
+
+def set_model_file(project, model: str, model_sql: str):
+    write_file(model_sql, project.project_root, "models", f"{model}.sql")
 
 
 def assert_proper_scenario(

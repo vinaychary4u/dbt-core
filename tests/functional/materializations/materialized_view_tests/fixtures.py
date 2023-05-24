@@ -1,13 +1,11 @@
-from copy import deepcopy
-
 import pytest
 
 from dbt.tests.util import relation_from_name
 from tests.adapter.dbt.tests.adapter.materialized_view.base import Base
 from tests.adapter.dbt.tests.adapter.materialized_view.on_configuration_change import (
     OnConfigurationChangeBase,
-    get_project_config,
-    set_project_config,
+    get_model_file,
+    set_model_file,
 )
 
 
@@ -40,24 +38,29 @@ class PostgresOnConfigurationChangeBase(OnConfigurationChangeBase):
             4242 as new_value
         """
         base_materialized_view = """
-        {{ config(materialized='materialized_view') }}
+        {{ config(
+            materialized='materialized_view',
+            indexes=[{'columns': ['id', 'value']}]
+        ) }}
         select * from {{ ref('base_table') }}
         """
         return {"base_table.sql": base_table, "base_materialized_view.sql": base_materialized_view}
 
     @pytest.fixture(scope="function")
     def configuration_changes(self, project):
-        initial_config = get_project_config(project)
+        initial_model = get_model_file(project, "base_materialized_view")
 
-        # change the index from `id` to `value`
-        new_config = deepcopy(initial_config)
-        new_config["models"].update({"indexes": [{"columns": ["new_id", "new_value"]}]})
-        set_project_config(project, new_config)
+        # change the index from [`id`, `value`] to [`new_id`, `new_value`]
+        new_model = initial_model.replace(
+            "indexes=[{'columns': ['id', 'value']}]",
+            "indexes=[{'columns': ['new_id', 'new_value']}]",
+        )
+        set_model_file(project, "base_materialized_view", new_model)
 
         yield
 
         # set this back for the next test
-        set_project_config(project, initial_config)
+        set_model_file(project, "base_materialized_view", initial_model)
 
     @pytest.fixture(scope="function")
     def update_index_message(self, project):

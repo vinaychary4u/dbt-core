@@ -69,6 +69,7 @@ class PostgresRelation(BaseRelation):
         # the columns show up as a comma-separated list in the query from postgres
         # we don't want to put this in `PostgresIndexConfig as a post_init because we don't want users
         # to be able to submit a string of columns
+        indexes = [dict(index) for index in indexes.rows]
         for index in indexes:
             index["columns"] = index["columns"].split(",")
 

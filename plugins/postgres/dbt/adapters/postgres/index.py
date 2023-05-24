@@ -1,6 +1,6 @@
 from dataclasses import dataclass, asdict
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from hologram import ValidationError
 
@@ -44,6 +44,21 @@ class PostgresIndexConfig(dbtClassMixin):
         config = asdict(self)
         config.pop("name")
         return config
+
+    @property
+    def column_set(self) -> Set[str]:
+        return set(x.upper() for x in self.columns)
+
+    def __eq__(self, other):
+        if isinstance(other, PostgresIndexConfig):
+            return all(
+                {
+                    self.column_set == other.column_set,
+                    self.type == other.type,
+                    self.unique == other.unique,
+                }
+            )
+        return False
 
     def __hash__(self):
         # Allow for sets of indexes defined only by columns, type, and uniqueness; i.e. remove the timestamp

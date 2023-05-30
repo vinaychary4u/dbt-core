@@ -7,6 +7,7 @@ from dbt.dataclass_schema import (
     dbtClassMixin,
     ValidationError,
     register_pattern,
+    StrEnum,
 )
 from dbt.contracts.graph.unparsed import AdditionalPropertiesAllowed, Docs
 from dbt.contracts.graph.utils import validate_color
@@ -190,13 +191,13 @@ class Severity(str):
 register_pattern(Severity, insensitive_patterns("warn", "error"))
 
 
-class OnConfigurationChangeOption(str, Enum):
+class OnConfigurationChangeOption(StrEnum):
     apply = "apply"
     skip = "skip"
     fail = "fail"
 
 
-class OnConfigurationChange(str, Metadata):
+class OnConfigurationChange(dbtClassMixin, Replaceable):
     action: OnConfigurationChangeOption = OnConfigurationChangeOption.apply
 
 

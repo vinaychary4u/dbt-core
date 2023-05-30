@@ -197,6 +197,7 @@ class OnConfigurationChangeOption(StrEnum):
     fail = "fail"
 
 
+@dataclass
 class OnConfigurationChange(dbtClassMixin, Replaceable):
     action: OnConfigurationChangeOption = OnConfigurationChangeOption.apply
 

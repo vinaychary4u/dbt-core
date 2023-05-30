@@ -61,7 +61,7 @@
     {% else %}
 
         -- get config options
-        {% set on_configuration_change = config.get('on_configuration_change') %}
+        {% set on_configuration_change = config.get('on_configuration_change', {}).get('action') %}
         {% set configuration_changes = get_materialized_view_configuration_changes(existing_relation, config) %}
 
         {% if configuration_changes == {} %}

@@ -2,6 +2,7 @@ from dataclasses import field, Field, dataclass
 from enum import Enum
 from itertools import chain
 from typing import Any, List, Optional, Dict, Union, Type, TypeVar, Callable
+
 from dbt.dataclass_schema import (
     dbtClassMixin,
     ValidationError,
@@ -9,8 +10,8 @@ from dbt.dataclass_schema import (
 )
 from dbt.contracts.graph.unparsed import AdditionalPropertiesAllowed, Docs
 from dbt.contracts.graph.utils import validate_color
-from dbt.exceptions import DbtInternalError, CompilationError
 from dbt.contracts.util import Replaceable, list_str
+from dbt.exceptions import DbtInternalError, CompilationError
 from dbt import hooks
 from dbt.node_types import NodeType
 
@@ -40,24 +41,6 @@ def _set_meta_value(obj: M, key: str, existing: Optional[Dict[str, Any]] = None)
         result = existing.copy()
     result.update({key: obj})
     return result
-
-
-class OnConfigurationChangeOption(str, Enum):
-    apply = "apply"
-    skip = "skip"
-    fail = "fail"
-
-    @classmethod
-    def get_default(cls):
-        return cls.apply
-
-    @classmethod
-    def is_valid(cls, item):
-        try:
-            cls(item)
-        except ValueError:
-            return False
-        return True
 
 
 class Metadata(Enum):
@@ -207,6 +190,16 @@ class Severity(str):
 register_pattern(Severity, insensitive_patterns("warn", "error"))
 
 
+class OnConfigurationChangeOption(str, Enum):
+    apply = "apply"
+    skip = "skip"
+    fail = "fail"
+
+
+class OnConfigurationChange(str, Metadata):
+    action: OnConfigurationChangeOption = OnConfigurationChangeOption.apply
+
+
 @dataclass
 class ContractConfig(dbtClassMixin, Replaceable):
     enforced: bool = False
@@ -305,11 +298,18 @@ class BaseConfig(AdditionalPropertiesAllowed, Replaceable):
                     return False
         return True
 
-    # This is used in 'add_config_call' to created the combined config_call_dict.
+    # This is used in 'add_config_call' to create the combined config_call_dict.
     # 'meta' moved here from node
     mergebehavior = {
         "append": ["pre-hook", "pre_hook", "post-hook", "post_hook", "tags"],
-        "update": ["quoting", "column_types", "meta", "docs", "contract"],
+        "update": [
+            "quoting",
+            "column_types",
+            "meta",
+            "docs",
+            "contract",
+            "on_configuration_change",
+        ],
         "dict_key_append": ["grants"],
     }
 
@@ -463,8 +463,8 @@ class NodeConfig(NodeAndTestConfig):
     # sometimes getting the Union order wrong, causing serialization failures.
     unique_key: Union[str, List[str], None] = None
     on_schema_change: Optional[str] = "ignore"
-    on_configuration_change: Optional[OnConfigurationChangeOption] = field(
-        default_factory=OnConfigurationChangeOption.get_default
+    on_configuration_change: OnConfigurationChange = field(
+        default_factory=OnConfigurationChange, metadata=MergeBehavior.Update.meta()
     )
     grants: Dict[str, Any] = field(
         default_factory=dict, metadata=MergeBehavior.DictKeyAppend.meta()

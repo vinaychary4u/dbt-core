@@ -42,7 +42,7 @@ def assert_proper_scenario(
     assert len(results.results) == 1
     result = results.results[0]
 
-    assert result.node.config.on_configuration_change == on_configuration_change
+    assert result.node.config.on_configuration_change.action == on_configuration_change
     assert result.status == status
     for message in messages_in_logs or []:
         assert_message_in_logs(logs, message)

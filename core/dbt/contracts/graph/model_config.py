@@ -196,10 +196,9 @@ class OnConfigurationChangeOption(StrEnum):
     skip = "skip"
     fail = "fail"
 
-
-@dataclass
-class OnConfigurationChange(dbtClassMixin, Replaceable):
-    action: OnConfigurationChangeOption = OnConfigurationChangeOption.apply
+    @classmethod
+    def default(cls) -> "OnConfigurationChangeOption":
+        return cls.apply
 
 
 @dataclass
@@ -465,8 +464,8 @@ class NodeConfig(NodeAndTestConfig):
     # sometimes getting the Union order wrong, causing serialization failures.
     unique_key: Union[str, List[str], None] = None
     on_schema_change: Optional[str] = "ignore"
-    on_configuration_change: OnConfigurationChange = field(
-        default_factory=OnConfigurationChange, metadata=MergeBehavior.Update.meta()
+    on_configuration_change: OnConfigurationChangeOption = field(
+        default_factory=OnConfigurationChangeOption.default, metadata=MergeBehavior.Clobber.meta()
     )
     grants: Dict[str, Any] = field(
         default_factory=dict, metadata=MergeBehavior.DictKeyAppend.meta()

@@ -1,3 +1,4 @@
+from dbt.contracts.graph.model_config import OnConfigurationChangeOption
 from dbt.contracts.results import RunStatus
 from dbt.contracts.relation import RelationType
 from tests.adapter.dbt.tests.adapter.materialized_view.base import (
@@ -107,12 +108,12 @@ class TestOnConfigurationChangeApply(OnConfigurationChangeCommon):
         )
 
 
-class TestOnConfigurationChangeSkip(OnConfigurationChangeCommon):
+class TestOnConfigurationChangeContinue(OnConfigurationChangeCommon):
 
-    on_configuration_change = "skip"
+    on_configuration_change = OnConfigurationChangeOption.Continue
 
-    def test_model_is_skipped_with_configuration_changes(
-        self, configuration_changes, configuration_change_skip_message
+    def test_model_is_not_refreshed_with_configuration_changes(
+        self, configuration_changes, configuration_change_continue_message, refresh_message
     ):
         results, logs = run_model("base_materialized_view")
         assert_proper_scenario(
@@ -120,13 +121,14 @@ class TestOnConfigurationChangeSkip(OnConfigurationChangeCommon):
             results,
             logs,
             RunStatus.Success,
-            messages_in_logs=[configuration_change_skip_message],
+            messages_in_logs=[configuration_change_continue_message],
+            messages_not_in_logs=[refresh_message],
         )
 
 
 class TestOnConfigurationChangeFail(OnConfigurationChangeCommon):
 
-    on_configuration_change = "fail"
+    on_configuration_change = OnConfigurationChangeOption.Fail
 
     def test_run_fails_with_configuration_changes(
         self, configuration_changes, configuration_change_fail_message

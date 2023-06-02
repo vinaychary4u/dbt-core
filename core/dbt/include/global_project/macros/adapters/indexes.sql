@@ -28,7 +28,7 @@
 {%- endmacro %}
 
 {% macro default__get_drop_index_sql(relation, index_name) -%}
-    {% do return(None) %}
+    {{ exceptions.raise_compiler_error("`get_drop_index_sql has not been implemented for this adapter.") }}
 {%- endmacro %}
 
 
@@ -37,5 +37,5 @@
 {%- endmacro %}
 
 {% macro default__get_show_indexes_sql(relation) -%}
-    {% do return(None) %}
+    {{ exceptions.raise_compiler_error("`get_show_indexes_sql has not been implemented for this adapter.") }}
 {%- endmacro %}

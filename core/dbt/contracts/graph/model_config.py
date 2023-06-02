@@ -192,13 +192,13 @@ register_pattern(Severity, insensitive_patterns("warn", "error"))
 
 
 class OnConfigurationChangeOption(StrEnum):
-    apply = "apply"
-    skip = "skip"
-    fail = "fail"
+    Apply = "apply"
+    Continue = "continue"
+    Fail = "fail"
 
     @classmethod
     def default(cls) -> "OnConfigurationChangeOption":
-        return cls.apply
+        return cls.Apply
 
 
 @dataclass

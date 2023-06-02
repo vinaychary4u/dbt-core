@@ -52,7 +52,7 @@ def assert_proper_scenario(
 
 class OnConfigurationChangeBase(Base):
 
-    on_configuration_change: OnConfigurationChangeOption = "apply"
+    on_configuration_change = OnConfigurationChangeOption.Apply
     base_materialized_view = "base_materialized_view"
 
     @pytest.fixture(scope="class")
@@ -83,7 +83,7 @@ class OnConfigurationChangeBase(Base):
         )
 
     @pytest.fixture(scope="function")
-    def configuration_change_skip_message(self, project):
+    def configuration_change_continue_message(self, project):
         return (
             f"Configuration changes were identified and `on_configuration_change` "
             f"was set to `skip` for `{relation_from_name(project.adapter, self.base_materialized_view)}`"

@@ -222,9 +222,9 @@
 {% macro postgres__get_show_indexes_sql(relation) %}
     select
         i.relname                                   as name,
-        m.amname                                    as type,
+        m.amname                                    as method,
         ix.indisunique                              as "unique",
-        array_to_string(array_agg(a.attname), ',')  as columns
+        array_to_string(array_agg(a.attname), ',')  as column_names
     from pg_index ix
     join pg_class i
         on i.oid = ix.indexrelid

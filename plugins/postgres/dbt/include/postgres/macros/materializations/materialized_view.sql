@@ -7,17 +7,15 @@
     intermediate_relation
 ) %}
 
-    -- parse out all changes that can be applied via alter
-    {%- set indexes = configuration_changes.pop("indexes", []) -%}
+    -- apply a full refresh immediately if needed
+    {% if configuration_changes.require_full_refresh %}
 
-    -- if there are no remaining changes, then all changes can be implemented via alter
-    {%- if configuration_changes == {} -%}
+        {{ get_replace_materialized_view_as_sql(relation, sql, existing_relation, backup_relation, intermediate_relation) }}
 
-        {{- return(postgres__update_indexes_on_materialized_view(relation, indexes)) -}}
+    -- otherwise apply individual changes as needed
+    {% else %}
 
-    -- otherwise, a full refresh is needed
-    {%- else -%}
-        {{- return(get_replace_materialized_view_as_sql(relation, sql, existing_relation, backup_relation, intermediate_relation)) -}}
+        {{ postgres__update_indexes_on_materialized_view(relation, configuration_changes.indexes) }}
 
     {%- endif -%}
 
@@ -47,15 +45,8 @@
 
 
 {% macro postgres__get_materialized_view_configuration_changes(existing_relation, new_config) %}
-    {% set existing_indexes = run_query(get_show_indexes_sql(existing_relation)) %}
-    {% set index_updates = existing_relation.get_index_updates(existing_indexes, new_config) %}
-
-    {% set _configuration_changes = {} %}
-
-    {% if index_updates %}
-        {% set _dummy = _configuration_changes.update({"indexes": index_updates}) %}
-    {% endif %}
-
+    {% set _existing_materialized_view = postgres__describe_materialized_view(existing_relation) %}
+    {% set _configuration_changes = existing_relation.get_relation_changes(_existing_materialized_view, new_config) %}
     {% do return(_configuration_changes) %}
 {% endmacro %}
 
@@ -65,21 +56,35 @@
 {% endmacro %}
 
 
-{%- macro postgres__update_indexes_on_materialized_view(relation, index_updates) -%}
+{%- macro postgres__update_indexes_on_materialized_view(relation, index_changes) -%}
     {{- log("Applying UPDATE INDEXES to: " ~ relation) -}}
 
-    {%- for _index_update in index_updates -%}
-        {%- set _action = _index_update.get("action") -%}
-        {%- set _index = _index_update.get("context") -%}
+    {%- for _index_change in index_changes -%}
+        {%- set _index = _index_change.context -%}
 
-        {%- if _action == "drop" -%}
+        {%- if _index_change.action == "drop" -%}
+
             {{ postgres__get_drop_index_sql(relation, _index.name) }};
-        {% elif _action == "create" -%}
-            {{ postgres__get_create_index_sql(relation, _index.as_config_dict) }}
-        {% else -%}
+
+        {%- elif _index_change.action == "create" -%}
+
+            {{ postgres__get_create_index_sql(relation, _index.as_user_config()) }}
+
+        {%- else -%}
+
             {{- exceptions.raise_compiler_error(
-                "Unsupported action supplied to postgres__update_indexes_on_materialized_view: " ~ _action)
+                "Unsupported action supplied to postgres__update_indexes_on_materialized_view: " ~ _index_change.action)
             -}}
+
         {%- endif -%}
+
     {%- endfor -%}
+
 {%- endmacro -%}
+
+
+{% macro postgres__describe_materialized_view(relation) %}
+    -- for now just get the indexes, we don't need the name or the query yet
+    {% set _indexes = run_query(get_show_indexes_sql(relation)) %}
+    {% do return({'indexes': _indexes}) %}
+{% endmacro %}

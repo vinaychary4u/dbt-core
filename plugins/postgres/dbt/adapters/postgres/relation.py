@@ -1,20 +1,25 @@
 from dataclasses import dataclass
-from typing import Dict, List, Union, Optional
-
-import agate
+from typing import Optional, Union, Set
 
 from dbt.adapters.base.relation import BaseRelation
-from dbt.contracts.graph.model_config import NodeConfig
+from dbt.context.providers import RuntimeConfigObject
+from dbt.contracts.relation import RelationType, ChangeAction
 from dbt.exceptions import DbtRuntimeError
 
-from dbt.adapters.postgres.index import PostgresIndexConfig
+from dbt.adapters.postgres.database_configs import (
+    IndexConfig,
+    IndexChange,
+    MaterializedViewConfig,
+    MaterializedViewChanges,
+    ObjectMetadata,
+)
+
+
+RelationChanges = Union[MaterializedViewChanges]
 
 
 @dataclass(frozen=True, eq=False, repr=False)
 class PostgresRelation(BaseRelation):
-
-    IndexUpdates = Dict[str, Union[str, PostgresIndexConfig]]
-
     def __post_init__(self):
         # Check for length of Postgres table/view names.
         # Check self.type to exclude test relation identifiers
@@ -31,54 +36,61 @@ class PostgresRelation(BaseRelation):
     def relation_max_name_length(self):
         return 63
 
-    def get_index_updates(
-        self, indexes: agate.Table, config: NodeConfig
-    ) -> List[Optional[IndexUpdates]]:
+    def get_relation_changes(
+        self, database_config: ObjectMetadata, runtime_config: RuntimeConfigObject
+    ) -> Optional[RelationChanges]:
+        model_node = runtime_config.model
+        node_config = model_node.config
+        relation_type = node_config.get("materialized", RelationType.default())
+        if relation_type == RelationType.MaterializedView:
+            return self._get_materialized_view_changes(database_config, runtime_config)
+        return None
+
+    def _get_materialized_view_changes(
+        self, database_config: ObjectMetadata, runtime_config: RuntimeConfigObject
+    ) -> Optional[MaterializedViewChanges]:
+        """
+        The only tracked changes for materialized views are indexes.
+
+        Args:
+            database_config:
+            node_config:
+
+        Returns:
+
+        """
+        existing_materialized_view = MaterializedViewConfig.from_database_config(database_config)
+        new_materialized_view = MaterializedViewConfig.from_model_node(runtime_config.model)
+
+        changes = {}
+        index_changes = self._get_index_changes(
+            existing_materialized_view.indexes, new_materialized_view.indexes
+        )
+        if index_changes:
+            changes.update({"indexes": index_changes})
+
+        if changes:
+            return MaterializedViewChanges(**changes)
+        return None
+
+    def _get_index_changes(
+        self, existing_indexes: Set[IndexConfig], new_indexes: Set[IndexConfig]
+    ) -> Set[IndexChange]:
         """
         Get the index updates that will occur as a result of a new run
 
         There are four scenarios:
 
-        1. Indexes are equal > don't return these
-        2. Index is new > create these
-        3. Index is old > drop these
-        4. Indexes are not equal > drop old, create new
+        1. Indexes are equal -> don't return these
+        2. Index is new -> create these
+        3. Index is old -> drop these
+        4. Indexes are not equal -> drop old, create new -> two actions
 
-        Returns: a list of index updates in the form {"action": "drop/create", "context": <index>}
-
-        Example of an index update:
-        {
-            "action": "create",
-            "context": {
-                "name": "",  # we don't know the name since it gets created as a hash at runtime
-                "columns": ["column_1", "column_3"],
-                "type": "hash",
-                "unique": True
-            }
-        },
-        {
-            "action": "drop",
-            "context": {
-                "name": "index_abc",  # we only need this to drop, but we need the rest to compare
-                "columns": ["column_1"],
-                "type": "btree",
-                "unique": True
-            }
-        },
+        Returns: a set of index updates in the form {"action": "drop/create", "context": <IndexConfig>}
         """
-        # the columns show up as a comma-separated list in the query from postgres
-        # we don't want to put this in `PostgresIndexConfig as a post_init because we don't want users
-        # to be able to submit a string of columns
-        indexes = [dict(index) for index in indexes.rows]
-        for index in indexes:
-            index["columns"] = index["columns"].split(",")
-
-        existing_indexes = set(PostgresIndexConfig.parse(index) for index in indexes)
-        new_indexes = set(PostgresIndexConfig.parse(index) for index in config.get("indexes", []))
-
         drop_indexes = existing_indexes.difference(new_indexes)
         create_indexes = new_indexes.difference(existing_indexes)
 
-        drop_updates = [{"action": "drop", "context": index} for index in drop_indexes]
-        create_updates = [{"action": "create", "context": index} for index in create_indexes]
-        return drop_updates + create_updates
+        drop_changes = set(IndexChange(ChangeAction.drop, index) for index in drop_indexes)
+        create_changes = set(IndexChange(ChangeAction.create, index) for index in create_indexes)
+        return drop_changes.union(create_changes)

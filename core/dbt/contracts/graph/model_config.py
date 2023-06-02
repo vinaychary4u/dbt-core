@@ -309,7 +309,6 @@ class BaseConfig(AdditionalPropertiesAllowed, Replaceable):
             "meta",
             "docs",
             "contract",
-            "on_configuration_change",
         ],
         "dict_key_append": ["grants"],
     }
@@ -465,7 +464,7 @@ class NodeConfig(NodeAndTestConfig):
     unique_key: Union[str, List[str], None] = None
     on_schema_change: Optional[str] = "ignore"
     on_configuration_change: OnConfigurationChangeOption = field(
-        default_factory=OnConfigurationChangeOption.default, metadata=MergeBehavior.Clobber.meta()
+        default_factory=OnConfigurationChangeOption.default
     )
     grants: Dict[str, Any] = field(
         default_factory=dict, metadata=MergeBehavior.DictKeyAppend.meta()

@@ -86,7 +86,7 @@ class OnConfigurationChangeBase(Base):
     def configuration_change_continue_message(self, project):
         return (
             f"Configuration changes were identified and `on_configuration_change` "
-            f"was set to `skip` for `{relation_from_name(project.adapter, self.base_materialized_view)}`"
+            f"was set to `continue` for `{relation_from_name(project.adapter, self.base_materialized_view)}`"
         )
 
     @pytest.fixture(scope="function")

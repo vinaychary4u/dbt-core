@@ -1,21 +1,20 @@
 from dataclasses import dataclass
-from typing import Optional, Union, Set
+from typing import Optional, Set
 
 from dbt.adapters.base.relation import BaseRelation
+from dbt.adapters.relation_configs import (
+    RelationConfigChangeAction,
+    RelationResults,
+)
 from dbt.context.providers import RuntimeConfigObject
-from dbt.contracts.relation import RelationType, ChangeAction
 from dbt.exceptions import DbtRuntimeError
 
-from dbt.adapters.postgres.database_configs import (
-    IndexConfig,
-    IndexChange,
-    MaterializedViewConfig,
-    MaterializedViewChanges,
-    ObjectMetadata,
+from dbt.adapters.postgres.relation_configs import (
+    PostgresIndexConfig,
+    PostgresIndexChange,
+    PostgresMaterializedViewConfig,
+    PostgresMaterializedViewConfigChangeCollection,
 )
-
-
-RelationChanges = Union[MaterializedViewChanges]
 
 
 @dataclass(frozen=True, eq=False, repr=False)
@@ -36,46 +35,41 @@ class PostgresRelation(BaseRelation):
     def relation_max_name_length(self):
         return 63
 
-    def get_relation_changes(
-        self, database_config: ObjectMetadata, runtime_config: RuntimeConfigObject
-    ) -> Optional[RelationChanges]:
-        model_node = runtime_config.model
-        node_config = model_node.config
-        relation_type = node_config.get("materialized", RelationType.default())
-        if relation_type == RelationType.MaterializedView:
-            return self._get_materialized_view_changes(database_config, runtime_config)
-        return None
-
-    def _get_materialized_view_changes(
-        self, database_config: ObjectMetadata, runtime_config: RuntimeConfigObject
-    ) -> Optional[MaterializedViewChanges]:
+    def get_materialized_view_config_change_collection(
+        self, relation_results: RelationResults, runtime_config: RuntimeConfigObject
+    ) -> Optional[PostgresMaterializedViewConfigChangeCollection]:
         """
+        Postgres-specific implementation of `BaseRelation.get_materialized_view_config_changes`.
+
         The only tracked changes for materialized views are indexes.
-
-        Args:
-            database_config:
-            node_config:
-
-        Returns:
-
         """
-        existing_materialized_view = MaterializedViewConfig.from_database_config(database_config)
-        new_materialized_view = MaterializedViewConfig.from_model_node(runtime_config.model)
+        config_change_collection_dict = {}
 
-        changes = {}
-        index_changes = self._get_index_changes(
-            existing_materialized_view.indexes, new_materialized_view.indexes
+        existing_materialized_view_config = PostgresMaterializedViewConfig.parse_relation_results(
+            relation_results
         )
-        if index_changes:
-            changes.update({"indexes": index_changes})
+        existing_materialized_view = PostgresMaterializedViewConfig.from_dict(
+            existing_materialized_view_config
+        )
 
-        if changes:
-            return MaterializedViewChanges(**changes)
-        return None
+        new_materialized_view_config = PostgresMaterializedViewConfig.parse_model_node(
+            runtime_config.model
+        )
+        new_materialized_view = PostgresMaterializedViewConfig.from_dict(
+            new_materialized_view_config
+        )
 
-    def _get_index_changes(
-        self, existing_indexes: Set[IndexConfig], new_indexes: Set[IndexConfig]
-    ) -> Set[IndexChange]:
+        if index_config_changes := self._get_index_config_changes(
+            existing_materialized_view.indexes, new_materialized_view.indexes
+        ):
+            config_change_collection_dict.update({"indexes": index_config_changes})
+
+        if config_change_collection_dict:
+            return PostgresMaterializedViewConfigChangeCollection(**config_change_collection_dict)
+
+    def _get_index_config_changes(
+        self, existing_indexes: Set[PostgresIndexConfig], new_indexes: Set[PostgresIndexConfig]
+    ) -> Set[PostgresIndexChange]:
         """
         Get the index updates that will occur as a result of a new run
 
@@ -88,9 +82,16 @@ class PostgresRelation(BaseRelation):
 
         Returns: a set of index updates in the form {"action": "drop/create", "context": <IndexConfig>}
         """
-        drop_indexes = existing_indexes.difference(new_indexes)
-        create_indexes = new_indexes.difference(existing_indexes)
-
-        drop_changes = set(IndexChange(ChangeAction.drop, index) for index in drop_indexes)
-        create_changes = set(IndexChange(ChangeAction.create, index) for index in create_indexes)
+        drop_changes = set(
+            PostgresIndexChange.from_dict(
+                {"action": RelationConfigChangeAction.drop, "context": index}
+            )
+            for index in existing_indexes.difference(new_indexes)
+        )
+        create_changes = set(
+            PostgresIndexChange.from_dict(
+                {"action": RelationConfigChangeAction.create, "context": index}
+            )
+            for index in new_indexes.difference(existing_indexes)
+        )
         return drop_changes.union(create_changes)

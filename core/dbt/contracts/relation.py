@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import (
     Optional,
     Dict,
-    Any,
 )
 from typing_extensions import Protocol
 
@@ -122,22 +121,3 @@ class Path(FakeAPIObject):
         for k, v in dct.items():
             kwargs[str(k)] = v
         return self.replace(**kwargs)
-
-
-"""
-These classes are used to define an interface for updates on objects in place.
-This originated with materialized views, which attempt to update things like indexes without dropping the underlying
-materialized view.
-"""
-
-
-class ChangeAction(StrEnum):
-    alter = "alter"
-    create = "create"
-    drop = "drop"
-
-
-@dataclass(frozen=True)
-class Change:
-    action: ChangeAction
-    context: Any  # this is usually a Config, e.g. IndexConfig, but shouldn't be limited

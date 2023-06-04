@@ -8,7 +8,7 @@
 ) %}
 
     -- apply a full refresh immediately if needed
-    {% if configuration_changes.require_full_refresh %}
+    {% if configuration_changes.requires_full_refresh() %}
 
         {{ get_replace_materialized_view_as_sql(relation, sql, existing_relation, backup_relation, intermediate_relation) }}
 
@@ -46,7 +46,7 @@
 
 {% macro postgres__get_materialized_view_configuration_changes(existing_relation, new_config) %}
     {% set _existing_materialized_view = postgres__describe_materialized_view(existing_relation) %}
-    {% set _configuration_changes = existing_relation.get_relation_changes(_existing_materialized_view, new_config) %}
+    {% set _configuration_changes = existing_relation.get_relation_config_change_collection(_existing_materialized_view, new_config) %}
     {% do return(_configuration_changes) %}
 {% endmacro %}
 

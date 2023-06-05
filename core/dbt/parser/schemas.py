@@ -1,7 +1,8 @@
+import datetime
 import time
 
 from abc import ABCMeta, abstractmethod
-from typing import Iterable, Dict, Any, List, Generic, TypeVar, Type, Callable
+from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, Type, TypeVar
 from dataclasses import dataclass, field
 
 from dbt.dataclass_schema import ValidationError, dbtClassMixin
@@ -519,6 +520,10 @@ class NodePatchParser(PatchParser[NodeTarget, ParsedNodePatch], Generic[NodeTarg
         # We're not passing the ParsedNodePatch around anymore, so we
         # could possibly skip creating one. Leaving here for now for
         # code consistency.
+        deprecation_date: Optional[datetime.datetime] = None
+        if isinstance(block.target, UnparsedModelUpdate):
+            deprecation_date = block.target.deprecation_date
+
         patch = ParsedNodePatch(
             name=block.target.name,
             original_file_path=block.target.original_file_path,
@@ -533,6 +538,7 @@ class NodePatchParser(PatchParser[NodeTarget, ParsedNodePatch], Generic[NodeTarg
             version=None,
             latest_version=None,
             constraints=block.target.constraints,
+            deprecation_date=deprecation_date,
         )
         # This used to assert SchemaSourceFile, but removed to support yaml frontmatter
         source_file = self.yaml.file
@@ -779,6 +785,7 @@ class ModelPatchParser(NodePatchParser[UnparsedModelUpdate]):
                     version=unparsed_version.v,
                     latest_version=latest_version,
                     constraints=unparsed_version.constraints or target.constraints,
+                    deprecation_date=unparsed_version.deprecation_date,
                 )
                 # Node patched before config because config patching depends on model name,
                 # which may have been updated in the version patch
@@ -800,6 +807,7 @@ class ModelPatchParser(NodePatchParser[UnparsedModelUpdate]):
         super().patch_node_properties(node, patch)
         node.version = patch.version
         node.latest_version = patch.latest_version
+        node.deprecation_date = patch.deprecation_date
         if patch.access:
             if AccessType.is_valid(patch.access):
                 node.access = AccessType(patch.access)

@@ -27,6 +27,7 @@ class ListTask(GraphRunnableTask):
             NodeType.Source,
             NodeType.Exposure,
             NodeType.Metric,
+            NodeType.PublicModel,
         )
     )
     ALL_RESOURCE_VALUES = DEFAULT_RESOURCE_VALUES | frozenset((NodeType.Analysis,))
@@ -73,6 +74,8 @@ class ListTask(GraphRunnableTask):
                 yield self.manifest.exposures[node]
             elif node in self.manifest.metrics:
                 yield self.manifest.metrics[node]
+            elif node in self.manifest.public_nodes:
+                yield self.manifest.public_nodes[node]
             else:
                 raise DbtRuntimeError(
                     f'Got an unexpected result from node selection: "{node}"'

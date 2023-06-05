@@ -54,7 +54,7 @@ class PublicModel(dbtClassMixin, ManifestOrPublicNode):
     # Needed for ref resolution code
     @property
     def resource_type(self):
-        return NodeType.Model
+        return NodeType.PublicModel
 
     # Needed for ref resolution code
     @property

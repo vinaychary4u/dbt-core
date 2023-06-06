@@ -99,6 +99,9 @@ class ListTask(GraphRunnableTask):
                 # metrics are searched for by pkg.metric_name
                 metric_selector = ".".join([node.package_name, node.name])
                 yield f"metric:{metric_selector}"
+            elif node.resource_type == NodeType.PublicModel:
+                assert isinstance(node, PublicModel)
+                yield ".".join([node.package_name, node.name])
             else:
                 # everything else is from `fqn`
                 yield ".".join(node.fqn)
@@ -155,7 +158,7 @@ class ListTask(GraphRunnableTask):
     @property
     def resource_types(self):
         if self.args.models:
-            return [NodeType.Model]
+            return [NodeType.Model, NodeType.PublicModel]
 
         if not self.args.resource_types:
             return list(self.DEFAULT_RESOURCE_VALUES)

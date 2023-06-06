@@ -176,6 +176,11 @@ class Linker:
             else:
                 raise GraphDependencyNotFoundError(node, dependency)
 
+        # Add public_nodes to graph. TODO: we might want to do this only for the "ls" command
+        for pub_dependency in node.depends_on_public_nodes:
+            if pub_dependency in manifest.public_nodes:
+                self.dependency(node.unique_id, (manifest.public_nodes[pub_dependency].unique_id))
+
     def link_graph(self, manifest: Manifest):
         for source in manifest.sources.values():
             self.add_node(source.unique_id)
@@ -256,7 +261,7 @@ class Linker:
         index_dict = dict()
         for node_index, node_name in enumerate(self.graph):
             index_dict[node_name] = node_index
-            data = manifest.expect(node_name).to_dict(omit_none=True)
+            data = manifest.expect(node_name).to_ls_dict(omit_none=True)
             graph_nodes[node_index] = {"name": node_name, "type": data["resource_type"]}
 
         for node_index, node in graph_nodes.items():

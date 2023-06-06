@@ -917,6 +917,9 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             return self.exposures[unique_id]
         elif unique_id in self.metrics:
             return self.metrics[unique_id]
+        elif unique_id in self.public_nodes:
+            public_node = self.public_nodes[unique_id]
+            return public_node
         else:
             # something terrible has happened
             raise dbt.exceptions.DbtInternalError(

@@ -1,6 +1,7 @@
 import json
 
 from dbt.contracts.graph.nodes import Exposure, SourceDefinition, Metric
+from dbt.contracts.publication import PublicModel
 from dbt.flags import get_flags
 from dbt.graph import ResourceTypeSelector
 from dbt.task.runnable import GraphRunnableTask
@@ -101,7 +102,8 @@ class ListTask(GraphRunnableTask):
                 yield f"metric:{metric_selector}"
             elif node.resource_type == NodeType.PublicModel:
                 assert isinstance(node, PublicModel)
-                yield ".".join([node.package_name, node.name])
+                pub_model_selector = ".".join([node.package_name, node.name])
+                yield f"pub_model:{pub_model_selector}"
             else:
                 # everything else is from `fqn`
                 yield ".".join(node.fqn)
@@ -115,7 +117,7 @@ class ListTask(GraphRunnableTask):
             yield json.dumps(
                 {
                     k: v
-                    for k, v in node.to_dict(omit_none=False).items()
+                    for k, v in node.to_ls_dict(omit_none=False).items()
                     if (
                         k in self.args.output_keys
                         if self.args.output_keys

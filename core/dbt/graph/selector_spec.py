@@ -60,7 +60,7 @@ SelectionSpec = Union[
 
 
 @dataclass
-class SelectionCriteria:
+class SelectionCriteria(dbtClassMixin):
     raw: Any
     method: MethodName
     method_arguments: List[str]

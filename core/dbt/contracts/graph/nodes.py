@@ -140,6 +140,9 @@ class BaseNode(dbtClassMixin, Replaceable):
     def get_materialization(self):
         return self.config.materialized
 
+    def to_ls_dict(self, **kwargs):
+        return self.to_dict(**kwargs)
+
 
 @dataclass
 class GraphNode(BaseNode):

@@ -3,6 +3,7 @@ import shutil
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple, Set
 import agate
+from dataclasses import replace
 
 from dbt.dataclass_schema import ValidationError
 
@@ -115,7 +116,7 @@ class Catalog(Dict[CatalogKey, CatalogTable]):
             key = table.key()
             if key in node_map:
                 unique_id = node_map[key]
-                nodes[unique_id] = table.replace(unique_id=unique_id)
+                nodes[unique_id] = replace(table, unique_id=unique_id)
 
             unique_ids = source_map.get(table.key(), set())
             for unique_id in unique_ids:
@@ -126,7 +127,7 @@ class Catalog(Dict[CatalogKey, CatalogTable]):
                         table.to_dict(omit_none=True),
                     )
                 else:
-                    sources[unique_id] = table.replace(unique_id=unique_id)
+                    sources[unique_id] = replace(table, unique_id=unique_id)
         return nodes, sources
 
 

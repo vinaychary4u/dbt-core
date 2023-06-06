@@ -2,6 +2,7 @@ import copy
 
 import pytest
 from unittest import mock
+from dataclasses import replace
 
 from pathlib import Path
 
@@ -911,9 +912,7 @@ def test_select_group(manifest, view_model):
     manifest.groups[group.unique_id] = group
     change_node(
         manifest,
-        view_model.replace(
-            config={"materialized": "view", "group": group_name},
-        ),
+        replace(view_model, config={"materialized": "view", "group": group_name}),
     )
     methods = MethodManager(manifest, None)
     method = methods.get_method("group", [])
@@ -927,9 +926,7 @@ def test_select_group(manifest, view_model):
 def test_select_access(manifest, view_model):
     change_node(
         manifest,
-        view_model.replace(
-            access="public",
-        ),
+        replace(view_model, access="public"),
     )
     methods = MethodManager(manifest, None)
     method = methods.get_method("access", [])
@@ -1283,7 +1280,7 @@ def test_select_state_added_model(manifest, previous_state):
 
 
 def test_select_state_changed_model_sql(manifest, previous_state, view_model):
-    change_node(manifest, view_model.replace(raw_code="select 1 as id"))
+    change_node(manifest, replace(view_model, raw_code="select 1 as id"))
     method = statemethod(manifest, previous_state)
 
     # both of these
@@ -1300,7 +1297,7 @@ def test_select_state_changed_model_sql(manifest, previous_state, view_model):
 
 def test_select_state_changed_model_fqn(manifest, previous_state, view_model):
     change_node(
-        manifest, view_model.replace(fqn=view_model.fqn[:-1] + ["nested"] + view_model.fqn[-1:])
+        manifest, replace(view_model, fqn=view_model.fqn[:-1] + ["nested"] + view_model.fqn[-1:])
     )
     method = statemethod(manifest, previous_state)
     assert search_manifest_using_method(manifest, method, "modified") == {"view_model"}
@@ -1315,7 +1312,7 @@ def test_select_state_added_seed(manifest, previous_state):
 
 
 def test_select_state_changed_seed_checksum_sha_to_sha(manifest, previous_state, seed):
-    change_node(manifest, seed.replace(checksum=FileHash.from_contents("changed")))
+    change_node(manifest, replace(seed, checksum=FileHash.from_contents("changed")))
     method = statemethod(manifest, previous_state)
     assert search_manifest_using_method(manifest, method, "modified") == {"seed"}
     assert not search_manifest_using_method(manifest, method, "new")
@@ -1324,10 +1321,10 @@ def test_select_state_changed_seed_checksum_sha_to_sha(manifest, previous_state,
 def test_select_state_changed_seed_checksum_path_to_path(manifest, previous_state, seed):
     change_node(
         previous_state.manifest,
-        seed.replace(checksum=FileHash(name="path", checksum=seed.original_file_path)),
+        replace(seed, checksum=FileHash(name="path", checksum=seed.original_file_path)),
     )
     change_node(
-        manifest, seed.replace(checksum=FileHash(name="path", checksum=seed.original_file_path))
+        manifest, replace(seed, checksum=FileHash(name="path", checksum=seed.original_file_path))
     )
     method = statemethod(manifest, previous_state)
     with mock.patch("dbt.contracts.graph.nodes.warn_or_error") as warn_or_error_patch:
@@ -1344,7 +1341,7 @@ def test_select_state_changed_seed_checksum_path_to_path(manifest, previous_stat
 
 def test_select_state_changed_seed_checksum_sha_to_path(manifest, previous_state, seed):
     change_node(
-        manifest, seed.replace(checksum=FileHash(name="path", checksum=seed.original_file_path))
+        manifest, replace(seed, checksum=FileHash(name="path", checksum=seed.original_file_path))
     )
     method = statemethod(manifest, previous_state)
     with mock.patch("dbt.contracts.graph.nodes.warn_or_error") as warn_or_error_patch:
@@ -1362,7 +1359,7 @@ def test_select_state_changed_seed_checksum_sha_to_path(manifest, previous_state
 def test_select_state_changed_seed_checksum_path_to_sha(manifest, previous_state, seed):
     change_node(
         previous_state.manifest,
-        seed.replace(checksum=FileHash(name="path", checksum=seed.original_file_path)),
+        replace(seed, checksum=FileHash(name="path", checksum=seed.original_file_path)),
     )
     method = statemethod(manifest, previous_state)
     with mock.patch("dbt.contracts.graph.nodes.warn_or_error") as warn_or_error_patch:
@@ -1374,7 +1371,7 @@ def test_select_state_changed_seed_checksum_path_to_sha(manifest, previous_state
 
 
 def test_select_state_changed_seed_fqn(manifest, previous_state, seed):
-    change_node(manifest, seed.replace(fqn=seed.fqn[:-1] + ["nested"] + seed.fqn[-1:]))
+    change_node(manifest, replace(seed, fqn=seed.fqn[:-1] + ["nested"] + seed.fqn[-1:]))
     method = statemethod(manifest, previous_state)
     assert search_manifest_using_method(manifest, method, "modified") == {"seed"}
     assert not search_manifest_using_method(manifest, method, "new")
@@ -1393,7 +1390,7 @@ def test_select_state_changed_seed_relation_documented(manifest, previous_state,
 
 def test_select_state_changed_seed_relation_documented_nodocs(manifest, previous_state, seed):
     seed_doc_relation = replace_config(seed, persist_docs={"relation": True})
-    seed_doc_relation_documented = seed_doc_relation.replace(description="a description")
+    seed_doc_relation_documented = replace(seed_doc_relation, description="a description")
     change_node(previous_state.manifest, seed_doc_relation)
     change_node(manifest, seed_doc_relation_documented)
     method = statemethod(manifest, previous_state)
@@ -1407,7 +1404,7 @@ def test_select_state_changed_seed_relation_documented_nodocs(manifest, previous
 
 def test_select_state_changed_seed_relation_documented_withdocs(manifest, previous_state, seed):
     seed_doc_relation = replace_config(seed, persist_docs={"relation": True})
-    seed_doc_relation_documented = seed_doc_relation.replace(description="a description")
+    seed_doc_relation_documented = replace(seed_doc_relation, description="a description")
     change_node(previous_state.manifest, seed_doc_relation_documented)
     change_node(manifest, seed_doc_relation)
     method = statemethod(manifest, previous_state)
@@ -1431,7 +1428,8 @@ def test_select_state_changed_seed_columns_documented(manifest, previous_state, 
 
 def test_select_state_changed_seed_columns_documented_nodocs(manifest, previous_state, seed):
     seed_doc_columns = replace_config(seed, persist_docs={"columns": True})
-    seed_doc_columns_documented_columns = seed_doc_columns.replace(
+    seed_doc_columns_documented_columns = replace(
+        seed_doc_columns,
         columns={"a": ColumnInfo(name="a", description="a description")},
     )
 
@@ -1449,7 +1447,8 @@ def test_select_state_changed_seed_columns_documented_nodocs(manifest, previous_
 
 def test_select_state_changed_seed_columns_documented_withdocs(manifest, previous_state, seed):
     seed_doc_columns = replace_config(seed, persist_docs={"columns": True})
-    seed_doc_columns_documented_columns = seed_doc_columns.replace(
+    seed_doc_columns_documented_columns = replace(
+        seed_doc_columns,
         columns={"a": ColumnInfo(name="a", description="a description")},
     )
 
@@ -1468,8 +1467,8 @@ def test_select_state_changed_seed_columns_documented_withdocs(manifest, previou
 def test_select_state_changed_test_macro_sql(
     manifest, previous_state, macro_default_test_not_null
 ):
-    manifest.macros[macro_default_test_not_null.unique_id] = macro_default_test_not_null.replace(
-        macro_sql="lalala"
+    manifest.macros[macro_default_test_not_null.unique_id] = replace(
+        macro_default_test_not_null, macro_sql="lalala"
     )
     method = statemethod(manifest, previous_state)
     assert search_manifest_using_method(manifest, method, "modified") == {
@@ -1484,7 +1483,7 @@ def test_select_state_changed_test_macro_sql(
 def test_select_state_changed_test_macros(manifest, previous_state):
     changed_macro = make_macro("dbt", "changed_macro", "blablabla")
     add_macro(manifest, changed_macro)
-    add_macro(previous_state.manifest, changed_macro.replace(macro_sql="something different"))
+    add_macro(previous_state.manifest, replace(changed_macro, macro_sql="something different"))
 
     unchanged_macro = make_macro("dbt", "unchanged_macro", "blablabla")
     add_macro(manifest, unchanged_macro)
@@ -1521,7 +1520,7 @@ def test_select_state_changed_test_macros(manifest, previous_state):
 def test_select_state_changed_test_macros_with_upstream_change(manifest, previous_state):
     changed_macro = make_macro("dbt", "changed_macro", "blablabla")
     add_macro(manifest, changed_macro)
-    add_macro(previous_state.manifest, changed_macro.replace(macro_sql="something different"))
+    add_macro(previous_state.manifest, replace(changed_macro, macro_sql="something different"))
 
     unchanged_macro1 = make_macro("dbt", "unchanged_macro", "blablabla")
     add_macro(manifest, unchanged_macro1)

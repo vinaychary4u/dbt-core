@@ -1,6 +1,7 @@
 import itertools
 from pathlib import Path
 from typing import Iterable, Dict, Optional, Set, Any, List
+from dataclasses import replace
 from dbt.adapters.factory import get_adapter
 from dbt.config import RuntimeConfig
 from dbt.context.context_config import (
@@ -117,7 +118,7 @@ class SourcePatcher:
 
         source = UnparsedSourceDefinition.from_dict(source_dct)
         table = UnparsedSourceTableDefinition.from_dict(table_dct)
-        return unpatched.replace(source=source, table=table, patch_path=patch_path)
+        return replace(unpatched, source=source, table=table, patch_path=patch_path)
 
     # This converts an UnpatchedSourceDefinition to a SourceDefinition
     def parse_source(self, target: UnpatchedSourceDefinition) -> SourceDefinition:

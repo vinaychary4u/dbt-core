@@ -1,6 +1,7 @@
 import threading
 from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from dataclasses import replace
 
 from dbt.adapters.reference_keys import (
     _make_ref_key,
@@ -296,11 +297,11 @@ class RelationsCache:
             return
         if ref_key not in self.relations:
             # Insert a dummy "external" relation.
-            referenced = referenced.replace(type=referenced.External)
+            referenced = replace(referenced, type=referenced.External)
             self.add(referenced)
         if dep_key not in self.relations:
             # Insert a dummy "external" relation.
-            dependent = dependent.replace(type=referenced.External)
+            dependent = replace(dependent, type=referenced.External)
             self.add(dependent)
         fire_event(
             CacheAction(

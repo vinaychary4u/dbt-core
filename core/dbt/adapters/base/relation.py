@@ -1,5 +1,5 @@
 from collections.abc import Hashable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Optional, TypeVar, Any, Type, Dict, Iterator, Tuple, Set
 
 from dbt.contracts.graph.nodes import SourceDefinition, ManifestNode, ResultNode, ParsedNode
@@ -109,7 +109,7 @@ class BaseRelation(FakeAPIObject, Hashable):
         return exact_match
 
     def replace_path(self, **kwargs):
-        return self.replace(path=self.path.replace(**kwargs))
+        return replace(self, path=replace(self.path, **kwargs))
 
     def quote(
         self: Self,
@@ -126,7 +126,7 @@ class BaseRelation(FakeAPIObject, Hashable):
         )
 
         new_quote_policy = self.quote_policy.replace_dict(policy)
-        return self.replace(quote_policy=new_quote_policy)
+        return replace(self, quote_policy=new_quote_policy)
 
     def include(
         self: Self,
@@ -143,7 +143,7 @@ class BaseRelation(FakeAPIObject, Hashable):
         )
 
         new_include_policy = self.include_policy.replace_dict(policy)
-        return self.replace(include_policy=new_include_policy)
+        return replace(self, include_policy=new_include_policy)
 
     def information_schema(self, view_name=None) -> "InformationSchema":
         # some of our data comes from jinja, where things can be `Undefined`.
@@ -376,7 +376,8 @@ class InformationSchema(BaseRelation):
         relation,
         information_schema_view: Optional[str],
     ) -> Policy:
-        return relation.include_policy.replace(
+        return replace(
+            relation.include_policy,
             database=relation.database is not None,
             schema=False,
             identifier=True,
@@ -388,7 +389,8 @@ class InformationSchema(BaseRelation):
         relation,
         information_schema_view: Optional[str],
     ) -> Policy:
-        return relation.quote_policy.replace(
+        return replace(
+            relation.quote_policy,
             identifier=False,
         )
 

@@ -7,6 +7,7 @@ import string
 import os
 from unittest import mock
 from unittest import TestCase
+from dataclasses import replace
 
 import agate
 import pytest
@@ -379,7 +380,8 @@ def dict_replace(dct, **kwargs):
 
 
 def replace_config(n, **kwargs):
-    return n.replace(
+    return replace(
+        n,
         config=n.config.replace(**kwargs),
         unrendered_config=dict_replace(n.unrendered_config, **kwargs),
     )

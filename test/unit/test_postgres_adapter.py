@@ -2,6 +2,7 @@ import agate
 import decimal
 import unittest
 from unittest import mock
+from dataclasses import replace
 
 from dbt.task.debug import DebugTask
 
@@ -130,7 +131,7 @@ class TestPostgresAdapter(unittest.TestCase):
 
     @mock.patch("dbt.adapters.postgres.connections.psycopg2")
     def test_changed_connect_timeout(self, psycopg2):
-        self.config.credentials = self.config.credentials.replace(connect_timeout=30)
+        self.config.credentials = replace(self.config.credentials, connect_timeout=30)
         connection = self.adapter.acquire_connection("dummy")
 
         psycopg2.connect.assert_not_called()
@@ -163,7 +164,7 @@ class TestPostgresAdapter(unittest.TestCase):
 
     @mock.patch("dbt.adapters.postgres.connections.psycopg2")
     def test_changed_keepalive(self, psycopg2):
-        self.config.credentials = self.config.credentials.replace(keepalives_idle=256)
+        self.config.credentials = replace(self.config.credentials, keepalives_idle=256)
         connection = self.adapter.acquire_connection("dummy")
 
         psycopg2.connect.assert_not_called()
@@ -197,7 +198,7 @@ class TestPostgresAdapter(unittest.TestCase):
 
     @mock.patch("dbt.adapters.postgres.connections.psycopg2")
     def test_changed_application_name(self, psycopg2):
-        self.config.credentials = self.config.credentials.replace(application_name="myapp")
+        self.config.credentials = replace(self.config.credentials, application_name="myapp")
         connection = self.adapter.acquire_connection("dummy")
 
         psycopg2.connect.assert_not_called()
@@ -214,7 +215,7 @@ class TestPostgresAdapter(unittest.TestCase):
 
     @mock.patch("dbt.adapters.postgres.connections.psycopg2")
     def test_role(self, psycopg2):
-        self.config.credentials = self.config.credentials.replace(role="somerole")
+        self.config.credentials = replace(self.config.credentials, role="somerole")
         connection = self.adapter.acquire_connection("dummy")
 
         cursor = connection.handle.cursor()
@@ -223,7 +224,7 @@ class TestPostgresAdapter(unittest.TestCase):
 
     @mock.patch("dbt.adapters.postgres.connections.psycopg2")
     def test_search_path(self, psycopg2):
-        self.config.credentials = self.config.credentials.replace(search_path="test")
+        self.config.credentials = replace(self.config.credentials, search_path="test")
         connection = self.adapter.acquire_connection("dummy")
 
         psycopg2.connect.assert_not_called()
@@ -241,7 +242,7 @@ class TestPostgresAdapter(unittest.TestCase):
 
     @mock.patch("dbt.adapters.postgres.connections.psycopg2")
     def test_sslmode(self, psycopg2):
-        self.config.credentials = self.config.credentials.replace(sslmode="require")
+        self.config.credentials = replace(self.config.credentials, sslmode="require")
         connection = self.adapter.acquire_connection("dummy")
 
         psycopg2.connect.assert_not_called()
@@ -259,10 +260,10 @@ class TestPostgresAdapter(unittest.TestCase):
 
     @mock.patch("dbt.adapters.postgres.connections.psycopg2")
     def test_ssl_parameters(self, psycopg2):
-        self.config.credentials = self.config.credentials.replace(sslmode="verify-ca")
-        self.config.credentials = self.config.credentials.replace(sslcert="service.crt")
-        self.config.credentials = self.config.credentials.replace(sslkey="service.key")
-        self.config.credentials = self.config.credentials.replace(sslrootcert="ca.crt")
+        self.config.credentials = replace(self.config.credentials, sslmode="verify-ca")
+        self.config.credentials = replace(self.config.credentials, sslcert="service.crt")
+        self.config.credentials = replace(self.config.credentials, sslkey="service.key")
+        self.config.credentials = replace(self.config.credentials, sslrootcert="ca.crt")
         connection = self.adapter.acquire_connection("dummy")
 
         psycopg2.connect.assert_not_called()
@@ -283,7 +284,7 @@ class TestPostgresAdapter(unittest.TestCase):
 
     @mock.patch("dbt.adapters.postgres.connections.psycopg2")
     def test_schema_with_space(self, psycopg2):
-        self.config.credentials = self.config.credentials.replace(search_path="test test")
+        self.config.credentials = replace(self.config.credentials, search_path="test test")
         connection = self.adapter.acquire_connection("dummy")
 
         psycopg2.connect.assert_not_called()
@@ -301,7 +302,7 @@ class TestPostgresAdapter(unittest.TestCase):
 
     @mock.patch("dbt.adapters.postgres.connections.psycopg2")
     def test_set_zero_keepalive(self, psycopg2):
-        self.config.credentials = self.config.credentials.replace(keepalives_idle=0)
+        self.config.credentials = replace(self.config.credentials, keepalives_idle=0)
         connection = self.adapter.acquire_connection("dummy")
 
         psycopg2.connect.assert_not_called()

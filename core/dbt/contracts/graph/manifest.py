@@ -1,5 +1,5 @@
 import enum
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from itertools import chain, islice
 from mashumaro.mixins.msgpack import DataClassMessagePackMixin
 from multiprocessing.synchronize import Lock
@@ -1123,7 +1123,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                 )
             ):
                 merged.add(unique_id)
-                self.nodes[unique_id] = node.replace(deferred=True)
+                self.nodes[unique_id] = replace(node, deferred=True)
 
         # Rebuild the flat_graph, which powers the 'graph' context variable,
         # now that we've deferred some nodes

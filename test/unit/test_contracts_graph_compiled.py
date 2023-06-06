@@ -1,5 +1,6 @@
 import pickle
 import pytest
+from dataclasses import replace
 
 from dbt.contracts.files import FileHash
 from dbt.contracts.graph.nodes import (
@@ -261,44 +262,46 @@ def test_invalid_bad_type_model(minimal_uncompiled_dict):
 
 
 unchanged_compiled_models = [
-    lambda u: (u, u.replace(description="a description")),
-    lambda u: (u, u.replace(tags=["mytag"])),
-    lambda u: (u, u.replace(meta={"cool_key": "cool value"})),
+    lambda u: (u, replace(u, description="a description")),
+    lambda u: (u, replace(u, tags=["mytag"])),
+    lambda u: (u, replace(u, meta={"cool_key": "cool value"})),
     # changing the final alias/schema/datbase isn't a change - could just be target changing!
-    lambda u: (u, u.replace(database="nope")),
-    lambda u: (u, u.replace(schema="nope")),
-    lambda u: (u, u.replace(alias="nope")),
+    lambda u: (u, replace(u, database="nope")),
+    lambda u: (u, replace(u, schema="nope")),
+    lambda u: (u, replace(u, alias="nope")),
     # None -> False is a config change even though it's pretty much the same
     lambda u: (
-        u.replace(config=u.config.replace(persist_docs={"relation": False})),
-        u.replace(config=u.config.replace(persist_docs={"relation": False})),
+        replace(u, config=replace(u.config, persist_docs={"relation": False})),
+        replace(u, config=replace(u.config, persist_docs={"relation": False})),
     ),
     lambda u: (
-        u.replace(config=u.config.replace(persist_docs={"columns": False})),
-        u.replace(config=u.config.replace(persist_docs={"columns": False})),
+        replace(u, config=replace(u.config, persist_docs={"columns": False})),
+        replace(u, config=replace(u.config, persist_docs={"columns": False})),
     ),
     # True -> True
     lambda u: (
-        u.replace(config=u.config.replace(persist_docs={"relation": True})),
-        u.replace(config=u.config.replace(persist_docs={"relation": True})),
+        replace(u, config=replace(u.config, persist_docs={"relation": True})),
+        replace(u, config=replace(u.config, persist_docs={"relation": True})),
     ),
     lambda u: (
-        u.replace(config=u.config.replace(persist_docs={"columns": True})),
-        u.replace(config=u.config.replace(persist_docs={"columns": True})),
+        replace(u, config=replace(u.config, persist_docs={"columns": True})),
+        replace(u, config=replace(u.config, persist_docs={"columns": True})),
     ),
     # only columns docs enabled, but description changed
     lambda u: (
-        u.replace(config=u.config.replace(persist_docs={"columns": True})),
-        u.replace(
-            config=u.config.replace(persist_docs={"columns": True}),
+        replace(u, config=replace(u.config, persist_docs={"columns": True})),
+        replace(
+            u,
+            config=replace(u.config, persist_docs={"columns": True}),
             description="a model description",
         ),
     ),
     # only relation docs eanbled, but columns changed
     lambda u: (
-        u.replace(config=u.config.replace(persist_docs={"relation": True})),
-        u.replace(
-            config=u.config.replace(persist_docs={"relation": True}),
+        replace(u, config=replace(u.config, persist_docs={"relation": True})),
+        replace(
+            u,
+            config=replace(u.config, persist_docs={"relation": True}),
             columns={"a": ColumnInfo(name="a", description="a column description")},
         ),
     ),
@@ -307,10 +310,11 @@ unchanged_compiled_models = [
 
 changed_compiled_models = [
     lambda u: (u, None),
-    lambda u: (u, u.replace(raw_code="select * from wherever")),
+    lambda u: (u, replace(u, raw_code="select * from wherever")),
     lambda u: (
         u,
-        u.replace(
+        replace(
+            u,
             fqn=["test", "models", "subdir", "foo"],
             original_file_path="models/subdir/foo.sql",
             path="/root/models/subdir/foo.sql",
@@ -614,17 +618,17 @@ def test_invalid_resource_type_schema_test(minimal_schema_test_dict):
 
 unchanged_schema_tests = [
     # for tests, raw_code isn't a change (because it's always the same for a given test macro)
-    lambda u: u.replace(raw_code="select * from wherever"),
-    lambda u: u.replace(description="a description"),
-    lambda u: u.replace(tags=["mytag"]),
-    lambda u: u.replace(meta={"cool_key": "cool value"}),
+    lambda u: replace(u, raw_code="select * from wherever"),
+    lambda u: replace(u, description="a description"),
+    lambda u: replace(u, tags=["mytag"]),
+    lambda u: replace(u, meta={"cool_key": "cool value"}),
     # these values don't even mean anything on schema tests!
     lambda u: replace_config(u, alias="nope"),
     lambda u: replace_config(u, database="nope"),
     lambda u: replace_config(u, schema="nope"),
-    lambda u: u.replace(database="other_db"),
-    lambda u: u.replace(schema="other_schema"),
-    lambda u: u.replace(alias="foo"),
+    lambda u: replace(u, database="other_db"),
+    lambda u: replace(u, schema="other_schema"),
+    lambda u: replace(u, alias="foo"),
     lambda u: replace_config(u, full_refresh=True),
     lambda u: replace_config(u, post_hook=["select 1 as id"]),
     lambda u: replace_config(u, pre_hook=["select 1 as id"]),
@@ -634,7 +638,8 @@ unchanged_schema_tests = [
 
 changed_schema_tests = [
     lambda u: None,
-    lambda u: u.replace(
+    lambda u: replace(
+        u,
         fqn=["test", "models", "subdir", "foo"],
         original_file_path="models/subdir/foo.sql",
         path="/root/models/subdir/foo.sql",
@@ -664,8 +669,8 @@ def test_compare_to_compiled(basic_uncompiled_schema_test_node, basic_compiled_s
     uncompiled = basic_uncompiled_schema_test_node
     compiled = basic_compiled_schema_test_node
     assert not uncompiled.same_contents(compiled, "postgres")
-    fixed_config = compiled.config.replace(severity=uncompiled.config.severity)
-    fixed_compiled = compiled.replace(
-        config=fixed_config, unrendered_config=uncompiled.unrendered_config
+    fixed_config = replace(compiled.config, severity=uncompiled.config.severity)
+    fixed_compiled = replace(
+        compiled, config=fixed_config, unrendered_config=uncompiled.unrendered_config
     )
     assert uncompiled.same_contents(fixed_compiled, "postgres")

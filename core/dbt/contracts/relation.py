@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import (
     Optional,
     Dict,
@@ -75,7 +75,7 @@ class Policy(FakeAPIObject):
         kwargs: Dict[str, bool] = {}
         for k, v in dct.items():
             kwargs[str(k)] = v
-        return self.replace(**kwargs)
+        return replace(self, **kwargs)
 
 
 @dataclass
@@ -115,4 +115,4 @@ class Path(FakeAPIObject):
         kwargs: Dict[str, str] = {}
         for k, v in dct.items():
             kwargs[str(k)] = v
-        return self.replace(**kwargs)
+        return replace(self, **kwargs)

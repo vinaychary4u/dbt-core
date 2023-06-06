@@ -1,4 +1,4 @@
-from dbt.contracts.util import Replaceable, Mergeable, list_str, Identifier
+from dbt.contracts.util import Mergeable, list_str, Identifier
 from dbt.contracts.connection import QueryComment, UserConfigContract
 from dbt.helper_types import NoValue
 from dbt.dataclass_schema import (
@@ -42,7 +42,7 @@ class Quoting(dbtClassMixin, Mergeable):
 
 
 @dataclass
-class Package(Replaceable, HyphenatedDbtClassMixin):
+class Package(HyphenatedDbtClassMixin):
     pass
 
 
@@ -92,7 +92,7 @@ PackageSpec = Union[LocalPackage, TarballPackage, GitPackage, RegistryPackage]
 
 
 @dataclass
-class PackageConfig(dbtClassMixin, Replaceable):
+class PackageConfig(dbtClassMixin):
     packages: List[PackageSpec]
 
     @classmethod
@@ -124,7 +124,7 @@ class ProjectPackageMetadata:
 
 
 @dataclass
-class Downloads(ExtensibleDbtClassMixin, Replaceable):
+class Downloads(ExtensibleDbtClassMixin):
     tarball: str
 
 
@@ -182,7 +182,7 @@ BANNED_PROJECT_NAMES = {
 
 
 @dataclass
-class Project(HyphenatedDbtClassMixin, Replaceable):
+class Project(HyphenatedDbtClassMixin):
     name: Identifier
     config_version: Optional[int] = 2
     version: Optional[Union[SemverString, float]] = None
@@ -242,7 +242,7 @@ class Project(HyphenatedDbtClassMixin, Replaceable):
 
 
 @dataclass
-class UserConfig(ExtensibleDbtClassMixin, Replaceable, UserConfigContract):
+class UserConfig(ExtensibleDbtClassMixin, UserConfigContract):
     cache_selected_only: Optional[bool] = None
     debug: Optional[bool] = None
     fail_fast: Optional[bool] = None
@@ -266,7 +266,7 @@ class UserConfig(ExtensibleDbtClassMixin, Replaceable, UserConfigContract):
 
 
 @dataclass
-class ProfileConfig(HyphenatedDbtClassMixin, Replaceable):
+class ProfileConfig(HyphenatedDbtClassMixin):
     profile_name: str = field(metadata={"preserve_underscore": True})
     target_name: str = field(metadata={"preserve_underscore": True})
     user_config: UserConfig = field(metadata={"preserve_underscore": True})
@@ -276,7 +276,7 @@ class ProfileConfig(HyphenatedDbtClassMixin, Replaceable):
 
 
 @dataclass
-class ConfiguredQuoting(Quoting, Replaceable):
+class ConfiguredQuoting(Quoting):
     identifier: bool = True
     schema: bool = True
     database: Optional[bool] = None

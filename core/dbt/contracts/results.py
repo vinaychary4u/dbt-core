@@ -4,7 +4,6 @@ from dbt.contracts.util import (
     BaseArtifactMetadata,
     ArtifactMixin,
     VersionedSchema,
-    Replaceable,
     schema_version,
 )
 from dbt.exceptions import DbtInternalError
@@ -425,7 +424,7 @@ class TableMetadata(dbtClassMixin):
 
 
 @dataclass
-class CatalogTable(dbtClassMixin, Replaceable):
+class CatalogTable(dbtClassMixin):
     metadata: TableMetadata
     columns: ColumnMap
     stats: StatsDict

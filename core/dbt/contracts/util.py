@@ -44,7 +44,7 @@ class Replaceable:
         return dataclasses.replace(self, **kwargs)
 
 
-class Mergeable(Replaceable):
+class Mergeable():
     def merged(self, *args):
         """Perform a shallow merge, where the last non-None write wins. This is
         intended to merge dataclasses that are a collection of optional values.

@@ -25,7 +25,6 @@ from dbt.dataclass_schema import (
     ValidatedStringMixin,
     register_pattern,
 )
-from dbt.contracts.util import Replaceable
 
 
 class Identifier(ValidatedStringMixin):
@@ -54,7 +53,7 @@ class ConnectionState(StrEnum):
 
 
 @dataclass(init=False)
-class Connection(ExtensibleDbtClassMixin, Replaceable):
+class Connection(ExtensibleDbtClassMixin):
     type: Identifier
     name: Optional[str] = None
     state: ConnectionState = ConnectionState.INIT
@@ -123,7 +122,7 @@ class LazyHandle:
 # for why we have type: ignore. Maybe someday dataclasses + abstract classes
 # will work.
 @dataclass  # type: ignore
-class Credentials(ExtensibleDbtClassMixin, Replaceable, metaclass=abc.ABCMeta):
+class Credentials(ExtensibleDbtClassMixin, metaclass=abc.ABCMeta):
     database: str
     schema: str
     _ALIASES: ClassVar[Dict[str, str]] = field(default={}, init=False)

@@ -10,7 +10,7 @@ from dbt.dataclass_schema import (
 from dbt.contracts.graph.unparsed import AdditionalPropertiesAllowed, Docs
 from dbt.contracts.graph.utils import validate_color
 from dbt.exceptions import DbtInternalError, CompilationError
-from dbt.contracts.util import Replaceable, list_str
+from dbt.contracts.util import list_str
 from dbt import hooks
 from dbt.node_types import NodeType
 
@@ -190,12 +190,12 @@ register_pattern(Severity, insensitive_patterns("warn", "error"))
 
 
 @dataclass
-class ContractConfig(dbtClassMixin, Replaceable):
+class ContractConfig(dbtClassMixin):
     enforced: bool = False
 
 
 @dataclass
-class Hook(dbtClassMixin, Replaceable):
+class Hook(dbtClassMixin):
     sql: str
     transaction: bool = True
     index: Optional[int] = None
@@ -205,7 +205,7 @@ T = TypeVar("T", bound="BaseConfig")
 
 
 @dataclass
-class BaseConfig(AdditionalPropertiesAllowed, Replaceable):
+class BaseConfig(AdditionalPropertiesAllowed):
 
     # enable syntax like: config['key']
     def __getitem__(self, key):

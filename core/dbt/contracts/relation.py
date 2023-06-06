@@ -8,7 +8,6 @@ from typing_extensions import Protocol
 
 from dbt.dataclass_schema import dbtClassMixin, StrEnum
 
-from dbt.contracts.util import Replaceable
 from dbt.exceptions import CompilationError, DataclassNotDictError
 from dbt.utils import deep_merge
 
@@ -31,7 +30,7 @@ class HasQuoting(Protocol):
     quoting: Dict[str, bool]
 
 
-class FakeAPIObject(dbtClassMixin, Replaceable, Mapping):
+class FakeAPIObject(dbtClassMixin, Mapping):
     # override the mapping truthiness, len is always >1
     def __bool__(self):
         return True

@@ -39,7 +39,7 @@ from dbt.contracts.graph.unparsed import (
     UnparsedSourceTableDefinition,
     UnparsedColumn,
 )
-from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
+from dbt.contracts.util import AdditionalPropertiesMixin
 from dbt.events.functions import warn_or_error
 from dbt.exceptions import ParsingError, ContractBreakingChangeError
 from dbt.events.types import (
@@ -94,7 +94,7 @@ else:
 
 
 @dataclass
-class BaseNode(dbtClassMixin, Replaceable):
+class BaseNode(dbtClassMixin):
     """All nodes or node-like objects in this file should have this as a base class"""
 
     name: str
@@ -211,7 +211,7 @@ class ModelLevelConstraint(ColumnLevelConstraint):
 
 
 @dataclass
-class ColumnInfo(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable):
+class ColumnInfo(AdditionalPropertiesMixin, ExtensibleDbtClassMixin):
     """Used in all ManifestNodes and SourceDefinition"""
 
     name: str
@@ -225,14 +225,14 @@ class ColumnInfo(AdditionalPropertiesMixin, ExtensibleDbtClassMixin, Replaceable
 
 
 @dataclass
-class Contract(dbtClassMixin, Replaceable):
+class Contract(dbtClassMixin):
     enforced: bool = False
     checksum: Optional[str] = None
 
 
 # Metrics, exposures,
 @dataclass
-class HasRelationMetadata(dbtClassMixin, Replaceable):
+class HasRelationMetadata(dbtClassMixin):
     database: Optional[str]
     schema: str
 
@@ -248,7 +248,7 @@ class HasRelationMetadata(dbtClassMixin, Replaceable):
 
 
 @dataclass
-class MacroDependsOn(dbtClassMixin, Replaceable):
+class MacroDependsOn(dbtClassMixin):
     """Used only in the Macro class"""
 
     macros: List[str] = field(default_factory=list)
@@ -285,7 +285,7 @@ class StateRelation(dbtClassMixin):
 
 
 @dataclass
-class ParsedNodeMandatory(GraphNode, HasRelationMetadata, Replaceable):
+class ParsedNodeMandatory(GraphNode, HasRelationMetadata):
     alias: str
     checksum: FileHash
     config: NodeConfig = field(default_factory=NodeConfig)
@@ -486,7 +486,7 @@ class ParsedNode(NodeInfoMixin, ParsedNodeMandatory, SerializableType):
 
 
 @dataclass
-class InjectedCTE(dbtClassMixin, Replaceable):
+class InjectedCTE(dbtClassMixin):
     """Used in CompiledNodes as part of ephemeral model processing"""
 
     id: str
@@ -902,7 +902,7 @@ class SingularTestNode(TestShouldStoreFailures, CompiledNode):
 
 
 @dataclass
-class TestMetadata(dbtClassMixin, Replaceable):
+class TestMetadata(dbtClassMixin):
     name: str
     # kwargs are the args that are left in the test builder after
     # removing configs. They are set from the test builder when
@@ -1289,7 +1289,7 @@ class Exposure(GraphNode):
 
 
 @dataclass
-class MetricReference(dbtClassMixin, Replaceable):
+class MetricReference(dbtClassMixin):
     sql: Optional[Union[str, int]]
     unique_id: Optional[str]
 
@@ -1408,7 +1408,7 @@ class Group(BaseNode):
 
 
 @dataclass
-class ParsedPatch(HasYamlMetadata, Replaceable):
+class ParsedPatch(HasYamlMetadata):
     name: str
     description: str
     meta: Dict[str, Any]

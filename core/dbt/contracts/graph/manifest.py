@@ -908,7 +908,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
 
     # Called in dbt.compilation.Linker.write_graph and
     # dbt.graph.queue.get and ._include_in_cost
-    def expect(self, unique_id: str) -> GraphMemberNode:
+    def expect(self, unique_id: str):
         if unique_id in self.nodes:
             return self.nodes[unique_id]
         elif unique_id in self.sources:

@@ -1,4 +1,4 @@
-from typing import Set, List, Optional, Tuple
+from typing import Set, List, Optional, Tuple, Union
 
 from .graph import Graph, UniqueId
 from .queue import GraphQueue
@@ -13,6 +13,7 @@ from dbt.exceptions import (
     InvalidSelectorError,
 )
 from dbt.contracts.graph.nodes import GraphMemberNode
+from dbt.contracts.publication import PublicModel
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.state import PreviousState
 
@@ -172,14 +173,14 @@ class NodeSelector(MethodManager):
         node = self.manifest.nodes[unique_id]
         return not node.empty and node.config.enabled
 
-    def node_is_match(self, node: GraphMemberNode) -> bool:
+    def node_is_match(self, node) -> bool:
         """Determine if a node is a match for the selector. Non-match nodes
         will be excluded from results during filtering.
         """
         return True
 
     def _is_match(self, unique_id: UniqueId) -> bool:
-        node: GraphMemberNode
+        node: Union[GraphMemberNode, PublicModel]
         if unique_id in self.manifest.nodes:
             node = self.manifest.nodes[unique_id]
         elif unique_id in self.manifest.sources:

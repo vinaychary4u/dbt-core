@@ -1,0 +1,6 @@
+kind: Features
+body: Implement list command for public models
+time: 2023-06-07T11:35:14.267845-04:00
+custom:
+  Author: gshank
+  Issue: "7496"

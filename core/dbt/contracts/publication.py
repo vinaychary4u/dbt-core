@@ -88,6 +88,10 @@ class PublicModel(dbtClassMixin, ManifestOrPublicNode):
     def alias(self):
         return self.identifier
 
+    @property
+    def fqn(self):
+        return [self.package_name, self.name]
+
     def to_ls_dict(self, **kwargs):
         dct = self.to_dict(**kwargs)
         dct["resource_type"] = "public model"

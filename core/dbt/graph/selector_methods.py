@@ -170,6 +170,13 @@ class SelectorMethod(metaclass=abc.ABCMeta):
     ) -> Iterator[Tuple[UniqueId, ResultNode]]:
         yield from chain(self.parsed_nodes(included_nodes), self.source_nodes(included_nodes))
 
+    def parsed_and_public_nodes(
+        self, included_nodes: Set[UniqueId]
+    ) -> Iterator[Tuple[UniqueId, Union[ResultNode, PublicModel]]]:
+        yield from chain(
+            self.parsed_nodes(included_nodes), self.public_model_nodes(included_nodes)
+        )
+
     def non_source_nodes(
         self,
         included_nodes: Set[UniqueId],
@@ -178,6 +185,7 @@ class SelectorMethod(metaclass=abc.ABCMeta):
             self.parsed_nodes(included_nodes),
             self.exposure_nodes(included_nodes),
             self.metric_nodes(included_nodes),
+            self.public_model_nodes(included_nodes),
         )
 
     def groupable_nodes(
@@ -221,7 +229,7 @@ class QualifiedNameSelectorMethod(SelectorMethod):
 
         :param str selector: The selector or node name
         """
-        parsed_nodes = list(self.parsed_nodes(included_nodes))
+        parsed_nodes = list(self.parsed_and_public_nodes(included_nodes))
         for unique_id, node in parsed_nodes:
             if self.node_is_match(selector, node.fqn, node.is_versioned):
                 yield unique_id
@@ -365,7 +373,7 @@ class PathSelectorMethod(SelectorMethod):
         root = Path.cwd()
         paths = set(p.relative_to(root) for p in root.glob(selector))
         for unique_id, node in self.all_nodes(included_nodes):
-            if node.resource_type == NodeType.PublicModel:
+            if node.resource_type == NodeType.PublicModel:  # public models have no path
                 continue
             ofp = Path(node.original_file_path)
             if ofp in paths:
@@ -383,6 +391,8 @@ class FileSelectorMethod(SelectorMethod):
     def search(self, included_nodes: Set[UniqueId], selector: str) -> Iterator[UniqueId]:
         """Yields nodes from included that match the given file name."""
         for unique_id, node in self.all_nodes(included_nodes):
+            if node.resource_type == NodeType.PublicModel:  # public models have no file
+                continue
             if fnmatch(Path(node.original_file_path).name, selector):
                 yield unique_id
 
@@ -463,7 +473,7 @@ class ResourceTypeSelectorMethod(SelectorMethod):
             resource_type = NodeType(selector)
         except ValueError as exc:
             raise DbtRuntimeError(f'Invalid resource_type selector "{selector}"') from exc
-        for unique_id, node in self.parsed_nodes(included_nodes):
+        for unique_id, node in self.parsed_and_public_nodes(included_nodes):
             if node.resource_type == resource_type:
                 yield unique_id
 
@@ -728,7 +738,7 @@ class SourceStatusSelectorMethod(SelectorMethod):
 
 class VersionSelectorMethod(SelectorMethod):
     def search(self, included_nodes: Set[UniqueId], selector: str) -> Iterator[UniqueId]:
-        for unique_id, node in self.parsed_nodes(included_nodes):
+        for unique_id, node in self.parsed_and_public_nodes(included_nodes):
             if isinstance(node, ModelNode):
                 if selector == "latest":
                     if node.is_latest_version:

@@ -94,7 +94,7 @@ class PublicModel(dbtClassMixin, ManifestOrPublicNode):
 
     def to_ls_dict(self, **kwargs):
         dct = self.to_dict(**kwargs)
-        dct["resource_type"] = "public model"
+        dct["resource_type"] = NodeType.PublicModel.value
         return dct
 
 

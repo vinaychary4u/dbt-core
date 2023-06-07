@@ -58,7 +58,9 @@ class ListTask(GraphRunnableTask):
                 )
 
     def _iterate_selected_nodes(self):
+        # For list command, either ResourceTypeSelector or TestSelector
         selector = self.get_node_selector()
+        # Get selection spec matching arguments or use the DEFAULT_INCLUDES from dbt.graph.cli
         spec = self.get_selection_spec()
         nodes = sorted(selector.get_selected(spec))
         if not nodes:

@@ -118,6 +118,8 @@ class GraphRunnableTask(ConfiguredTask):
             spec = self.config.get_selector(default_selector_name)
         else:
             # use --select and --exclude args
+            # This is used when no selection is specified, and will use the DEFAULT_INCLUDES
+            # from dbt.graph.cli.
             spec = parse_difference(self.selection_arg, self.exclusion_arg, indirect_selection)
         return spec
 

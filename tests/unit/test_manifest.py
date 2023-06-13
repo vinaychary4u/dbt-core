@@ -1,13 +1,13 @@
 import os
 import unittest
+from argparse import Namespace
+from collections import namedtuple
+from copy import deepcopy
+from datetime import datetime
+from itertools import product
 from unittest import mock
 
-from argparse import Namespace
-import copy
-from collections import namedtuple
-from itertools import product
-from datetime import datetime
-
+import freezegun
 import pytest
 
 import dbt.flags
@@ -24,24 +24,22 @@ from dbt.contracts.graph.nodes import (
     SourceDefinition,
     Exposure,
     Metric,
+    MetricInputMeasure,
+    MetricTypeParams,
+    WhereFilter,
     Group,
     RefArgs,
 )
-
 from dbt.contracts.graph.unparsed import (
     ExposureType,
     Owner,
     MaturityType,
-    MetricFilter,
-    MetricTime,
 )
-
 from dbt.events.functions import reset_metadata_vars
 from dbt.exceptions import AmbiguousResourceNameRefError
 from dbt.flags import set_from_args
-
 from dbt.node_types import NodeType
-import freezegun
+from dbt_semantic_interfaces.type_enums.metric_type import MetricType
 
 from .utils import (
     MockMacro,
@@ -52,7 +50,6 @@ from .utils import (
     MockGenerateMacro,
     inject_plugin,
 )
-
 
 REQUIRED_PARSED_NODE_KEYS = frozenset(
     {
@@ -102,7 +99,6 @@ REQUIRED_COMPILED_NODE_KEYS = frozenset(
     REQUIRED_PARSED_NODE_KEYS
     | {"compiled", "extra_ctes_injected", "extra_ctes", "compiled_code", "relation_name"}
 )
-
 
 ENV_KEY_NAME = "KEY" if os.name == "nt" else "key"
 
@@ -154,28 +150,18 @@ class ManifestTest(unittest.TestCase):
             "metric.root.my_metric": Metric(
                 name="new_customers",
                 label="New Customers",
-                model='ref("multi")',
                 description="New customers",
-                calculation_method="count",
-                expression="user_id",
-                timestamp="signup_date",
-                time_grains=["day", "week", "month"],
-                dimensions=["plan", "country"],
-                filters=[
-                    MetricFilter(
-                        field="is_paying",
-                        value="True",
-                        operator="=",
-                    )
-                ],
                 meta={"is_okr": True},
                 tags=["okrs"],
-                window=MetricTime(),
+                type=MetricType.SIMPLE,
+                type_params=MetricTypeParams(
+                    measure=MetricInputMeasure(
+                        name="customers", filter=WhereFilter(where_sql_template="is_new = True")
+                    )
+                ),
                 resource_type=NodeType.Metric,
-                depends_on=DependsOn(nodes=["model.root.multi"]),
-                refs=[RefArgs(name="multi")],
-                sources=[],
-                metrics=[],
+                depends_on=DependsOn(nodes=["semantic_model.root.customers"]),
+                refs=[RefArgs(name="customers")],
                 fqn=["root", "my_metric"],
                 unique_id="metric.root.my_metric",
                 package_name="root",
@@ -365,7 +351,7 @@ class ManifestTest(unittest.TestCase):
         reset_metadata_vars()
 
     @freezegun.freeze_time("2018-02-14T09:15:13Z")
-    def test__no_nodes(self):
+    def test_no_nodes(self):
         manifest = Manifest(
             nodes={},
             sources={},
@@ -377,6 +363,7 @@ class ManifestTest(unittest.TestCase):
             metrics={},
             selectors={},
             metadata=ManifestMetadata(generated_at=datetime.utcnow()),
+            semantic_nodes={},
         )
 
         invocation_id = dbt.events.functions.EVENT_MANAGER.invocation_id
@@ -403,12 +390,13 @@ class ManifestTest(unittest.TestCase):
                 "docs": {},
                 "disabled": {},
                 "public_nodes": {},
+                "semantic_nodes": {},
             },
         )
 
     @freezegun.freeze_time("2018-02-14T09:15:13Z")
-    def test__nested_nodes(self):
-        nodes = copy.copy(self.nested_nodes)
+    def test_nested_nodes(self):
+        nodes = deepcopy(self.nested_nodes)
         manifest = Manifest(
             nodes=nodes,
             sources={},
@@ -462,12 +450,12 @@ class ManifestTest(unittest.TestCase):
         )
         self.assertEqual(child_map["model.snowplow.events"], [])
 
-    def test__build_flat_graph(self):
-        exposures = copy.copy(self.exposures)
-        metrics = copy.copy(self.metrics)
-        groups = copy.copy(self.groups)
-        nodes = copy.copy(self.nested_nodes)
-        sources = copy.copy(self.sources)
+    def test_build_flat_graph(self):
+        exposures = deepcopy(self.exposures)
+        metrics = deepcopy(self.metrics)
+        groups = deepcopy(self.groups)
+        nodes = deepcopy(self.nested_nodes)
+        sources = deepcopy(self.sources)
         manifest = Manifest(
             nodes=nodes,
             sources=sources,
@@ -542,6 +530,7 @@ class ManifestTest(unittest.TestCase):
             metadata=metadata,
             files={},
             exposures={},
+            semantic_nodes={},
         )
 
         self.assertEqual(
@@ -571,6 +560,7 @@ class ManifestTest(unittest.TestCase):
                 },
                 "disabled": {},
                 "public_nodes": {},
+                "semantic_nodes": {},
             },
         )
 
@@ -588,7 +578,7 @@ class ManifestTest(unittest.TestCase):
         self.assertEqual(manifest.get_resource_fqns(), {})
 
     def test_get_resource_fqns(self):
-        nodes = copy.copy(self.nested_nodes)
+        nodes = deepcopy(self.nested_nodes)
         nodes["seed.root.seed"] = SeedNode(
             name="seed",
             database="dbt",
@@ -634,7 +624,7 @@ class ManifestTest(unittest.TestCase):
         resource_fqns = manifest.get_resource_fqns()
         self.assertEqual(resource_fqns, expect)
 
-    def test__deepcopy_copies_flat_graph(self):
+    def test_deepcopy_copies_flat_graph(self):
         test_node = ModelNode(
             name="events",
             database="dbt",
@@ -662,6 +652,41 @@ class ManifestTest(unittest.TestCase):
         original.build_flat_graph()
         copy = original.deepcopy()
         self.assertEqual(original.flat_graph, copy.flat_graph)
+
+    def test_add_from_artifact(self):
+        original_nodes = deepcopy(self.nested_nodes)
+        other_nodes = deepcopy(self.nested_nodes)
+
+        nested2 = other_nodes.pop("model.root.nested")
+        nested2.name = "nested2"
+        nested2.alias = "nested2"
+        nested2.fqn = ["root", "nested2"]
+
+        other_nodes["model.root.nested2"] = nested2
+
+        for k, v in other_nodes.items():
+            v.database = "other_" + v.database
+            v.schema = "other_" + v.schema
+            v.alias = "other_" + v.alias
+
+            other_nodes[k] = v
+
+        original_manifest = Manifest(nodes=original_nodes)
+        other_manifest = Manifest(nodes=other_nodes)
+        original_manifest.add_from_artifact(other_manifest.writable_manifest())
+
+        # new node added should not be in original manifest
+        assert "model.root.nested2" not in original_manifest.nodes
+
+        # old node removed should not have state relation in original manifest
+        assert original_manifest.nodes["model.root.nested"].state_relation is None
+
+        # for all other nodes, check that state relation is updated
+        for k, v in original_manifest.nodes.items():
+            if k != "model.root.nested":
+                self.assertEqual("other_" + v.database, v.state_relation.database)
+                self.assertEqual("other_" + v.schema, v.state_relation.schema)
+                self.assertEqual("other_" + v.alias, v.state_relation.alias)
 
 
 class MixedManifestTest(unittest.TestCase):
@@ -869,7 +894,7 @@ class MixedManifestTest(unittest.TestCase):
         del os.environ["DBT_ENV_CUSTOM_ENV_key"]
 
     @freezegun.freeze_time("2018-02-14T09:15:13Z")
-    def test__no_nodes(self):
+    def test_no_nodes(self):
         metadata = ManifestMetadata(
             generated_at=datetime.utcnow(), invocation_id="01234567-0123-0123-0123-0123456789ab"
         )
@@ -883,6 +908,7 @@ class MixedManifestTest(unittest.TestCase):
             metadata=metadata,
             files={},
             exposures={},
+            semantic_nodes={},
         )
         self.assertEqual(
             manifest.writable_manifest().to_dict(omit_none=True),
@@ -907,12 +933,13 @@ class MixedManifestTest(unittest.TestCase):
                 "docs": {},
                 "disabled": {},
                 "public_nodes": {},
+                "semantic_nodes": {},
             },
         )
 
     @freezegun.freeze_time("2018-02-14T09:15:13Z")
-    def test__nested_nodes(self):
-        nodes = copy.copy(self.nested_nodes)
+    def test_nested_nodes(self):
+        nodes = deepcopy(self.nested_nodes)
         manifest = Manifest(
             nodes=nodes,
             sources={},
@@ -963,8 +990,8 @@ class MixedManifestTest(unittest.TestCase):
         )
         self.assertEqual(child_map["model.snowplow.events"], [])
 
-    def test__build_flat_graph(self):
-        nodes = copy.copy(self.nested_nodes)
+    def test_build_flat_graph(self):
+        nodes = deepcopy(self.nested_nodes)
         manifest = Manifest(
             nodes=nodes,
             sources={},
@@ -1108,61 +1135,66 @@ def test_find_macro_by_name(macros, expectations):
             assert result.package_name == expected
 
 
-# these don't use a search package, so we don't need to do as much
 generate_name_parameter_sets = [
     # empty
     FindMacroSpec(
         macros=[],
-        expected=None,
+        expected={None: None, "root": None, "dep": None, "dbt": None},
     ),
     # just root
     FindMacroSpec(
         macros=[MockGenerateMacro("root")],
-        expected="root",
+        # "root" is not imported
+        expected={None: "root", "root": None, "dep": None, "dbt": None},
     ),
     # just dep
     FindMacroSpec(
         macros=[MockGenerateMacro("dep")],
-        expected=None,
+        expected={None: None, "root": None, "dep": "dep", "dbt": None},
     ),
     # just dbt
     FindMacroSpec(
         macros=[MockGenerateMacro("dbt")],
-        expected="dbt",
+        # "dbt" is not imported
+        expected={None: "dbt", "root": None, "dep": None, "dbt": None},
     ),
     # root overrides dep
     FindMacroSpec(
         macros=[MockGenerateMacro("root"), MockGenerateMacro("dep")],
-        expected="root",
+        expected={None: "root", "root": None, "dep": "dep", "dbt": None},
     ),
     # root overrides core
     FindMacroSpec(
         macros=[MockGenerateMacro("root"), MockGenerateMacro("dbt")],
-        expected="root",
+        expected={None: "root", "root": None, "dep": None, "dbt": None},
     ),
     # dep overrides core
     FindMacroSpec(
         macros=[MockGenerateMacro("dep"), MockGenerateMacro("dbt")],
-        expected="dbt",
+        expected={None: "dbt", "root": None, "dep": "dep", "dbt": None},
     ),
     # root overrides dep overrides core
     FindMacroSpec(
         macros=[MockGenerateMacro("root"), MockGenerateMacro("dep"), MockGenerateMacro("dbt")],
-        expected="root",
+        expected={None: "root", "root": None, "dep": "dep", "dbt": None},
     ),
 ]
 
 
-@pytest.mark.parametrize("macros,expected", generate_name_parameter_sets, ids=id_macro)
-def test_find_generate_macro_by_name(macros, expected):
+@pytest.mark.parametrize("macros,expectations", generate_name_parameter_sets, ids=id_macro)
+def test_find_generate_macros_by_name(macros, expectations):
     manifest = make_manifest(macros=macros)
     result = manifest.find_generate_macro_by_name(
         component="some_component", root_project_name="root"
     )
-    if expected is None:
-        assert result is expected
-    else:
-        assert result.package_name == expected
+    for package, expected in expectations.items():
+        result = manifest.find_generate_macro_by_name(
+            component="some_component", root_project_name="root", imported_package=package
+        )
+        if expected is None:
+            assert result is expected
+        else:
+            assert result.package_name == expected
 
 
 FindMaterializationSpec = namedtuple("FindMaterializationSpec", "macros,adapter_type,expected")

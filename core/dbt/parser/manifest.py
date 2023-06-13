@@ -34,7 +34,12 @@ from dbt.adapters.factory import (
     get_relation_class_by_name,
     get_adapter_package_names,
 )
-from dbt.constants import DEPENDENCIES_FILE_NAME, MANIFEST_FILE_NAME, PARTIAL_PARSE_FILE_NAME
+from dbt.constants import (
+    DEPENDENCIES_FILE_NAME,
+    MANIFEST_FILE_NAME,
+    PARTIAL_PARSE_FILE_NAME,
+    SEMANTIC_MANIFEST_FILE_NAME,
+)
 from dbt.helper_types import PathSet
 from dbt.clients.yaml_helper import load_yaml_text
 from dbt.events.functions import fire_event, get_invocation_id, warn_or_error
@@ -57,6 +62,7 @@ from dbt.events.types import (
     DeprecatedReference,
     UpcomingReferenceDeprecation,
 )
+from dbt_extractor import py_extract_from_source  # type: ignore
 from dbt.logger import DbtProcessState
 from dbt.node_types import NodeType, AccessType
 from dbt.clients.jinja import get_rendered, MacroStack
@@ -99,6 +105,7 @@ from dbt.contracts.graph.nodes import (
     ManifestNode,
     ResultNode,
     ModelNode,
+    NodeRelation,
 )
 from dbt.contracts.graph.unparsed import NodeVersion
 from dbt.contracts.util import Writable
@@ -114,6 +121,7 @@ from dbt.exceptions import (
     AmbiguousAliasError,
     PublicationConfigNotFound,
     ProjectDependencyCycleError,
+    InvalidAccessTypeError,
 )
 from dbt.parser.base import Parser
 from dbt.parser.analysis import AnalysisParser
@@ -528,7 +536,9 @@ class ManifestLoader:
             self.process_refs(self.root_project.project_name)
             self.process_docs(self.root_project)
             self.process_metrics(self.root_project)
+            self.process_semantic_models()
             self.check_valid_group_config()
+            self.check_valid_access_property()
 
             # update tracking data
             self._perf_info.process_manifest_elapsed = time.perf_counter() - start_process
@@ -553,9 +563,10 @@ class ManifestLoader:
                 self.process_refs(self.root_project.project_name)
                 # parent and child maps will be rebuilt by write_manifest
 
-        if not skip_parsing or public_nodes_changed:
-            # Write out the <project_name>_publication.json file for this project
-            log_publication_artifact(self.root_project, self.manifest)
+        # Log the publication artifact for this project
+        log_publication_artifact(self.root_project, self.manifest)
+
+        if not skip_parsing:
             # write out the fully parsed manifest
             self.write_manifest_for_partial_parse()
 
@@ -784,14 +795,15 @@ class ManifestLoader:
             for project in self.manifest.project_dependencies.projects:
                 project_dependency_names.append(project.name)
 
-        # clean up previous publications that are no longer specified
-        # and save previous publications, for later removal of references
-        saved_manifest_publications: MutableMapping[str, PublicationConfig] = {}
+        # Save previous publications, for later removal of references
+        saved_manifest_publications: MutableMapping[str, PublicationConfig] = deepcopy(
+            self.manifest.publications
+        )
         if self.manifest.publications:
             for project_name, publication in self.manifest.publications.items():
                 if project_name not in project_dependency_names:
                     remove_dependent_project_references(self.manifest, publication)
-                    self.manifest.publications.pop(project_name)
+                    saved_manifest_publications.pop(project_name)
                     fire_event(
                         PublicationArtifactChanged(
                             action="removed",
@@ -802,7 +814,8 @@ class ManifestLoader:
                         )
                     )
                     public_nodes_changed = True
-            saved_manifest_publications = self.manifest.publications
+
+            # clean up previous publications that are no longer specified
             self.manifest.publications = {}
             # Empty public_nodes since we're re-generating them all
             self.manifest.public_nodes = {}
@@ -1175,6 +1188,28 @@ class ManifestLoader:
                 continue
             _process_metrics_for_node(self.manifest, current_project, exposure)
 
+    def process_semantic_models(self) -> None:
+        for semantic_model in self.manifest.semantic_nodes.values():
+            if semantic_model.model:
+                statically_parsed = py_extract_from_source(f"{{{{ {semantic_model.model} }}}}")
+                if statically_parsed["refs"]:
+
+                    ref = statically_parsed["refs"][0]
+                    if len(ref) == 2:
+                        input_package_name, input_model_name = ref
+                    else:
+                        input_package_name, input_model_name = None, ref[0]
+
+                    refd_node = self.manifest.ref_lookup.find(
+                        input_model_name, input_package_name, None, self.manifest
+                    )
+                    if isinstance(refd_node, ModelNode):
+                        semantic_model.node_relation = NodeRelation(
+                            alias=refd_node.alias,
+                            schema_name=refd_node.schema,
+                            database=refd_node.database,
+                        )
+
     # nodes: node and column descriptions
     # sources: source and table descriptions, column descriptions
     # macros: macro argument descriptions
@@ -1291,6 +1326,19 @@ class ManifestLoader:
                 f"Invalid group '{groupable_node_group}', expected one of {sorted(list(valid_group_names))}",
                 node=groupable_node,
             )
+
+    def check_valid_access_property(self):
+        for node in self.manifest.nodes.values():
+            if (
+                isinstance(node, ModelNode)
+                and node.access == AccessType.Public
+                and node.get_materialization() == "ephemeral"
+            ):
+                raise InvalidAccessTypeError(
+                    unique_id=node.unique_id,
+                    field_value=node.access,
+                    materialization=node.get_materialization(),
+                )
 
     def write_perf_info(self, target_path: str):
         path = os.path.join(target_path, PERF_INFO_FILE_NAME)
@@ -1827,6 +1875,13 @@ def log_publication_artifact(root_project: RuntimeConfig, manifest: Manifest):
     fire_event(PublicationArtifactAvailable(pub_artifact=publication.to_dict()))
 
 
+def write_semantic_manifest(manifest: Manifest, target_path: str) -> None:
+    path = os.path.join(target_path, SEMANTIC_MANIFEST_FILE_NAME)
+    write_file(path, manifest.pydantic_semantic_manifest.json())
+
+
 def write_manifest(manifest: Manifest, target_path: str):
     path = os.path.join(target_path, MANIFEST_FILE_NAME)
     manifest.write(path)
+
+    write_semantic_manifest(manifest=manifest, target_path=target_path)

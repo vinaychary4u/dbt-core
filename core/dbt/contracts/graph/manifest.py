@@ -25,20 +25,22 @@ from uuid import UUID
 from dbt.contracts.publication import ProjectDependencies, PublicationConfig, PublicModel
 
 from dbt.contracts.graph.nodes import (
-    Macro,
-    Documentation,
-    SourceDefinition,
-    GenericTestNode,
-    Exposure,
-    Metric,
-    Group,
-    UnpatchedSourceDefinition,
-    ManifestNode,
-    GraphMemberNode,
-    ResultNode,
     BaseNode,
+    Documentation,
+    Exposure,
+    GenericTestNode,
+    GraphMemberNode,
+    Group,
+    Macro,
+    ManifestNode,
     ManifestOrPublicNode,
+    Metric,
     ModelNode,
+    RelationalNode,
+    ResultNode,
+    SemanticModel,
+    SourceDefinition,
+    UnpatchedSourceDefinition,
 )
 from dbt.contracts.graph.unparsed import SourcePatch, NodeVersion, UnparsedVersion
 from dbt.contracts.graph.manifest_upgrade import upgrade_manifest_json
@@ -60,6 +62,9 @@ from dbt.node_types import NodeType
 from dbt.flags import get_flags, MP_CONTEXT
 from dbt import tracking
 import dbt.utils
+from dbt_semantic_interfaces.implementations.metric import PydanticMetric
+from dbt_semantic_interfaces.implementations.semantic_manifest import PydanticSemanticManifest
+from dbt_semantic_interfaces.implementations.semantic_model import PydanticSemanticModel
 
 NodeEdgeMap = Dict[str, List[str]]
 PackageName = str
@@ -608,26 +613,36 @@ class MacroMethods:
         return candidates.last()
 
     def find_generate_macro_by_name(
-        self, component: str, root_project_name: str
+        self, component: str, root_project_name: str, imported_package: Optional[str] = None
     ) -> Optional[Macro]:
         """
-        The `generate_X_name` macros are similar to regular ones, but ignore
-        imported packages.
+        The default `generate_X_name` macros are similar to regular ones, but only
+        includes imported packages when searching for a package.
+        - if package is not provided:
             - if there is a `generate_{component}_name` macro in the root
               project, return it
             - return the `generate_{component}_name` macro from the 'dbt'
               internal project
+        - if package is provided
+            - return the `generate_{component}_name` macro from the imported
+              package, if one exists
         """
 
         def filter(candidate: MacroCandidate) -> bool:
-            return candidate.locality != Locality.Imported
+            if imported_package:
+                return (
+                    candidate.locality == Locality.Imported
+                    and imported_package == candidate.macro.package_name
+                )
+            else:
+                return candidate.locality != Locality.Imported
 
         candidates: CandidateList = self._find_macros_by_name(
             name=f"generate_{component}_name",
             root_project_name=root_project_name,
-            # filter out imported packages
             filter=filter,
         )
+
         return candidates.last()
 
     def _find_macros_by_name(
@@ -695,6 +710,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     public_nodes: MutableMapping[str, PublicModel] = field(default_factory=dict)
     project_dependencies: Optional[ProjectDependencies] = None
     publications: MutableMapping[str, PublicationConfig] = field(default_factory=dict)
+    semantic_nodes: MutableMapping[str, SemanticModel] = field(default_factory=dict)
 
     _doc_lookup: Optional[DocLookup] = field(
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
@@ -883,7 +899,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                 group_map[node.group].append(node.unique_id)
         self.group_map = group_map
 
-    def writable_manifest(self):
+    def writable_manifest(self) -> "WritableManifest":
         self.build_parent_and_child_maps()
         self.build_group_map()
         return WritableManifest(
@@ -901,6 +917,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             child_map=self.child_map,
             parent_map=self.parent_map,
             group_map=self.group_map,
+            semantic_nodes=self.semantic_nodes,
         )
 
     def write(self, path):
@@ -973,6 +990,20 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         if self._analysis_lookup is None:
             self._analysis_lookup = AnalysisLookup(self)
         return self._analysis_lookup
+
+    @property
+    def pydantic_semantic_manifest(self) -> PydanticSemanticManifest:
+        pydantic_semantic_manifest = PydanticSemanticManifest(metrics=[], semantic_models=[])
+
+        for semantic_model in self.semantic_nodes.values():
+            pydantic_semantic_manifest.semantic_models.append(
+                PydanticSemanticModel.parse_obj(semantic_model.to_dict())
+            )
+
+        for metric in self.metrics.values():
+            pydantic_semantic_manifest.metrics.append(PydanticMetric.parse_obj(metric.to_dict()))
+
+        return pydantic_semantic_manifest
 
     def resolve_refs(
         self, source_node: GraphMemberNode, current_project: str
@@ -1136,6 +1167,23 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         sample = list(islice(merged, 5))
         fire_event(MergedFromState(num_merged=len(merged), sample=sample))
 
+    # Called by CloneTask.defer_to_manifest
+    def add_from_artifact(
+        self,
+        other: "WritableManifest",
+    ) -> None:
+        """Update this manifest by *adding* information about each node's location
+        in the other manifest.
+
+        Only non-ephemeral refable nodes are examined.
+        """
+        refables = set(NodeType.refable())
+        for unique_id, node in other.nodes.items():
+            current = self.nodes.get(unique_id)
+            if current and (node.resource_type in refables and not node.is_ephemeral):
+                state_relation = RelationalNode(node.database, node.schema, node.alias)
+                self.nodes[unique_id] = current.replace(state_relation=state_relation)
+
     # Methods that were formerly in ParseResult
 
     def add_macro(self, source_file: SourceFile, macro: Macro):
@@ -1220,6 +1268,11 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         _check_duplicates(doc, self.docs)
         self.docs[doc.unique_id] = doc
         source_file.docs.append(doc.unique_id)
+
+    def add_semantic_model(self, source_file: SchemaSourceFile, semantic_model: SemanticModel):
+        _check_duplicates(semantic_model, self.semantic_nodes)
+        self.semantic_nodes[semantic_model.unique_id] = semantic_model
+        source_file.semantic_nodes.append(semantic_model.unique_id)
 
     # end of methods formerly in ParseResult
 
@@ -1320,6 +1373,9 @@ class WritableManifest(ArtifactMixin):
     public_nodes: Mapping[UniqueID, PublicModel] = field(
         metadata=dict(description=("The public models used in the dbt project"))
     )
+    semantic_nodes: Mapping[UniqueID, SemanticModel] = field(
+        metadata=dict(description=("The semantic models defined in the dbt project"))
+    )
     metadata: ManifestMetadata = field(
         metadata=dict(
             description="Metadata about the manifest",
@@ -1341,8 +1397,9 @@ class WritableManifest(ArtifactMixin):
     def upgrade_schema_version(cls, data):
         """This overrides the "upgrade_schema_version" call in VersionedSchema (via
         ArtifactMixin) to modify the dictionary passed in from earlier versions of the manifest."""
-        if get_manifest_schema_version(data) <= 9:
-            data = upgrade_manifest_json(data)
+        manifest_schema_version = get_manifest_schema_version(data)
+        if manifest_schema_version <= 9:
+            data = upgrade_manifest_json(data, manifest_schema_version)
         return cls.from_dict(data)
 
     def __post_serialize__(self, dct):

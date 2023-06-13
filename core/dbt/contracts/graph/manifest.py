@@ -1179,7 +1179,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             current = self.nodes.get(unique_id)
             if current and (node.resource_type in refables and not node.is_ephemeral):
                 state_relation = RelationalNode(node.database, node.schema, node.alias)
-                self.nodes[unique_id] = current.replace(state_relation=state_relation)
+                self.nodes[unique_id] = replace(current, state_relation=state_relation)
 
     # Methods that were formerly in ParseResult
 

@@ -555,7 +555,7 @@ class CompiledNode(ParsedNode):
 
 
 @dataclass
-class FileSlice(dbtClassMixin, Replaceable):
+class FileSlice(dbtClassMixin):
     """Provides file slice level context about what something was created from.
 
     Implementation of the dbt-semantic-interfaces `FileSlice` protocol
@@ -568,7 +568,7 @@ class FileSlice(dbtClassMixin, Replaceable):
 
 
 @dataclass
-class SourceFileMetadata(dbtClassMixin, Replaceable):
+class SourceFileMetadata(dbtClassMixin):
     """Provides file context about what something was created from.
 
     Implementation of the dbt-semantic-interfaces `Metadata` protocol
@@ -1366,7 +1366,7 @@ class MetricTypeParams(dbtClassMixin):
 
 
 @dataclass
-class MetricReference(dbtClassMixin, Replaceable):
+class MetricReference(dbtClassMixin):
     sql: Optional[Union[str, int]] = None
     unique_id: Optional[str] = None
 

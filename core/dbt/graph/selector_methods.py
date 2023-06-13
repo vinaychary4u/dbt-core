@@ -53,7 +53,7 @@ class MethodName(StrEnum):
     SourceStatus = "source_status"
     Wildcard = "wildcard"
     Version = "version"
-    PublicModel = "pub_model"
+    PublicModel = "public"
 
 
 def is_selected_node(fqn: List[str], node_selector: str, is_versioned: bool) -> bool:

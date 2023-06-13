@@ -21,7 +21,7 @@ from .selector_spec import (
 
 INTERSECTION_DELIMITER = ","
 
-DEFAULT_INCLUDES: List[str] = ["fqn:*", "source:*", "exposure:*", "metric:*", "pub_model:*"]
+DEFAULT_INCLUDES: List[str] = ["fqn:*", "source:*", "exposure:*", "metric:*", "public:*"]
 DEFAULT_EXCLUDES: List[str] = []
 
 

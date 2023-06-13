@@ -105,7 +105,7 @@ class ListTask(GraphRunnableTask):
             elif node.resource_type == NodeType.PublicModel:
                 assert isinstance(node, PublicModel)
                 pub_model_selector = ".".join([node.package_name, node.name])
-                yield f"pub_model:{pub_model_selector}"
+                yield f"public:{pub_model_selector}"
             else:
                 # everything else is from `fqn`
                 yield ".".join(node.fqn)

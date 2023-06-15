@@ -1478,12 +1478,14 @@ class NodeRelation(dbtClassMixin):
 class SemanticModel(GraphNode):
     model: str
     node_relation: Optional[NodeRelation]
+    depends_on: DependsOn = field(default_factory=DependsOn)
     description: Optional[str] = None
     defaults: Optional[Defaults] = None
     entities: Sequence[Entity] = field(default_factory=list)
     measures: Sequence[Measure] = field(default_factory=list)
     dimensions: Sequence[Dimension] = field(default_factory=list)
     metadata: Optional[SourceFileMetadata] = None
+    created_at: float = field(default_factory=lambda: time.time())  # REVIEW: Needed?
 
     @property
     def entity_references(self) -> List[LinkableElementReference]:
@@ -1533,6 +1535,18 @@ class SemanticModel(GraphNode):
     @property
     def reference(self) -> SemanticModelReference:
         return SemanticModelReference(semantic_model_name=self.name)
+
+    @property
+    def depends_on_nodes(self):
+        return self.depends_on.nodes
+
+    @property
+    def depends_on_public_nodes(self):
+        return self.depends_on.public_nodes
+
+    @property
+    def depends_on_macros(self):
+        return self.depends_on.macros
 
 
 # ====================================
@@ -1641,6 +1655,7 @@ GraphMemberNode = Union[
     ResultNode,
     Exposure,
     Metric,
+    SemanticModel,
 ]
 
 # All "nodes" (or node-like objects) in this file

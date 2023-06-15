@@ -591,6 +591,7 @@ class ManifestLoader:
 
                 resolved_refs = self.manifest.resolve_refs(node, self.root_project.project_name)
                 resolved_model_refs = [r for r in resolved_refs if isinstance(r, ModelNode)]
+                node.depends_on
                 for resolved_ref in resolved_model_refs:
                     if resolved_ref.deprecation_date:
 

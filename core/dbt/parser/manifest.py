@@ -1210,6 +1210,7 @@ class ManifestLoader:
                             schema_name=refd_node.schema,
                             database=refd_node.database,
                         )
+                        semantic_model.depends_on.add_node(refd_node.unique_id)
 
     # nodes: node and column descriptions
     # sources: source and table descriptions, column descriptions

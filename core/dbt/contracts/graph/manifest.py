@@ -861,7 +861,6 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             public_nodes={k: _deepcopy(v) for k, v in self.public_nodes.items()},
             files={k: _deepcopy(v) for k, v in self.files.items()},
             state_check=_deepcopy(self.state_check),
-            project_dependencies=self.project_dependencies,
             publications={k: _deepcopy(v) for k, v in self.publications.items()},
             semantic_nodes={k: _deepcopy(v) for k, v in self.semantic_nodes.items()},
         )
@@ -1309,7 +1308,6 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self.disabled,
             self.env_vars,
             self.public_nodes,
-            self.project_dependencies,
             self.publications,
             self.semantic_nodes,
             self._doc_lookup,

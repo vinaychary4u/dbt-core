@@ -1,3 +1,4 @@
+import functools
 import os
 from copy import deepcopy
 from typing import MutableMapping, Dict, List
@@ -346,7 +347,7 @@ class PartialParsing:
                             elem_patch = elem
                             break
                 if elem_patch:
-                    self.delete_schema_mssa_links(schema_file, dict_key, elem_patch)
+                    self.delete_schema_mssa_links(dict_key, schema_file, elem_patch)
                     self.merge_patch(schema_file, dict_key, elem_patch)
                     if unique_id in schema_file.node_patches:
                         schema_file.node_patches.remove(unique_id)
@@ -528,7 +529,7 @@ class PartialParsing:
                         patch = self.get_schema_element(patch_list, name)
                         if patch:
                             if key in ["models", "seeds", "snapshots"]:
-                                self.delete_schema_mssa_links(schema_file, key, patch)
+                                self.delete_schema_mssa_links(key, schema_file, patch)
                                 self.merge_patch(schema_file, key, patch)
                                 if unique_id in schema_file.node_patches:
                                     schema_file.node_patches.remove(unique_id)
@@ -609,27 +610,16 @@ class PartialParsing:
             env_var_changes = self.env_vars_changed_schema_files[schema_file.file_id]
 
         # models, seeds, snapshots, analyses
-        for dict_key in ["models", "seeds", "snapshots", "analyses", "semantic_models"]:
-            key_diff = self.get_diff_for(dict_key, saved_yaml_dict, new_yaml_dict)
-            if key_diff["changed"]:
-                for elem in key_diff["changed"]:
-                    self.delete_schema_mssa_links(schema_file, dict_key, elem)
-                    self.merge_patch(schema_file, dict_key, elem)
-            if key_diff["deleted"]:
-                for elem in key_diff["deleted"]:
-                    self.delete_schema_mssa_links(schema_file, dict_key, elem)
-            if key_diff["added"]:
-                for elem in key_diff["added"]:
-                    self.merge_patch(schema_file, dict_key, elem)
-            # Handle schema file updates due to env_var changes
-            if dict_key in env_var_changes and dict_key in new_yaml_dict:
-                for name in env_var_changes[dict_key]:
-                    if name in key_diff["changed_or_deleted_names"]:
-                        continue
-                    elem = self.get_schema_element(new_yaml_dict[dict_key], name)
-                    if elem:
-                        self.delete_schema_mssa_links(schema_file, dict_key, elem)
-                        self.merge_patch(schema_file, dict_key, elem)
+        for dict_key in ["models", "seeds", "snapshots", "analyses"]:
+            delete_function = functools.partial(self.delete_schema_mssa_links, dict_key)
+            self.handle_key_changes(
+                schema_file,
+                dict_key,
+                env_var_changes,
+                saved_yaml_dict,
+                new_yaml_dict,
+                delete_function,
+            )
 
         # sources
         dict_key = "sources"
@@ -665,96 +655,75 @@ class PartialParsing:
                     self.remove_tests(schema_file, dict_key, source["name"])
                     self.merge_patch(schema_file, dict_key, source)
 
-        # macros
-        dict_key = "macros"
-        macro_diff = self.get_diff_for(dict_key, saved_yaml_dict, new_yaml_dict)
-        if macro_diff["changed"]:
-            for macro in macro_diff["changed"]:
-                self.delete_schema_macro_patch(schema_file, macro)
-                self.merge_patch(schema_file, dict_key, macro)
-        if macro_diff["deleted"]:
-            for macro in macro_diff["deleted"]:
-                self.delete_schema_macro_patch(schema_file, macro)
-        if macro_diff["added"]:
-            for macro in macro_diff["added"]:
-                self.merge_patch(schema_file, dict_key, macro)
-        # Handle schema file updates due to env_var changes
-        if dict_key in env_var_changes and dict_key in new_yaml_dict:
-            for name in env_var_changes[dict_key]:
-                if name in macro_diff["changed_or_deleted_names"]:
-                    continue
-                elem = self.get_schema_element(new_yaml_dict[dict_key], name)
-                if elem:
-                    self.delete_schema_macro_patch(schema_file, elem)
-                    self.merge_patch(schema_file, dict_key, elem)
+        self.handle_key_changes(
+            schema_file,
+            "macros",
+            env_var_changes,
+            saved_yaml_dict,
+            new_yaml_dict,
+            self.delete_schema_macro_patch,
+        )
+        self.handle_key_changes(
+            schema_file,
+            "exposures",
+            env_var_changes,
+            saved_yaml_dict,
+            new_yaml_dict,
+            self.delete_schema_exposure,
+        )
+        self.handle_key_changes(
+            schema_file,
+            "metrics",
+            env_var_changes,
+            saved_yaml_dict,
+            new_yaml_dict,
+            self.delete_schema_metric,
+        )
+        self.handle_key_changes(
+            schema_file,
+            "groups",
+            env_var_changes,
+            saved_yaml_dict,
+            new_yaml_dict,
+            self.delete_schema_group,
+        )
+        self.handle_key_changes(
+            schema_file,
+            "semantic_models",
+            env_var_changes,
+            saved_yaml_dict,
+            new_yaml_dict,
+            self.delete_schema_semantic_model,
+        )
 
-        # exposures
-        dict_key = "exposures"
-        exposure_diff = self.get_diff_for(dict_key, saved_yaml_dict, new_yaml_dict)
-        if exposure_diff["changed"]:
-            for exposure in exposure_diff["changed"]:
-                self.delete_schema_exposure(schema_file, exposure)
-                self.merge_patch(schema_file, dict_key, exposure)
-        if exposure_diff["deleted"]:
-            for exposure in exposure_diff["deleted"]:
-                self.delete_schema_exposure(schema_file, exposure)
-        if exposure_diff["added"]:
-            for exposure in exposure_diff["added"]:
-                self.merge_patch(schema_file, dict_key, exposure)
+    def handle_key_changes(
+        self,
+        schema_file,
+        dict_key,
+        env_var_changes,
+        saved_yaml_dict,
+        new_yaml_dict,
+        delete_element,
+    ):
+        key_diff = self.get_diff_for(dict_key, saved_yaml_dict, new_yaml_dict)
+        if key_diff["changed"]:
+            for elem in key_diff["changed"]:
+                delete_element(schema_file, elem)
+                self.merge_patch(schema_file, dict_key, elem)
+        if key_diff["deleted"]:
+            for elem in key_diff["deleted"]:
+                delete_element(schema_file, elem)
+        if key_diff["added"]:
+            for elem in key_diff["added"]:
+                self.merge_patch(schema_file, dict_key, elem)
         # Handle schema file updates due to env_var changes
         if dict_key in env_var_changes and dict_key in new_yaml_dict:
             for name in env_var_changes[dict_key]:
-                if name in exposure_diff["changed_or_deleted_names"]:
+                if name in key_diff["changed_or_deleted_names"]:
                     continue
                 elem = self.get_schema_element(new_yaml_dict[dict_key], name)
                 if elem:
-                    self.delete_schema_exposure(schema_file, elem)
-                    self.merge_patch(schema_file, dict_key, elem)
-
-        # metrics
-        dict_key = "metrics"
-        metric_diff = self.get_diff_for("metrics", saved_yaml_dict, new_yaml_dict)
-        if metric_diff["changed"]:
-            for metric in metric_diff["changed"]:
-                self.delete_schema_metric(schema_file, metric)
-                self.merge_patch(schema_file, dict_key, metric)
-        if metric_diff["deleted"]:
-            for metric in metric_diff["deleted"]:
-                self.delete_schema_metric(schema_file, metric)
-        if metric_diff["added"]:
-            for metric in metric_diff["added"]:
-                self.merge_patch(schema_file, dict_key, metric)
-        # Handle schema file updates due to env_var changes
-        if dict_key in env_var_changes and dict_key in new_yaml_dict:
-            for name in env_var_changes[dict_key]:
-                if name in metric_diff["changed_or_deleted_names"]:
-                    continue
-                elem = self.get_schema_element(new_yaml_dict[dict_key], name)
-                if elem:
-                    self.delete_schema_metric(schema_file, elem)
-                    self.merge_patch(schema_file, dict_key, elem)
-
-        # groups
-        dict_key = "groups"
-        group_diff = self.get_diff_for("groups", saved_yaml_dict, new_yaml_dict)
-        if group_diff["changed"]:
-            for group in group_diff["changed"]:
-                self.delete_schema_group(schema_file, group)
-                self.merge_patch(schema_file, dict_key, group)
-        if group_diff["deleted"]:
-            for group in group_diff["deleted"]:
-                self.delete_schema_group(schema_file, group)
-        if group_diff["added"]:
-            for group in group_diff["added"]:
-                self.merge_patch(schema_file, dict_key, group)
-        # Handle schema file updates due to env_var changes
-        if dict_key in env_var_changes and dict_key in new_yaml_dict:
-            for name in env_var_changes[dict_key]:
-                if name in group_diff["changed_or_deleted_names"]:
-                    continue
-                elem = self.get_schema_element(new_yaml_dict[dict_key], name)
-                if elem:
-                    self.delete_schema_group(schema_file, elem)
+                    delete_element(schema_file, elem)
                     self.merge_patch(schema_file, dict_key, elem)
 
     # Take a "section" of the schema file yaml dictionary from saved and new schema files
@@ -818,7 +787,7 @@ class PartialParsing:
 
     # For model, seed, snapshot, analysis schema dictionary keys,
     # delete the patches and tests from the patch
-    def delete_schema_mssa_links(self, schema_file, dict_key, elem):
+    def delete_schema_mssa_links(self, dict_key, schema_file, elem):
         # find elem node unique_id in node_patches
         prefix = key_to_prefix[dict_key]
         elem_unique_ids = []
@@ -939,6 +908,19 @@ class PartialParsing:
                         self.schedule_nodes_for_parsing(self.saved_manifest.child_map[unique_id])
                     self.saved_manifest.metrics.pop(unique_id)
                     schema_file.metrics.remove(unique_id)
+            elif unique_id in self.saved_manifest.disabled:
+                self.delete_disabled(unique_id, schema_file.file_id)
+
+    # semantic models are created from schema files, but are not referred to by other nodes
+    def delete_schema_semantic_model(self, schema_file, semantic_model_dict):
+        semantic_model_name = semantic_model_dict["name"]
+        semantic_models = schema_file.semantic_nodes.copy()
+        for unique_id in semantic_models:
+            if unique_id in self.saved_manifest.semantic_nodes:
+                semantic_model = self.saved_manifest.semantic_nodes[unique_id]
+                if semantic_model.name == semantic_model_name:
+                    self.saved_manifest.semantic_nodes.pop(unique_id)
+                    schema_file.semantic_nodes.remove(unique_id)
             elif unique_id in self.saved_manifest.disabled:
                 self.delete_disabled(unique_id, schema_file.file_id)
 

@@ -703,10 +703,10 @@ class PartialParsing:
             for name in env_var_changes[dict_key]:
                 if name in key_diff["changed_or_deleted_names"]:
                     continue
-                elem = self.get_schema_element(new_yaml_dict[dict_key], name)
-                if elem:
-                    delete_element(schema_file, elem)
-                    self.merge_patch(schema_file, dict_key, elem)
+                schema_elem = self.get_schema_element(new_yaml_dict[dict_key], name)
+                if schema_elem:
+                    delete_element(schema_file, schema_elem)
+                    self.merge_patch(schema_file, dict_key, schema_elem)
 
     # Take a "section" of the schema file yaml dictionary from saved and new schema files
     # and determine which parts have changed

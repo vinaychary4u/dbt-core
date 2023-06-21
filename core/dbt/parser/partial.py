@@ -403,41 +403,15 @@ class PartialParsing:
                     self.saved_files[file_id] = deepcopy(self.new_files[file_id])
                     self.add_to_pp_files(self.saved_files[file_id])
             elif unique_id in self.saved_manifest.sources:
-                source = self.saved_manifest.sources[unique_id]
-                file_id = source.file_id
-                if file_id in self.saved_files and file_id not in self.file_diff["deleted"]:
-                    schema_file = self.saved_files[file_id]
-                    sources = []
-                    if "sources" in schema_file.dict_from_yaml:
-                        sources = schema_file.dict_from_yaml["sources"]
-                    source_element = self.get_schema_element(sources, source.source_name)
-                    if source_element:
-                        self.delete_schema_source(schema_file, source_element)
-                        self.merge_patch(schema_file, "sources", source_element)
+                self.schedule_for_parsing("sources", unique_id, self.delete_schema_source)
             elif unique_id in self.saved_manifest.exposures:
-                exposure = self.saved_manifest.exposures[unique_id]
-                file_id = exposure.file_id
-                if file_id in self.saved_files and file_id not in self.file_diff["deleted"]:
-                    schema_file = self.saved_files[file_id]
-                    exposures = []
-                    if "exposures" in schema_file.dict_from_yaml:
-                        exposures = schema_file.dict_from_yaml["exposures"]
-                    exposure_element = self.get_schema_element(exposures, exposure.name)
-                    if exposure_element:
-                        self.delete_schema_exposure(schema_file, exposure_element)
-                        self.merge_patch(schema_file, "exposures", exposure_element)
+                self.schedule_for_parsing("exposures", unique_id, self.delete_schema_exposure)
             elif unique_id in self.saved_manifest.metrics:
-                metric = self.saved_manifest.metrics[unique_id]
-                file_id = metric.file_id
-                if file_id in self.saved_files and file_id not in self.file_diff["deleted"]:
-                    schema_file = self.saved_files[file_id]
-                    metrics = []
-                    if "metrics" in schema_file.dict_from_yaml:
-                        metrics = schema_file.dict_from_yaml["metrics"]
-                    metric_element = self.get_schema_element(metrics, metric.name)
-                    if metric_element:
-                        self.delete_schema_metric(schema_file, metric_element)
-                        self.merge_patch(schema_file, "metrics", metric_element)
+                self.schedule_for_parsing("metrics", unique_id, self.delete_schema_metric)
+            elif unique_id in self.saved_manifest.semantic_nodes:
+                self.schedule_for_parsing(
+                    "semantic_nodes", unique_id, self.delete_schema_semantic_model
+                )
             elif unique_id in self.saved_manifest.macros:
                 macro = self.saved_manifest.macros[unique_id]
                 file_id = macro.file_id
@@ -446,6 +420,19 @@ class PartialParsing:
                     self.delete_macro_file(source_file)
                     self.saved_files[file_id] = deepcopy(self.new_files[file_id])
                     self.add_to_pp_files(self.saved_files[file_id])
+
+    def schedule_for_parsing(self, key, unique_id, delete_element):
+        element = getattr(self.saved_manifest, key)[unique_id]
+        file_id = element.file_id
+        if file_id in self.saved_files and file_id not in self.file_diff["deleted"]:
+            schema_file = self.saved_files[file_id]
+            elements = []
+            if key in schema_file.dict_from_yaml:
+                elements = schema_file.dict_from_yaml[key]
+            schema_element = self.get_schema_element(elements, element.name)
+            if schema_element:
+                delete_element(schema_file, schema_element)
+                self.merge_patch(schema_file, key, schema_element)
 
     def delete_macro_file(self, source_file, follow_references=False):
         self.check_for_special_deleted_macros(source_file)
@@ -851,7 +838,7 @@ class PartialParsing:
                     schema_file.sources.remove(unique_id)
                     self.schedule_referencing_nodes_for_parsing(unique_id)
 
-        self.remove_tests(schema_file, "sources", source["name"])
+        self.remove_tests(schema_file, "sources", source_name)
 
     def delete_schema_macro_patch(self, schema_file, macro):
         # This is just macro patches that need to be reapplied

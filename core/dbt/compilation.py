@@ -1,10 +1,10 @@
 import argparse
 import json
+import re
 
 import networkx as nx  # type: ignore
 import os
 import pickle
-import sqlparse
 
 from collections import defaultdict
 from typing import List, Dict, Any, Tuple, Optional
@@ -179,9 +179,6 @@ class Linker:
     def link_graph(self, manifest: Manifest):
         for source in manifest.sources.values():
             self.add_node(source.unique_id)
-        for semantic_node in manifest.semantic_nodes.values():
-            self.add_node(semantic_node.unique_id)
-
         for node in manifest.nodes.values():
             self.link_node(node, manifest)
         for exposure in manifest.exposures.values():
@@ -301,62 +298,6 @@ class Compiler:
         relation_cls = adapter.Relation
         return relation_cls.add_ephemeral_prefix(name)
 
-    def _inject_ctes_into_sql(self, sql: str, ctes: List[InjectedCTE]) -> str:
-        """
-        `ctes` is a list of InjectedCTEs like:
-
-            [
-                InjectedCTE(
-                    id="cte_id_1",
-                    sql="__dbt__cte__ephemeral as (select * from table)",
-                ),
-                InjectedCTE(
-                    id="cte_id_2",
-                    sql="__dbt__cte__events as (select id, type from events)",
-                ),
-            ]
-
-        Given `sql` like:
-
-          "with internal_cte as (select * from sessions)
-           select * from internal_cte"
-
-        This will spit out:
-
-          "with __dbt__cte__ephemeral as (select * from table),
-                __dbt__cte__events as (select id, type from events),
-                with internal_cte as (select * from sessions)
-           select * from internal_cte"
-
-        (Whitespace enhanced for readability.)
-        """
-        if len(ctes) == 0:
-            return sql
-
-        parsed_stmts = sqlparse.parse(sql)
-        parsed = parsed_stmts[0]
-
-        with_stmt = None
-        for token in parsed.tokens:
-            if token.is_keyword and token.normalized == "WITH":
-                with_stmt = token
-                break
-
-        if with_stmt is None:
-            # no with stmt, add one, and inject CTEs right at the beginning
-            first_token = parsed.token_first()
-            with_stmt = sqlparse.sql.Token(sqlparse.tokens.Keyword, "with")
-            parsed.insert_before(first_token, with_stmt)
-        else:
-            # stmt exists, add a comma (which will come after injected CTEs)
-            trailing_comma = sqlparse.sql.Token(sqlparse.tokens.Punctuation, ",")
-            parsed.insert_after(with_stmt, trailing_comma)
-
-        token = sqlparse.sql.Token(sqlparse.tokens.Keyword, ", ".join(c.sql for c in ctes))
-        parsed.insert_after(with_stmt, token)
-
-        return str(parsed)
-
     def _recursively_prepend_ctes(
         self,
         model: ManifestSQLNode,
@@ -431,7 +372,7 @@ class Compiler:
 
             _add_prepended_cte(prepended_ctes, InjectedCTE(id=cte.id, sql=sql))
 
-        injected_sql = self._inject_ctes_into_sql(
+        injected_sql = inject_ctes_into_sql(
             model.compiled_code,
             prepended_ctes,
         )
@@ -582,3 +523,56 @@ class Compiler:
         if write:
             self._write_node(node)
         return node
+
+
+def inject_ctes_into_sql(sql: str, ctes: List[InjectedCTE]) -> str:
+    """
+    `ctes` is a list of InjectedCTEs like:
+
+        [
+            InjectedCTE(
+                id="cte_id_1",
+                sql="__dbt__cte__ephemeral as (select * from table)",
+            ),
+            InjectedCTE(
+                id="cte_id_2",
+                sql="__dbt__cte__events as (select id, type from events)",
+            ),
+        ]
+
+    Given `sql` like:
+
+      "with internal_cte as (select * from sessions)
+       select * from internal_cte"
+
+    This will spit out:
+
+      "with __dbt__cte__ephemeral as (select * from table),
+            __dbt__cte__events as (select id, type from events),
+            with internal_cte as (select * from sessions)
+       select * from internal_cte"
+
+    (Whitespace enhanced for readability.)
+    """
+    if len(ctes) == 0:
+        return sql
+
+    words_found = re.findall(r"\w+|[^\w\s]", sql, re.UNICODE)
+
+    with_stmt = None
+    for word in words_found:
+        if word.upper() == "WITH":
+            with_stmt = word
+            break
+
+    joined_ctes = ", ".join(c.sql for c in ctes)
+
+    constructed_sql = ""
+    if with_stmt is None:
+        # no with stmt, add one, and inject CTEs right at the beginning
+        constructed_sql = "with " + joined_ctes + sql
+    else:
+        # stmt exists, add a comma (which will come after injected CTEs)
+        constructed_sql = "with " + joined_ctes + ", " + sql
+
+    return constructed_sql

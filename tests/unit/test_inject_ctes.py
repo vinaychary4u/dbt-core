@@ -6,6 +6,7 @@ import re
 def norm_whitespace(string):
     _RE_COMBINE_WHITESPACE = re.compile(r"\s+")
     string = _RE_COMBINE_WHITESPACE.sub(" ", string).strip()
+    return string
 
 
 def test_inject_ctes_0():
@@ -112,7 +113,7 @@ def test_inject_ctes_4():
     ]
     expected_sql = """with __dbt__cte__ephemeral as (select * from table),
        __dbt__cte__events as (select id, type from events),
-       with internal_cte as (select * from sessions)
+       internal_cte as (select * from sessions)
        select * from internal_cte"""
 
     generated_sql = inject_ctes_into_sql(starting_sql, ctes)

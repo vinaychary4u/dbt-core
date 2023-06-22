@@ -572,9 +572,10 @@ def inject_ctes_into_sql(sql: str, ctes: List[InjectedCTE]) -> str:
     constructed_sql = ""
     if with_stmt is None:
         # no with stmt, add one, and inject CTEs right at the beginning
-        constructed_sql = "with " + joined_ctes + sql
+        constructed_sql = "with " + joined_ctes + " " + sql
     else:
         # stmt exists, add a comma (which will come after injected CTEs)
-        constructed_sql = "with " + joined_ctes + ", " + sql
+        cleaned_sql = sql.replace(with_stmt, "", 1)
+        constructed_sql = "with " + joined_ctes + ", " + cleaned_sql
 
     return constructed_sql

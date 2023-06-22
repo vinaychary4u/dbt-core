@@ -3,7 +3,6 @@ from .snapshot import SnapshotRunner as snapshot_model_runner
 from .seed import SeedRunner as seed_runner
 from .test import TestRunner as test_runner
 
-from dbt.adapters.factory import get_adapter
 from dbt.contracts.results import NodeStatus
 from dbt.exceptions import DbtInternalError
 from dbt.graph import ResourceTypeSelector
@@ -63,10 +62,3 @@ class BuildTask(RunTask):
 
     def get_runner_type(self, node):
         return self.RUNNER_MAP.get(node.resource_type)
-
-    def compile_manifest(self):
-        if self.manifest is None:
-            raise DbtInternalError("compile_manifest called before manifest was loaded")
-        adapter = get_adapter(self.config)
-        compiler = adapter.get_compiler()
-        self.graph = compiler.compile(self.manifest, add_test_edges=True)

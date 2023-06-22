@@ -48,7 +48,6 @@ class RunOperationTask(ConfiguredTask):
 
     def run(self) -> RunResultsArtifact:
         start = datetime.utcnow()
-        self.compile_manifest()
 
         success = True
 

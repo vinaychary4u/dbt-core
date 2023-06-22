@@ -16,6 +16,7 @@ from dbt.cli.exceptions import (
     DbtUsageException,
 )
 from dbt.contracts.graph.manifest import Manifest
+from dbt.graph import Graph
 from dbt.contracts.results import (
     CatalogArtifact,
     RunExecutionResult,
@@ -62,9 +63,11 @@ class dbtRunner:
     def __init__(
         self,
         manifest: Optional[Manifest] = None,
+        graph: Optional[Graph] = None,
         callbacks: Optional[List[Callable[[EventMsg], None]]] = None,
     ):
         self.manifest = manifest
+        self.graph = graph
 
         if callbacks is None:
             callbacks = []
@@ -75,6 +78,7 @@ class dbtRunner:
             dbt_ctx = cli.make_context(cli.name, args)
             dbt_ctx.obj = {
                 "manifest": self.manifest,
+                "graph": self.graph,
                 "callbacks": self.callbacks,
                 "_publications": kwargs.get("publications"),
             }
@@ -194,12 +198,14 @@ def cli(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.graph(add_test_edges=True)
 def build(ctx, **kwargs):
     """Run all seeds, models, snapshots, and tests in DAG order"""
     task = BuildTask(
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
+        ctx.obj["graph"],
     )
 
     results = task.run()
@@ -265,12 +271,14 @@ def docs(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest(write=False)
+@requires.graph
 def docs_generate(ctx, **kwargs):
     """Generate the documentation website for your project"""
     task = GenerateTask(
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
+        ctx.obj["graph"],
     )
 
     results = task.run()
@@ -338,6 +346,7 @@ def docs_serve(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.graph
 def compile(ctx, **kwargs):
     """Generates executable SQL from source, model, test, and analysis files. Compiled SQL files are written to the
     target/ directory."""
@@ -345,6 +354,7 @@ def compile(ctx, **kwargs):
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
+        ctx.obj["graph"],
     )
 
     results = task.run()
@@ -385,6 +395,7 @@ def compile(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.graph
 def show(ctx, **kwargs):
     """Generates executable SQL for a named resource or inline query, runs that SQL, and returns a preview of the
     results. Does not materialize anything to the warehouse."""
@@ -392,6 +403,7 @@ def show(ctx, **kwargs):
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
+        ctx.obj["graph"],
     )
 
     results = task.run()
@@ -493,12 +505,14 @@ def init(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.graph
 def list(ctx, **kwargs):
     """List the resources in your project"""
     task = ListTask(
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
+        ctx.obj["graph"],
     )
 
     results = task.run()
@@ -565,12 +579,14 @@ def parse(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.graph
 def run(ctx, **kwargs):
     """Compile SQL and execute against the current target database."""
     task = RunTask(
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
+        ctx.obj["graph"],
     )
 
     results = task.run()
@@ -595,12 +611,14 @@ def run(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.graph
 def retry(ctx, **kwargs):
     """Retry the nodes that failed in the previous run."""
     task = RetryTask(
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
+        ctx.obj["graph"],
     )
 
     results = task.run()
@@ -632,6 +650,7 @@ def run_operation(ctx, **kwargs):
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
+        ctx.obj["graph"],
     )
 
     results = task.run()
@@ -664,12 +683,14 @@ def run_operation(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.graph
 def seed(ctx, **kwargs):
     """Load data from csv files into your data warehouse."""
     task = SeedTask(
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
+        ctx.obj["graph"],
     )
     results = task.run()
     success = task.interpret_results(results)
@@ -702,12 +723,14 @@ def seed(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.graph
 def snapshot(ctx, **kwargs):
     """Execute snapshots defined in your project"""
     task = SnapshotTask(
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
+        ctx.obj["graph"],
     )
 
     results = task.run()
@@ -745,12 +768,14 @@ def source(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.graph
 def freshness(ctx, **kwargs):
     """check the current freshness of the project's sources"""
     task = FreshnessTask(
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
+        ctx.obj["graph"],
     )
 
     results = task.run()
@@ -794,12 +819,14 @@ cli.commands["source"].add_command(snapshot_freshness, "snapshot-freshness")  # 
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.graph
 def test(ctx, **kwargs):
     """Runs tests on data in deployed models. Run this after `dbt run`"""
     task = TestTask(
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
+        ctx.obj["graph"],
     )
 
     results = task.run()

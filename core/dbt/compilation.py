@@ -496,6 +496,9 @@ class Compiler:
     # This method doesn't actually "compile" any of the nodes. That is done by the
     # "compile_node" method. This creates a Linker and builds the networkx graph,
     # writes out the graph.gpickle file, and prints the stats, returning a Graph object.
+
+    # TODO: these Graph methods should move into their own module
+    # file reading/writing should possibly live within the decorator
     def compile(self, manifest: Manifest, write=True, add_test_edges=False) -> Graph:
         self.initialize()
         linker = Linker()

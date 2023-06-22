@@ -1,6 +1,6 @@
 import dbt.tracking
 from dbt.version import installed as installed_version
-from dbt.adapters.factory import adapter_management, register_adapter
+from dbt.adapters.factory import adapter_management, register_adapter, get_adapter
 from dbt.flags import set_flags, get_flag_dict
 from dbt.cli.exceptions import (
     ExceptionExit,
@@ -21,7 +21,7 @@ from dbt.events.types import MainEncounteredError, MainStackTrace
 from dbt.exceptions import Exception as DbtException, DbtProjectError, FailFastError
 from dbt.parser.manifest import ManifestLoader, write_manifest
 from dbt.profiler import profiler
-from dbt.tracking import active_user, initialize_from_flags, track_run
+from dbt.tracking import active_user, initialize_from_flags, track_run, track_runnable_timing
 from dbt.utils import cast_dict_to_dict_of_strings
 
 from click import Context
@@ -217,7 +217,7 @@ def runtime_config(func):
     return update_wrapper(wrapper, func)
 
 
-def manifest(*args0, write=True, write_perf_info=False):
+def manifest(*args0, write=True, write_perf_info=False, construct_graph=False):
     """A decorator used by click command functions for generating a manifest
     given a profile, project, and runtime config. This also registers the adapter
     from the runtime config and conditionally writes the manifest to disk.
@@ -248,6 +248,55 @@ def manifest(*args0, write=True, write_perf_info=False):
                 ctx.obj["manifest"] = manifest
                 if write and ctx.obj["flags"].write_json:
                     write_manifest(manifest, ctx.obj["runtime_config"].project_target_path)
+
+            return func(*args, **kwargs)
+
+        return update_wrapper(wrapper, func)
+
+    # if there are no args, the decorator was used without params @decorator
+    # otherwise, the decorator was called with params @decorator(arg)
+    if len(args0) == 0:
+        return outer_wrapper
+    return outer_wrapper(args0[0])
+
+
+def graph(*args0, add_test_edges=False):
+    """A decorator used by click command functions for generating a Graph
+    given a profile, project, runtime config, and manifest.
+    """
+
+    def outer_wrapper(func):
+        def wrapper(*args, **kwargs):
+            ctx = args[0]
+            assert isinstance(ctx, Context)
+
+            req_strs = ["profile", "project", "runtime_config", "manifest"]
+            reqs = [ctx.obj.get(dep) for dep in req_strs]
+
+            if None in reqs:
+                raise DbtProjectError(
+                    "profile, project, runtime_config, and manifest required for graph"
+                )
+
+            runtime_config = ctx.obj["runtime_config"]
+            manifest = ctx.obj["manifest"]
+
+            if not get_adapter(runtime_config):
+                register_adapter(runtime_config)
+
+            # a graph has already been set on the context, so don't overwrite it
+            if ctx.obj.get("graph") is None:
+                start_compile_manifest = time.perf_counter()
+
+                adapter = get_adapter(runtime_config)
+                compiler = adapter.get_compiler()
+                graph = compiler.compile(manifest, add_test_edges=add_test_edges)
+
+                compile_time = time.perf_counter() - start_compile_manifest
+                if active_user is not None:
+                    track_runnable_timing({"graph_compilation_elapsed": compile_time})
+
+                ctx.obj["graph"] = graph
 
             return func(*args, **kwargs)
 

@@ -123,7 +123,6 @@ class ListTask(GraphRunnableTask):
             yield node.original_file_path
 
     def run(self):
-        self.compile_manifest()
         output = self.args.output
         if output == "selector":
             generator = self.generate_selectors

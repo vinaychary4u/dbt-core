@@ -9,7 +9,6 @@ from typing import Type, Union, Dict, Any, Optional
 
 import dbt.exceptions
 from dbt import tracking
-from dbt.adapters.factory import get_adapter
 from dbt.config import RuntimeConfig, Project
 from dbt.config.profile import read_profile
 from dbt.contracts.graph.manifest import Manifest
@@ -159,25 +158,12 @@ def move_to_nearest_project_dir(project_dir: Optional[str]) -> str:
 class ConfiguredTask(BaseTask):
     ConfigType = RuntimeConfig
 
-    def __init__(self, args, config, manifest: Optional[Manifest] = None):
+    def __init__(
+        self, args, config, manifest: Optional[Manifest] = None, graph: Optional[Graph] = None
+    ):
         super().__init__(args, config)
-        self.graph: Optional[Graph] = None
+        self.graph = graph
         self.manifest = manifest
-
-    def compile_manifest(self):
-        if self.manifest is None:
-            raise DbtInternalError("compile_manifest called before manifest was loaded")
-
-        start_compile_manifest = time.perf_counter()
-
-        # we cannot get adapter in init since it will break rpc #5579
-        adapter = get_adapter(self.config)
-        compiler = adapter.get_compiler()
-        self.graph = compiler.compile(self.manifest)
-
-        compile_time = time.perf_counter() - start_compile_manifest
-        if dbt.tracking.active_user is not None:
-            dbt.tracking.track_runnable_timing({"graph_compilation_elapsed": compile_time})
 
     @classmethod
     def from_args(cls, args, *pargs, **kwargs):

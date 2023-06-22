@@ -62,8 +62,8 @@ RUNNING_STATE = DbtProcessState("running")
 class GraphRunnableTask(ConfiguredTask):
     MARK_DEPENDENT_ERRORS_STATUSES = [NodeStatus.Error]
 
-    def __init__(self, args, config, manifest):
-        super().__init__(args, config, manifest)
+    def __init__(self, args, config, manifest, graph):
+        super().__init__(args, config, manifest, graph)
         self._flattened_nodes: Optional[List[ResultNode]] = None
         self._raise_next_tick = None
         self._skipped_children = {}
@@ -135,7 +135,6 @@ class GraphRunnableTask(ConfiguredTask):
         return selector.get_graph_queue(spec)
 
     def _runtime_initialize(self):
-        self.compile_manifest()
         if self.manifest is None or self.graph is None:
             raise DbtInternalError("_runtime_initialize never loaded the graph!")
 

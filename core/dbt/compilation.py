@@ -1,10 +1,10 @@
 import argparse
 import json
-import re
 
 import networkx as nx  # type: ignore
 import os
 import pickle
+import sqlparse
 
 from collections import defaultdict
 from typing import List, Dict, Any, Tuple, Optional
@@ -559,23 +559,35 @@ def inject_ctes_into_sql(sql: str, ctes: List[InjectedCTE]) -> str:
     if len(ctes) == 0:
         return sql
 
-    words_found = re.findall(r"\w+|[^\w\s]", sql, re.UNICODE)
+    parsed_stmts = sqlparse.parse(sql)
+    parsed = parsed_stmts[0]
 
     with_stmt = None
-    for word in words_found:
-        if word.upper() == "WITH":
-            with_stmt = word
+    for token in parsed.tokens:
+        if token.is_keyword and token.normalized == "WITH":
+            with_stmt = token
             break
 
-    joined_ctes = ", ".join(c.sql for c in ctes)
-
-    constructed_sql = ""
     if with_stmt is None:
         # no with stmt, add one, and inject CTEs right at the beginning
-        constructed_sql = "with " + joined_ctes + " " + sql
+        # [original_sql]
+        first_token = parsed.token_first()
+        with_token = sqlparse.sql.Token(sqlparse.tokens.Keyword, "with")
+        parsed.insert_before(first_token, with_token)
+        # [with][original_sql]
+        joined_ctes = ", ".join(c.sql for c in ctes) + " "
+        token = sqlparse.sql.Token(sqlparse.tokens.Keyword, joined_ctes)
+        parsed.insert_after(with_token, token)
+        # [with][joined_ctes][original_sql]
     else:
         # stmt exists, add a comma (which will come after injected CTEs)
-        cleaned_sql = sql.replace(with_stmt, "", 1)
-        constructed_sql = "with " + joined_ctes + ", " + cleaned_sql
+        # [with][original_sql]
+        joined_ctes = ", ".join(c.sql for c in ctes)
+        joined_ctes_token = sqlparse.sql.Token(sqlparse.tokens.Keyword, joined_ctes)
+        parsed.insert_after(with_stmt, joined_ctes_token)
+        # [with][joined_ctes][original_sql]
+        comma_token = sqlparse.sql.Token(sqlparse.tokens.Punctuation, ", ")
+        parsed.insert_after(joined_ctes_token, comma_token)
+        # [with][joined_ctes][, ][original_sql]
 
-    return constructed_sql
+    return str(parsed)

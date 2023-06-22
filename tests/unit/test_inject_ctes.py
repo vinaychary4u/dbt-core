@@ -117,3 +117,30 @@ def test_inject_ctes_4():
 
     generated_sql = inject_ctes_into_sql(starting_sql, ctes)
     assert norm_whitespace(generated_sql) == norm_whitespace(expected_sql)
+
+
+def test_inject_ctes_5():
+    starting_sql = """with my_other_cool_cte as (
+        select id, name from __dbt__cte__ephemeral
+        where id > 1000
+    )
+    select name, id from my_other_cool_cte"""
+    ctes = [
+        InjectedCTE(
+            id="model.singular_tests_ephemeral.ephemeral",
+            sql=' __dbt__cte__ephemeral as (\n\n\nwith my_cool_cte as (\n  select name, id from "dbt"."test16873917221900185954_test_singular_tests_ephemeral"."base"\n)\nselect id, name from my_cool_cte where id is not null\n)',
+        )
+    ]
+    expected_sql = """with  __dbt__cte__ephemeral as (
+        with my_cool_cte as (
+          select name, id from "dbt"."test16873917221900185954_test_singular_tests_ephemeral"."base"
+        )
+        select id, name from my_cool_cte where id is not null
+        ), my_other_cool_cte as (
+            select id, name from __dbt__cte__ephemeral
+            where id > 1000
+        )
+        select name, id from my_other_cool_cte"""
+
+    generated_sql = inject_ctes_into_sql(starting_sql, ctes)
+    assert norm_whitespace(generated_sql) == norm_whitespace(expected_sql)

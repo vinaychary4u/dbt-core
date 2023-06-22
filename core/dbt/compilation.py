@@ -551,7 +551,7 @@ def inject_ctes_into_sql(sql: str, ctes: List[InjectedCTE]) -> str:
 
       "with __dbt__cte__ephemeral as (select * from table),
             __dbt__cte__events as (select id, type from events),
-            with internal_cte as (select * from sessions)
+            internal_cte as (select * from sessions)
        select * from internal_cte"
 
     (Whitespace enhanced for readability.)

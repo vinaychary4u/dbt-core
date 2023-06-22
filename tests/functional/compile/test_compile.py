@@ -20,6 +20,7 @@ from tests.functional.compile.fixtures import (
 def norm_whitespace(string):
     _RE_COMBINE_WHITESPACE = re.compile(r"\s+")
     string = _RE_COMBINE_WHITESPACE.sub(" ", string).strip()
+    return string
 
 
 def get_lines(model_name):

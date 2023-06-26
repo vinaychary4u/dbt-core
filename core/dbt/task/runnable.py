@@ -183,6 +183,10 @@ class GraphRunnableTask(ConfiguredTask):
     def call_runner(self, runner):
         uid_context = UniqueID(runner.node.unique_id)
         with RUNNING_STATE, uid_context, log_contextvars(node_info=runner.node.node_info):
+            from dbt.execute import add_node
+            import threading
+
+            add_node(uid_context.unique_id, str(threading.get_ident()))
             startctx = TimestampNamed("node_started_at")
             index = self.index_offset(runner.node_index)
             runner.node.update_event_status(

@@ -12,6 +12,7 @@ from dbt.events.functions import fire_event
 from dbt.events.types import ConnectionUsed, SQLQuery, SQLCommit, SQLQueryStatus
 from dbt.events.contextvars import get_node_info
 from dbt.utils import cast_to_str
+from dbt.execute import add_execution
 
 
 class SQLConnectionManager(BaseConnectionManager):
@@ -143,6 +144,9 @@ class SQLConnectionManager(BaseConnectionManager):
     def execute(
         self, sql: str, auto_begin: bool = False, fetch: bool = False, limit: Optional[int] = None
     ) -> Tuple[AdapterResponse, agate.Table]:
+        import threading
+
+        add_execution(str(threading.get_ident()), sql)
         sql = self._add_query_comment(sql)
         _, cursor = self.add_query(sql, auto_begin)
         response = self.get_response(cursor)

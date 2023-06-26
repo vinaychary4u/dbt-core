@@ -88,6 +88,7 @@ def postflight(func):
             fire_event(MainEncounteredError(exc=str(e)))
             raise ResultExit(e.result)
         except DbtException as e:
+            breakpoint()
             fire_event(MainEncounteredError(exc=str(e)))
             raise ExceptionExit(e)
         except BaseException as e:
@@ -103,6 +104,10 @@ def postflight(func):
                     elapsed=time.perf_counter() - start_func,
                 )
             )
+            from dbt.execute import get_all_sqls
+
+            with open("all_sqls1.52.txt", "w") as f:
+                f.write("\n".join(get_all_sqls()))
 
         if not success:
             raise ResultExit(result)

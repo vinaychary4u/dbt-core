@@ -135,10 +135,10 @@ class UnitTestRunner(CompileRunner):
 
     def _get_unit_test_table(self, result_table, actual_or_expected: str):
         unit_test_table = result_table.where(
-            lambda row: row["actual_or_expected"] == actual_or_expected
+            lambda row: row["ACTUAL_OR_EXPECTED"] == actual_or_expected
         )
         columns = list(unit_test_table.columns.keys())
-        columns.remove("actual_or_expected")
+        columns.remove("ACTUAL_OR_EXPECTED")
         return unit_test_table.select(columns)
 
     def _agate_table_to_str(self, table) -> str:

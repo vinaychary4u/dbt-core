@@ -6,7 +6,7 @@
 {%- set columns_in_relation = adapter.get_columns_in_relation(this) -%}
 {%- set column_name_to_data_types = {} -%}
 {%- for column in columns_in_relation -%}
-{%- do column_name_to_data_types.update({column.name: column.dtype}) -%}
+{%- do column_name_to_data_types.update({column.name | lower: column.dtype}) -%}
 {%- endfor -%}
 {%- endif -%}
 
@@ -15,7 +15,7 @@
 {%- endif -%}
 
 {%- for column_name, column_type in column_name_to_data_types.items() -%}
-    {%- do default_row.update({column_name: (safe_cast("null", column_type) | trim )}) -%}
+    {%- do default_row.update({column_name | lower: (default__safe_cast("null", column_type) | trim )}) -%}
 {%- endfor -%}
 
 {%- for row in rows -%}
@@ -65,11 +65,11 @@ union all
 {%- for column_name, column_value in row.items() -%}
 {% set row_update = {column_name: column_value} %}
 {%- if column_value is string -%}
-{%- set row_update = {column_name: safe_cast(dbt.string_literal(column_value), column_name_to_data_types[column_name]) } -%}
+{%- set row_update = {column_name: default__safe_cast(dbt.string_literal(column_value), column_name_to_data_types[column_name]) } -%}
 {%- elif column_value is none -%}
-{%- set row_update = {column_name: safe_cast('null', column_name_to_data_types[column_name]) } -%}
+{%- set row_update = {column_name: default__safe_cast('null', column_name_to_data_types[column_name]) } -%}
 {%- else -%}
-{%- set row_update = {column_name: safe_cast(column_value, column_name_to_data_types[column_name]) } -%}
+{%- set row_update = {column_name: default__safe_cast(column_value, column_name_to_data_types[column_name]) } -%}
 {%- endif -%}
 {%- do row.update(row_update) -%}
 {%- endfor -%}

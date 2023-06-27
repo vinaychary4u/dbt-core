@@ -272,7 +272,6 @@ def unit_test_collection(func):
             raise DbtProjectError("manifest and runtime_config required for unit_test_collection")
 
         collection = UnitTestManifestLoader.load(ctx.obj["manifest"], ctx.obj["runtime_config"])
-
         ctx.obj["unit_test_collection"] = collection
 
         return func(*args, **kwargs)

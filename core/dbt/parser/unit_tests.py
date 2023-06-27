@@ -26,8 +26,9 @@ from dbt.node_types import NodeType
 from dbt.context.providers import generate_parse_exposure, get_rendered
 
 
-def _is_model_node(node_id, manifest):
-    return manifest.nodes[node_id].resource_type == NodeType.Model
+def _is_model_or_snapshot_node(node_id, manifest):
+    rtype = manifest.nodes[node_id].resource_type
+    return rtype == NodeType.Model or rtype == NodeType.Snapshot
 
 
 class UnitTestManifestLoader:
@@ -157,21 +158,32 @@ class UnitTestParser(YamlReader):
             self.unit_test_manifest.nodes[unit_test_node.unique_id] = unit_test_node
             # self.unit_test_manifest.nodes[actual_node.unique_id] = actual_node
             for input_node in input_nodes:
-                self.unit_test_manifest.nodes[input_node.unique_id] = input_node
+                # why does raw_code get reset here??
+                from copy import deepcopy
+
+                self.unit_test_manifest.nodes[input_node.unique_id] = deepcopy(input_node)
                 # should be a process_refs / process_sources call isntead?
                 unit_test_node.depends_on.nodes.append(input_node.unique_id)
             unit_test_node_ids.append(unit_test_node.unique_id)
 
         # find out all nodes that are referenced but not in unittest manifest
         all_depends_on = set()
+        # TODO: this needs to be recursive?
         for node_id in self.unit_test_manifest.nodes:
-            if _is_model_node(node_id, self.unit_test_manifest):
+            if _is_model_or_snapshot_node(node_id, self.unit_test_manifest):
                 all_depends_on.update(self.unit_test_manifest.nodes[node_id].depends_on.nodes)  # type: ignore
-        not_in_manifest = all_depends_on - set(self.unit_test_manifest.nodes.keys())
+
+        # hack: just add all missing nodes for now :/
+        not_in_manifest = set(self.manifest.nodes.keys()) - set(
+            self.unit_test_manifest.nodes.keys()
+        )
 
         # copy those node also over into unit_test_manifest
         for node_id in not_in_manifest:
             self.unit_test_manifest.nodes[node_id] = self.manifest.nodes[node_id]
+        # hack: just add all sources + metrics for now :/
+        self.unit_test_manifest.sources = self.manifest.sources
+        self.unit_test_manifest.metrics = self.manifest.metrics
 
     def parse(self):
         for data in self.get_key_dicts():

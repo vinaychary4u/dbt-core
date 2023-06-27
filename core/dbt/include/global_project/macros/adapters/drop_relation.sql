@@ -35,10 +35,14 @@
 {%- endmacro %}
 
 
-{% macro drop_materialized_view(relation) -%}
-  {{ return(adapter.dispatch('drop_materialized_view', 'dbt')(relation)) }}
+{% macro drop_relation_sql(relation_config) -%}
+    {{ return(adapter.dispatch('drop_relation_sql', 'dbt')(relation_config)) }}
 {%- endmacro %}
 
-{% macro default__drop_materialized_view(relation) -%}
-    drop materialized view if exists {{ relation }} cascade
-{%- endmacro %}
+{%- macro default__drop_relation_sql(relation_config) -%}
+    {%- if relation_config.relation_type == adapter.Relation.MaterializedView -%}
+        {{- drop_materialized_view_sql(relation_config) -}}
+    {%- else -%}
+        drop {{ relation_config.relation_type }} if exists {{ relation_config.fully_qualified_path }} cascade
+    {%- endif -%}
+{%- endmacro -%}

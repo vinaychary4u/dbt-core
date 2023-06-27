@@ -2,15 +2,17 @@ from dataclasses import dataclass, field
 from typing import Set, FrozenSet
 
 import agate
+from dbt.contracts.relation import ComponentName
 from dbt.dataclass_schema import StrEnum
 from dbt.exceptions import DbtRuntimeError
 from dbt.adapters.relation_configs import (
-    RelationConfigBase,
     RelationConfigValidationMixin,
     RelationConfigValidationRule,
     RelationConfigChangeAction,
     RelationConfigChange,
 )
+
+from dbt.adapters.postgres.relation_configs.base import PostgresRelationConfigBase
 
 
 class PostgresIndexMethod(StrEnum):
@@ -27,7 +29,7 @@ class PostgresIndexMethod(StrEnum):
 
 
 @dataclass(frozen=True, eq=True, unsafe_hash=True)
-class PostgresIndexConfig(RelationConfigBase, RelationConfigValidationMixin):
+class PostgresIndexConfig(PostgresRelationConfigBase, RelationConfigValidationMixin):
     """
     This config fallows the specs found here:
     https://www.postgresql.org/docs/current/sql-createindex.html
@@ -61,11 +63,11 @@ class PostgresIndexConfig(RelationConfigBase, RelationConfigValidationMixin):
 
     @classmethod
     def from_dict(cls, config_dict) -> "PostgresIndexConfig":
-        # TODO: include the QuotePolicy instead of defaulting to lower()
         kwargs_dict = {
             "name": config_dict.get("name"),
             "column_names": frozenset(
-                column.lower() for column in config_dict.get("column_names", set())
+                cls._render_part(ComponentName.Identifier, column)
+                for column in config_dict.get("column_names", set())
             ),
             "unique": config_dict.get("unique"),
             "method": config_dict.get("method"),
@@ -83,12 +85,12 @@ class PostgresIndexConfig(RelationConfigBase, RelationConfigValidationMixin):
         return config_dict
 
     @classmethod
-    def parse_relation_results(cls, relation_results_entry: agate.Row) -> dict:
+    def parse_describe_relation_results(cls, describe_relation_results: agate.Row) -> dict:
         config_dict = {
-            "name": relation_results_entry.get("name"),
-            "column_names": set(relation_results_entry.get("column_names", "").split(",")),
-            "unique": relation_results_entry.get("unique"),
-            "method": relation_results_entry.get("method"),
+            "name": describe_relation_results.get("name"),
+            "column_names": set(describe_relation_results.get("column_names", "").split(",")),
+            "unique": describe_relation_results.get("unique"),
+            "method": describe_relation_results.get("method"),
         }
         return config_dict
 
@@ -129,6 +131,7 @@ class PostgresIndexConfigChange(RelationConfigChange, RelationConfigValidationMi
     }
     """
 
+    action: RelationConfigChangeAction
     context: PostgresIndexConfig
 
     @property

@@ -1,21 +1,25 @@
-# RelationConfig
+# Relation Configs
 This package serves as an initial abstraction for managing the inspection of existing relations and determining
 changes on those relations. It arose from the materialized view work and is currently only supporting 
-materialized views for Postgres and Redshift as well as dynamic tables for Snowflake. There are three main
+materialized views for Postgres, Redshift, and BigQuery as well as dynamic tables for Snowflake. There are three main
 classes in this package.
 
 ## RelationConfigBase
-This is a very small class that only has a `from_dict()` method and a default `NotImplementedError()`. At some
-point this could be replaced by a more robust framework, like `mashumaro` or `pydantic`.
+This is a very small class that only has a handful of methods. It's effectively a parser, but with two sources.
+The objective is to provide a stopping point between dbt-specific config and database-specific config for two
+primary reasons:
+
+- apply validation rules in the parlance of the database
+- articular what changes are monitored, and how those changes are applied in the database
+
+At some point this could be theoretically be replaced by a more robust framework, like `mashumaro` or `pydantic`.
 
 ## RelationConfigChange
-This class inherits from `RelationConfigBase` ; however, this can be thought of as a separate class. The subclassing
-merely points to the idea that both classes would likely inherit from the same class in a `mashumaro` or
-`pydantic` implementation. This class is much more restricted in attribution. It should really only
-ever need an `action` and a `context`. This can be though of as being analogous to a web request. You need to
-know what you're doing (`action`: 'create' = GET, 'drop' = DELETE, etc.) and the information (`context`) needed
-to make the change. In our scenarios, the context tends to be an instance of `RelationConfigBase` corresponding
-to the new state.
+A `RelationConfigChange` can be thought of as being analogous to a web request on a `RelationConfigBase`.
+You need to know what you're doing (`action`: 'create' = GET, 'drop' = DELETE, etc.)
+and the information (`context`) needed to make the change.
+In our scenarios, the context tends to be an instance of `RelationConfigBase` corresponding to the new state
+or a single value if the change is simple.
 
 ## RelationConfigValidationMixin
 This mixin provides optional validation mechanics that can be applied to either `RelationConfigBase` or

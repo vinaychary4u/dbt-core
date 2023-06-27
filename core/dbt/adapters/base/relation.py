@@ -2,7 +2,18 @@ from collections.abc import Hashable
 from dataclasses import dataclass, field
 from typing import Optional, TypeVar, Any, Type, Dict, Iterator, Tuple, Set
 
-from dbt.contracts.graph.nodes import SourceDefinition, ManifestNode, ResultNode, ParsedNode
+from dbt.adapters.relation_configs import (
+    RelationConfigBase,
+    DescribeRelationResults,
+)
+from dbt.context.providers import RuntimeConfigObject
+from dbt.contracts.graph.nodes import (
+    SourceDefinition,
+    ManifestNode,
+    ResultNode,
+    ParsedNode,
+    ModelNode,
+)
 from dbt.contracts.relation import (
     RelationType,
     ComponentName,
@@ -35,6 +46,8 @@ class BaseRelation(FakeAPIObject, Hashable):
     include_policy: Policy = field(default_factory=lambda: Policy())
     quote_policy: Policy = field(default_factory=lambda: Policy())
     dbt_created: bool = False
+    # registers RelationConfigBases to RelationTypes
+    relation_configs: Dict[RelationType, RelationConfigBase] = field(default_factory=dict)
 
     def _is_exactish_match(self, field: ComponentName, value: str) -> bool:
         if self.dbt_created and self.quote_policy.get_part(field) is False:
@@ -285,6 +298,61 @@ class BaseRelation(FakeAPIObject, Hashable):
             }
         )
         return cls.from_dict(kwargs)
+
+    @classmethod
+    def from_runtime_config(cls, runtime_config: RuntimeConfigObject) -> RelationConfigBase:
+        """
+        Produce a validated relation config from the config available in the global jinja context.
+
+        The intention is to remove validation from the jinja context and put it in python. This method gets
+        called in a jinja template and it's results are used in the jinja template. For an example, please
+        refer to `dbt/include/global_project/macros/materializations/models/materialized_view/materialization.sql`.
+        In this file, the relation config is retrieved right away, to ensure that the config is validated before
+        any sql is executed against the database.
+
+        Args:
+            runtime_config: the `config` RuntimeConfigObject instance that's in the global jinja context
+
+        Returns: a validated adapter-specific, relation_type-specific RelationConfigBase instance
+        """
+        model_node: ModelNode = runtime_config.model
+        relation_type = cls.get_relation_type()(model_node.config.materialized)
+
+        if relation_config := cls.relation_configs.get(relation_type):
+            relation = relation_config.from_model_node(model_node)
+        else:
+            raise dbt.exceptions.DbtRuntimeError(
+                f"from_runtime_config() is not supported for the provided relation type: {relation_type}"
+            )
+
+        return relation
+
+    @classmethod
+    def from_describe_relation_results(
+        cls, describe_relation_results: DescribeRelationResults, relation_type: RelationType
+    ) -> RelationConfigBase:
+        """
+        Produce a validated relation config from a series of "describe <relation>"-type queries.
+
+        The intention is to remove validation from the jinja context and put it in python. This method gets
+        called in a jinja template and it's results are used in the jinja template. For an example, please
+        refer to `dbt/include/global_project/macros/materializations/models/materialized_view/materialization.sql`.
+
+        Args:
+            describe_relation_results: the results of one or more queries run against the database
+                to describe this relation
+            relation_type: the type of relation associated with the relation results
+
+        Returns: a validated adapter-specific, relation_type-specific RelationConfigBase instance
+        """
+        if relation_config := cls.relation_configs.get(relation_type):
+            relation = relation_config.from_describe_relation_results(describe_relation_results)
+        else:
+            raise dbt.exceptions.DbtRuntimeError(
+                f"from_relation_results() is not supported for the provided relation type: {relation_type}"
+            )
+
+        return relation
 
     def __repr__(self) -> str:
         return "<{} {}>".format(self.__class__.__name__, self.render())

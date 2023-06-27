@@ -6,11 +6,24 @@ from dbt.exceptions import DbtRuntimeError
 
 @dataclass(frozen=True, eq=True, unsafe_hash=True)
 class RelationConfigValidationRule:
+    """
+    A validation rule consists of two parts:
+        - validation_check: the thing that should be True
+        - validation_error: the error to raise in the event the validation check is False
+    """
+
     validation_check: bool
     validation_error: Optional[DbtRuntimeError]
 
     @property
     def default_error(self):
+        """
+        This is a built-in stock error message. It may suffice in that it will raise an error for you, but
+        you should likely supply one in the rule that is more descriptive. This is akin to raising `Exception`.
+
+        Returns:
+            a stock error message
+        """
         return DbtRuntimeError(
             "There was a validation error in preparing this relation config."
             "No additional context was provided by this adapter."

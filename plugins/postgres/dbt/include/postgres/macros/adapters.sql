@@ -239,8 +239,8 @@
     join pg_attribute a
         on a.attrelid = t.oid
         and a.attnum = ANY(ix.indkey)
-    where t.relname = '{{ relation.identifier }}'
-      and n.nspname = '{{ relation.schema }}'
+    where t.relname ilike '{{ relation.identifier }}'
+      and n.nspname ilike '{{ relation.schema }}'
       and t.relkind in ('r', 'm')
     group by 1, 2, 3
     order by 1, 2, 3

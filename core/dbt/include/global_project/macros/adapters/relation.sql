@@ -96,3 +96,33 @@
     {{ adapter.drop_relation(relation) }}
   {% endif %}
 {% endmacro %}
+
+
+-- a user-friendly interface into adapter.get_relation for relation_configs.MaterializationConfigBase instances
+{% macro load_cached_relation_config(relation_config) %}
+    {% do return(adapter.get_relation(
+        database=relation_config.database_name,
+        schema=relation_config.schema_name,
+        identifier=relation_config.name
+    )) -%}
+{% endmacro %}
+
+
+-- a user-friendly interface into adapter.get_relation for relation_configs.MaterializationConfigBase instances
+{% macro load_cached_relation_config_backup(relation_config) %}
+    {% do return(adapter.get_relation(
+        database=relation_config.database_name,
+        schema=relation_config.schema_name,
+        identifier=relation_config.backup_name
+    )) -%}
+{% endmacro %}
+
+
+-- a user-friendly interface into adapter.get_relation for relation_configs.MaterializationConfigBase instances
+{% macro load_cached_relation_config_intermediate(relation_config) %}
+    {% do return(adapter.get_relation(
+        database=relation_config.database_name,
+        schema=relation_config.schema_name,
+        identifier=relation_config.intermediate_name
+    )) -%}
+{% endmacro %}

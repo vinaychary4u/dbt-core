@@ -1,18 +1,26 @@
 from dataclasses import dataclass, field
-from typing import Set, FrozenSet
+from datetime import datetime
+from typing import Set, FrozenSet, Dict
 
 from dbt.adapters.base.relation import BaseRelation
-from dbt.adapters.relation_configs import RelationConfigChangeAction
+from dbt.adapters.relation_configs import (
+    RelationConfigChangeAction,
+    RelationConfig,
+    MaterializationConfig,
+)
+from dbt.contracts.relation import ComponentName, RelationType
 from dbt.exceptions import DbtRuntimeError
+import dbt.utils
 
 from dbt.adapters.postgres.relation_configs import (
     PostgresIndexConfig,
     PostgresIndexConfigChange,
     PostgresMaterializedViewConfig,
     PostgresMaterializedViewConfigChangeset,
-    MAX_CHARACTERS_IN_IDENTIFIER,
     PostgresIncludePolicy,
     PostgresQuotePolicy,
+    postgres_conform_part,
+    MAX_CHARACTERS_IN_IDENTIFIER,
 )
 
 
@@ -20,6 +28,10 @@ from dbt.adapters.postgres.relation_configs import (
 class PostgresRelation(BaseRelation):
     include_policy: PostgresIncludePolicy = field(default_factory=PostgresIncludePolicy)
     quote_policy: PostgresQuotePolicy = field(default_factory=PostgresQuotePolicy)
+
+    @classmethod
+    def relation_configs(cls) -> Dict[RelationType, RelationConfig]:
+        return {RelationType.MaterializedView: PostgresMaterializedViewConfig}  # type: ignore
 
     def __post_init__(self):
         # Check for length of Postgres table/view names.
@@ -92,3 +104,28 @@ class PostgresRelation(BaseRelation):
             for index in new_indexes.difference(existing_indexes)
         )
         return set().union(drop_changes, create_changes)
+
+    @staticmethod
+    def generate_index_name(
+        materialization_config: MaterializationConfig, index_config: PostgresIndexConfig
+    ) -> str:
+        return dbt.utils.md5(
+            "_".join(
+                {
+                    postgres_conform_part(
+                        ComponentName.Database, materialization_config.database_name
+                    ),
+                    postgres_conform_part(
+                        ComponentName.Schema, materialization_config.schema_name
+                    ),
+                    postgres_conform_part(ComponentName.Identifier, materialization_config.name),
+                    *sorted(
+                        postgres_conform_part(ComponentName.Identifier, column)
+                        for column in index_config.column_names
+                    ),
+                    str(index_config.unique),
+                    str(index_config.method),
+                    str(datetime.utcnow().isoformat()),
+                }
+            )
+        )

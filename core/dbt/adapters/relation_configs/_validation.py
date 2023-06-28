@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Set, Optional
+from typing import Optional, Set
 
 from dbt.exceptions import DbtRuntimeError
 

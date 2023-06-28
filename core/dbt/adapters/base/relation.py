@@ -1,12 +1,11 @@
 from collections.abc import Hashable
 from dataclasses import dataclass, field
-from typing import Optional, TypeVar, Any, Type, Dict, Iterator, Tuple, Set
+from typing import Any, Dict, Iterator, Optional, Set, Tuple, Type, TypeVar
 
 from dbt.adapters.relation_configs import (
-    RelationConfigBase,
+    RelationConfig,
     DescribeRelationResults,
 )
-from dbt.context.providers import RuntimeConfigObject
 from dbt.contracts.graph.nodes import (
     SourceDefinition,
     ManifestNode,
@@ -15,22 +14,22 @@ from dbt.contracts.graph.nodes import (
     ModelNode,
 )
 from dbt.contracts.relation import (
-    RelationType,
     ComponentName,
-    HasQuoting,
     FakeAPIObject,
-    Policy,
+    HasQuoting,
     Path,
+    Policy,
+    RelationType,
 )
 from dbt.exceptions import (
     ApproximateMatchError,
+    CompilationError,
     DbtInternalError,
+    DbtRuntimeError,
     MultipleDatabasesNotAllowedError,
 )
 from dbt.node_types import NodeType
-from dbt.utils import filter_null_values, deep_merge, classproperty
-
-import dbt.exceptions
+from dbt.utils import classproperty, deep_merge, filter_null_values, merge
 
 
 Self = TypeVar("Self", bound="BaseRelation")
@@ -47,7 +46,10 @@ class BaseRelation(FakeAPIObject, Hashable):
     quote_policy: Policy = field(default_factory=lambda: Policy())
     dbt_created: bool = False
     # registers RelationConfigBases to RelationTypes
-    relation_configs: Dict[RelationType, RelationConfigBase] = field(default_factory=dict)
+
+    @classmethod
+    def relation_configs(cls) -> Dict[RelationType, RelationConfig]:
+        return {}
 
     def _is_exactish_match(self, field: ComponentName, value: str) -> bool:
         if self.dbt_created and self.quote_policy.get_part(field) is False:
@@ -100,9 +102,7 @@ class BaseRelation(FakeAPIObject, Hashable):
 
         if not search:
             # nothing was passed in
-            raise dbt.exceptions.DbtRuntimeError(
-                "Tried to match relation, but no search path was passed!"
-            )
+            raise DbtRuntimeError("Tried to match relation, but no search path was passed!")
 
         exact_match = True
         approximate_match = True
@@ -247,7 +247,7 @@ class BaseRelation(FakeAPIObject, Hashable):
         if quote_policy is None:
             quote_policy = {}
 
-        quote_policy = dbt.utils.merge(config.quoting, quote_policy)
+        quote_policy = merge(config.quoting, quote_policy)
 
         return cls.create(
             database=node.database,
@@ -300,7 +300,7 @@ class BaseRelation(FakeAPIObject, Hashable):
         return cls.from_dict(kwargs)
 
     @classmethod
-    def from_runtime_config(cls, runtime_config: RuntimeConfigObject) -> RelationConfigBase:
+    def from_model_node(cls, model_node: ModelNode) -> RelationConfig:
         """
         Produce a validated relation config from the config available in the global jinja context.
 
@@ -311,17 +311,16 @@ class BaseRelation(FakeAPIObject, Hashable):
         any sql is executed against the database.
 
         Args:
-            runtime_config: the `config` RuntimeConfigObject instance that's in the global jinja context
+            model_node: the `model` ModelNode instance that's in the global jinja context
 
         Returns: a validated adapter-specific, relation_type-specific RelationConfigBase instance
         """
-        model_node: ModelNode = runtime_config.model
-        relation_type = cls.get_relation_type()(model_node.config.materialized)
+        relation_type: RelationType = cls.get_relation_type(model_node.config.materialized)
 
-        if relation_config := cls.relation_configs.get(relation_type):
+        if relation_config := cls.relation_configs().get(relation_type):
             relation = relation_config.from_model_node(model_node)
         else:
-            raise dbt.exceptions.DbtRuntimeError(
+            raise DbtRuntimeError(
                 f"from_runtime_config() is not supported for the provided relation type: {relation_type}"
             )
 
@@ -330,7 +329,7 @@ class BaseRelation(FakeAPIObject, Hashable):
     @classmethod
     def from_describe_relation_results(
         cls, describe_relation_results: DescribeRelationResults, relation_type: RelationType
-    ) -> RelationConfigBase:
+    ) -> RelationConfig:
         """
         Produce a validated relation config from a series of "describe <relation>"-type queries.
 
@@ -345,10 +344,10 @@ class BaseRelation(FakeAPIObject, Hashable):
 
         Returns: a validated adapter-specific, relation_type-specific RelationConfigBase instance
         """
-        if relation_config := cls.relation_configs.get(relation_type):
+        if relation_config := cls.relation_configs().get(relation_type):
             relation = relation_config.from_describe_relation_results(describe_relation_results)
         else:
-            raise dbt.exceptions.DbtRuntimeError(
+            raise DbtRuntimeError(
                 f"from_relation_results() is not supported for the provided relation type: {relation_type}"
             )
 
@@ -434,9 +433,7 @@ class InformationSchema(BaseRelation):
 
     def __post_init__(self):
         if not isinstance(self.information_schema_view, (type(None), str)):
-            raise dbt.exceptions.CompilationError(
-                "Got an invalid name: {}".format(self.information_schema_view)
-            )
+            raise CompilationError("Got an invalid name: {}".format(self.information_schema_view))
 
     @classmethod
     def get_path(cls, relation: BaseRelation, information_schema_view: Optional[str]) -> Path:

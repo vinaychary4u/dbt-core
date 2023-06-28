@@ -1,8 +1,10 @@
+from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import Set, FrozenSet, List, Dict
+from typing import Set, FrozenSet, List, Dict, Optional
 
 import agate
 from dbt.adapters.relation_configs import (
+    MaterializationConfig,
     RelationConfigChangeset,
     RelationConfigValidationMixin,
     RelationConfigValidationRule,
@@ -10,25 +12,29 @@ from dbt.adapters.relation_configs import (
 from dbt.contracts.graph.nodes import ModelNode
 from dbt.contracts.relation import ComponentName, RelationType
 from dbt.exceptions import DbtRuntimeError
+import dbt.utils
 
-from dbt.adapters.postgres.relation_configs.base import PostgresRelationConfigBase
-from dbt.adapters.postgres.relation_configs.database import PostgresDatabaseConfig
 from dbt.adapters.postgres.relation_configs.index import (
     PostgresIndexConfig,
     PostgresIndexConfigChange,
 )
-from dbt.adapters.postgres.relation_configs.policies import MAX_CHARACTERS_IN_IDENTIFIER
+from dbt.adapters.postgres.relation_configs.policy import (
+    postgres_render,
+    postgres_conform_part,
+    MAX_CHARACTERS_IN_IDENTIFIER,
+)
 from dbt.adapters.postgres.relation_configs.schema import PostgresSchemaConfig
 
 
 @dataclass(frozen=True, eq=True, unsafe_hash=True)
-class PostgresMaterializedViewConfig(PostgresRelationConfigBase, RelationConfigValidationMixin):
+class PostgresMaterializedViewConfig(MaterializationConfig, RelationConfigValidationMixin):
     """
     This config follows the specs found here:
     https://www.postgresql.org/docs/current/sql-creatematerializedview.html
 
     The following parameters are configurable by dbt:
-    - table_name: name of the materialized view
+    - name: name of the materialized view
+    - schema: schema that contains the materialized view
     - query: the query that defines the view
     - indexes: the collection (set) of indexes on the materialized view
 
@@ -38,59 +44,46 @@ class PostgresMaterializedViewConfig(PostgresRelationConfigBase, RelationConfigV
     - with_data: `True`
     """
 
-    table_name: str
+    name: str
     schema: PostgresSchemaConfig
-    query: str
+    query: str = field(hash=False, compare=False)
     indexes: FrozenSet[PostgresIndexConfig] = field(default_factory=frozenset)
-    relation_type = RelationType.MaterializedView
-
-    @property
-    def schema_name(self) -> str:
-        return self.schema.schema_name
-
-    @property
-    def database(self) -> PostgresDatabaseConfig:
-        return self.schema.database
-
-    @property
-    def database_name(self) -> str:
-        return self.database.name
-
-    @property
-    def backup_name(self) -> str:
-        """
-        Used for hot-swapping during replacement
-
-        Returns:
-            a name unique to this materialized view
-        """
-        return self._render_part(ComponentName.Identifier, f"{self.table_name}__dbt_backup")
-
-    @property
-    def intermediate_name(self) -> str:
-        """
-        Used for hot-swapping during replacement
-
-        Returns:
-            a name unique to this materialized view
-        """
-        return self._render_part(ComponentName.Identifier, f"{self.table_name}__dbt_tmp")
+    relation_type: Optional[RelationType] = RelationType.MaterializedView
 
     @property
     def fully_qualified_path(self) -> str:
-        return self._fully_qualified_path(self.table_name)
+        return postgres_render(
+            OrderedDict(
+                {
+                    ComponentName.Database: self.database_name,
+                    ComponentName.Schema: self.schema_name,
+                    ComponentName.Identifier: self.name,
+                }
+            )
+        )
 
     @property
     def fully_qualified_path_backup(self) -> str:
-        return self._fully_qualified_path(self.backup_name)
+        return postgres_render(
+            OrderedDict(
+                {
+                    ComponentName.Database: self.database_name,
+                    ComponentName.Schema: self.schema_name,
+                    ComponentName.Identifier: self.backup_name,
+                }
+            )
+        )
 
     @property
     def fully_qualified_path_intermediate(self) -> str:
-        return self._fully_qualified_path(self.intermediate_name)
-
-    def _fully_qualified_path(self, table_name) -> str:
-        return ".".join(
-            part for part in [self.schema.fully_qualified_path, table_name] if part is not None
+        return postgres_render(
+            OrderedDict(
+                {
+                    ComponentName.Database: self.database_name,
+                    ComponentName.Schema: self.schema_name,
+                    ComponentName.Identifier: self.intermediate_name,
+                }
+            )
         )
 
     @property
@@ -103,20 +96,20 @@ class PostgresMaterializedViewConfig(PostgresRelationConfigBase, RelationConfigV
         """
         return {
             RelationConfigValidationRule(
-                validation_check=self.table_name is None
-                or len(self.table_name) <= MAX_CHARACTERS_IN_IDENTIFIER,
+                validation_check=self.name is None
+                or len(self.name) <= MAX_CHARACTERS_IN_IDENTIFIER,
                 validation_error=DbtRuntimeError(
                     f"The materialized view name is more than {MAX_CHARACTERS_IN_IDENTIFIER} "
-                    f"characters: {self.table_name}"
+                    f"characters: {self.name}"
                 ),
             ),
             RelationConfigValidationRule(
-                validation_check=all({self.database_name, self.schema_name, self.table_name}),
+                validation_check=all({self.database_name, self.schema_name, self.name}),
                 validation_error=DbtRuntimeError(
                     f"dbt-snowflake requires all three parts of an object's path, received:/n"
                     f"    database: {self.database_name}/n"
                     f"    schema: {self.schema_name}/n"
-                    f"    identifier: {self.table_name}/n"
+                    f"    identifier: {self.name}/n"
                 ),
             ),
         }
@@ -134,7 +127,7 @@ class PostgresMaterializedViewConfig(PostgresRelationConfigBase, RelationConfigV
         Returns: an instance of this class
         """
         kwargs_dict = {
-            "table_name": cls._render_part(ComponentName.Identifier, config_dict["table_name"]),
+            "name": postgres_conform_part(ComponentName.Identifier, config_dict["name"]),
             "schema": PostgresSchemaConfig.from_dict(config_dict["schema"]),
             "query": config_dict["query"],
             "indexes": frozenset(
@@ -181,7 +174,7 @@ class PostgresMaterializedViewConfig(PostgresRelationConfigBase, RelationConfigV
         """
         indexes: List[dict] = model_node.config.extra.get("indexes", [])
         config_dict = {
-            "table_name": model_node.identifier,
+            "name": model_node.identifier,
             "schema": PostgresSchemaConfig.parse_model_node(model_node),
             "query": (model_node.compiled_code or "").strip(),
             "indexes": [PostgresIndexConfig.parse_model_node(index) for index in indexes],
@@ -216,19 +209,32 @@ class PostgresMaterializedViewConfig(PostgresRelationConfigBase, RelationConfigV
 
         Returns: a dict representation of an instance of this class that can be passed into `from_dict()`
         """
-        materialized_view: agate.Row = describe_relation_results["materialized_view"].rows[0]
+        materialized_view_config: agate.Table = describe_relation_results.get("materialized_view")
+        materialized_view = materialized_view_config.rows[0]
         indexes: agate.Table = describe_relation_results["indexes"]
 
         config_dict = {
-            "table_name": materialized_view["table_name"],
+            "name": materialized_view["matviewname"],
             "schema": PostgresSchemaConfig.parse_describe_relation_results(materialized_view),
-            "query": materialized_view["query"].strip(),
+            "query": materialized_view["definition"].strip(),
             "indexes": [
                 PostgresIndexConfig.parse_describe_relation_results(index)
                 for index in indexes.rows
             ],
         }
         return config_dict
+
+    def generate_index_name(self, index_fully_qualified_path) -> str:
+        return dbt.utils.md5(
+            "_".join(
+                {
+                    self.database_name,
+                    self.schema_name,
+                    self.name,
+                    index_fully_qualified_path,
+                }
+            )
+        )
 
 
 @dataclass

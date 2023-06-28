@@ -86,7 +86,7 @@ class Path(FakeAPIObject):
     identifier: Optional[str] = None
 
     def __post_init__(self):
-        # handle pesky jinja2.Undefined sneaking in here and messing up rende
+        # handle pesky jinja2.Undefined sneaking in here and messing up render
         if not isinstance(self.database, (type(None), str)):
             raise CompilationError("Got an invalid path database: {}".format(self.database))
         if not isinstance(self.schema, (type(None), str)):

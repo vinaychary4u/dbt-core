@@ -1,13 +1,16 @@
-from dbt.adapters.postgres.relation_configs.index import (  # noqa: F401
+from dbt.adapters.postgres.relation_configs.index import (
     PostgresIndexConfig,
     PostgresIndexConfigChange,
 )
-from dbt.adapters.postgres.relation_configs.policies import (  # noqa: F401
-    PostgresIncludePolicy,
-    PostgresQuotePolicy,
-    MAX_CHARACTERS_IN_IDENTIFIER,
-)
-from dbt.adapters.postgres.relation_configs.materialized_view import (  # noqa: F401
+from dbt.adapters.postgres.relation_configs.materialized_view import (
     PostgresMaterializedViewConfig,
     PostgresMaterializedViewConfigChangeset,
+)
+from dbt.adapters.postgres.relation_configs.policy import (
+    MAX_CHARACTERS_IN_IDENTIFIER,
+    PostgresIncludePolicy,
+    PostgresQuotePolicy,
+    postgres_conform_part,
+    postgres_render_part,
+    postgres_render,
 )

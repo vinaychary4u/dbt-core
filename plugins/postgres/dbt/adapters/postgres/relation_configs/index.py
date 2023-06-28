@@ -2,17 +2,18 @@ from dataclasses import dataclass, field
 from typing import Set, FrozenSet
 
 import agate
-from dbt.contracts.relation import ComponentName
-from dbt.dataclass_schema import StrEnum
-from dbt.exceptions import DbtRuntimeError
 from dbt.adapters.relation_configs import (
+    RelationConfig,
     RelationConfigValidationMixin,
     RelationConfigValidationRule,
     RelationConfigChangeAction,
     RelationConfigChange,
 )
+from dbt.contracts.relation import ComponentName
+from dbt.dataclass_schema import StrEnum
+from dbt.exceptions import DbtRuntimeError
 
-from dbt.adapters.postgres.relation_configs.base import PostgresRelationConfigBase
+from dbt.adapters.postgres.relation_configs.policy import postgres_conform_part
 
 
 class PostgresIndexMethod(StrEnum):
@@ -29,24 +30,30 @@ class PostgresIndexMethod(StrEnum):
 
 
 @dataclass(frozen=True, eq=True, unsafe_hash=True)
-class PostgresIndexConfig(PostgresRelationConfigBase, RelationConfigValidationMixin):
+class PostgresIndexConfig(RelationConfig, RelationConfigValidationMixin):
     """
     This config fallows the specs found here:
     https://www.postgresql.org/docs/current/sql-createindex.html
 
     The following parameters are configurable by dbt:
-    - name: the name of the index in the database, this isn't predictable since we apply a timestamp
+    - column_names: the columns in the index
     - unique: checks for duplicate values when the index is created and on data updates
     - method: the index method to be used
-    - column_names: the columns in the index
+
+    The following parameters are not configurable by dbt, but are required for certain functionality:
+    - name: the name of the index in the database
 
     Applicable defaults for non-configurable parameters:
     - concurrently: `False`
     - nulls_distinct: `True`
+
+    *Note: The index does not have a name until it is created in the database. The name also must be globally
+    unique, not just within the materialization to which it belongs. Hence, the name is a combination of attributes
+    on both the index and the materialization. This is calculated with `PostgresRelation.generate_index_name()`.
     """
 
+    column_names: FrozenSet[str] = field(hash=True)
     name: str = field(default=None, hash=False, compare=False)
-    column_names: FrozenSet[str] = field(default_factory=frozenset, hash=True)
     unique: bool = field(default=False, hash=True)
     method: PostgresIndexMethod = field(default=PostgresIndexMethod.default(), hash=True)
 
@@ -66,12 +73,15 @@ class PostgresIndexConfig(PostgresRelationConfigBase, RelationConfigValidationMi
         kwargs_dict = {
             "name": config_dict.get("name"),
             "column_names": frozenset(
-                cls._render_part(ComponentName.Identifier, column)
+                postgres_conform_part(ComponentName.Identifier, column)
                 for column in config_dict.get("column_names", set())
             ),
             "unique": config_dict.get("unique"),
-            "method": config_dict.get("method"),
         }
+
+        if method := config_dict.get("method"):
+            kwargs_dict.update({"method": PostgresIndexMethod(method)})
+
         index: "PostgresIndexConfig" = super().from_dict(kwargs_dict)  # type: ignore
         return index
 
@@ -87,24 +97,12 @@ class PostgresIndexConfig(PostgresRelationConfigBase, RelationConfigValidationMi
     @classmethod
     def parse_describe_relation_results(cls, describe_relation_results: agate.Row) -> dict:
         config_dict = {
-            "name": describe_relation_results.get("name"),
-            "column_names": set(describe_relation_results.get("column_names", "").split(",")),
-            "unique": describe_relation_results.get("unique"),
-            "method": describe_relation_results.get("method"),
+            "name": describe_relation_results["name"],
+            "column_names": set(describe_relation_results["column_names"].split(",")),
+            "unique": describe_relation_results["unique"],
+            "method": describe_relation_results["method"],
         }
         return config_dict
-
-    @property
-    def as_node_config(self) -> dict:
-        """
-        Returns: a dictionary that can be passed into `get_create_index_sql()`
-        """
-        node_config = {
-            "columns": list(self.column_names),
-            "unique": self.unique,
-            "type": self.method.value,
-        }
-        return node_config
 
 
 @dataclass(frozen=True, eq=True, unsafe_hash=True)
@@ -131,7 +129,6 @@ class PostgresIndexConfigChange(RelationConfigChange, RelationConfigValidationMi
     }
     """
 
-    action: RelationConfigChangeAction
     context: PostgresIndexConfig
 
     @property

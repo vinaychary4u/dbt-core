@@ -70,13 +70,6 @@ class OnConfigurationChangeBase(Base):
         return f"Applying REPLACE to: {relation_from_name(project.adapter, self.base_materialized_view)}"
 
     @pytest.fixture(scope="function")
-    def configuration_change_message(self, project):
-        return (
-            f"Determining configuration changes on: "
-            f"{relation_from_name(project.adapter, self.base_materialized_view)}"
-        )
-
-    @pytest.fixture(scope="function")
     def configuration_change_continue_message(self, project):
         return (
             f"Configuration changes were identified and `on_configuration_change` "

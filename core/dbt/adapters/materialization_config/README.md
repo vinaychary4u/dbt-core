@@ -1,4 +1,4 @@
-# Relation Configs
+# Materialization Configs
 This package serves as an initial abstraction for managing the inspection of existing relations and determining
 changes on those relations. It arose from the materialized view work and is currently only supporting 
 materialized views for Postgres, Redshift, and BigQuery as well as dynamic tables for Snowflake. There are three main
@@ -6,7 +6,7 @@ classes in this package.
 
 ## Base (Data)Classes
 These are the core set of classes required to describe, validate, and monitor changes on database objects. All
-other classes in `relation_configs` subclass from one of these classes.
+other classes in `materialization_config` subclass from one of these classes.
 
 ### RelationConfig
 This class holds the primary parsing methods required for marshalling data from a user config or a database metadata
@@ -56,7 +56,7 @@ object.
 
 ### MaterializationConfig
 This is the pearl in the sand. dbt generally interacts at the materialization level. As an adapter maintainer, you'll
-need to subclass from most, if not all, objects in `relation_configs`; however you're likely doing so in order
+need to subclass from most, if not all, objects in `materialization_config`; however you're likely doing so in order
 to work with a `MaterializationConfig` subclass. This class has several helper methods that make it easier
 to template sql in jinja.
 
@@ -77,14 +77,35 @@ docstrings on these functions for more detail:
 - `render_part`
 - `render`
 
+### Materialization
+This is a new class that serves as a service layer to expose `MaterializationConfig` functionality in the
+jinja context. We're effectively tucking away the modelling of database objects in python and only exposing
+class methods to serve as a basic API into `MaterializationConfig`.
+
+- `make_backup` - create a backup materialization given an existing materialization
+- `make_intermediate` - create an intermediate materialization given a target materialization
+- `backup_name` - get the name that will be used in `make_backup`
+- `intermediate_name` - get the name that will be used in `make_intermediate`
+- `from_model_node` - build a `MaterializationConfig` from a `ModelNode` (`config.model` in jinja)
+- `from_describe_relation_results` - build a `MaterializationConfig` from the database query results
+- `materialization_configs` - a `dict` that registers a `MaterializationConfig` to a `RelationType`
+
 ### BaseRelation
-There are also a handful of methods on `BaseRelation` that are meant to be used with this subpackage:
+There is a new method on `BaseRelation` that is meant to be used to interact with `MaterializationConfig`:
 
-- `from_model_node`
-- `from_describe_relation_results`
-- `relation_configs` (a lookup that gets consumed by the two methods above)
+- `from_materialization_config` - build a `BaseRelation` from a `MaterializationConfig`; useful for using existing
+functionality with the new structure
 
-These are effectively for creating `MaterializationConfig` subclasses given data from either the `model`
-attribute in the global jinja context or from data from the database. Ultimately, we're treating
-`BaseAdapter` as a service layer that gets exposed in the jinja context, and tucking everything else into this
-subpackage.
+### BaseAdapter
+The new `Materialization` object is registered on `BaseAdapter` and can be used in a similar fashion in jinja
+as `BaseRelation` is used. There are also a few new helper methods:
+
+- `get_cached_relation` - same as `get_relation`, but for `MaterializationConfig`
+- `is_base_relation` - determines if the object is a `BaseRelation` instance
+- `is_materialization_config` - determines if the object is a `MaterializationConfig`, usually paired with
+`BaseRelation.from_materialization_config` to use existing functionality
+
+It should be noted that `BaseAdapter.is_materialization_config` and `BaseRelation.from_materialization_config`
+can be used to "merge" `BaseRelation` instances and `MaterializationConfig` instances into the same signature
+in a jinja macro. This makes it so that you only need one macro, and can determine the pieces you need once you
+get there. Generally speaking, you only need identifiers, schema names, types, etc. for templating anyway.

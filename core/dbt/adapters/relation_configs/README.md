@@ -10,9 +10,9 @@ other classes in `relation_configs` subclass from one of these classes.
 
 ### RelationConfig
 This class holds the primary parsing methods required for marshalling data from a user config or a database metadata
-query into a `RelationConfigBase` subclass. `RelationConfigBase` is a good class to subclass for smaller, atomic
+query into a `RelationConfig` subclass. `RelationConfig` is a good class to subclass for smaller, atomic
 database objects or objects that may be specific to a subset of adapters. For example, a Postgres index is modelled
-from `RelationConfigBase` because not every database has an index and there is not much hierarchy to an index.
+from `RelationConfig` because not every database has an index and there is not much hierarchy to an index.
 
 The objective of this parser is to provide a stopping point between dbt-specific config and database-specific config
 for two primary reasons:
@@ -25,9 +25,9 @@ At some point this could be theoretically be replaced by a more robust framework
 ### RelationConfigChange
 This class holds the methods required for detecting and acting on changes in a materialization. All changes
 should subclass from `RelationConfigChange`. A `RelationConfigChange` can be thought of as being analogous
-to a web request on a `RelationConfigBase`. You need to know what you're doing
+to a web request on a `RelationConfig`. You need to know what you're doing
 (`action`: 'create' = GET, 'drop' = DELETE, etc.) and the information (`context`) needed to make the change.
-In our scenarios, `context` tends to be either an instance of `RelationConfigBase` corresponding to the new state
+In our scenarios, `context` tends to be either an instance of `RelationConfig` corresponding to the new state
 or a single value if the change is simple. For example, creating an index would require the entire config;
 whereas updating a setting like autorefresh for Redshift would require only the setting.
 
@@ -45,7 +45,7 @@ the `validation_error` be provided for clearer transparency to the end user.
 ## Basic Building Blocks (Data)Classes
 
 ### DatabaseConfig
-This is the most basic version of `RelationConfigBase` that we can have. It adds a `name` and a `fully_qualified_path`
+This is the most basic version of `RelationConfig` that we can have. It adds a `name` and a `fully_qualified_path`
 and nothing else. But we generally need a database when dbt runs. In particular, we need to reference a database
 in other classes, like `SchemaConfig`.
 
@@ -86,5 +86,5 @@ There are also a handful of methods on `BaseRelation` that are meant to be used 
 
 These are effectively for creating `MaterializationConfig` subclasses given data from either the `model`
 attribute in the global jinja context or from data from the database. Ultimately, we're treating
-`BaseRelation` as a service layer that gets exposed in the jinja context, and tucking everything else into this
+`BaseAdapter` as a service layer that gets exposed in the jinja context, and tucking everything else into this
 subpackage.

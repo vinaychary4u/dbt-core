@@ -1,10 +1,11 @@
 from abc import ABC
 from dataclasses import dataclass
 
-from dbt.contracts.relation import RelationType
-from dbt.adapters.relation_configs._base import RelationConfig
+from dbt.adapters.relation_configs._base import DescribeRelationResults, RelationConfig
 from dbt.adapters.relation_configs._database import DatabaseConfig
 from dbt.adapters.relation_configs._schema import SchemaConfig
+from dbt.contracts.graph.nodes import ModelNode
+from dbt.contracts.relation import RelationType
 
 
 @dataclass(frozen=True)
@@ -17,7 +18,7 @@ class MaterializationConfig(RelationConfig, ABC):
     name: str
     schema: "SchemaConfig"
     query: str
-    relation_type: RelationType
+    type: RelationType
 
     @property
     def schema_name(self) -> str:
@@ -32,26 +33,6 @@ class MaterializationConfig(RelationConfig, ABC):
         return self.database.name
 
     @property
-    def backup_name(self) -> str:
-        """
-        Used for hot-swapping during replacement
-
-        Returns:
-            a name unique to this materialized view
-        """
-        return f"{self.name}__dbt_backup"
-
-    @property
-    def intermediate_name(self) -> str:
-        """
-        Used for hot-swapping during replacement
-
-        Returns:
-            a name unique to this materialized view
-        """
-        return f"{self.name}__dbt_tmp"
-
-    @property
     def fully_qualified_path(self) -> str:
         """
         This is sufficient if there is no quote policy or include policy, otherwise override it to apply those policies.
@@ -60,20 +41,37 @@ class MaterializationConfig(RelationConfig, ABC):
         """
         return f"{self.schema.fully_qualified_path}.{self.name}"
 
-    @property
-    def fully_qualified_path_backup(self) -> str:
+    @classmethod
+    def from_dict(cls, kwargs_dict) -> "MaterializationConfig":
         """
-        This is sufficient if there is no quote policy or include policy, otherwise override it to apply those policies.
+        Supports type annotations
+        """
+        config = super().from_dict(kwargs_dict)
+        assert isinstance(config, MaterializationConfig)
+        return config
 
-        Returns: a fully qualified path, run through the quote and include policies, for rendering in a template
+    @classmethod
+    def from_model_node(cls, model_node: ModelNode) -> "MaterializationConfig":
         """
-        return f"{self.schema.fully_qualified_path}.{self.backup_name}"
+        Supports type annotations
+        """
+        config = super().from_model_node(model_node)
+        assert isinstance(config, MaterializationConfig)
+        return config
 
-    @property
-    def fully_qualified_path_intermediate(self) -> str:
+    @classmethod
+    def from_describe_relation_results(
+        cls, describe_relation_results: DescribeRelationResults
+    ) -> "MaterializationConfig":
         """
-        This is sufficient if there is no quote policy or include policy, otherwise override it to apply those policies.
+        Supports type annotations
+        """
+        config = super().from_describe_relation_results(describe_relation_results)
+        assert isinstance(config, MaterializationConfig)
+        return config
 
-        Returns: a fully qualified path, run through the quote and include policies, for rendering in a template
+    def __str__(self):
         """
-        return f"{self.schema.fully_qualified_path}.{self.intermediate_name}"
+        Useful for template rendering and aligns with BaseRelation so that they are interchangeable
+        """
+        return self.fully_qualified_path

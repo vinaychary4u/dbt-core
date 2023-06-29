@@ -21,45 +21,40 @@
 */ -#}
 
 
-{% macro postgres__alter_materialized_view_sql(new_materialized_view, existing_materialized_view) %}
+{%- macro postgres__alter_materialized_view_sql(existing_materialized_view, new_materialized_view) -%}
 
     {#- /*
         We need to get the config changeset to determine if we require a full refresh (happens if any change
         in the changeset requires a full refresh or if an unmonitored change was detected)
         or if we can get away with altering the dynamic table in place.
     */ -#}
-    {% set _config_changeset = adapter.Relation.materialized_view_config_changeset(new_materialized_view, existing_materialized_view) %}
+    {%- set _config_changeset = adapter.materialized_view_config_changeset(existing_materialized_view, new_materialized_view) -%}
 
-    {% if _config_changeset.requires_full_refresh %}
+    {%- if _config_changeset.requires_full_refresh -%}
         {{ replace_materialized_view_sql(new_materialized_view) }}
 
-    {% else %}
+    {%- else -%}
         {{ postgres__alter_indexes_sql(new_materialized_view, _config_changeset.indexes) }}
 
     {%- endif -%}
 
-{% endmacro %}
+{%- endmacro -%}
 
 
-{% macro postgres__create_materialized_view_sql(materialized_view, as_intermediate=False) %}
-    {%- if as_intermediate -%}
-        {%- set materialized_view_path = materialized_view.fully_qualified_path_intermediate -%}
-    {%- else -%}
-        {%- set materialized_view_path = materialized_view.fully_qualified_path -%}
-    {%- endif -%}
+{%- macro postgres__create_materialized_view_sql(materialized_view) -%}
 
-    create materialized view {{ materialized_view_path }} as
+    create materialized view {{ materialized_view.fully_qualified_path }} as
         {{ materialized_view.query }}
     ;
 
-    {{- postgres__create_indexes_sql(materialized_view, on_intermediate) -}}
+    {{ postgres__create_indexes_sql(materialized_view) -}}
 
-{% endmacro %}
+{%- endmacro -%}
 
 
-{% macro postgres__describe_materialized_view_sql(materialized_view) %}
+{%- macro postgres__describe_materialized_view_sql(materialized_view) -%}
 
-    {% set _materialized_view_sql -%}
+    {%- set _materialized_view_sql -%}
         select
             v.matviewname,
             v.schemaname,
@@ -69,7 +64,7 @@
         where v.matviewname ilike '{{ materialized_view.name }}'
           and v.schemaname ilike '{{ materialized_view.schema_name }}'
     {%- endset -%}
-    {% set _materialized_view = run_query(_materialized_view_sql) %}
+    {%- set _materialized_view = run_query(_materialized_view_sql) -%}
 
     {%- set _indexes_sql -%}
         select
@@ -95,44 +90,37 @@
         group by 1, 2, 3
         order by 1, 2, 3
     {%- endset -%}
-    {% set _indexes = run_query(_indexes_sql) %}
+    {%- set _indexes = run_query(_indexes_sql) -%}
 
-    {% do return({'materialized_view': _materialized_view, 'indexes': _indexes}) %}
+    {%- do return({'materialized_view': _materialized_view, 'indexes': _indexes}) -%}
 
-{% endmacro %}
+{%- endmacro -%}
 
 
--- This is the new one that gets used with RelationConfigBase instances
-{% macro postgres__drop_materialized_view_sql(materialized_view) -%}
+{%- macro postgres__drop_materialized_view_sql(materialized_view) -%}
     drop materialized view if exists {{ materialized_view.fully_qualified_path }} cascade
-{%- endmacro %}
+{%- endmacro -%}
 
 
 -- This is the old one that gets used with BaseRelation instances
-{% macro postgres__drop_materialized_view(relation) -%}
+{%- macro postgres__drop_materialized_view(relation) -%}
     drop materialized view if exists {{ relation }} cascade
-{%- endmacro %}
+{%- endmacro -%}
 
 
-{% macro postgres__refresh_materialized_view_sql(materialized_view) %}
+{%- macro postgres__refresh_materialized_view_sql(materialized_view) -%}
     refresh materialized view {{ materialized_view.fully_qualified_path }}
-{% endmacro %}
+{%- endmacro -%}
 
 
-{% macro postgres__rename_materialized_view_sql(materialized_view, name, from_intermediate=False) %}
-    {%- if from_intermediate -%}
-        {%- set materialized_view_path = materialized_view.fully_qualified_path_intermediate -%}
+{%- macro postgres__rename_materialized_view_sql(materialized_view, new_name) -%}
+
+    {%- if adapter.is_materialization_config(materialized_view) -%}
+        {%- set fully_qualified_path = materialized_view.fully_qualified_path -%}
     {%- else -%}
-        {%- set materialized_view_path = materialized_view.fully_qualified_path -%}
+        {%- set fully_qualified_path = materialized_view -%}
     {%- endif -%}
 
-    alter materialized view {{ materialized_view_path }} rename to {{ name }}
-{% endmacro %}
+    alter materialized view {{ fully_qualified_path }} rename to {{ new_name }}
 
-
-{% macro postgres__replace_materialized_view_sql(new_materialized_view, existing_relation) %}
-    {{- create_materialized_view_sql(new_materialized_view, as_intermediate=True) -}}
---TODO: this only works for existing materialized views
-    {{ rename_materialized_view_sql(new_materialized_view, new_materialized_view.backup_name) }};
-    {{ rename_materialized_view_sql(new_materialized_view, new_materialized_view.name, from_intermediate=True) }}
-{% endmacro %}
+{%- endmacro -%}

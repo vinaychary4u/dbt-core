@@ -12,7 +12,6 @@ from dbt.adapters.relation_configs import (
 from dbt.contracts.graph.nodes import ModelNode
 from dbt.contracts.relation import ComponentName, RelationType
 from dbt.exceptions import DbtRuntimeError
-import dbt.utils
 
 from dbt.adapters.postgres.relation_configs.index import (
     PostgresIndexConfig,
@@ -48,7 +47,7 @@ class PostgresMaterializedViewConfig(MaterializationConfig, RelationConfigValida
     schema: PostgresSchemaConfig
     query: str = field(hash=False, compare=False)
     indexes: FrozenSet[PostgresIndexConfig] = field(default_factory=frozenset)
-    relation_type: Optional[RelationType] = RelationType.MaterializedView
+    type: Optional[RelationType] = RelationType.MaterializedView
 
     @property
     def fully_qualified_path(self) -> str:
@@ -58,30 +57,6 @@ class PostgresMaterializedViewConfig(MaterializationConfig, RelationConfigValida
                     ComponentName.Database: self.database_name,
                     ComponentName.Schema: self.schema_name,
                     ComponentName.Identifier: self.name,
-                }
-            )
-        )
-
-    @property
-    def fully_qualified_path_backup(self) -> str:
-        return postgres_render(
-            OrderedDict(
-                {
-                    ComponentName.Database: self.database_name,
-                    ComponentName.Schema: self.schema_name,
-                    ComponentName.Identifier: self.backup_name,
-                }
-            )
-        )
-
-    @property
-    def fully_qualified_path_intermediate(self) -> str:
-        return postgres_render(
-            OrderedDict(
-                {
-                    ComponentName.Database: self.database_name,
-                    ComponentName.Schema: self.schema_name,
-                    ComponentName.Identifier: self.intermediate_name,
                 }
             )
         )
@@ -223,18 +198,6 @@ class PostgresMaterializedViewConfig(MaterializationConfig, RelationConfigValida
             ],
         }
         return config_dict
-
-    def generate_index_name(self, index_fully_qualified_path) -> str:
-        return dbt.utils.md5(
-            "_".join(
-                {
-                    self.database_name,
-                    self.schema_name,
-                    self.name,
-                    index_fully_qualified_path,
-                }
-            )
-        )
 
 
 @dataclass

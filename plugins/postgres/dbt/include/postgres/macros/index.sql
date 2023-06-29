@@ -26,10 +26,10 @@
     {%- for _index_change in index_changeset -%}
         {%- set _index_config = _index_change.context -%}
 
-        {%- if _index_change.action == "drop" -%}
+        {%- if _index_change.action == adapter.relation_config_change_action.drop -%}
             {{ postgres__drop_index_sql(_index_config) }};
 
-        {%- elif _index_change.action == "create" -%}
+        {%- elif _index_change.action == adapter.relation_config_change_action.create -%}
             {{ postgres__create_index_sql(materialization_config, _index_config) }};
 
         {%- endif -%}
@@ -38,26 +38,21 @@
 {%- endmacro %}
 
 
-{% macro postgres__create_indexes_sql(materialization_config, on_intermediate=False) -%}
+{% macro postgres__create_indexes_sql(materialization_config) -%}
 
     {% for _index_config in materialization_config.indexes -%}
-        {{- postgres__create_index_sql(materialization_config, _index_config, on_intermediate) -}};
+        {{- postgres__create_index_sql(materialization_config, _index_config) -}};
     {%- endfor -%}
 
 {%- endmacro %}
 
 
-{% macro postgres__create_index_sql(materialization_config, index_config, on_intermediate=False) -%}
-    {%- if on_intermediate -%}
-        {%- set _materialization_path = materialization_config.fully_qualified_path_intermediate -%}
-    {%- else -%}
-        {%- set _materialization_path = materialization_config.fully_qualified_path -%}
-    {%- endif -%}
+{% macro postgres__create_index_sql(materialization_config, index_config) -%}
 
-    {%- set _index_name = adapter.Relation.generate_index_name(materialization_config, index_config) -%}
+    {%- set _index_name = adapter.generate_index_name(materialization_config, index_config) -%}
 
     create {% if index_config.unique -%}unique{%- endif %} index if not exists "{{ _index_name }}"
-        on {{ _materialization_path }}
+        on {{ materialization_config.fully_qualified_path }}
         using {{ index_config.method }}
         (
             {{ ", ".join(index_config.column_names) }}

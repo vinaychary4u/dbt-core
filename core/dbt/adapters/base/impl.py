@@ -1,10 +1,11 @@
 import abc
 from concurrent.futures import as_completed, Future
 from contextlib import contextmanager
+import dataclasses
 from datetime import datetime
 from enum import Enum
-import time
 from itertools import chain
+import time
 from typing import (
     Any,
     Callable,
@@ -20,11 +21,47 @@ from typing import (
     Union,
 )
 
-from dbt.contracts.graph.nodes import ColumnLevelConstraint, ConstraintType, ModelLevelConstraint
-
 import agate
 import pytz
 
+from dbt import deprecations
+from dbt.adapters.base import Credentials, Column as BaseColumn
+from dbt.adapters.base.connections import AdapterResponse, Connection
+from dbt.adapters.base.meta import AdapterMeta, available
+from dbt.adapters.base.relation import (
+    ComponentName,
+    BaseRelation,
+    InformationSchema,
+    SchemaSearchMap,
+)
+from dbt.adapters.cache import RelationsCache, _make_ref_key_dict
+from dbt.adapters.protocol import AdapterConfig, ConnectionManagerProtocol
+from dbt.adapters.relation_configs import (
+    DescribeRelationResults,
+    MaterializationConfig,
+    RelationConfigChangeAction,
+)
+from dbt.clients.agate_helper import empty_table, merge_tables, table_from_rows
+from dbt.clients.jinja import MacroGenerator
+from dbt.contracts.graph.manifest import MacroManifest, Manifest
+from dbt.contracts.graph.nodes import (
+    ColumnLevelConstraint,
+    ConstraintType,
+    ModelLevelConstraint,
+    ModelNode,
+    ResultNode,
+)
+from dbt.contracts.relation import RelationType
+from dbt.events.functions import fire_event, warn_or_error
+from dbt.events.types import (
+    CacheMiss,
+    CatalogGenerationError,
+    CodeExecution,
+    CodeExecutionStatus,
+    ConstraintNotEnforced,
+    ConstraintNotSupported,
+    ListRelations,
+)
 from dbt.exceptions import (
     DbtInternalError,
     DbtRuntimeError,
@@ -42,36 +79,8 @@ from dbt.exceptions import (
     UnexpectedNonTimestampError,
     UnexpectedNullError,
 )
+from dbt.utils import AttrDict, cast_to_str, filter_null_values, executor
 
-from dbt.adapters.protocol import AdapterConfig, ConnectionManagerProtocol
-from dbt.clients.agate_helper import empty_table, merge_tables, table_from_rows
-from dbt.clients.jinja import MacroGenerator
-from dbt.contracts.graph.manifest import Manifest, MacroManifest
-from dbt.contracts.graph.nodes import ResultNode
-from dbt.events.functions import fire_event, warn_or_error
-from dbt.events.types import (
-    CacheMiss,
-    ListRelations,
-    CodeExecution,
-    CodeExecutionStatus,
-    CatalogGenerationError,
-    ConstraintNotSupported,
-    ConstraintNotEnforced,
-)
-from dbt.utils import filter_null_values, executor, cast_to_str, AttrDict
-
-from dbt.adapters.base.connections import Connection, AdapterResponse
-from dbt.adapters.base.meta import AdapterMeta, available
-from dbt.adapters.base.relation import (
-    ComponentName,
-    BaseRelation,
-    InformationSchema,
-    SchemaSearchMap,
-)
-from dbt.adapters.base import Column as BaseColumn
-from dbt.adapters.base import Credentials
-from dbt.adapters.cache import RelationsCache, _make_ref_key_dict
-from dbt import deprecations
 
 GET_CATALOG_MACRO_NAME = "get_catalog"
 FRESHNESS_MACRO_NAME = "collect_freshness"
@@ -221,6 +230,18 @@ class BaseAdapter(metaclass=AdapterMeta):
         ConstraintType.primary_key: ConstraintSupport.NOT_ENFORCED,
         ConstraintType.foreign_key: ConstraintSupport.ENFORCED,
     }
+
+    materialization_configs: Dict[RelationType, MaterializationConfig] = {}
+
+    @available
+    @classmethod
+    def relation_type(cls) -> Type[RelationType]:
+        return RelationType
+
+    @available
+    @classmethod
+    def relation_config_change_action(cls) -> Type[RelationConfigChangeAction]:
+        return RelationConfigChangeAction
 
     def __init__(self, config):
         self.config = config
@@ -1419,6 +1440,173 @@ class BaseAdapter(metaclass=AdapterMeta):
             return f"{constraint_prefix}{constraint.expression}"
         else:
             return None
+
+    @available
+    @classmethod
+    def is_base_relation(cls, materialization: Union[BaseRelation, MaterializationConfig]) -> bool:
+        return isinstance(materialization, BaseRelation)
+
+    @available
+    @classmethod
+    def is_materialization_config(
+        cls, materialization: Union[BaseRelation, MaterializationConfig]
+    ) -> bool:
+        return isinstance(materialization, MaterializationConfig)
+
+    @available
+    def base_relation_from_materialization_config(
+        self, materialization_config: MaterializationConfig
+    ) -> BaseRelation:
+        """
+        Produce a `BaseRelation` instance from a `MaterializationConfig` instance. This is primarily done to
+        reuse existing functionality based on `BaseRelation` while working with `MaterializationConfig` instances.
+
+        Args:
+            materialization_config: a `MaterializationConfig` to be converted
+
+        Returns:
+            a converted `BaseRelation` instance
+        """
+        relation = self.Relation.create(
+            database=materialization_config.database_name,
+            schema=materialization_config.schema_name,
+            identifier=materialization_config.name,
+            quote_policy=self.config.quoting,
+            type=materialization_config.type,
+        )
+        return relation
+
+    @available
+    @classmethod
+    def make_backup_materialization_config(
+        cls, materialization_config: MaterializationConfig
+    ) -> MaterializationConfig:
+        """
+        Return a copy of the materialization config, but with a backup name instead of the original name.
+
+        Args:
+            materialization_config: the materialization that needs a backup
+
+        Returns:
+            a renamed copy of the materialization config
+        """
+        return dataclasses.replace(
+            materialization_config, name=cls.backup_name(materialization_config)
+        )
+
+    @available
+    @classmethod
+    def make_intermediate_materialization_config(
+        cls, materialization_config: MaterializationConfig
+    ) -> MaterializationConfig:
+        """
+        Return a copy of the materialization config, but with a backup name instead of the original name.
+
+        Args:
+            materialization_config: the materialization that needs a backup
+
+        Returns:
+            a renamed copy of the materialization config
+        """
+        return dataclasses.replace(
+            materialization_config, name=cls.intermediate_name(materialization_config)
+        )
+
+    @available
+    def get_cached_relation_from_materialization_config(
+        self, materialization_config: MaterializationConfig
+    ) -> BaseRelation:
+        return self.get_relation(
+            database=materialization_config.database_name,
+            schema=materialization_config.schema_name,
+            identifier=materialization_config.name,
+        )
+
+    @available
+    def get_cached_backup_relation_from_materialization_config(
+        self, materialization_config: MaterializationConfig
+    ) -> BaseRelation:
+        return self.get_relation(
+            database=materialization_config.database_name,
+            schema=materialization_config.schema_name,
+            identifier=self.backup_name(materialization_config),
+        )
+
+    @available
+    def get_cached_intermediate_relation_from_materialization_config(
+        self, materialization_config: MaterializationConfig
+    ) -> BaseRelation:
+        return self.get_relation(
+            database=materialization_config.database_name,
+            schema=materialization_config.schema_name,
+            identifier=self.intermediate_name(materialization_config),
+        )
+
+    @available
+    @classmethod
+    def backup_name(cls, materialization_config: MaterializationConfig) -> str:
+        return f"{materialization_config.name}__dbt_backup"
+
+    @available
+    @classmethod
+    def intermediate_name(cls, materialization_config: MaterializationConfig) -> str:
+        return f"{materialization_config.name}__dbt_tmp"
+
+    @available
+    @classmethod
+    def materialization_config_from_model_node(
+        cls, model_node: ModelNode
+    ) -> MaterializationConfig:
+        """
+        Produce a validated materialization config from the config available in the global jinja context.
+
+        The intention is to remove validation from the jinja context and put it in python. This method gets
+        called in a jinja template and it's results are used in the jinja template. For an example, please
+        refer to `dbt/include/global_project/macros/materializations/models/materialized_view/materialization.sql`.
+        In this file, the relation config is retrieved right away, to ensure that the config is validated before
+        any sql is executed against the database.
+
+        Args:
+            model_node: the `model` ModelNode instance that's in the global jinja context
+
+        Returns: a validated adapter-specific, relation_type-specific MaterializationConfig instance
+        """
+        relation_type = RelationType(model_node.config.materialized)
+
+        if materialization_config := cls.materialization_configs.get(relation_type):
+            return materialization_config.from_model_node(model_node)
+
+        raise DbtRuntimeError(
+            f"materialization_config_from_model_node() is not supported"
+            f" for the provided relation type: {relation_type}"
+        )
+
+    @available
+    @classmethod
+    def materialization_config_from_describe_relation_results(
+        cls, describe_relation_results: DescribeRelationResults, relation_type: RelationType
+    ) -> MaterializationConfig:
+        """
+        Produce a validated materialization config from a series of "describe <relation>"-type queries.
+
+        The intention is to remove validation from the jinja context and put it in python. This method gets
+        called in a jinja template and it's results are used in the jinja template. For an example, please
+        refer to `dbt/include/global_project/macros/materializations/models/materialized_view/materialization.sql`.
+
+        Args:
+            describe_relation_results: the results of one or more queries run against the database
+                to describe this relation
+            relation_type: the type of relation associated with the relation results
+
+        Returns: a validated adapter-specific, relation_type-specific MaterializationConfig instance
+        """
+        if materialization_config := cls.materialization_configs.get(relation_type):
+            return materialization_config.from_describe_relation_results(describe_relation_results)
+
+        raise DbtRuntimeError(
+            f"materialization_config_from_describe_relation_results() is not"
+            f" supported for the provided relation type: {relation_type}"
+        )
 
 
 COLUMNS_EQUAL_SQL = """

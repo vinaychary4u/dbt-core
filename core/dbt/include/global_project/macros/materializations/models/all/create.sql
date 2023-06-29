@@ -11,7 +11,7 @@
 
     {%- set relation_type = materialization.type -%}
 
-    {%- if relation_type == 'materialized_view' -%}
+    {%- if relation_type == adapter.RelationType.MaterializedView -%}
         {{ create_materialized_view_sql(materialization) }}
     {%- else -%}
         {{- exceptions.raise_compiler_error("`create_sql()` has not been implemented for the relation type" ~ relation_type ) -}}

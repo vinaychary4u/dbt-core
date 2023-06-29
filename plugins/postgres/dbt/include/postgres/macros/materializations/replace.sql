@@ -1,7 +1,7 @@
 {%- macro postgres__replace_sql(existing_materialization, new_materialization) -%}
 
     {#- new_materialization is always a MaterializationConfig instance -#}
-    {%- set intermediate_materialization = adapter.make_intermediate_materialization_config(new_materialization) -%}
+    {%- set intermediate_materialization = adapter.Materialization.make_intermediate(new_materialization) -%}
     {%- set new_name = new_materialization.name -%}
 
 

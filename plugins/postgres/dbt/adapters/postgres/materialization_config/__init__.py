@@ -1,12 +1,12 @@
-from dbt.adapters.postgres.relation_configs.index import (
+from dbt.adapters.postgres.materialization_config.index import (
     PostgresIndexConfig,
     PostgresIndexConfigChange,
 )
-from dbt.adapters.postgres.relation_configs.materialized_view import (
+from dbt.adapters.postgres.materialization_config.materialized_view import (
     PostgresMaterializedViewConfig,
     PostgresMaterializedViewConfigChangeset,
 )
-from dbt.adapters.postgres.relation_configs.policy import (
+from dbt.adapters.postgres.materialization_config.policy import (
     MAX_CHARACTERS_IN_IDENTIFIER,
     PostgresIncludePolicy,
     PostgresQuotePolicy,

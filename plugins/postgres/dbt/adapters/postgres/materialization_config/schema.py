@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Set
 
 import agate
-from dbt.adapters.relation_configs import (
+from dbt.adapters.materialization_config import (
     SchemaConfig,
     RelationConfigValidationMixin,
     RelationConfigValidationRule,
@@ -12,8 +12,11 @@ from dbt.contracts.graph.nodes import ModelNode
 from dbt.contracts.relation import ComponentName
 from dbt.exceptions import DbtRuntimeError
 
-from dbt.adapters.postgres.relation_configs.database import PostgresDatabaseConfig
-from dbt.adapters.postgres.relation_configs.policy import postgres_render, postgres_conform_part
+from dbt.adapters.postgres.materialization_config.database import PostgresDatabaseConfig
+from dbt.adapters.postgres.materialization_config.policy import (
+    postgres_render,
+    postgres_conform_part,
+)
 
 
 @dataclass(frozen=True, eq=True, unsafe_hash=True)

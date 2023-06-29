@@ -1,10 +1,10 @@
 {%- materialization materialized_view, default -%}
 
     -- Try to create a valid materialized view from the config before doing anything else
-    {%- set new_materialized_view = adapter.materialization_config_from_model_node(config.model) -%}
+    {%- set new_materialized_view = adapter.Materialization.from_model_node(config.model) -%}
 
     -- We still need these because they tie into the existing process (e.g. RelationBase vs. RelationConfigBase)
-    {%- set existing_relation = adapter.get_cached_relation_from_materialization_config(new_materialized_view) -%}
+    {%- set existing_relation = adapter.get_cached_relation(new_materialized_view) -%}
 
     {{- mat_setup(new_materialized_view, pre_hooks) -}}
 
@@ -18,7 +18,7 @@
 
     {{- mat_teardown(new_materialized_view, post_hooks) -}}
 
-    {%- set new_relation = adapter.base_relation_from_materialization_config(new_materialized_view) -%}
+    {%- set new_relation = adapter.Relation.from_materialization_config(new_materialized_view) -%}
     {{- return({'relations': [new_relation]}) -}}
 
 {%- endmaterialization -%}
@@ -43,20 +43,20 @@
 {%- macro alter_materialized_view_with_on_configuration_change_option_sql(new_materialized_view) -%}
 
     {%- set describe_relation_results = describe_materialized_view_sql(new_materialized_view) -%}
-    {%- set existing_materialized_view = adapter.materialization_config_from_describe_relation_results(
-        describe_relation_results, adapter.Relation.MaterializedView
+    {%- set existing_materialized_view = adapter.Materialization.from_describe_relation_results(
+        describe_relation_results, adapter.RelationType.MaterializedView
     ) -%}
     {%- set on_configuration_change = config.get('on_configuration_change') -%}
 
     {%- if existing_materialized_view == new_materialized_view -%}
         {%- set build_sql = refresh_materialized_view_sql(existing_materialized_view) -%}
 
-    {%- elif on_configuration_change == 'apply' -%}
+    {%- elif on_configuration_change == adapter.Materialization.ChangeOption.Apply -%}
         {%- set build_sql = alter_sql(existing_materialized_view, new_materialized_view) -%}
-    {%- elif on_configuration_change == 'continue' -%}
+    {%- elif on_configuration_change == adapter.Materialization.ChangeOption.Continue -%}
         {%- set build_sql = '' -%}
         {{- exceptions.warn("Configuration changes were identified and `on_configuration_change` was set to `continue` for `" ~ new_materialized_view.fully_qualified_path ~ "`") -}}
-    {%- elif on_configuration_change == 'fail' -%}
+    {%- elif on_configuration_change == adapter.Materialization.ChangeOption.Fail -%}
         {{- exceptions.raise_fail_fast_error("Configuration changes were identified and `on_configuration_change` was set to `fail` for `" ~ new_materialized_view.fully_qualified_path ~ "`") -}}
 
     {%- else -%}

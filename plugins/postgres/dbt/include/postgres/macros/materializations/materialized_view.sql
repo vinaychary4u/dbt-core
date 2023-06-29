@@ -28,7 +28,7 @@
         in the changeset requires a full refresh or if an unmonitored change was detected)
         or if we can get away with altering the dynamic table in place.
     */ -#}
-    {%- set _config_changeset = adapter.materialized_view_config_changeset(existing_materialized_view, new_materialized_view) -%}
+    {%- set _config_changeset = adapter.Materialization.materialized_view_config_changeset(existing_materialized_view, new_materialized_view) -%}
 
     {%- if _config_changeset.requires_full_refresh -%}
         {{ replace_materialized_view_sql(new_materialized_view) }}
@@ -66,30 +66,7 @@
     {%- endset -%}
     {%- set _materialized_view = run_query(_materialized_view_sql) -%}
 
-    {%- set _indexes_sql -%}
-        select
-            i.relname                                   as name,
-            m.amname                                    as method,
-            ix.indisunique                              as "unique",
-            array_to_string(array_agg(a.attname), ',')  as column_names
-        from pg_index ix
-        join pg_class i
-            on i.oid = ix.indexrelid
-        join pg_am m
-            on m.oid=i.relam
-        join pg_class t
-            on t.oid = ix.indrelid
-        join pg_namespace n
-            on n.oid = t.relnamespace
-        join pg_attribute a
-            on a.attrelid = t.oid
-            and a.attnum = ANY(ix.indkey)
-        where t.relname ilike '{{ materialized_view.name }}'
-          and n.nspname ilike '{{ materialized_view.schema_name }}'
-          and t.relkind = 'm'
-        group by 1, 2, 3
-        order by 1, 2, 3
-    {%- endset -%}
+    {%- set _indexes_sql = postgres__describe_indexes_sql(materialized_view) -%}
     {%- set _indexes = run_query(_indexes_sql) -%}
 
     {%- do return({'materialized_view': _materialized_view, 'indexes': _indexes}) -%}

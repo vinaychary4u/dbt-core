@@ -2,7 +2,7 @@
 
     {{- log('Applying DROP to: ' ~ materialization) -}}
 
-    {%- set relation = adapter.base_relation_from_materialization_config(materialization) -%}
+    {%- set relation = adapter.Relation.from_materialization_config(materialization) -%}
 
     {{- adapter.dispatch('drop_sql', 'dbt')(materialization) -}}
 
@@ -15,7 +15,7 @@
 
     {%- set relation_type = materialization.type -%}
 
-    {%- if relation_type == 'materialized_view' -%}
+    {%- if relation_type == adapter.RelationType.MaterializedView -%}
         {{ drop_materialized_view_sql(materialization) }}
     {%- else -%}
         {{- exceptions.raise_compiler_error("`drop_sql()` has not been implemented for the relation type" ~ relation_type ) -}}

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from functools import partial
 
-from dbt.adapters.relation_configs import (
+from dbt.adapters.materialization_config import (
     IncludePolicy,
     QuotePolicy,
     conform_part,

@@ -1,23 +1,17 @@
 from abc import ABC
 from dataclasses import dataclass
 
-from dbt.adapters.relation_configs._base import RelationConfig
-from dbt.adapters.relation_configs._database import DatabaseConfig
+from dbt.adapters.materialization_config._base import RelationConfig
 
 
 @dataclass(frozen=True, eq=True, unsafe_hash=True)
-class SchemaConfig(RelationConfig, ABC):
+class DatabaseConfig(RelationConfig, ABC):
     """
-    This config identifies the minimal schema parameters required for dbt to function as well
+    This config identifies the minimal database parameters required for dbt to function as well
     as built-ins that make macros more extensible. Additional parameters may be added by subclassing for your adapter.
     """
 
     name: str
-    database: DatabaseConfig
-
-    @property
-    def database_name(self) -> str:
-        return self.database.name
 
     @property
     def fully_qualified_path(self) -> str:
@@ -26,4 +20,4 @@ class SchemaConfig(RelationConfig, ABC):
 
         Returns: a fully qualified path, run through the quote and include policies, for rendering in a template
         """
-        return f"{self.database.fully_qualified_path}.{self.name}"
+        return self.name

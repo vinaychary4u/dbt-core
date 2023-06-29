@@ -1,7 +1,8 @@
 from collections.abc import Hashable
-from dataclasses import dataclass, field
+import dataclasses
 from typing import Any, Dict, Iterator, Optional, Set, Tuple, Type, TypeVar
 
+from dbt.adapters.materialization_config import MaterializationConfig
 from dbt.contracts.graph.nodes import (
     SourceDefinition,
     ManifestNode,
@@ -30,15 +31,15 @@ from dbt.utils import classproperty, deep_merge, filter_null_values, merge
 Self = TypeVar("Self", bound="BaseRelation")
 
 
-@dataclass(frozen=True, eq=False, repr=False)
+@dataclasses.dataclass(frozen=True, eq=False, repr=False)
 class BaseRelation(FakeAPIObject, Hashable):
     path: Path
     type: Optional[RelationType] = None
     quote_character: str = '"'
     # Python 3.11 requires that these use default_factory instead of simple default
     # ValueError: mutable default <class 'dbt.contracts.relation.Policy'> for field include_policy is not allowed: use default_factory
-    include_policy: Policy = field(default_factory=lambda: Policy())
-    quote_policy: Policy = field(default_factory=lambda: Policy())
+    include_policy: Policy = dataclasses.field(default_factory=lambda: Policy())
+    quote_policy: Policy = dataclasses.field(default_factory=lambda: Policy())
     dbt_created: bool = False
 
     def _is_exactish_match(self, field: ComponentName, value: str) -> bool:
@@ -174,10 +175,11 @@ class BaseRelation(FakeAPIObject, Hashable):
     def _render_iterator(self) -> Iterator[Tuple[Optional[ComponentName], Optional[str]]]:
 
         for key in ComponentName:
+            component = ComponentName(key)
             path_part: Optional[str] = None
-            if self.include_policy.get_part(key):
-                path_part = self.path.get_part(key)
-                if path_part is not None and self.quote_policy.get_part(key):
+            if self.include_policy.get_part(component):
+                path_part = self.path.get_part(component)
+                if path_part is not None and self.quote_policy.get_part(component):
                     path_part = self.quoted(path_part)
             yield key, path_part
 
@@ -262,7 +264,7 @@ class BaseRelation(FakeAPIObject, Hashable):
             return cls.create_from_source(node, **kwargs)
         else:
             # Can't use ManifestNode here because of parameterized generics
-            if not isinstance(node, (ParsedNode)):
+            if not isinstance(node, ParsedNode):
                 raise DbtInternalError(
                     f"type mismatch, expected ManifestNode but got {type(node)}"
                 )
@@ -288,6 +290,31 @@ class BaseRelation(FakeAPIObject, Hashable):
             }
         )
         return cls.from_dict(kwargs)
+
+    @classmethod
+    def from_materialization_config(
+        cls, materialization_config: MaterializationConfig
+    ) -> "BaseRelation":
+        """
+        Produce a `BaseRelation` instance from a `MaterializationConfig` instance. This is primarily done to
+        reuse existing functionality based on `BaseRelation` while working with `MaterializationConfig` instances.
+
+        Useful in combination with `is_materialization_config`.
+
+        Args:
+            materialization_config: a `MaterializationConfig` to be converted
+
+        Returns:
+            a converted `BaseRelation` instance
+        """
+        relation = cls.create(
+            database=materialization_config.database_name,
+            schema=materialization_config.schema_name,
+            identifier=materialization_config.name,
+            quote_policy=cls.quote_policy,
+            type=materialization_config.type,
+        )
+        return relation
 
     def __repr__(self) -> str:
         return "<{} {}>".format(self.__class__.__name__, self.render())
@@ -363,7 +390,7 @@ class BaseRelation(FakeAPIObject, Hashable):
 Info = TypeVar("Info", bound="InformationSchema")
 
 
-@dataclass(frozen=True, eq=False, repr=False)
+@dataclasses.dataclass(frozen=True, eq=False, repr=False)
 class InformationSchema(BaseRelation):
     information_schema_view: Optional[str] = None
 

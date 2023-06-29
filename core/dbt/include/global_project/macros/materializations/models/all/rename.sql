@@ -3,7 +3,7 @@
     {{- log('Applying RENAME to: ' ~ materialization) -}}
 
     {%- if adapter.is_materialization_config(materialization) -%}
-        {%- set from_relation = adapter.base_relation_from_materialization_config(materialization) -%}
+        {%- set from_relation = adapter.Relation.from_materialization_config(materialization) -%}
     {%- else -%}
         {%- set from_relation = materialization -%}
     {%- endif-%}
@@ -20,11 +20,11 @@
 
     {%- set relation_type = materialization.type -%}
 
-    {%- if relation_type == 'view' -%}
+    {%- if relation_type == adapter.RelationType.View -%}
         {{ rename_view_sql(materialization, new_name) }}
-    {%- elif relation_type == 'table' -%}
+    {%- elif relation_type == adapter.RelationType.Table -%}
         {{ rename_table_sql(materialization, new_name) }}
-    {%- elif relation_type == 'materialized_view' -%}
+    {%- elif relation_type == adapter.RelationType.MaterializedView -%}
         {{ rename_materialized_view_sql(materialization, new_name) }}
     {%- else -%}
         {{- exceptions.raise_compiler_error("`rename_sql()` has not been implemented for the relation type" ~ relation_type ) -}}

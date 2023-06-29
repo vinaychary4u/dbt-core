@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Set, FrozenSet
 
 import agate
-from dbt.adapters.relation_configs import (
+from dbt.adapters.materialization_config import (
     RelationConfig,
     RelationConfigValidationMixin,
     RelationConfigValidationRule,
@@ -13,7 +13,7 @@ from dbt.contracts.relation import ComponentName
 from dbt.dataclass_schema import StrEnum
 from dbt.exceptions import DbtRuntimeError
 
-from dbt.adapters.postgres.relation_configs.policy import postgres_conform_part
+from dbt.adapters.postgres.materialization_config.policy import postgres_conform_part
 
 
 class PostgresIndexMethod(StrEnum):

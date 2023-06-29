@@ -11,7 +11,7 @@
 
     {%- set relation_type = existing_materialization.type -%}
 
-    {%- if relation_type == 'materialized_view' -%}
+    {%- if relation_type == adapter.RelationType.MaterializedView -%}
         {{ alter_materialized_view_sql(existing_materialization, new_materialization) }}
     {%- else -%}
         {{- exceptions.raise_compiler_error("`alter_sql()` has not been implemented for the relation type" ~ relation_type ) -}}

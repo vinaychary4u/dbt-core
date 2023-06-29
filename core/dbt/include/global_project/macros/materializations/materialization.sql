@@ -11,8 +11,8 @@
 
     -- backup_relation and intermediate_relation should not already exist in the database
     -- it's possible these exist because of a previous run that exited unexpectedly
-    {%- set backup_relation = adapter.get_cached_backup_relation_from_materialization_config(materialization_config) -%}
-    {%- set intermediate_relation = adapter.get_cached_intermediate_relation_from_materialization_config(materialization_config) -%}
+    {%- set backup_relation = adapter.get_cached_relation(materialization_config, "backup") -%}
+    {%- set intermediate_relation = adapter.get_cached_relation(materialization_config, "intermediate") -%}
 
     -- drop the temp relations if they exist already in the database
     {{- drop_relation_if_exists(backup_relation) -}}
@@ -26,8 +26,8 @@
 {%- macro mat_teardown(materialization_config, post_hooks) -%}
 
     -- backup_relation and intermediate_relation may exist if the materialized view was replaced
-    {%- set backup_relation = adapter.get_cached_backup_relation_from_materialization_config(materialization_config) -%}
-    {%- set intermediate_relation = adapter.get_cached_intermediate_relation_from_materialization_config(materialization_config) -%}
+    {%- set backup_relation = adapter.get_cached_relation(materialization_config, "backup") -%}
+    {%- set intermediate_relation = adapter.get_cached_relation(materialization_config, "intermediate") -%}
 
     -- drop the temp relations if they exist to leave the database clean for the next run
     {{- drop_relation_if_exists(backup_relation) -}}

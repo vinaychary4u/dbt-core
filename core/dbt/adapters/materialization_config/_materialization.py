@@ -1,9 +1,9 @@
 from abc import ABC
 from dataclasses import dataclass
 
-from dbt.adapters.relation_configs._base import DescribeRelationResults, RelationConfig
-from dbt.adapters.relation_configs._database import DatabaseConfig
-from dbt.adapters.relation_configs._schema import SchemaConfig
+from dbt.adapters.materialization_config._base import DescribeRelationResults, RelationConfig
+from dbt.adapters.materialization_config._database import DatabaseConfig
+from dbt.adapters.materialization_config._schema import SchemaConfig
 from dbt.contracts.graph.nodes import ModelNode
 from dbt.contracts.relation import RelationType
 

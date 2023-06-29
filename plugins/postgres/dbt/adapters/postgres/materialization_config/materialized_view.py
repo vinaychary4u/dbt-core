@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import Set, FrozenSet, List, Dict, Optional
 
 import agate
-from dbt.adapters.relation_configs import (
+from dbt.adapters.materialization_config import (
     MaterializationConfig,
     RelationConfigChangeset,
     RelationConfigValidationMixin,
@@ -13,16 +13,16 @@ from dbt.contracts.graph.nodes import ModelNode
 from dbt.contracts.relation import ComponentName, RelationType
 from dbt.exceptions import DbtRuntimeError
 
-from dbt.adapters.postgres.relation_configs.index import (
+from dbt.adapters.postgres.materialization_config.index import (
     PostgresIndexConfig,
     PostgresIndexConfigChange,
 )
-from dbt.adapters.postgres.relation_configs.policy import (
+from dbt.adapters.postgres.materialization_config.policy import (
     postgres_render,
     postgres_conform_part,
     MAX_CHARACTERS_IN_IDENTIFIER,
 )
-from dbt.adapters.postgres.relation_configs.schema import PostgresSchemaConfig
+from dbt.adapters.postgres.materialization_config.schema import PostgresSchemaConfig
 
 
 @dataclass(frozen=True, eq=True, unsafe_hash=True)

@@ -44,7 +44,7 @@
 
     {%- set describe_relation_results = describe_materialized_view_sql(new_materialized_view) -%}
     {%- set existing_materialized_view = adapter.materialization_config_from_describe_relation_results(
-        describe_relation_results, adapter.relation_type().MaterializedView
+        describe_relation_results, adapter.Relation.MaterializedView
     ) -%}
     {%- set on_configuration_change = config.get('on_configuration_change') -%}
 

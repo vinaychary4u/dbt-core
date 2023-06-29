@@ -33,16 +33,3 @@
 {% macro default__drop_view(relation) -%}
     drop view if exists {{ relation }} cascade
 {%- endmacro %}
-
-
-{% macro drop_relation_sql(relation_config) -%}
-    {{ return(adapter.dispatch('drop_relation_sql', 'dbt')(relation_config)) }}
-{%- endmacro %}
-
-{%- macro default__drop_relation_sql(relation_config) -%}
-    {%- if relation_config.relation_type == adapter.Relation.MaterializedView -%}
-        {{- drop_materialized_view_sql(relation_config) -}}
-    {%- else -%}
-        drop {{ relation_config.relation_type }} if exists {{ relation_config.fully_qualified_path }} cascade
-    {%- endif -%}
-{%- endmacro -%}

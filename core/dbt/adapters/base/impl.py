@@ -231,12 +231,8 @@ class BaseAdapter(metaclass=AdapterMeta):
         ConstraintType.foreign_key: ConstraintSupport.ENFORCED,
     }
 
+    # registers MaterializationConfigs to RelationTypes
     materialization_configs: Dict[RelationType, MaterializationConfig] = {}
-
-    @available
-    @classmethod
-    def relation_type(cls) -> Type[RelationType]:
-        return RelationType
 
     @available
     @classmethod

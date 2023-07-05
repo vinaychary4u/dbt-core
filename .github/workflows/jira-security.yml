@@ -13,7 +13,7 @@ jobs:
         uses: github/ghas-jira-integration@v1
         with:
           jira_labels: 'security,ghas'
-          jira_url: '${{ secrets.JIRA_URL }}'
+          jira_url: '${{ secrets.JIRA_BASE_URL }}'
           jira_user: '${{ secrets.JIRA_SECENG_USER }}'
           jira_token: '${{ secrets.JIRA_SECENG_TOKEN }}'
           jira_project: '${{ secrets.JIRA_PROJECT }}'

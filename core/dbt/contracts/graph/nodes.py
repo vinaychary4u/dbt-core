@@ -654,6 +654,12 @@ class ModelNode(CompiledNode):
             # Now it's enforced. This is a change, but not a breaking change -- same_contract: False
             return False
 
+        if not self.contract.checksum:
+            self.build_contract_checksum()
+
+        if not old.contract.checksum:
+            old.build_contract_checksum()
+
         # Otherwise: The contract was previously enforced, and we need to check for changes.
         # Happy path: The contract is still being enforced, and the checksums are identical.
         if self.contract.enforced is True and self.contract.checksum == old.contract.checksum:

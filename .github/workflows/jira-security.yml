@@ -1,12 +1,11 @@
 name: "Sync GHAS Findings to Jira"
 
 on:
-  pull_request:
   schedule:
     - cron: '*/10 * * * *'    # trigger synchronization every 10 minutes
 
 jobs:
-  test_job:
+  ghas_jira_sync:
     runs-on: ubuntu-latest
     steps:
       - name: Sync alerts to Jira issues

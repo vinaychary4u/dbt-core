@@ -13,9 +13,9 @@ jobs:
         uses: github/ghas-jira-integration@v1
         with:
           jira_labels: 'security,ghas'
-          jira_url: '${{ secrets.JIRA_URL }}' # Global
-          jira_user: '${{ secrets.JIRA_SECENG_USER }}' # Global
-          jira_token: '${{ secrets.JIRA_SECENG_TOKEN }}' # Global
+          jira_url: '${{ secrets.JIRA_URL }}'
+          jira_user: '${{ secrets.JIRA_SECENG_USER }}'
+          jira_token: '${{ secrets.JIRA_SECENG_TOKEN }}'
           jira_project: '${{ secrets.JIRA_PROJECT }}'
           github_token: '${{ secrets.GH_SECENG_PAT }}'
           sync_direction: 'gh2jira'

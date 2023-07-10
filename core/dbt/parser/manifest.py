@@ -97,7 +97,7 @@ from dbt.contracts.graph.nodes import (
     ManifestNode,
     ResultNode,
     ModelNode,
-    NodeRelation,
+    DeferRelation,
 )
 from dbt.contracts.graph.unparsed import NodeVersion
 from dbt.contracts.util import Writable
@@ -1094,10 +1094,10 @@ class ManifestLoader:
         # might have alias/schema/database fields that are updated by yaml config.
         if semantic_model.depends_on_nodes[0]:
             refd_node = self.manifest.nodes[semantic_model.depends_on_nodes[0]]
-            semantic_model.node_relation = NodeRelation(
+            semantic_model.node_relation = DeferRelation(
                 relation_name=refd_node.relation_name,
                 alias=refd_node.alias,
-                schema_name=refd_node.schema,
+                schema=refd_node.schema,
                 database=refd_node.database,
             )
 

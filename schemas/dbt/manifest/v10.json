@@ -5156,7 +5156,7 @@
         "node_relation": {
           "oneOf": [
             {
-              "$ref": "#/definitions/NodeRelation"
+              "$ref": "#/definitions/DeferRelation"
             },
             {
               "type": "null"
@@ -5216,19 +5216,19 @@
         }
       },
       "additionalProperties": false,
-      "description": "SemanticModel(name: str, resource_type: dbt.node_types.NodeType, package_name: str, path: str, original_file_path: str, unique_id: str, fqn: List[str], model: str, node_relation: Union[dbt.contracts.graph.nodes.NodeRelation, NoneType], description: Union[str, NoneType] = None, defaults: Union[dbt.contracts.graph.semantic_models.Defaults, NoneType] = None, entities: Sequence[dbt.contracts.graph.semantic_models.Entity] = <factory>, measures: Sequence[dbt.contracts.graph.semantic_models.Measure] = <factory>, dimensions: Sequence[dbt.contracts.graph.semantic_models.Dimension] = <factory>, metadata: Union[dbt.contracts.graph.semantic_models.SourceFileMetadata, NoneType] = None)"
+      "description": "SemanticModel(name: str, resource_type: dbt.node_types.NodeType, package_name: str, path: str, original_file_path: str, unique_id: str, fqn: List[str], model: str, node_relation: Union[dbt.contracts.graph.nodes.DeferRelation, NoneType], description: Union[str, NoneType] = None, defaults: Union[dbt.contracts.graph.semantic_models.Defaults, NoneType] = None, entities: Sequence[dbt.contracts.graph.semantic_models.Entity] = <factory>, measures: Sequence[dbt.contracts.graph.semantic_models.Measure] = <factory>, dimensions: Sequence[dbt.contracts.graph.semantic_models.Dimension] = <factory>, metadata: Union[dbt.contracts.graph.semantic_models.SourceFileMetadata, NoneType] = None)"
     },
-    "NodeRelation": {
+    "DeferRelation": {
       "type": "object",
       "required": [
         "alias",
-        "schema_name"
+        "schema"
       ],
       "properties": {
         "alias": {
           "type": "string"
         },
-        "schema_name": {
+        "schema": {
           "type": "string"
         },
         "database": {
@@ -5243,7 +5243,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "NodeRelation(alias: str, schema_name: str, database: Union[str, NoneType] = None)"
+      "description": "DeferRelation(alias: str, schema: str, database: Union[str, NoneType] = None)"
     },
     "Defaults": {
       "type": "object",

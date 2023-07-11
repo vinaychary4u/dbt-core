@@ -1,10 +1,9 @@
 from typing import Dict, List, Optional
 
-from dbt.adapters.relation.models import Relation, RelationStub
-from dbt.tests.util import read_file, write_file
+from dbt.adapters.relation.models import Relation
 
 
-def query_relation_type(project, relation: RelationStub) -> Optional[str]:
+def query_relation_type(project, relation: Relation) -> Optional[str]:
     sql = f"""
     select 'table' as relation_type
     from pg_tables
@@ -30,12 +29,12 @@ def query_relation_type(project, relation: RelationStub) -> Optional[str]:
         return results[0][0]
 
 
-def query_row_count(project, relation: RelationStub) -> int:
+def query_row_count(project, relation: Relation) -> int:
     sql = f"select count(*) from {relation.fully_qualified_path};"
     return project.run_sql(sql, fetch="one")[0]
 
 
-def query_indexes(project, relation: RelationStub) -> List[Dict[str, str]]:
+def query_indexes(project, relation: Relation) -> List[Dict[str, str]]:
     # pulled directly from `postgres__describe_indexes_template` and manually verified
     sql = f"""
         select
@@ -70,11 +69,3 @@ def query_indexes(project, relation: RelationStub) -> List[Dict[str, str]]:
         for index in raw_indexes
     ]
     return indexes
-
-
-def get_model_file(project, relation: Relation) -> str:
-    return read_file(project.project_root, "models", f"{relation.name}.sql")
-
-
-def set_model_file(project, relation: Relation, model_sql: str):
-    write_file(model_sql, project.project_root, "models", f"{relation.name}.sql")

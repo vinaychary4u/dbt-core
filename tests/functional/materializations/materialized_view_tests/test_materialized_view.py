@@ -1,8 +1,13 @@
 import pytest
 
 from dbt.contracts.graph.model_config import OnConfigurationChangeOption
-from dbt.tests.util import run_dbt, run_dbt_and_capture
-
+from dbt.tests.util import (
+    assert_message_in_logs,
+    get_model_file,
+    run_dbt,
+    run_dbt_and_capture,
+    set_model_file,
+)
 from tests.functional.materializations.materialized_view_tests.files import (
     MY_SEED,
     MY_TABLE,
@@ -10,11 +15,9 @@ from tests.functional.materializations.materialized_view_tests.files import (
     MY_VIEW,
 )
 from tests.functional.materializations.materialized_view_tests.utils import (
-    get_model_file,
     query_indexes,
     query_relation_type,
     query_row_count,
-    set_model_file,
 )
 
 
@@ -42,7 +45,9 @@ def setup(project):
 def create_materialized_view_and_assert(project, my_materialized_view):
     _, logs = run_dbt_and_capture(["--debug", "run", "--models", my_materialized_view.name])
     assert query_relation_type(project, my_materialized_view) == "materialized_view"
-    assert f"Applying CREATE to: {my_materialized_view.fully_qualified_path}" in logs
+    assert_message_in_logs(
+        f"Applying CREATE to: {my_materialized_view.fully_qualified_path}", logs
+    )
 
 
 def swap_indexes(project, my_materialized_view):
@@ -64,8 +69,10 @@ def test_materialized_view_create_idempotent(project, my_materialized_view):
 
     _, logs = run_dbt_and_capture(["--debug", "run", "--models", my_materialized_view.name])
     assert query_relation_type(project, my_materialized_view) == "materialized_view"
-    assert f"Applying ALTER to: {my_materialized_view.fully_qualified_path}" in logs
-    assert f"No changes were identified for: {my_materialized_view.fully_qualified_path}" in logs
+    assert_message_in_logs(f"Applying ALTER to: {my_materialized_view.fully_qualified_path}", logs)
+    assert_message_in_logs(
+        f"No changes were identified for: {my_materialized_view.fully_qualified_path}", logs
+    )
 
 
 def test_materialized_view_replaces_table(project, my_materialized_view, my_table):
@@ -137,7 +144,9 @@ def test_materialized_view_full_refresh(project, my_materialized_view):
         ["--debug", "run", "--models", my_materialized_view.name, "--full-refresh"]
     )
     assert query_relation_type(project, my_materialized_view) == "materialized_view"
-    assert f"Applying REPLACE to: {my_materialized_view.fully_qualified_path}" in logs
+    assert_message_in_logs(
+        f"Applying REPLACE to: {my_materialized_view.fully_qualified_path}", logs
+    )
 
 
 def test_indexes_are_updated_with_apply(project, my_materialized_view):

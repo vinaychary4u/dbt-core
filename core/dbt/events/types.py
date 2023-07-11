@@ -655,6 +655,14 @@ class CacheDumpGraph(DebugLevel):
 # Skipping E032, E033, E034
 
 
+class AdapterRegistered(InfoLevel):
+    def code(self):
+        return "E034"
+
+    def message(self) -> str:
+        return f"Registered adapter: {self.adapter_name}{self.adapter_version}"
+
+
 class AdapterImportError(InfoLevel):
     def code(self):
         return "E035"
@@ -800,14 +808,6 @@ class InputFileDiffError(DebugLevel):
 
     def message(self) -> str:
         return f"Error processing file diff: {self.category}, {self.file_id}"
-
-
-class PublicationArtifactChanged(DebugLevel):
-    def code(self):
-        return "I002"
-
-    def message(self) -> str:
-        return f"The publication artifact for {self.project_name} has been {self.action}."
 
 
 # Skipping I003, I004, I005, I006, I007
@@ -1216,6 +1216,22 @@ class UnsupportedConstraintMaterialization(WarnLevel):
         return line_wrap_message(warning_tag(msg))
 
 
+class ParseInlineNodeError(ErrorLevel):
+    def code(self):
+        return "I069"
+
+    def message(self) -> str:
+        return "Error while parsing node: " + self.node_info.node_name + "\n" + self.exc
+
+
+class SemanticValidationFailure(WarnLevel):
+    def code(self):
+        return "I070"
+
+    def message(self) -> str:
+        return self.msg
+
+
 # =======================================================
 # M - Deps generation
 # =======================================================
@@ -1461,19 +1477,6 @@ class NoNodesForSelectionCriteria(WarnLevel):
 
     def message(self) -> str:
         return f"The selection criterion '{self.spec_raw}' does not match any nodes"
-
-
-# =======================================================
-# Q - Node execution
-# =======================================================
-
-
-class PublicationArtifactAvailable(DebugLevel):
-    def code(self):
-        return "P001"
-
-    def message(self) -> str:
-        return "Publication artifact available"
 
 
 # =======================================================

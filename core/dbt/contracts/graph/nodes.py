@@ -6,7 +6,7 @@ from enum import Enum
 import hashlib
 
 from mashumaro.types import SerializableType
-from typing import Optional, Union, List, Dict, Any, Sequence, Tuple, Iterator, Protocol
+from typing import Optional, Union, List, Dict, Any, Sequence, Tuple, Iterator
 
 from dbt.dataclass_schema import dbtClassMixin, ExtensibleDbtClassMixin
 
@@ -35,6 +35,7 @@ from dbt.contracts.graph.unparsed import (
     UnparsedSourceTableDefinition,
     UnparsedColumn,
 )
+from dbt.contracts.graph.node_args import ModelNodeArgs
 from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
 from dbt.events.functions import warn_or_error
 from dbt.exceptions import ParsingError, ContractBreakingChangeError
@@ -44,7 +45,7 @@ from dbt.events.types import (
     SeedExceedsLimitAndPathChanged,
     SeedExceedsLimitChecksumChanged,
 )
-from dbt.events.contextvars import set_contextvars
+from dbt.events.contextvars import set_log_contextvars
 from dbt.flags import get_flags
 from dbt.node_types import ModelLanguage, NodeType, AccessType
 from dbt_semantic_interfaces.references import (
@@ -53,8 +54,7 @@ from dbt_semantic_interfaces.references import (
     SemanticModelReference,
 )
 from dbt_semantic_interfaces.references import MetricReference as DSIMetricReference
-from dbt_semantic_interfaces.type_enums.metric_type import MetricType
-from dbt_semantic_interfaces.type_enums.time_granularity import TimeGranularity
+from dbt_semantic_interfaces.type_enums import MetricType, TimeGranularity
 
 from .model_config import (
     NodeConfig,
@@ -258,8 +258,9 @@ class MacroDependsOn(dbtClassMixin, Replaceable):
 
 
 @dataclass
-class RelationalNode(HasRelationMetadata):
+class DeferRelation(HasRelationMetadata):
     alias: str
+    relation_name: Optional[str]
 
     @property
     def identifier(self):
@@ -269,26 +270,10 @@ class RelationalNode(HasRelationMetadata):
 @dataclass
 class DependsOn(MacroDependsOn):
     nodes: List[str] = field(default_factory=list)
-    public_nodes: List[str] = field(default_factory=list)
 
     def add_node(self, value: str):
         if value not in self.nodes:
             self.nodes.append(value)
-
-    def add_public_node(self, value: str):
-        if value not in self.public_nodes:
-            self.public_nodes.append(value)
-
-
-@dataclass
-class StateRelation(dbtClassMixin):
-    alias: str
-    database: Optional[str]
-    schema: str
-
-    @property
-    def identifier(self):
-        return self.alias
 
 
 @dataclass
@@ -332,7 +317,7 @@ class NodeInfoMixin:
     def update_event_status(self, **kwargs):
         for k, v in kwargs.items():
             self._event_status[k] = v
-        set_contextvars(node_info=self.node_info)
+        set_log_contextvars(node_info=self.node_info)
 
     def clear_event_status(self):
         self._event_status = dict()
@@ -488,7 +473,7 @@ class ParsedNode(NodeInfoMixin, ParsedNodeMandatory, SerializableType):
         )
 
     @property
-    def is_public_node(self):
+    def is_external_node(self):
         return False
 
 
@@ -554,10 +539,6 @@ class CompiledNode(ParsedNode):
         return self.depends_on.nodes
 
     @property
-    def depends_on_public_nodes(self):
-        return self.depends_on.public_nodes
-
-    @property
     def depends_on_macros(self):
         return self.depends_on.macros
 
@@ -586,7 +567,44 @@ class ModelNode(CompiledNode):
     version: Optional[NodeVersion] = None
     latest_version: Optional[NodeVersion] = None
     deprecation_date: Optional[datetime] = None
-    state_relation: Optional[StateRelation] = None
+    defer_relation: Optional[DeferRelation] = None
+
+    @classmethod
+    def from_args(cls, args: ModelNodeArgs) -> "ModelNode":
+        unique_id = args.unique_id
+
+        # build unrendered config -- for usage in ParsedNode.same_contents
+        unrendered_config = {}
+        unrendered_config["alias"] = args.identifier
+        unrendered_config["schema"] = args.schema
+        if args.database:
+            unrendered_config["database"] = args.database
+
+        return cls(
+            resource_type=NodeType.Model,
+            name=args.name,
+            package_name=args.package_name,
+            unique_id=unique_id,
+            fqn=[args.package_name, args.name],
+            version=args.version,
+            latest_version=args.latest_version,
+            relation_name=args.relation_name,
+            database=args.database,
+            schema=args.schema,
+            alias=args.identifier,
+            deprecation_date=args.deprecation_date,
+            checksum=FileHash.from_contents(f"{unique_id},{args.generated_at}"),
+            access=AccessType(args.access),
+            original_file_path="",
+            path="",
+            unrendered_config=unrendered_config,
+            depends_on=DependsOn(nodes=args.depends_on_nodes),
+            config=NodeConfig(enabled=args.enabled),
+        )
+
+    @property
+    def is_external_node(self) -> bool:
+        return not self.original_file_path and not self.path
 
     @property
     def is_latest_version(self) -> bool:
@@ -768,7 +786,7 @@ class SeedNode(ParsedNode):  # No SQLDefaults!
     # and we need the root_path to load the seed later
     root_path: Optional[str] = None
     depends_on: MacroDependsOn = field(default_factory=MacroDependsOn)
-    state_relation: Optional[StateRelation] = None
+    defer_relation: Optional[DeferRelation] = None
 
     def same_seeds(self, other: "SeedNode") -> bool:
         # for seeds, we check the hashes. If the hashes are different types,
@@ -848,10 +866,6 @@ Error raised for '{self.unique_id}', which has these hooks defined: \n{hook_list
 
     @property
     def depends_on_nodes(self):
-        return []
-
-    @property
-    def depends_on_public_nodes(self):
         return []
 
     @property
@@ -967,7 +981,7 @@ class IntermediateSnapshotNode(CompiledNode):
 class SnapshotNode(CompiledNode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Snapshot]})
     config: SnapshotConfig
-    state_relation: Optional[StateRelation] = None
+    defer_relation: Optional[DeferRelation] = None
 
 
 # ====================================
@@ -1182,10 +1196,6 @@ class SourceDefinition(NodeInfoMixin, ParsedSourceMandatory):
         return []
 
     @property
-    def depends_on_public_nodes(self):
-        return []
-
-    @property
     def depends_on(self):
         return DependsOn(macros=[], nodes=[])
 
@@ -1233,10 +1243,6 @@ class Exposure(GraphNode):
     @property
     def depends_on_nodes(self):
         return self.depends_on.nodes
-
-    @property
-    def depends_on_public_nodes(self):
-        return self.depends_on.public_nodes
 
     @property
     def search_name(self):
@@ -1288,6 +1294,10 @@ class Exposure(GraphNode):
             and True
         )
 
+    @property
+    def group(self):
+        return None
+
 
 # ====================================
 # Metric node
@@ -1308,7 +1318,7 @@ class MetricInputMeasure(dbtClassMixin):
     def measure_reference(self) -> MeasureReference:
         return MeasureReference(element_name=self.name)
 
-    def post_aggregation_measure_referenc(self) -> MeasureReference:
+    def post_aggregation_measure_reference(self) -> MeasureReference:
         return MeasureReference(element_name=self.alias or self.name)
 
 
@@ -1329,23 +1339,20 @@ class MetricInput(dbtClassMixin):
     def as_reference(self) -> DSIMetricReference:
         return DSIMetricReference(element_name=self.name)
 
+    def post_aggregation_reference(self) -> DSIMetricReference:
+        return DSIMetricReference(element_name=self.alias or self.name)
+
 
 @dataclass
 class MetricTypeParams(dbtClassMixin):
     measure: Optional[MetricInputMeasure] = None
-    measures: Optional[List[MetricInputMeasure]] = None
-    numerator: Optional[MetricInputMeasure] = None
-    denominator: Optional[MetricInputMeasure] = None
+    input_measures: List[MetricInputMeasure] = field(default_factory=list)
+    numerator: Optional[MetricInput] = None
+    denominator: Optional[MetricInput] = None
     expr: Optional[str] = None
     window: Optional[MetricTimeWindow] = None
     grain_to_date: Optional[TimeGranularity] = None
     metrics: Optional[List[MetricInput]] = None
-
-    def numerator_measure_reference(self) -> Optional[MeasureReference]:
-        return self.numerator.measure_reference() if self.numerator else None
-
-    def denominator_measure_reference(self) -> Optional[MeasureReference]:
-        return self.denominator.measure_reference() if self.denominator else None
 
 
 @dataclass
@@ -1380,25 +1387,12 @@ class Metric(GraphNode):
         return self.depends_on.nodes
 
     @property
-    def depends_on_public_nodes(self):
-        return self.depends_on.public_nodes
-
-    @property
     def search_name(self):
         return self.name
 
     @property
     def input_measures(self) -> List[MetricInputMeasure]:
-        tp = self.type_params
-        res = tp.measures or []
-        if tp.measure:
-            res.append(tp.measure)
-        if tp.numerator:
-            res.append(tp.numerator)
-        if tp.denominator:
-            res.append(tp.denominator)
-
-        return res
+        return self.type_params.input_measures
 
     @property
     def measure_references(self) -> List[MeasureReference]:
@@ -1472,6 +1466,7 @@ class NodeRelation(dbtClassMixin):
     alias: str
     schema_name: str  # TODO: Could this be called simply "schema" so we could reuse StateRelation?
     database: Optional[str] = None
+    relation_name: Optional[str] = None
 
 
 @dataclass
@@ -1484,6 +1479,9 @@ class SemanticModel(GraphNode):
     measures: Sequence[Measure] = field(default_factory=list)
     dimensions: Sequence[Dimension] = field(default_factory=list)
     metadata: Optional[SourceFileMetadata] = None
+    depends_on: DependsOn = field(default_factory=DependsOn)
+    refs: List[RefArgs] = field(default_factory=list)
+    created_at: float = field(default_factory=lambda: time.time())
 
     @property
     def entity_references(self) -> List[LinkableElementReference]:
@@ -1534,6 +1532,14 @@ class SemanticModel(GraphNode):
     def reference(self) -> SemanticModelReference:
         return SemanticModelReference(semantic_model_name=self.name)
 
+    @property
+    def depends_on_nodes(self):
+        return self.depends_on.nodes
+
+    @property
+    def depends_on_macros(self):
+        return self.depends_on.macros
+
 
 # ====================================
 # Patches
@@ -1572,46 +1578,6 @@ class ParsedMacroPatch(ParsedPatch):
 # ====================================
 
 
-class ManifestOrPublicNode(Protocol):
-    name: str
-    package_name: str
-    unique_id: str
-    version: Optional[NodeVersion]
-    latest_version: Optional[NodeVersion]
-    relation_name: str
-    database: Optional[str]
-    schema: Optional[str]
-    identifier: Optional[str]
-
-    @property
-    def is_latest_version(self):
-        pass
-
-    @property
-    def resource_type(self):
-        pass
-
-    @property
-    def access(self):
-        pass
-
-    @property
-    def search_name(self):
-        pass
-
-    @property
-    def is_public_node(self):
-        pass
-
-    @property
-    def is_versioned(self):
-        pass
-
-    @property
-    def alias(self):
-        pass
-
-
 # ManifestNode without SeedNode, which doesn't have the
 # SQL related attributes
 ManifestSQLNode = Union[
@@ -1641,6 +1607,7 @@ GraphMemberNode = Union[
     ResultNode,
     Exposure,
     Metric,
+    SemanticModel,
 ]
 
 # All "nodes" (or node-like objects) in this file

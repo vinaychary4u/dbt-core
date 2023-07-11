@@ -22,8 +22,6 @@ from typing import (
 from typing_extensions import Protocol
 from uuid import UUID
 
-from dbt.contracts.publication import ProjectDependencies, PublicationConfig, PublicModel
-
 from dbt.contracts.graph.nodes import (
     BaseNode,
     Documentation,
@@ -33,10 +31,9 @@ from dbt.contracts.graph.nodes import (
     Group,
     Macro,
     ManifestNode,
-    ManifestOrPublicNode,
     Metric,
     ModelNode,
-    RelationalNode,
+    DeferRelation,
     ResultNode,
     SemanticModel,
     SourceDefinition,
@@ -58,13 +55,11 @@ from dbt.helper_types import PathSet
 from dbt.events.functions import fire_event
 from dbt.events.types import MergedFromState, UnpinnedRefNewVersionAvailable
 from dbt.events.contextvars import get_node_info
-from dbt.node_types import NodeType
+from dbt.node_types import NodeType, AccessType
 from dbt.flags import get_flags, MP_CONTEXT
 from dbt import tracking
 import dbt.utils
-from dbt_semantic_interfaces.implementations.metric import PydanticMetric
-from dbt_semantic_interfaces.implementations.semantic_manifest import PydanticSemanticManifest
-from dbt_semantic_interfaces.implementations.semantic_model import PydanticSemanticModel
+
 
 NodeEdgeMap = Dict[str, List[str]]
 PackageName = str
@@ -162,7 +157,6 @@ class RefableLookup(dbtClassMixin):
     def __init__(self, manifest: "Manifest"):
         self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
         self.populate(manifest)
-        self.populate_public_nodes(manifest)
 
     def get_unique_id(
         self,
@@ -206,7 +200,9 @@ class RefableLookup(dbtClassMixin):
                     [
                         UnparsedVersion(v.version)
                         for v in manifest.nodes.values()
-                        if v.name == node.name and v.version is not None
+                        if isinstance(v, ModelNode)
+                        and v.name == node.name
+                        and v.version is not None
                     ]
                 )
                 assert node.latest_version is not None  # for mypy, whenever i may find it
@@ -224,7 +220,7 @@ class RefableLookup(dbtClassMixin):
             return node
         return None
 
-    def add_node(self, node: ManifestOrPublicNode):
+    def add_node(self, node: ManifestNode):
         if node.resource_type in self._lookup_types:
             if node.name not in self.storage:
                 self.storage[node.name] = {}
@@ -242,15 +238,9 @@ class RefableLookup(dbtClassMixin):
         for node in manifest.nodes.values():
             self.add_node(node)
 
-    def populate_public_nodes(self, manifest):
-        for node in manifest.public_nodes.values():
-            self.add_node(node)
-
-    def perform_lookup(self, unique_id: UniqueID, manifest) -> ManifestOrPublicNode:
+    def perform_lookup(self, unique_id: UniqueID, manifest) -> ManifestNode:
         if unique_id in manifest.nodes:
             node = manifest.nodes[unique_id]
-        elif unique_id in manifest.public_nodes:
-            node = manifest.public_nodes[unique_id]
         else:
             raise dbt.exceptions.DbtInternalError(
                 f"Node {unique_id} found in cache but not found in manifest"
@@ -436,7 +426,6 @@ def build_node_edges(nodes: List[ManifestNode]):
     forward_edges: Dict[str, List[str]] = {n.unique_id: [] for n in nodes}
     for node in nodes:
         backward_edges[node.unique_id] = node.depends_on_nodes[:]
-        backward_edges[node.unique_id].extend(node.depends_on_public_nodes[:])
         for unique_id in backward_edges[node.unique_id]:
             if unique_id in forward_edges.keys():
                 forward_edges[unique_id].append(node.unique_id)
@@ -707,10 +696,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     source_patches: MutableMapping[SourceKey, SourcePatch] = field(default_factory=dict)
     disabled: MutableMapping[str, List[GraphMemberNode]] = field(default_factory=dict)
     env_vars: MutableMapping[str, str] = field(default_factory=dict)
-    public_nodes: MutableMapping[str, PublicModel] = field(default_factory=dict)
-    project_dependencies: Optional[ProjectDependencies] = None
-    publications: MutableMapping[str, PublicationConfig] = field(default_factory=dict)
-    semantic_nodes: MutableMapping[str, SemanticModel] = field(default_factory=dict)
+    semantic_models: MutableMapping[str, SemanticModel] = field(default_factory=dict)
 
     _doc_lookup: Optional[DocLookup] = field(
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
@@ -762,7 +748,9 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             "metrics": {k: v.to_dict(omit_none=False) for k, v in self.metrics.items()},
             "nodes": {k: v.to_dict(omit_none=False) for k, v in self.nodes.items()},
             "sources": {k: v.to_dict(omit_none=False) for k, v in self.sources.items()},
-            "public_nodes": {k: v.to_dict(omit_none=False) for k, v in self.public_nodes.items()},
+            "semantic_models": {
+                k: v.to_dict(omit_none=False) for k, v in self.semantic_models.items()
+            },
         }
 
     def build_disabled_by_file_id(self):
@@ -823,6 +811,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self.nodes.values(),
             self.sources.values(),
             self.metrics.values(),
+            self.semantic_models.values(),
         )
         for resource in all_resources:
             resource_type_plural = resource.resource_type.pluralize()
@@ -855,9 +844,9 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             selectors={k: _deepcopy(v) for k, v in self.selectors.items()},
             metadata=self.metadata,
             disabled={k: _deepcopy(v) for k, v in self.disabled.items()},
-            public_nodes={k: _deepcopy(v) for k, v in self.public_nodes.items()},
             files={k: _deepcopy(v) for k, v in self.files.items()},
             state_check=_deepcopy(self.state_check),
+            semantic_models={k: _deepcopy(v) for k, v in self.semantic_models.items()},
         )
         copy.build_flat_graph()
         return copy
@@ -869,7 +858,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                 self.sources.values(),
                 self.exposures.values(),
                 self.metrics.values(),
-                self.public_nodes.values(),
+                self.semantic_models.values(),
             )
         )
         forward_edges, backward_edges = build_node_edges(edge_members)
@@ -913,11 +902,10 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             selectors=self.selectors,
             metadata=self.metadata,
             disabled=self.disabled,
-            public_nodes=self.public_nodes,
             child_map=self.child_map,
             parent_map=self.parent_map,
             group_map=self.group_map,
-            semantic_nodes=self.semantic_nodes,
+            semantic_models=self.semantic_models,
         )
 
     def write(self, path):
@@ -934,6 +922,8 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             return self.exposures[unique_id]
         elif unique_id in self.metrics:
             return self.metrics[unique_id]
+        elif unique_id in self.semantic_models:
+            return self.semantic_models[unique_id]
         else:
             # something terrible has happened
             raise dbt.exceptions.DbtInternalError(
@@ -989,21 +979,13 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         return self._analysis_lookup
 
     @property
-    def pydantic_semantic_manifest(self) -> PydanticSemanticManifest:
-        pydantic_semantic_manifest = PydanticSemanticManifest(metrics=[], semantic_models=[])
-
-        for semantic_model in self.semantic_nodes.values():
-            pydantic_semantic_manifest.semantic_models.append(
-                PydanticSemanticModel.parse_obj(semantic_model.to_dict())
-            )
-
-        for metric in self.metrics.values():
-            pydantic_semantic_manifest.metrics.append(PydanticMetric.parse_obj(metric.to_dict()))
-
-        return pydantic_semantic_manifest
+    def external_node_unique_ids(self):
+        return [node.unique_id for node in self.nodes.values() if node.is_external_node]
 
     def resolve_refs(
-        self, source_node: GraphMemberNode, current_project: str
+        self,
+        source_node: ModelNode,
+        current_project: str,  # TODO: ModelNode is overly restrictive typing
     ) -> List[MaybeNonSource]:
         resolved_refs: List[MaybeNonSource] = []
         for ref in source_node.refs:
@@ -1040,9 +1022,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                 target_model_name, pkg, target_model_version, self, source_node
             )
 
-            if node is not None and (
-                (hasattr(node, "config") and node.config.enabled) or node.is_public_node
-            ):
+            if node is not None and hasattr(node, "config") and node.config.enabled:
                 return node
 
             # it's possible that the node is disabled
@@ -1127,6 +1107,50 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                 return result
         return None
 
+    def is_invalid_private_ref(
+        self, node: GraphMemberNode, target_model: MaybeNonSource, dependencies: Optional[Mapping]
+    ) -> bool:
+        dependencies = dependencies or {}
+        if not isinstance(target_model, ModelNode):
+            return False
+
+        is_private_ref = (
+            target_model.access == AccessType.Private
+            # don't raise this reference error for ad hoc 'preview' queries
+            and node.resource_type != NodeType.SqlOperation
+            and node.resource_type != NodeType.RPCCall  # TODO: rm
+        )
+        target_dependency = dependencies.get(target_model.package_name)
+        restrict_package_access = target_dependency.restrict_access if target_dependency else False
+
+        # TODO: SemanticModel and SourceDefinition do not have group, and so should not be able to make _any_ private ref.
+        return is_private_ref and (
+            not hasattr(node, "group")
+            or not node.group
+            or node.group != target_model.group
+            or restrict_package_access
+        )
+
+    def is_invalid_protected_ref(
+        self, node: GraphMemberNode, target_model: MaybeNonSource, dependencies: Optional[Mapping]
+    ) -> bool:
+        dependencies = dependencies or {}
+        if not isinstance(target_model, ModelNode):
+            return False
+
+        is_protected_ref = (
+            target_model.access == AccessType.Protected
+            # don't raise this reference error for ad hoc 'preview' queries
+            and node.resource_type != NodeType.SqlOperation
+            and node.resource_type != NodeType.RPCCall  # TODO: rm
+        )
+        target_dependency = dependencies.get(target_model.package_name)
+        restrict_package_access = target_dependency.restrict_access if target_dependency else False
+
+        return is_protected_ref and (
+            node.package_name != target_model.package_name and restrict_package_access
+        )
+
     # Called by RunTask.defer_to_manifest
     def merge_from_artifact(
         self,
@@ -1178,8 +1202,10 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         for unique_id, node in other.nodes.items():
             current = self.nodes.get(unique_id)
             if current and (node.resource_type in refables and not node.is_ephemeral):
-                state_relation = RelationalNode(node.database, node.schema, node.alias)
-                self.nodes[unique_id] = current.replace(state_relation=state_relation)
+                defer_relation = DeferRelation(
+                    node.database, node.schema, node.alias, node.relation_name
+                )
+                self.nodes[unique_id] = current.replace(defer_relation=defer_relation)
 
     # Methods that were formerly in ParseResult
 
@@ -1267,9 +1293,9 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         source_file.docs.append(doc.unique_id)
 
     def add_semantic_model(self, source_file: SchemaSourceFile, semantic_model: SemanticModel):
-        _check_duplicates(semantic_model, self.semantic_nodes)
-        self.semantic_nodes[semantic_model.unique_id] = semantic_model
-        source_file.semantic_nodes.append(semantic_model.unique_id)
+        _check_duplicates(semantic_model, self.semantic_models)
+        self.semantic_models[semantic_model.unique_id] = semantic_model
+        source_file.semantic_models.append(semantic_model.unique_id)
 
     # end of methods formerly in ParseResult
 
@@ -1297,7 +1323,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self.source_patches,
             self.disabled,
             self.env_vars,
-            self.public_nodes,
+            self.semantic_models,
             self._doc_lookup,
             self._source_lookup,
             self._ref_lookup,
@@ -1367,10 +1393,7 @@ class WritableManifest(ArtifactMixin):
             description="A mapping from group names to their nodes",
         )
     )
-    public_nodes: Mapping[UniqueID, PublicModel] = field(
-        metadata=dict(description=("The public models used in the dbt project"))
-    )
-    semantic_nodes: Mapping[UniqueID, SemanticModel] = field(
+    semantic_models: Mapping[UniqueID, SemanticModel] = field(
         metadata=dict(description=("The semantic models defined in the dbt project"))
     )
     metadata: ManifestMetadata = field(
@@ -1403,8 +1426,8 @@ class WritableManifest(ArtifactMixin):
         for unique_id, node in dct["nodes"].items():
             if "config_call_dict" in node:
                 del node["config_call_dict"]
-            if "state_relation" in node:
-                del node["state_relation"]
+            if "defer_relation" in node:
+                del node["defer_relation"]
         return dct
 
 

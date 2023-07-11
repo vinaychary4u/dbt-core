@@ -21,8 +21,8 @@ class RelationFactory:
     def __init__(
         self,
         relation_models: Dict[RelationType, Type[models.Relation]],
-        relation_changesets: Dict[RelationType, Type[models.RelationChangeset]] = None,
-        relation_can_be_renamed: Set[RelationType] = None,
+        relation_changesets: Optional[Dict[RelationType, Type[models.RelationChangeset]]] = None,
+        relation_can_be_renamed: Optional[Set[RelationType]] = None,
         render_policy: models.RenderPolicy = models.RenderPolicy(),
     ):
         self.relation_models = relation_models

@@ -8,8 +8,10 @@ from dbt.adapters.relation.models import RelationStub
 class MaterializationFactory:
     def __init__(
         self,
-        relation_factory: RelationFactory = None,
-        materialization_map: Dict[models.MaterializationType, Type[models.Materialization]] = None,
+        relation_factory: RelationFactory,
+        materialization_map: Optional[
+            Dict[models.MaterializationType, Type[models.Materialization]]
+        ] = None,
     ):
         self.relation_factory = relation_factory
         self.materialization_map = materialization_map or {

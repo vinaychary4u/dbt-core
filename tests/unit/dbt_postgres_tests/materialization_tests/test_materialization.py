@@ -14,10 +14,10 @@ def test_materialized_view_create(materialized_view_runtime_config, relation_fac
     assert materialization.should_revoke_grants is False
 
 
-def test_materialized_view_replace(materialized_view_runtime_config, relation_factory, view_stub):
+def test_materialized_view_replace(materialized_view_runtime_config, relation_factory, view_ref):
 
     materialization = MaterializedViewMaterialization.from_runtime_config(
-        materialized_view_runtime_config, relation_factory, view_stub
+        materialized_view_runtime_config, relation_factory, view_ref
     )
     assert materialization.build_strategy == MaterializationBuildStrategy.Replace
     assert materialization.should_revoke_grants is True

@@ -1,6 +1,6 @@
 import pytest
 
-from dbt.adapters.relation.models import RelationStub
+from dbt.adapters.relation.models import RelationRef
 from dbt.adapters.relation.factory import RelationFactory
 from dbt.contracts.relation import RelationType
 
@@ -19,8 +19,8 @@ def relation_factory():
 
 
 @pytest.fixture(scope="class")
-def my_materialized_view(project, relation_factory) -> RelationStub:
-    return relation_factory.make_stub(
+def my_materialized_view(project, relation_factory) -> RelationRef:
+    return relation_factory.make_ref(
         name="my_materialized_view",
         schema_name=project.test_schema,
         database_name=project.database,
@@ -29,8 +29,8 @@ def my_materialized_view(project, relation_factory) -> RelationStub:
 
 
 @pytest.fixture(scope="class")
-def my_view(project, relation_factory) -> RelationStub:
-    return relation_factory.make_stub(
+def my_view(project, relation_factory) -> RelationRef:
+    return relation_factory.make_ref(
         name="my_view",
         schema_name=project.test_schema,
         database_name=project.database,
@@ -39,8 +39,8 @@ def my_view(project, relation_factory) -> RelationStub:
 
 
 @pytest.fixture(scope="class")
-def my_table(project, relation_factory) -> RelationStub:
-    return relation_factory.make_stub(
+def my_table(project, relation_factory) -> RelationRef:
+    return relation_factory.make_ref(
         name="my_table",
         schema_name=project.test_schema,
         database_name=project.database,
@@ -49,8 +49,8 @@ def my_table(project, relation_factory) -> RelationStub:
 
 
 @pytest.fixture(scope="class")
-def my_seed(project, relation_factory) -> RelationStub:
-    return relation_factory.make_stub(
+def my_seed(project, relation_factory) -> RelationRef:
+    return relation_factory.make_ref(
         name="my_seed",
         schema_name=project.test_schema,
         database_name=project.database,

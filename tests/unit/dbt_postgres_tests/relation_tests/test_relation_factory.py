@@ -1,7 +1,7 @@
 """
 Uses the following fixtures in `unit/dbt_postgres_tests/conftest.py`:
 - `relation_factory`
-- `materialized_view_stub`
+- `materialized_view_ref`
 """
 
 from dbt.contracts.relation import RelationType
@@ -9,21 +9,21 @@ from dbt.contracts.relation import RelationType
 from dbt.adapters.postgres.relation import models
 
 
-def test_make_stub(materialized_view_stub):
-    assert materialized_view_stub.name == "my_materialized_view"
-    assert materialized_view_stub.schema_name == "my_schema"
-    assert materialized_view_stub.database_name == "my_database"
-    assert materialized_view_stub.type == "materialized_view"
-    assert materialized_view_stub.can_be_renamed is True
+def test_make_ref(materialized_view_ref):
+    assert materialized_view_ref.name == "my_materialized_view"
+    assert materialized_view_ref.schema_name == "my_schema"
+    assert materialized_view_ref.database_name == "my_database"
+    assert materialized_view_ref.type == "materialized_view"
+    assert materialized_view_ref.can_be_renamed is True
 
 
-def test_make_backup_stub(relation_factory, materialized_view_stub):
-    backup_stub = relation_factory.make_backup_stub(materialized_view_stub)
-    assert backup_stub.name == '"my_materialized_view__dbt_backup"'
+def test_make_backup_ref(relation_factory, materialized_view_ref):
+    backup_ref = relation_factory.make_backup_ref(materialized_view_ref)
+    assert backup_ref.name == '"my_materialized_view__dbt_backup"'
 
 
-def test_make_intermediate(relation_factory, materialized_view_stub):
-    intermediate_relation = relation_factory.make_intermediate(materialized_view_stub)
+def test_make_intermediate(relation_factory, materialized_view_ref):
+    intermediate_relation = relation_factory.make_intermediate(materialized_view_ref)
     assert intermediate_relation.name == '"my_materialized_view__dbt_tmp"'
 
 

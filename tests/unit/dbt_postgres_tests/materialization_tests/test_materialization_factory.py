@@ -8,7 +8,7 @@ def test_make_from_runtime_config(materialization_factory, materialized_view_run
     materialization = materialization_factory.make_from_runtime_config(
         runtime_config=materialized_view_runtime_config,
         materialization_type=MaterializationType.MaterializedView,
-        existing_relation_stub=None,
+        existing_relation_ref=None,
     )
     assert materialization.type == MaterializationType.MaterializedView
 

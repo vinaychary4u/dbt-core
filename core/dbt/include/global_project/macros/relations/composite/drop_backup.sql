@@ -9,8 +9,8 @@
 {%- macro default__drop_backup_template(relation) -%}
 
     -- get the standard backup name
-    {% set backup_relation_stub = adapter.relation_factory.make_backup_stub(relation) -%}
+    {% set backup_relation_ref = adapter.relation_factory.make_backup_ref(relation) -%}
 
-    {{ drop_template(backup_relation_stub, called_directly=False) }}
+    {{ drop_template(backup_relation_ref, called_directly=False) }}
 
 {%- endmacro -%}

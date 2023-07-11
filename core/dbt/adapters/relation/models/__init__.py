@@ -14,9 +14,9 @@ from dbt.adapters.relation.models._relation_component import (
     DescribeRelationResults,
     RelationComponent,
 )
-from dbt.adapters.relation.models._relation_stub import (
-    DatabaseRelationStub,
-    RelationStub,
-    SchemaRelationStub,
+from dbt.adapters.relation.models._relation_ref import (
+    DatabaseRelationRef,
+    RelationRef,
+    SchemaRelationRef,
 )
 from dbt.adapters.relation.models._schema import SchemaRelation

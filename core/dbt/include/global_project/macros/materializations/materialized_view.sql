@@ -30,12 +30,12 @@
 
     {%- elif materialization.build_strategy == 'replace' -%}
         {%- set build_sql = replace_template(
-            materialization.existing_relation_stub, materialization.target_relation
+            materialization.existing_relation_ref, materialization.target_relation
         ) -%}
 
     {%- elif materialization.build_strategy == 'alter' -%}
 
-        {% set describe_relation_results = describe_template(materialization.existing_relation_stub ) %}
+        {% set describe_relation_results = describe_template(materialization.existing_relation_ref ) %}
         {% set existing_relation = materialization.existing_relation(describe_relation_results) %}
 
         {%- if materialization.on_configuration_change == 'apply' -%}

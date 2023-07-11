@@ -49,14 +49,14 @@ class RelationFactory:
             return relation
         return None
 
-    def make_stub(
+    def make_ref(
         self,
         name: str,
         schema_name: str,
         database_name: str,
         relation_type: RelationType,
-    ) -> models.RelationStub:
-        relation_stub = models.RelationStub.from_dict(
+    ) -> models.RelationRef:
+        relation_ref = models.RelationRef.from_dict(
             {
                 "name": name,
                 "schema": {
@@ -72,14 +72,14 @@ class RelationFactory:
                 "can_be_renamed": relation_type in self.relation_can_be_renamed,
             }
         )
-        return relation_stub
+        return relation_ref
 
-    def make_backup_stub(self, existing_relation: models.Relation) -> models.RelationStub:
+    def make_backup_ref(self, existing_relation: models.Relation) -> models.RelationRef:
         backup_name = self.render_policy.part(
             ComponentName.Identifier, f"{existing_relation.name}{self.backup_suffix}"
         )
         assert isinstance(backup_name, str)  # mypy
-        return self.make_stub(
+        return self.make_ref(
             name=backup_name,
             schema_name=existing_relation.schema_name,
             database_name=existing_relation.database_name,

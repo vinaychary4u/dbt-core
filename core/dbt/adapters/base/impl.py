@@ -1440,7 +1440,7 @@ class BaseAdapter(metaclass=AdapterMeta):
         self, runtime_config, materialization_type: materialization_models.MaterializationType
     ) -> materialization_models.Materialization:
         """
-        Produce a `Materialization` instance along with whatever associated `Relation` and `RelationStub`
+        Produce a `Materialization` instance along with whatever associated `Relation` and `RelationRef`
         instances are needed.
 
         Args:
@@ -1450,26 +1450,26 @@ class BaseAdapter(metaclass=AdapterMeta):
         Returns:
             a `Materialization` instance that contains all the information required to execute the materialization
         """
-        existing_relation_stub = self._get_existing_relation_stub_from_model_node(
+        existing_relation_ref = self._get_existing_relation_ref_from_model_node(
             runtime_config.model
         )
 
         materialization = self.materialization_factory.make_from_runtime_config(
-            runtime_config, materialization_type, existing_relation_stub
+            runtime_config, materialization_type, existing_relation_ref
         )
 
         return materialization
 
-    def _get_existing_relation_stub_from_model_node(
+    def _get_existing_relation_ref_from_model_node(
         self, model_node
-    ) -> Optional[relation_models.RelationStub]:
+    ) -> Optional[relation_models.RelationRef]:
         """
-        We need to get `existing_relation_stub` from `Adapter` because we need access to a bunch of `cache`
+        We need to get `existing_relation_ref` from `Adapter` because we need access to a bunch of `cache`
         things, in particular `get_relations`.
 
-        TODO: if we refactor the interaction between `Adapter` and `cache`, the calculation of `existing_relation_stub`
+        TODO: if we refactor the interaction between `Adapter` and `cache`, the calculation of `existing_relation_ref`
         could be moved here, which is a more intuitive spot (like `target_relation`) for it
-        (and removes the concern of creating a `RelationStub` from `Adapter` where it doesn't belong
+        (and removes the concern of creating a `RelationRef` from `Adapter` where it doesn't belong
         """
         existing_base_relation: BaseRelation = self.get_relation(
             database=model_node.database,
@@ -1478,16 +1478,16 @@ class BaseAdapter(metaclass=AdapterMeta):
         )
 
         if existing_base_relation:
-            existing_relation_stub = self.relation_factory.make_stub(
+            existing_relation_ref = self.relation_factory.make_ref(
                 name=existing_base_relation.identifier,
                 schema_name=existing_base_relation.schema,
                 database_name=existing_base_relation.database,
                 relation_type=existing_base_relation.type,
             )
         else:
-            existing_relation_stub = None
+            existing_relation_ref = None
 
-        return existing_relation_stub
+        return existing_relation_ref
 
     @available
     def make_changeset(

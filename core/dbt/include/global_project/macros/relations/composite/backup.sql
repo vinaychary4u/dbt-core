@@ -9,11 +9,11 @@
 {%- macro default__backup_template(relation) -%}
 
     -- get the standard backup name
-    {% set backup_relation_stub = adapter.relation_factory.make_backup_stub(relation) -%}
+    {% set backup_relation_ref = adapter.relation_factory.make_backup_ref(relation) -%}
 
     -- drop any pre-existing backup
-    {{ drop_template(backup_relation_stub, called_directly=False) }};
+    {{ drop_template(backup_relation_ref, called_directly=False) }};
 
-    {{ rename_template(relation, backup_relation_stub.name, called_directly=False) }}
+    {{ rename_template(relation, backup_relation_ref.name, called_directly=False) }}
 
 {%- endmacro -%}

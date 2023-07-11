@@ -43,8 +43,8 @@ def materialization_factory(relation_factory):
 
 
 @pytest.fixture
-def materialized_view_stub(relation_factory):
-    return relation_factory.make_stub(
+def materialized_view_ref(relation_factory):
+    return relation_factory.make_ref(
         name="my_materialized_view",
         schema_name="my_schema",
         database_name="my_database",
@@ -53,8 +53,8 @@ def materialized_view_stub(relation_factory):
 
 
 @pytest.fixture
-def view_stub(relation_factory):
-    return relation_factory.make_stub(
+def view_ref(relation_factory):
+    return relation_factory.make_ref(
         name="my_view",
         schema_name="my_schema",
         database_name="my_database",
@@ -179,8 +179,8 @@ def test_materialization_factory(materialization_factory):
     assert postgres_parser == models.PostgresMaterializedViewRelation
 
 
-def test_materialized_view_stub(materialized_view_stub):
-    assert materialized_view_stub.name == "my_materialized_view"
+def test_materialized_view_ref(materialized_view_ref):
+    assert materialized_view_ref.name == "my_materialized_view"
 
 
 def test_materialized_view_model_node(materialized_view_model_node):

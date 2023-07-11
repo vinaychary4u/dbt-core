@@ -1567,7 +1567,7 @@ class BaseAdapter(metaclass=AdapterMeta):
             database=relation.database_name,
             schema=relation.schema_name,
             identifier=relation.name,
-            quote_policy=self.Relation.quote_policy,
+            quote_policy=self.relation_factory.render_policy.quote_policy,
             type=relation.type,
         )
         assert isinstance(base_relation, BaseRelation)  # mypy

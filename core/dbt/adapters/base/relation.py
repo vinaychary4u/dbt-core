@@ -37,8 +37,8 @@ class BaseRelation(FakeAPIObject, Hashable):
     quote_character: str = '"'
     # Python 3.11 requires that these use default_factory instead of simple default
     # ValueError: mutable default <class 'dbt.contracts.relation.Policy'> for field include_policy is not allowed: use default_factory
-    include_policy: Policy = dataclasses.field(default_factory=Policy)
-    quote_policy: Policy = dataclasses.field(default_factory=Policy)
+    include_policy: Policy = dataclasses.field(default_factory=lambda: Policy())
+    quote_policy: Policy = dataclasses.field(default_factory=lambda: Policy())
     dbt_created: bool = False
 
     def _is_exactish_match(self, field: ComponentName, value: str) -> bool:

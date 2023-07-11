@@ -4,8 +4,10 @@ from typing import Any, List, Optional, Set
 
 from dbt.adapters.base.meta import available
 from dbt.adapters.base.impl import AdapterConfig, ConstraintSupport
+from dbt.adapters.relation import RelationFactory
 from dbt.adapters.sql import SQLAdapter
 from dbt.contracts.graph.nodes import ConstraintType
+from dbt.contracts.relation import RelationType
 from dbt.dataclass_schema import dbtClassMixin, ValidationError
 from dbt.exceptions import (
     CrossDbReferenceProhibitedError,
@@ -18,7 +20,7 @@ import dbt.utils
 
 from dbt.adapters.postgres import PostgresConnectionManager, PostgresRelation
 from dbt.adapters.postgres.column import PostgresColumn
-from dbt.adapters.postgres.materialization import PostgresMaterialization
+from dbt.adapters.postgres.relation import models as relation_models
 
 
 # note that this isn't an adapter macro, so just a single underscore
@@ -62,7 +64,6 @@ class PostgresConfig(AdapterConfig):
 
 class PostgresAdapter(SQLAdapter):
     Relation = PostgresRelation
-    Materialization = PostgresMaterialization
     ConnectionManager = PostgresConnectionManager
     Column = PostgresColumn
 
@@ -75,6 +76,19 @@ class PostgresAdapter(SQLAdapter):
         ConstraintType.primary_key: ConstraintSupport.ENFORCED,
         ConstraintType.foreign_key: ConstraintSupport.ENFORCED,
     }
+
+    @property
+    def relation_factory(self):
+        return RelationFactory(
+            relation_models={
+                RelationType.MaterializedView: relation_models.PostgresMaterializedViewRelation,
+            },
+            relation_changesets={
+                RelationType.MaterializedView: relation_models.PostgresMaterializedViewRelationChangeset,
+            },
+            relation_can_be_renamed={RelationType.MaterializedView},
+            render_policy=relation_models.PostgresRenderPolicy,
+        )
 
     @classmethod
     def date_function(cls):
@@ -146,3 +160,19 @@ class PostgresAdapter(SQLAdapter):
 
     def debug_query(self):
         self.execute("select 1 as id")
+
+    @available
+    def generate_index_name(
+        self,
+        relation: relation_models.PostgresMaterializedViewRelation,
+        index: relation_models.PostgresIndexRelation,
+    ) -> str:
+        return dbt.utils.md5(
+            "_".join(
+                {
+                    relation.fully_qualified_path,
+                    index.fully_qualified_path,
+                    str(datetime.utcnow().isoformat()),
+                }
+            )
+        )

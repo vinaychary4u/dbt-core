@@ -1,0 +1,1 @@
+from dbt.adapters.materialization.factory import MaterializationFactory

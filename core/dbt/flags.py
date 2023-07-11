@@ -25,7 +25,7 @@ MP_CONTEXT = get_context()
 
 
 # this roughly follows the patten of EVENT_MANAGER in dbt/events/functions.py
-# During de-globlization, we'll need to handle both similarly
+# During de-globalization, we'll need to handle both similarly
 # Match USE_COLORS default with default in dbt.cli.params.use_colors for use in --version
 GLOBAL_FLAGS = Namespace(USE_COLORS=True)  # type: ignore
 

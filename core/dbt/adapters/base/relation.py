@@ -2,7 +2,6 @@ from collections.abc import Hashable
 import dataclasses
 from typing import Any, Dict, Iterator, Optional, Set, Tuple, Type, TypeVar
 
-from dbt.adapters.materialization_config import MaterializationConfig
 from dbt.contracts.graph.nodes import (
     SourceDefinition,
     ManifestNode,
@@ -38,8 +37,8 @@ class BaseRelation(FakeAPIObject, Hashable):
     quote_character: str = '"'
     # Python 3.11 requires that these use default_factory instead of simple default
     # ValueError: mutable default <class 'dbt.contracts.relation.Policy'> for field include_policy is not allowed: use default_factory
-    include_policy: Policy = dataclasses.field(default_factory=lambda: Policy())
-    quote_policy: Policy = dataclasses.field(default_factory=lambda: Policy())
+    include_policy: Policy = dataclasses.field(default_factory=Policy)
+    quote_policy: Policy = dataclasses.field(default_factory=Policy)
     dbt_created: bool = False
 
     def _is_exactish_match(self, field: ComponentName, value: str) -> bool:
@@ -290,31 +289,6 @@ class BaseRelation(FakeAPIObject, Hashable):
             }
         )
         return cls.from_dict(kwargs)
-
-    @classmethod
-    def from_materialization_config(
-        cls, materialization_config: MaterializationConfig
-    ) -> "BaseRelation":
-        """
-        Produce a `BaseRelation` instance from a `MaterializationConfig` instance. This is primarily done to
-        reuse existing functionality based on `BaseRelation` while working with `MaterializationConfig` instances.
-
-        Useful in combination with `is_materialization_config`.
-
-        Args:
-            materialization_config: a `MaterializationConfig` to be converted
-
-        Returns:
-            a converted `BaseRelation` instance
-        """
-        relation = cls.create(
-            database=materialization_config.database_name,
-            schema=materialization_config.schema_name,
-            identifier=materialization_config.name,
-            quote_policy=cls.quote_policy,
-            type=materialization_config.type,
-        )
-        return relation
 
     def __repr__(self) -> str:
         return "<{} {}>".format(self.__class__.__name__, self.render())

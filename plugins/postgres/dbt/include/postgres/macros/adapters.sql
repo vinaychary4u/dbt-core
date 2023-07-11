@@ -25,38 +25,6 @@
   );
 {%- endmacro %}
 
-{% macro postgres__get_create_index_sql(relation, index_dict) -%}
-  {%- set index_config = adapter.parse_index(index_dict) -%}
-  {%- set comma_separated_columns = ", ".join(index_config.columns) -%}
-  {%- set index_name = index_config.render(relation) -%}
-
-  create {% if index_config.unique -%}
-    unique
-  {%- endif %} index if not exists
-  "{{ index_name }}"
-  on {{ relation }} {% if index_config.type -%}
-    using {{ index_config.type }}
-  {%- endif %}
-  ({{ comma_separated_columns }});
-{%- endmacro %}
-
-{% macro postgres__create_schema(relation) -%}
-  {% if relation.database -%}
-    {{ adapter.verify_database(relation.database) }}
-  {%- endif -%}
-  {%- call statement('create_schema') -%}
-    create schema if not exists {{ relation.without_identifier().include(database=False) }}
-  {%- endcall -%}
-{% endmacro %}
-
-{% macro postgres__drop_schema(relation) -%}
-  {% if relation.database -%}
-    {{ adapter.verify_database(relation.database) }}
-  {%- endif -%}
-  {%- call statement('drop_schema') -%}
-    drop schema if exists {{ relation.without_identifier().include(database=False) }} cascade
-  {%- endcall -%}
-{% endmacro %}
 
 {% macro postgres__get_columns_in_relation(relation) -%}
   {% call statement('get_columns_in_relation', fetch_result=True) %}
@@ -115,26 +83,6 @@
   {%- endif -%}
   information_schema
 {%- endmacro %}
-
-{% macro postgres__list_schemas(database) %}
-  {% if database -%}
-    {{ adapter.verify_database(database) }}
-  {%- endif -%}
-  {% call statement('list_schemas', fetch_result=True, auto_begin=False) %}
-    select distinct nspname from pg_namespace
-  {% endcall %}
-  {{ return(load_result('list_schemas').table) }}
-{% endmacro %}
-
-{% macro postgres__check_schema_exists(information_schema, schema) -%}
-  {% if information_schema.database -%}
-    {{ adapter.verify_database(information_schema.database) }}
-  {%- endif -%}
-  {% call statement('check_schema_exists', fetch_result=True, auto_begin=False) %}
-    select count(*) from pg_namespace where nspname = '{{ schema }}'
-  {% endcall %}
-  {{ return(load_result('check_schema_exists').table) }}
-{% endmacro %}
 
 {#
   Postgres tables have a maximum length of 63 characters, anything longer is silently truncated.
@@ -219,8 +167,3 @@
 {% macro postgres__copy_grants() %}
     {{ return(False) }}
 {% endmacro %}
-
-
-{%- macro postgres__get_drop_index_sql(relation, index_name) -%}
-    drop index if exists "{{ index_name }}"
-{%- endmacro -%}

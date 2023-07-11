@@ -26,7 +26,6 @@ import pytz
 from dbt import deprecations
 from dbt.adapters.base import Credentials, Column as BaseColumn
 from dbt.adapters.base.connections import AdapterResponse, Connection
-from dbt.adapters.base.materialization import Materialization as _Materialization
 from dbt.adapters.base.meta import AdapterMeta, available
 from dbt.adapters.base.relation import (
     ComponentName,
@@ -35,8 +34,9 @@ from dbt.adapters.base.relation import (
     SchemaSearchMap,
 )
 from dbt.adapters.cache import RelationsCache, _make_ref_key_dict
-from dbt.adapters.materialization_config import MaterializationConfig
+from dbt.adapters.materialization import MaterializationFactory, models as materialization_models
 from dbt.adapters.protocol import AdapterConfig, ConnectionManagerProtocol
+from dbt.adapters.relation import RelationFactory, models as relation_models
 from dbt.clients.agate_helper import empty_table, merge_tables, table_from_rows
 from dbt.clients.jinja import MacroGenerator
 from dbt.contracts.graph.manifest import MacroManifest, Manifest
@@ -46,7 +46,6 @@ from dbt.contracts.graph.nodes import (
     ModelLevelConstraint,
     ResultNode,
 )
-from dbt.contracts.relation import RelationType as _RelationType
 from dbt.events.functions import fire_event, warn_or_error
 from dbt.events.types import (
     CacheMiss,
@@ -211,8 +210,6 @@ class BaseAdapter(metaclass=AdapterMeta):
     """
 
     Relation: Type[BaseRelation] = BaseRelation
-    RelationType: Type[_RelationType] = _RelationType
-    Materialization: Type[_Materialization] = _Materialization
     Column: Type[BaseColumn] = BaseColumn
     ConnectionManager: Type[ConnectionManagerProtocol]
 
@@ -227,6 +224,14 @@ class BaseAdapter(metaclass=AdapterMeta):
         ConstraintType.primary_key: ConstraintSupport.NOT_ENFORCED,
         ConstraintType.foreign_key: ConstraintSupport.ENFORCED,
     }
+
+    @property
+    def relation_factory(self):
+        return RelationFactory(relation_models={})
+
+    @property
+    def materialization_factory(self):
+        return MaterializationFactory(relation_factory=self.relation_factory)
 
     def __init__(self, config):
         self.config = config
@@ -820,33 +825,6 @@ class BaseAdapter(metaclass=AdapterMeta):
             return matches[0]
 
         return None
-
-    @available
-    def get_cached_relation(
-        self, materialization_config: MaterializationConfig, kind: Optional[str] = None
-    ) -> BaseRelation:
-        """
-        Expose `get_relation()` to `MaterializationConfig` instances. Includes a `kind` argument to
-        combine `load_cached_relation()` macro with `make_backup_relation()` and `make_intermediate_relation()`
-        with `get_relation()`.
-        """
-        cached_kind = {
-            "existing": materialization_config.name,
-            "backup": self.Materialization.backup_name(materialization_config),
-            "intermediate": self.Materialization.intermediate_name(materialization_config),
-        }
-
-        if name := cached_kind.get(kind or "existing"):
-            return self.get_relation(
-                database=materialization_config.database_name,
-                schema=materialization_config.schema_name,
-                identifier=name,
-            )
-
-        raise DbtRuntimeError(
-            f"Invalid cached relation kind for `get_cached_relation()`: {kind}"
-            f"    Please supply one of: {', '.join(cached_kind.keys())}"
-        )
 
     @available.deprecated("get_relation", lambda *a, **k: False)
     def already_exists(self, schema: str, name: str) -> bool:
@@ -1453,23 +1431,147 @@ class BaseAdapter(metaclass=AdapterMeta):
         else:
             return None
 
-    @available
-    def is_base_relation(
-        self, materialization: Union[BaseRelation, MaterializationConfig]
-    ) -> bool:
-        """
-        Convenient for templating, given the mix of `BaseRelation` and `MaterializationConfig`
-        """
-        return isinstance(materialization, BaseRelation)
+    """
+    Pass-through methods to access `MaterializationFactory` and `RelationFactory` functionality
+    """
 
     @available
-    def is_materialization_config(
-        self, materialization: Union[BaseRelation, MaterializationConfig]
-    ) -> bool:
+    def make_materialization_from_runtime_config(
+        self, runtime_config, materialization_type: materialization_models.MaterializationType
+    ) -> materialization_models.Materialization:
         """
-        Convenient for templating, given the mix of `BaseRelation` and `MaterializationConfig`
+        Produce a `Materialization` instance along with whatever associated `Relation` and `RelationStub`
+        instances are needed.
+
+        Args:
+            runtime_config: the `config` (`RuntimeConfigObject`) in the global jinja context
+            materialization_type: the name of the materialization
+
+        Returns:
+            a `Materialization` instance that contains all the information required to execute the materialization
         """
-        return isinstance(materialization, MaterializationConfig)
+        existing_relation_stub = self._get_existing_relation_stub_from_model_node(
+            runtime_config.model
+        )
+
+        materialization = self.materialization_factory.make_from_runtime_config(
+            runtime_config, materialization_type, existing_relation_stub
+        )
+
+        return materialization
+
+    def _get_existing_relation_stub_from_model_node(
+        self, model_node
+    ) -> Optional[relation_models.RelationStub]:
+        """
+        We need to get `existing_relation_stub` from `Adapter` because we need access to a bunch of `cache`
+        things, in particular `get_relations`.
+
+        TODO: if we refactor the interaction between `Adapter` and `cache`, the calculation of `existing_relation_stub`
+        could be moved here, which is a more intuitive spot (like `target_relation`) for it
+        (and removes the concern of creating a `RelationStub` from `Adapter` where it doesn't belong
+        """
+        existing_base_relation: BaseRelation = self.get_relation(
+            database=model_node.database,
+            schema=model_node.schema,
+            identifier=model_node.identifier,
+        )
+
+        if existing_base_relation:
+            existing_relation_stub = self.relation_factory.make_stub(
+                name=existing_base_relation.identifier,
+                schema_name=existing_base_relation.schema,
+                database_name=existing_base_relation.database,
+                relation_type=existing_base_relation.type,
+            )
+        else:
+            existing_relation_stub = None
+
+        return existing_relation_stub
+
+    @available
+    def make_changeset(
+        self,
+        existing_relation: relation_models.Relation,
+        target_relation: relation_models.Relation,
+    ) -> relation_models.RelationChangeset:
+        """
+
+        Args:
+            existing_relation: the current implementation of the relation in the database
+            target_relation: the new implementation that should exist in the database going forward
+
+        Returns:
+            a `RelationChangeset` instance that collects all the changes required to turn `existing_relation`
+            into `target_relation`
+        """
+        return self.relation_factory.make_changeset(existing_relation, target_relation)
+
+    """
+    Implementation of cache methods for `Relation` instances (versus `BaseRelation` instances)
+    """
+
+    @available
+    def cache_created_relation_model(self, relation: relation_models.Relation) -> str:
+        base_relation = self.base_relation_from_relation_model(relation)
+        return self.cache_added(base_relation)
+
+    @available
+    def cache_dropped_relation_model(self, relation: relation_models.Relation) -> str:
+        base_relation = self.base_relation_from_relation_model(relation)
+        return self.cache_dropped(base_relation)
+
+    @available
+    def cache_renamed_relation_model(
+        self, relation: relation_models.Relation, new_name: str
+    ) -> str:
+        from_relation = self.base_relation_from_relation_model(relation)
+        to_relation = from_relation.incorporate(path={"identifier": new_name})
+        return self.cache_renamed(from_relation, to_relation)
+
+    """
+    Methods to swap back and forth between `Relation` and `BaseRelation` instances
+    """
+
+    @available
+    def is_base_relation(self, relation: Union[BaseRelation, relation_models.Relation]) -> bool:
+        """
+        Convenient for templating, given the mix of `BaseRelation` and `Relation`
+        """
+        return isinstance(relation, BaseRelation)
+
+    @available
+    def is_relation_model(self, relation: Union[BaseRelation, relation_models.Relation]) -> bool:
+        """
+        Convenient for templating, given the mix of `BaseRelation` and `Relation`
+        """
+        return isinstance(relation, relation_models.Relation)
+
+    @available
+    def base_relation_from_relation_model(
+        self, relation: relation_models.Relation
+    ) -> BaseRelation:
+        """
+        Produce a `BaseRelation` instance from a `Relation` instance. This is primarily done to
+        reuse existing functionality based on `BaseRelation` while working with `Relation` instances.
+
+        Useful in combination with `is_relation_model`/`is_base_relation`
+
+        Args:
+            relation: a `Relation` instance or subclass to be converted
+
+        Returns:
+            a converted `BaseRelation` instance
+        """
+        base_relation: BaseRelation = self.Relation.create(
+            database=relation.database_name,
+            schema=relation.schema_name,
+            identifier=relation.name,
+            quote_policy=self.Relation.quote_policy,
+            type=relation.type,
+        )
+        assert isinstance(base_relation, BaseRelation)  # mypy
+        return base_relation
 
 
 COLUMNS_EQUAL_SQL = """

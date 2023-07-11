@@ -101,14 +101,6 @@ class RelationProxy:
         return self._relation_type.create(*args, **kwargs)
 
 
-class MaterializationProxy:
-    def __init__(self, adapter):
-        self._materialization = adapter.Materialization
-
-    def __getattr__(self, key):
-        return getattr(self._materialization, key)
-
-
 class BaseDatabaseWrapper:
     """
     Wrapper for runtime database interaction. Applies the runtime quote policy
@@ -117,9 +109,8 @@ class BaseDatabaseWrapper:
 
     def __init__(self, adapter, namespace: MacroNamespace):
         self._adapter = adapter
-        self.Materialization = MaterializationProxy(adapter)
         self.Relation = RelationProxy(adapter)
-        self.RelationType = adapter.RelationType
+        self.relation_factory = adapter.relation_factory
         self._namespace = namespace
 
     def __getattr__(self, name):

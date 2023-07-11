@@ -1,7 +1,6 @@
 from abc import ABC
-from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, OrderedDict
 
 from dbt.contracts.relation import Policy, ComponentName
 

@@ -80,7 +80,7 @@ def materialized_view_describe_relation_results():
             {"name": "index_2", "column_names": "id", "method": None, "unique": True},
         ]
     )
-    return {"materialized_view": materialized_view_agate, "indexes": indexes_agate}
+    return {"relation": materialized_view_agate, "indexes": indexes_agate}
 
 
 @pytest.fixture

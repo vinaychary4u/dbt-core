@@ -74,7 +74,7 @@
     {%- set _indexes_template = postgres__describe_indexes_template(materialized_view) -%}
     {%- set _indexes = run_query(_indexes_template) -%}
 
-    {%- do return({'materialized_view': _materialized_view, 'indexes': _indexes}) -%}
+    {%- do return({'relation': _materialized_view, 'indexes': _indexes}) -%}
 
 {%- endmacro -%}
 

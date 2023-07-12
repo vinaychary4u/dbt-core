@@ -591,15 +591,15 @@ class AnyStringWith:
         return "AnyStringWith<{!r}>".format(self.contains)
 
 
-def assert_message_in_logs(message: str, logs: str, expected_fail: bool = False):
+def assert_message_in_logs(message: str, logs: str, expected_pass: bool = True):
     # if the logs are json strings, then 'jsonify' the message because of things like escape quotes
     if os.environ.get("DBT_LOG_FORMAT", "") == "json":
         message = message.replace(r'"', r"\"")
 
-    if expected_fail:
-        assert message not in logs
-    else:
+    if expected_pass:
         assert message in logs
+    else:
+        assert message not in logs
 
 
 def get_project_config(project):

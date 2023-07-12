@@ -63,7 +63,8 @@ class RelationComponent(ABC):
         Returns: the `Relation` representation associated with the provided dict
         """
         # default configuration
-        kwargs_dict = {"render": cls.render} if hasattr(cls, "render") else {}
+        kwargs_dict = {"render": getattr(cls, "render", RenderPolicy())}
+
         kwargs_dict.update(config_dict)
 
         try:

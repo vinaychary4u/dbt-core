@@ -227,7 +227,7 @@ class BaseAdapter(metaclass=AdapterMeta):
 
     @property
     def relation_factory(self):
-        return RelationFactory(relation_models={})
+        return RelationFactory()
 
     @property
     def materialization_factory(self):

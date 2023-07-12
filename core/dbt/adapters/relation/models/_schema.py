@@ -1,7 +1,6 @@
-from abc import ABC
-from copy import deepcopy
 from collections import OrderedDict
 from dataclasses import dataclass
+from typing import Type
 
 import agate
 
@@ -13,7 +12,7 @@ from dbt.adapters.relation.models._database import DatabaseRelation
 
 
 @dataclass(frozen=True)
-class SchemaRelation(RelationComponent, ABC):
+class SchemaRelation(RelationComponent):
     """
     This config identifies the minimal materialization parameters required for dbt to function as well
     as built-ins that make macros more extensible. Additional parameters may be added by subclassing for your adapter.
@@ -23,7 +22,11 @@ class SchemaRelation(RelationComponent, ABC):
     database: DatabaseRelation
 
     # configuration of base class
-    DatabaseParser: DatabaseRelation
+    DatabaseParser: Type[DatabaseRelation]
+
+    @classmethod
+    def _default_database_parser(cls) -> Type[DatabaseRelation]:
+        return getattr(cls, "DatabaseParser", DatabaseRelation)
 
     def __str__(self) -> str:
         return self.fully_qualified_path
@@ -48,18 +51,16 @@ class SchemaRelation(RelationComponent, ABC):
         """
         Parse `config_dict` into a `SchemaRelation` instance, applying defaults
         """
-        # don't alter the incoming config
-        kwargs_dict = deepcopy(config_dict)
+        # default configuration
+        kwargs_dict = {
+            "DatabaseParser": cls._default_database_parser(),
+        }
 
-        # configuration
-        kwargs_dict.update(
-            {
-                "DatabaseParser": cls.DatabaseParser,
-            }
-        )
+        kwargs_dict.update(config_dict)
 
         if database := config_dict.get("database"):
-            kwargs_dict.update({"database": cls.DatabaseParser.from_dict(database)})
+            database_parser = kwargs_dict["DatabaseParser"]
+            kwargs_dict.update({"database": database_parser.from_dict(database)})  # type: ignore
 
         schema = super().from_dict(kwargs_dict)
         assert isinstance(schema, SchemaRelation)
@@ -88,7 +89,7 @@ class SchemaRelation(RelationComponent, ABC):
         """
         config_dict = {
             "name": model_node.schema,
-            "database": cls.DatabaseParser.parse_model_node(model_node),
+            "database": cls._default_database_parser().parse_model_node(model_node),
         }
         return config_dict
 
@@ -114,7 +115,7 @@ class SchemaRelation(RelationComponent, ABC):
         """
         config_dict = {
             "name": describe_relation_results["schema_name"],
-            "database": cls.DatabaseParser.parse_describe_relation_results(
+            "database": cls._default_database_parser().parse_describe_relation_results(
                 describe_relation_results
             ),
         }

@@ -26,7 +26,11 @@ class Relation(RelationComponent, ABC):
     # configuration
     type: RelationType
     can_be_renamed: bool
-    SchemaParser: SchemaRelation
+    SchemaParser: Type[SchemaRelation]
+
+    @classmethod
+    def _default_schema_parser(cls) -> Type[SchemaRelation]:
+        return getattr(cls, "SchemaParser", SchemaRelation)
 
     def __str__(self) -> str:
         return self.fully_qualified_path
@@ -60,15 +64,14 @@ class Relation(RelationComponent, ABC):
         kwargs_dict = {
             "type": cls.type,
             "can_be_renamed": cls.can_be_renamed,
-            "SchemaParser": cls.SchemaParser,
+            "SchemaParser": cls._default_schema_parser(),
         }
 
         kwargs_dict.update(config_dict)
 
         if schema := config_dict.get("schema"):
-            # an adapter could theoretically pass in an override that is not cls.SchemaParser
-            local_schema_parser: Type[SchemaRelation] = kwargs_dict["SchemaParser"]  # type: ignore
-            kwargs_dict.update({"schema": local_schema_parser.from_dict(schema)})
+            schema_parser: Type[SchemaRelation] = kwargs_dict["SchemaParser"]  # type: ignore
+            kwargs_dict.update({"schema": schema_parser.from_dict(schema)})
 
         relation = super().from_dict(kwargs_dict)
         assert isinstance(relation, Relation)
@@ -99,7 +102,7 @@ class Relation(RelationComponent, ABC):
         """
         config_dict = {
             "name": model_node.identifier,
-            "schema": cls.SchemaParser.parse_model_node(model_node),
+            "schema": cls._default_schema_parser().parse_model_node(model_node),
             "query": (model_node.compiled_code or "").strip(),
         }
         return config_dict
@@ -132,7 +135,7 @@ class Relation(RelationComponent, ABC):
 
         config_dict = {
             "name": relation["name"],
-            "schema": cls.SchemaParser.parse_describe_relation_results(relation),
+            "schema": cls._default_schema_parser().parse_describe_relation_results(relation),
             "query": relation["query"].strip(),
         }
         return config_dict

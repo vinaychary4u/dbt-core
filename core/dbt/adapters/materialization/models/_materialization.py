@@ -2,13 +2,12 @@ from abc import ABC
 from dataclasses import dataclass, field
 from typing import Optional
 
+from dbt.adapters.relation.factory import RelationFactory
+from dbt.adapters.relation.models import DescribeRelationResults, Relation, RelationRef
 from dbt.contracts.graph.model_config import OnConfigurationChangeOption
 from dbt.dataclass_schema import StrEnum
 from dbt.flags import get_flag_obj
 from dbt.utils import filter_null_values
-
-from dbt.adapters.relation.factory import RelationFactory
-from dbt.adapters.relation.models import DescribeRelationResults, Relation, RelationRef
 
 
 class MaterializationType(StrEnum):

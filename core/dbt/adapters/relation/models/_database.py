@@ -1,4 +1,3 @@
-from abc import ABC
 from dataclasses import dataclass
 
 import agate
@@ -6,11 +5,11 @@ import agate
 from dbt.contracts.graph.nodes import ModelNode
 from dbt.contracts.relation import ComponentName
 
-from dbt.adapters.relation.models._relation import RelationComponent
+from dbt.adapters.relation.models._relation_component import RelationComponent
 
 
 @dataclass(frozen=True)
-class DatabaseRelation(RelationComponent, ABC):
+class DatabaseRelation(RelationComponent):
     """
     This config identifies the minimal materialization parameters required for dbt to function as well
     as built-ins that make macros more extensible. Additional parameters may be added by subclassing for your adapter.

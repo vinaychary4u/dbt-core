@@ -8,12 +8,12 @@ from dbt.adapters.relation.models import RelationRef
 class MaterializationFactory:
     def __init__(
         self,
-        relation_factory: RelationFactory,
+        relation_factory: Optional[RelationFactory] = None,
         materialization_map: Optional[
             Dict[models.MaterializationType, Type[models.Materialization]]
         ] = None,
     ):
-        self.relation_factory = relation_factory
+        self.relation_factory = relation_factory or RelationFactory()
         self.materialization_map = materialization_map or {
             models.MaterializationType.MaterializedView: models.MaterializedViewMaterialization
         }

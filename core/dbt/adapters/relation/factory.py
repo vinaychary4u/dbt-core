@@ -3,6 +3,7 @@ from typing import Dict, Optional, Set, Type
 
 from dbt.contracts.graph.nodes import ModelNode
 from dbt.contracts.relation import ComponentName, RelationType
+from dbt.exceptions import DbtRuntimeError
 
 from dbt.adapters.relation import models
 
@@ -20,15 +21,25 @@ class RelationFactory:
 
     def __init__(
         self,
-        relation_models: Dict[RelationType, Type[models.Relation]],
+        relation_models: Optional[Dict[RelationType, Type[models.Relation]]] = None,
         relation_changesets: Optional[Dict[RelationType, Type[models.RelationChangeset]]] = None,
         relation_can_be_renamed: Optional[Set[RelationType]] = None,
-        render_policy: models.RenderPolicy = models.RenderPolicy(),
+        render_policy: Optional[models.RenderPolicy] = None,
     ):
-        self.relation_models = relation_models
-        self.relation_changesets = relation_changesets or {}
+        if relation_models:
+            self.relation_models = relation_models
+        else:
+            self.relation_models = {RelationType.MaterializedView: models.MaterializedViewRelation}
+
+        if relation_changesets:
+            self.relation_changesets = relation_changesets
+        else:
+            self.relation_changesets = {
+                RelationType.MaterializedView: models.MaterializedViewRelationChangeset
+            }
+
         self.relation_can_be_renamed = relation_can_be_renamed or set()
-        self.render_policy = render_policy
+        self.render_policy = render_policy if render_policy else models.RenderPolicy()
 
     def make_from_model_node(self, model_node: ModelNode) -> Optional[models.Relation]:
         relation_type = RelationType(model_node.config.materialized)
@@ -74,23 +85,39 @@ class RelationFactory:
         )
         return relation_ref
 
-    def make_backup_ref(self, existing_relation: models.Relation) -> models.RelationRef:
-        backup_name = self.render_policy.part(
-            ComponentName.Identifier, f"{existing_relation.name}{self.backup_suffix}"
-        )
-        assert isinstance(backup_name, str)  # mypy
-        return self.make_ref(
-            name=backup_name,
-            schema_name=existing_relation.schema_name,
-            database_name=existing_relation.database_name,
-            relation_type=existing_relation.type,
-        )
+    def make_backup_ref(self, existing_relation: models.Relation) -> Optional[models.RelationRef]:
+        if existing_relation.can_be_renamed:
+            backup_name = self.render_policy.part(
+                ComponentName.Identifier, f"{existing_relation.name}{self.backup_suffix}"
+            )
+            assert isinstance(backup_name, str)  # mypy
+            backup_ref = self.make_ref(
+                name=backup_name,
+                schema_name=existing_relation.schema_name,
+                database_name=existing_relation.database_name,
+                relation_type=existing_relation.type,
+            )
+        else:
+            raise DbtRuntimeError(
+                f"This relation cannot be renamed, hence it cannot be backed up: \n"
+                f"    path: {existing_relation.fully_qualified_path}\n"
+                f"    type: {existing_relation.type}\n"
+            )
+        return backup_ref
 
-    def make_intermediate(self, target_relation: models.Relation) -> models.Relation:
-        intermediate_name = self.render_policy.part(
-            ComponentName.Identifier, f"{target_relation.name}{self.intermediate_suffix}"
-        )
-        return replace(target_relation, name=intermediate_name)
+    def make_intermediate(self, target_relation: models.Relation) -> Optional[models.Relation]:
+        if target_relation.can_be_renamed:
+            intermediate_name = self.render_policy.part(
+                ComponentName.Identifier, f"{target_relation.name}{self.intermediate_suffix}"
+            )
+            intermediate = replace(target_relation, name=intermediate_name)
+        else:
+            raise DbtRuntimeError(
+                f"This relation cannot be renamed, hence it cannot be staged: \n"
+                f"    path: {target_relation.fully_qualified_path}\n"
+                f"    type: {target_relation.type}\n"
+            )
+        return intermediate
 
     def make_changeset(
         self, existing_relation: models.Relation, target_relation: models.Relation

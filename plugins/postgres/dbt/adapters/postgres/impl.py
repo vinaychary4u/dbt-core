@@ -86,7 +86,11 @@ class PostgresAdapter(SQLAdapter):
             relation_changesets={
                 RelationType.MaterializedView: relation_models.PostgresMaterializedViewRelationChangeset,
             },
-            relation_can_be_renamed={RelationType.MaterializedView},
+            relation_can_be_renamed={
+                RelationType.MaterializedView,
+                RelationType.Table,
+                RelationType.View,
+            },
             render_policy=relation_models.PostgresRenderPolicy,
         )
 

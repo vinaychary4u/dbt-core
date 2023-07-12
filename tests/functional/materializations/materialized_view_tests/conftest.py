@@ -13,7 +13,11 @@ def relation_factory():
         relation_models={
             RelationType.MaterializedView: relation_models.PostgresMaterializedViewRelation,
         },
-        relation_can_be_renamed={RelationType.MaterializedView},
+        relation_can_be_renamed={
+            RelationType.MaterializedView,
+            RelationType.Table,
+            RelationType.View,
+        },
         render_policy=relation_models.PostgresRenderPolicy,
     )
 

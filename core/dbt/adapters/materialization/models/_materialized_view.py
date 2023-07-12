@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from dbt.adapters.relation.factory import RelationFactory
-from dbt.adapters.relation.models import MaterializedViewRelation, RelationRef
+from dbt.adapters.relation.models import Relation, RelationRef
 
 from dbt.adapters.materialization.models._materialization import (
     Materialization,
@@ -19,9 +19,9 @@ class MaterializedViewMaterialization(Materialization, ABC):
     as built-ins that make macros more extensible. Additional parameters may be added by subclassing for your adapter.
     """
 
-    target_relation: MaterializedViewRelation = None  # type: ignore
+    target_relation: Relation = None  # type: ignore
     existing_relation_ref: RelationRef = None  # type: ignore
-    intermediate_relation: MaterializedViewRelation = None  # type: ignore
+    intermediate_relation: Relation = None  # type: ignore
     backup_relation_ref: RelationRef = None  # type: ignore
 
     @property

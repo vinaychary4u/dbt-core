@@ -4,10 +4,6 @@ from dbt.adapters.relation.models._change import (
     RelationChangeset,
 )
 from dbt.adapters.relation.models._database import DatabaseRelation
-from dbt.adapters.relation.models._materialized_view import (
-    MaterializedViewRelation,
-    MaterializedViewRelationChangeset,
-)
 from dbt.adapters.relation.models._policy import IncludePolicy, QuotePolicy, RenderPolicy
 from dbt.adapters.relation.models._relation import Relation
 from dbt.adapters.relation.models._relation_component import (

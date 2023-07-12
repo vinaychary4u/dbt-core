@@ -3,13 +3,10 @@ from dataclasses import dataclass, field
 from typing import Dict, FrozenSet, Optional, Set
 
 import agate
-from dbt.adapters.relation.models import (
-    MaterializedViewRelation,
-    MaterializedViewRelationChangeset,
-    Relation,
-)
+from dbt.adapters.relation.models import Relation, RelationChangeset
 from dbt.adapters.validation import ValidationMixin, ValidationRule
 from dbt.contracts.graph.nodes import ModelNode
+from dbt.contracts.relation import RelationType
 from dbt.exceptions import DbtRuntimeError
 
 from dbt.adapters.postgres.relation.models.index import (
@@ -25,7 +22,7 @@ from dbt.adapters.postgres.relation.models.schema import PostgresSchemaRelation
 
 
 @dataclass(frozen=True, eq=True, unsafe_hash=True)
-class PostgresMaterializedViewRelation(MaterializedViewRelation, ValidationMixin):
+class PostgresMaterializedViewRelation(Relation, ValidationMixin):
     """
     This config follows the specs found here:
     https://www.postgresql.org/docs/current/sql-creatematerializedview.html
@@ -49,6 +46,7 @@ class PostgresMaterializedViewRelation(MaterializedViewRelation, ValidationMixin
     indexes: Optional[FrozenSet[PostgresIndexRelation]] = field(default_factory=frozenset)
 
     # configuration
+    type = RelationType.MaterializedView
     render = PostgresRenderPolicy
     SchemaParser = PostgresSchemaRelation
     can_be_renamed = True
@@ -201,7 +199,7 @@ class PostgresMaterializedViewRelation(MaterializedViewRelation, ValidationMixin
 
 
 @dataclass
-class PostgresMaterializedViewRelationChangeset(MaterializedViewRelationChangeset):
+class PostgresMaterializedViewRelationChangeset(RelationChangeset):
     indexes: Set[PostgresIndexRelationChange] = field(default_factory=set)
 
     @classmethod
@@ -216,11 +214,9 @@ class PostgresMaterializedViewRelationChangeset(MaterializedViewRelationChangese
                 f"    new: {target_relation}\n"
             )
 
-        config_dict = super().parse_relations(existing_relation, target_relation)
-
-        config_dict.update(
-            {"indexes": index_config_changes(existing_relation.indexes, target_relation.indexes)}
-        )
+        config_dict = {
+            "indexes": index_config_changes(existing_relation.indexes, target_relation.indexes),
+        }
 
         return config_dict
 

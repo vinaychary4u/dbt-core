@@ -79,6 +79,7 @@ class RelationRef(Relation):
             **{
                 "name": config_dict["name"],
                 "schema": SchemaRelationRef.from_dict(config_dict["schema"]),
+                "query": "",
                 "render": config_dict["render"],
                 "type": config_dict["type"],
                 "can_be_renamed": config_dict["can_be_renamed"],

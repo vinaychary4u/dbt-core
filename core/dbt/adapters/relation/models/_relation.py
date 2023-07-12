@@ -1,7 +1,7 @@
 from abc import ABC
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Type
 
 import agate
 from dbt.contracts.graph.nodes import ModelNode
@@ -13,19 +13,19 @@ from dbt.adapters.relation.models._schema import SchemaRelation
 
 @dataclass(frozen=True)
 class Relation(RelationComponent, ABC):
+    """
+    This config identifies the minimal materialization parameters required for dbt to function as well
+    as built-ins that make macros more extensible. Additional parameters may be added by subclassing for your adapter.
+    """
 
     # attribution
     name: str
     schema: SchemaRelation
+    query: str
 
-    """
-    TODO: `can_be_renamed` belongs on `Relation`; however, I get the error below and cannot figure out how to fix it.
-
-        TypeError: non-default argument 'can_be_renamed' follows default argument
-
-    """
     # configuration
     type: RelationType
+    can_be_renamed: bool
     SchemaParser: SchemaRelation
 
     def __str__(self) -> str:
@@ -57,11 +57,18 @@ class Relation(RelationComponent, ABC):
         Parse `config_dict` into a `MaterializationViewRelation` instance, applying defaults
         """
         # default configuration
-        kwargs_dict = {"SchemaParser": cls.SchemaParser}
+        kwargs_dict = {
+            "type": cls.type,
+            "can_be_renamed": cls.can_be_renamed,
+            "SchemaParser": cls.SchemaParser,
+        }
+
         kwargs_dict.update(config_dict)
 
         if schema := config_dict.get("schema"):
-            kwargs_dict.update({"schema": kwargs_dict["SchemaParser"].from_dict(schema)})
+            # an adapter could theoretically pass in an override that is not cls.SchemaParser
+            local_schema_parser: Type[SchemaRelation] = kwargs_dict["SchemaParser"]  # type: ignore
+            kwargs_dict.update({"schema": local_schema_parser.from_dict(schema)})
 
         relation = super().from_dict(kwargs_dict)
         assert isinstance(relation, Relation)

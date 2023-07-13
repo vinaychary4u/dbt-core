@@ -387,6 +387,11 @@ class BaseConfig(AdditionalPropertiesAllowed, Replaceable):
 
 
 @dataclass
+class SemanticModelConfig(BaseConfig):
+    enabled: bool = True
+
+
+@dataclass
 class MetricConfig(BaseConfig):
     enabled: bool = True
     group: Optional[str] = None
@@ -550,6 +555,8 @@ class SeedConfig(NodeConfig):
 
 @dataclass
 class TestConfig(NodeAndTestConfig):
+    __test__ = False
+
     # this is repeated because of a different default
     schema: Optional[str] = field(
         default="dbt_test__audit",

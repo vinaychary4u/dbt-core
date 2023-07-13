@@ -48,13 +48,16 @@ from dbt.events.types import (
 from dbt.events.contextvars import set_log_contextvars
 from dbt.flags import get_flags
 from dbt.node_types import ModelLanguage, NodeType, AccessType
+from dbt_semantic_interfaces.call_parameter_sets import FilterCallParameterSets
 from dbt_semantic_interfaces.references import (
     MeasureReference,
     LinkableElementReference,
     SemanticModelReference,
+    TimeDimensionReference,
 )
 from dbt_semantic_interfaces.references import MetricReference as DSIMetricReference
 from dbt_semantic_interfaces.type_enums import MetricType, TimeGranularity
+from dbt_semantic_interfaces.parsing.where_filter_parser import WhereFilterParser
 
 from .model_config import (
     NodeConfig,
@@ -65,6 +68,7 @@ from .model_config import (
     ExposureConfig,
     EmptySnapshotConfig,
     SnapshotConfig,
+    SemanticModelConfig,
 )
 
 
@@ -625,6 +629,11 @@ class ModelNode(CompiledNode):
         # We don't need to construct the checksum if the model does not
         # have contract enforced, because it won't be used.
         # This needs to be executed after contract config is set
+
+        # Avoid rebuilding the checksum if it has already been set.
+        if self.contract.checksum is not None:
+            return
+
         if self.contract.enforced is True:
             contract_state = ""
             # We need to sort the columns so that order doesn't matter
@@ -923,6 +932,8 @@ class SingularTestNode(TestShouldStoreFailures, CompiledNode):
 
 @dataclass
 class TestMetadata(dbtClassMixin, Replaceable):
+    __test__ = False
+
     name: str
     # kwargs are the args that are left in the test builder after
     # removing configs. They are set from the test builder when
@@ -1308,6 +1319,10 @@ class Exposure(GraphNode):
 class WhereFilter(dbtClassMixin):
     where_sql_template: str
 
+    @property
+    def call_parameter_sets(self) -> FilterCallParameterSets:
+        return WhereFilterParser.parse_call_parameter_sets(self.where_sql_template)
+
 
 @dataclass
 class MetricInputMeasure(dbtClassMixin):
@@ -1482,6 +1497,7 @@ class SemanticModel(GraphNode):
     depends_on: DependsOn = field(default_factory=DependsOn)
     refs: List[RefArgs] = field(default_factory=list)
     created_at: float = field(default_factory=lambda: time.time())
+    config: SemanticModelConfig = field(default_factory=SemanticModelConfig)
 
     @property
     def entity_references(self) -> List[LinkableElementReference]:
@@ -1539,6 +1555,29 @@ class SemanticModel(GraphNode):
     @property
     def depends_on_macros(self):
         return self.depends_on.macros
+
+    def checked_agg_time_dimension_for_measure(
+        self, measure_reference: MeasureReference
+    ) -> TimeDimensionReference:
+        measure: Optional[Measure] = None
+        for measure in self.measures:
+            if measure.reference == measure_reference:
+                measure = measure
+
+        assert (
+            measure is not None
+        ), f"No measure with name ({measure_reference.element_name}) in semantic_model with name ({self.name})"
+
+        if self.defaults is not None:
+            default_agg_time_dimesion = self.defaults.agg_time_dimension
+
+        agg_time_dimension_name = measure.agg_time_dimension or default_agg_time_dimesion
+        assert agg_time_dimension_name is not None, (
+            f"Aggregation time dimension for measure {measure.name} is not set! This should either be set directly on "
+            f"the measure specification in the model, or else defaulted to the primary time dimension in the data "
+            f"source containing the measure."
+        )
+        return TimeDimensionReference(element_name=agg_time_dimension_name)
 
 
 # ====================================

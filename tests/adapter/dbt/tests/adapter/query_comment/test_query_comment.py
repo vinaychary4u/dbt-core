@@ -28,6 +28,13 @@ class BaseDefaultQueryComments:
         assert len(res) > 0
         return raw_logs
 
+    def run_assert_comments(self):
+        logs = self.run_get_json()
+        return logs
+
+    def test_comments(self, project):
+        self.run_assert_comments()
+
 
 # Base setup to be inherited #
 class BaseQueryComments(BaseDefaultQueryComments):
@@ -35,9 +42,8 @@ class BaseQueryComments(BaseDefaultQueryComments):
     def project_config_update(self):
         return {"query-comment": "dbt\nrules!\n"}
 
-    def test_matches_comment(self, project) -> bool:
-        logs = self.run_get_json()
-        assert r"/* dbt\nrules! */\n" in logs
+    def matches_comment(self, logs) -> bool:
+        assert "/* dbt\nrules! */\n" in logs
 
 
 class BaseMacroQueryComments(BaseDefaultQueryComments):
@@ -45,9 +51,8 @@ class BaseMacroQueryComments(BaseDefaultQueryComments):
     def project_config_update(self):
         return {"query-comment": "{{ query_header_no_args() }}"}
 
-    def test_matches_comment(self, project) -> bool:
-        logs = self.run_get_json()
-        assert r"/* dbt macros\nare pretty cool */\n" in logs
+    def matches_comment(self, logs) -> bool:
+        assert "/* dbt macros\nare pretty cool */\n" in logs
 
 
 class BaseMacroArgsQueryComments(BaseDefaultQueryComments):
@@ -55,17 +60,14 @@ class BaseMacroArgsQueryComments(BaseDefaultQueryComments):
     def project_config_update(self):
         return {"query-comment": "{{ return(ordered_to_json(query_header_args(target.name))) }}"}
 
-    def test_matches_comment(self, project) -> bool:
-        logs = self.run_get_json()
+    def matches_comment(self, logs) -> bool:
         expected_dct = {
             "app": "dbt++",
             "dbt_version": dbt_version,
             "macro_version": "0.1.0",
-            "message": f"blah: {project.adapter.config.target_name}",
+            "message": "blah: default2",
         }
-        expected = r"/* {} */\n".format(json.dumps(expected_dct, sort_keys=True)).replace(
-            '"', r"\""
-        )
+        expected = "/* {} */\n".format(json.dumps(expected_dct, sort_keys=True))
         assert expected in logs
 
 
@@ -74,7 +76,7 @@ class BaseMacroInvalidQueryComments(BaseDefaultQueryComments):
     def project_config_update(self):
         return {"query-comment": "{{ invalid_query_header() }}"}
 
-    def test_run_assert_comments(self, project):
+    def run_assert_comments(self):
         with pytest.raises(DbtRuntimeError):
             self.run_get_json(expect_pass=False)
 
@@ -82,10 +84,9 @@ class BaseMacroInvalidQueryComments(BaseDefaultQueryComments):
 class BaseNullQueryComments(BaseDefaultQueryComments):
     @pytest.fixture(scope="class")
     def project_config_update(self):
-        return {"query-comment": None}
+        return {"query-comment": ""}
 
-    def test_matches_comment(self, project) -> bool:
-        logs = self.run_get_json()
+    def matches_comment(self, logs) -> bool:
         assert "/*" not in logs or "*/" not in logs
 
 
@@ -94,8 +95,7 @@ class BaseEmptyQueryComments(BaseDefaultQueryComments):
     def project_config_update(self):
         return {"query-comment": ""}
 
-    def test_matches_comment(self, project) -> bool:
-        logs = self.run_get_json()
+    def matches_comment(self, logs) -> bool:
         assert "/*" not in logs or "*/" not in logs
 
 

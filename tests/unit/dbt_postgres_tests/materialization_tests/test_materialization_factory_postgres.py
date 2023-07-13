@@ -4,9 +4,9 @@ from dbt.contracts.relation import RelationType
 from dbt.adapters.postgres.relation import models as relation_models
 
 
-def test_make_from_runtime_config(materialization_factory, materialized_view_runtime_config):
-    materialization = materialization_factory.make_from_runtime_config(
-        runtime_config=materialized_view_runtime_config,
+def test_make_from_node(materialization_factory, materialized_view_compiled_node):
+    materialization = materialization_factory.make_from_node(
+        node=materialized_view_compiled_node,
         materialization_type=MaterializationType.MaterializedView,
         existing_relation_ref=None,
     )
@@ -14,6 +14,7 @@ def test_make_from_runtime_config(materialization_factory, materialized_view_run
 
     materialized_view = materialization.target_relation
     assert materialized_view.type == RelationType.MaterializedView
+    assert isinstance(materialized_view, relation_models.PostgresMaterializedViewRelation)
 
     assert materialized_view.name == "my_materialized_view"
     assert materialized_view.schema_name == "my_schema"

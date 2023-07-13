@@ -1,10 +1,11 @@
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from dbt.adapters.relation.factory import RelationFactory
 from dbt.adapters.relation.models import DescribeRelationResults, Relation, RelationRef
 from dbt.contracts.graph.model_config import OnConfigurationChangeOption
+from dbt.contracts.graph.nodes import CompiledNode
 from dbt.dataclass_schema import StrEnum
 from dbt.flags import get_flag_obj
 from dbt.utils import filter_null_values
@@ -103,40 +104,28 @@ class Materialization(ABC):
         return cls(**filter_null_values(config_dict))
 
     @classmethod
-    def from_runtime_config(
+    def from_node(
         cls,
-        runtime_config,
+        node: CompiledNode,
         relation_factory: RelationFactory,
         existing_relation_ref: Optional[RelationRef] = None,
     ) -> "Materialization":
-        config_dict = cls.parse_runtime_config(
-            runtime_config, relation_factory, existing_relation_ref
-        )
+        config_dict = cls.parse_node(node, relation_factory, existing_relation_ref)
         materialization = cls.from_dict(config_dict)
         return materialization
 
     @classmethod
-    def parse_runtime_config(
+    def parse_node(
         cls,
-        runtime_config,
+        node: CompiledNode,
         relation_factory: RelationFactory,
         existing_relation_ref: Optional[RelationRef] = None,
-    ) -> dict:
-        target_relation = relation_factory.make_from_model_node(runtime_config.model)
-        # FULL_REFRESH defaults to False, hence the default in runtime_config.get()
-        is_full_refresh = any(
-            {get_flag_obj().FULL_REFRESH, runtime_config.get("full_refresh", False)}
-        )
-        grants = runtime_config.get("grants", {})
-        on_configuration_change = runtime_config.get(
-            "on_configuration_change", OnConfigurationChangeOption.default()
-        )
-
+    ) -> Dict[str, Any]:
         return {
             "relation_factory": relation_factory,
-            "target_relation": target_relation,
-            "is_full_refresh": is_full_refresh,
-            "grants": grants,
-            "on_configuration_change": on_configuration_change,
+            "target_relation": relation_factory.make_from_node(node),
+            "is_full_refresh": any({get_flag_obj().FULL_REFRESH, node.config.full_refresh}),
+            "grants": node.config.grants,
+            "on_configuration_change": node.config.on_configuration_change,
             "existing_relation_ref": existing_relation_ref,
         }

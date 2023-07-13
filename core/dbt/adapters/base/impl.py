@@ -34,18 +34,34 @@ from dbt.adapters.base.relation import (
     SchemaSearchMap,
 )
 from dbt.adapters.cache import RelationsCache, _make_ref_key_dict
-from dbt.adapters.materialization import MaterializationFactory, models as materialization_models
+from dbt.adapters.materialization import MaterializationFactory
+from dbt.adapters.materialization.models import (
+    Materialization,
+    MaterializationType,
+    MaterializedViewMaterialization,
+)
 from dbt.adapters.protocol import AdapterConfig, ConnectionManagerProtocol
-from dbt.adapters.relation import RelationFactory, models as relation_models
+from dbt.adapters.relation import RelationFactory
+from dbt.adapters.relation.models import (
+    MaterializedViewRelation,
+    MaterializedViewRelationChangeset,
+    Relation as RelationModel,
+    RelationChangeset,
+    RelationRef,
+    RenderPolicy,
+)
 from dbt.clients.agate_helper import empty_table, merge_tables, table_from_rows
 from dbt.clients.jinja import MacroGenerator
 from dbt.contracts.graph.manifest import MacroManifest, Manifest
 from dbt.contracts.graph.nodes import (
     ColumnLevelConstraint,
+    CompiledNode,
     ConstraintType,
     ModelLevelConstraint,
+    ParsedNode,
     ResultNode,
 )
+from dbt.contracts.relation import RelationType
 from dbt.events.functions import fire_event, warn_or_error
 from dbt.events.types import (
     CacheMiss,
@@ -226,12 +242,26 @@ class BaseAdapter(metaclass=AdapterMeta):
     }
 
     @property
-    def relation_factory(self):
-        return RelationFactory()
+    def relation_factory(self) -> RelationFactory:
+        return RelationFactory(
+            relation_models={
+                RelationType.MaterializedView: MaterializedViewRelation,
+            },
+            relation_changesets={
+                RelationType.MaterializedView: MaterializedViewRelationChangeset,
+            },
+            relation_can_be_renamed=set(),
+            render_policy=RenderPolicy(),
+        )
 
     @property
-    def materialization_factory(self):
-        return MaterializationFactory(relation_factory=self.relation_factory)
+    def materialization_factory(self) -> MaterializationFactory:
+        return MaterializationFactory(
+            relation_factory=self.relation_factory,
+            materialization_map={
+                MaterializationType.MaterializedView: MaterializedViewMaterialization,
+            },
+        )
 
     def __init__(self, config):
         self.config = config
@@ -1436,33 +1466,36 @@ class BaseAdapter(metaclass=AdapterMeta):
     """
 
     @available
-    def make_materialization_from_runtime_config(
-        self, runtime_config, materialization_type: materialization_models.MaterializationType
-    ) -> materialization_models.Materialization:
+    def make_materialization_from_node(
+        self, node: CompiledNode, materialization_type: MaterializationType
+    ) -> Materialization:
         """
         Produce a `Materialization` instance along with whatever associated `Relation` and `RelationRef`
         instances are needed.
 
+        *Note:* The node that comes in could be any one of `ParsedNode`, `CompiledNode`, or `ModelNode`. We
+        need at least a `CompiledNode` to process a materialization that requires a query.
+
         Args:
-            runtime_config: the `config` (`RuntimeConfigObject`) in the global jinja context
+            node: `model` or `config.model` in the global jinja context
             materialization_type: the name of the materialization
 
         Returns:
             a `Materialization` instance that contains all the information required to execute the materialization
         """
-        existing_relation_ref = self._get_existing_relation_ref_from_model_node(
-            runtime_config.model
+        try:
+            assert isinstance(node, CompiledNode)
+        except AssertionError:
+            raise DbtRuntimeError(
+                f"A `CompiledNode` is required to produce a materialization, but a {node.__class__} was received."
+            )
+        existing_relation_ref = self._get_existing_relation_ref_from_node(node)
+        materialization = self.materialization_factory.make_from_node(
+            node, materialization_type, existing_relation_ref
         )
-
-        materialization = self.materialization_factory.make_from_runtime_config(
-            runtime_config, materialization_type, existing_relation_ref
-        )
-
         return materialization
 
-    def _get_existing_relation_ref_from_model_node(
-        self, model_node
-    ) -> Optional[relation_models.RelationRef]:
+    def _get_existing_relation_ref_from_node(self, node: ParsedNode) -> Optional[RelationRef]:
         """
         We need to get `existing_relation_ref` from `Adapter` because we need access to a bunch of `cache`
         things, in particular `get_relations`.
@@ -1472,17 +1505,18 @@ class BaseAdapter(metaclass=AdapterMeta):
         (and removes the concern of creating a `RelationRef` from `Adapter` where it doesn't belong
         """
         existing_base_relation: BaseRelation = self.get_relation(
-            database=model_node.database,
-            schema=model_node.schema,
-            identifier=model_node.identifier,
+            database=node.database,
+            schema=node.schema,
+            identifier=node.identifier,
         )
 
+        # mypy thinks existing_base_relation's identifiers are all optional because of IncludePolicy
         if existing_base_relation:
             existing_relation_ref = self.relation_factory.make_ref(
-                name=existing_base_relation.identifier,
-                schema_name=existing_base_relation.schema,
-                database_name=existing_base_relation.database,
-                relation_type=existing_base_relation.type,
+                name=existing_base_relation.identifier,  # type: ignore
+                schema_name=existing_base_relation.schema,  # type: ignore
+                database_name=existing_base_relation.database,  # type: ignore
+                relation_type=existing_base_relation.type,  # type: ignore
             )
         else:
             existing_relation_ref = None
@@ -1491,11 +1525,15 @@ class BaseAdapter(metaclass=AdapterMeta):
 
     @available
     def make_changeset(
-        self,
-        existing_relation: relation_models.Relation,
-        target_relation: relation_models.Relation,
-    ) -> relation_models.RelationChangeset:
+        self, existing_relation: RelationModel, target_relation: RelationModel
+    ) -> RelationChangeset:
         """
+        Generate a changeset between two relations. This gets used in macros like `alter_template()` to
+        determine what changes are needed, or if a full refresh is needed.
+
+        Note that while this could be determined on `Materialization`, the fact that it gets called
+        in `alter_template()`, which only takes in two `Relation` instances, means that it needs to live
+        separately from `Materialization`.
 
         Args:
             existing_relation: the current implementation of the relation in the database
@@ -1512,19 +1550,17 @@ class BaseAdapter(metaclass=AdapterMeta):
     """
 
     @available
-    def cache_created_relation_model(self, relation: relation_models.Relation) -> str:
+    def cache_created_relation_model(self, relation: RelationModel) -> str:
         base_relation = self.base_relation_from_relation_model(relation)
         return self.cache_added(base_relation)
 
     @available
-    def cache_dropped_relation_model(self, relation: relation_models.Relation) -> str:
+    def cache_dropped_relation_model(self, relation: RelationModel) -> str:
         base_relation = self.base_relation_from_relation_model(relation)
         return self.cache_dropped(base_relation)
 
     @available
-    def cache_renamed_relation_model(
-        self, relation: relation_models.Relation, new_name: str
-    ) -> str:
+    def cache_renamed_relation_model(self, relation: RelationModel, new_name: str) -> str:
         from_relation = self.base_relation_from_relation_model(relation)
         to_relation = from_relation.incorporate(path={"identifier": new_name})
         return self.cache_renamed(from_relation, to_relation)
@@ -1534,23 +1570,21 @@ class BaseAdapter(metaclass=AdapterMeta):
     """
 
     @available
-    def is_base_relation(self, relation: Union[BaseRelation, relation_models.Relation]) -> bool:
+    def is_base_relation(self, relation: Union[BaseRelation, RelationModel]) -> bool:
         """
         Convenient for templating, given the mix of `BaseRelation` and `Relation`
         """
         return isinstance(relation, BaseRelation)
 
     @available
-    def is_relation_model(self, relation: Union[BaseRelation, relation_models.Relation]) -> bool:
+    def is_relation_model(self, relation: Union[BaseRelation, RelationModel]) -> bool:
         """
         Convenient for templating, given the mix of `BaseRelation` and `Relation`
         """
-        return isinstance(relation, relation_models.Relation)
+        return isinstance(relation, RelationModel)
 
     @available
-    def base_relation_from_relation_model(
-        self, relation: relation_models.Relation
-    ) -> BaseRelation:
+    def base_relation_from_relation_model(self, relation: RelationModel) -> BaseRelation:
         """
         Produce a `BaseRelation` instance from a `Relation` instance. This is primarily done to
         reuse existing functionality based on `BaseRelation` while working with `Relation` instances.

@@ -18,6 +18,7 @@ from tests.functional.materializations.materialized_view_tests.utils import (
     query_indexes,
     query_relation_type,
     query_row_count,
+    swap_indexes,
 )
 
 
@@ -39,47 +40,42 @@ def models():
 def setup(project):
     run_dbt(["seed"])
     yield
-    run_dbt(["seed"])
-
-
-def create_materialized_view_and_assert(project, my_materialized_view):
-    _, logs = run_dbt_and_capture(["--debug", "run", "--models", my_materialized_view.name])
-    assert query_relation_type(project, my_materialized_view) == "materialized_view"
-    assert_message_in_logs(
-        f"Applying CREATE to: {my_materialized_view.fully_qualified_path}", logs
-    )
-
-
-def swap_indexes(project, my_materialized_view):
-    initial_model = get_model_file(project, my_materialized_view)
-    new_model = initial_model.replace(
-        "indexes=[{'columns': ['id']}]",
-        "indexes=[{'columns': ['value']}]",
-    )
-    set_model_file(project, my_materialized_view, new_model)
 
 
 def test_materialized_view_create(project, my_materialized_view):
     assert query_relation_type(project, my_materialized_view) is None
-    create_materialized_view_and_assert(project, my_materialized_view)
+    run_dbt(["run", "--models", my_materialized_view.name])
+    assert query_relation_type(project, my_materialized_view) == "materialized_view"
 
 
 def test_materialized_view_create_idempotent(project, my_materialized_view):
-    create_materialized_view_and_assert(project, my_materialized_view)
-
-    _, logs = run_dbt_and_capture(["--debug", "run", "--models", my_materialized_view.name])
+    assert query_relation_type(project, my_materialized_view) is None
+    run_dbt(["run", "--models", my_materialized_view.name])
     assert query_relation_type(project, my_materialized_view) == "materialized_view"
-    assert_message_in_logs(f"Applying ALTER to: {my_materialized_view.fully_qualified_path}", logs)
+    run_dbt(["run", "--models", my_materialized_view.name])
+    assert query_relation_type(project, my_materialized_view) == "materialized_view"
+
+
+def test_materialized_view_full_refresh(project, my_materialized_view):
+    run_dbt(["run", "--models", my_materialized_view.name])
+    _, logs = run_dbt_and_capture(
+        ["--debug", "run", "--models", my_materialized_view.name, "--full-refresh"]
+    )
+    assert query_relation_type(project, my_materialized_view) == "materialized_view"
     assert_message_in_logs(
-        f"No changes were identified for: {my_materialized_view.fully_qualified_path}", logs
+        f"Applying REPLACE to: {my_materialized_view.fully_qualified_path}", logs
     )
 
 
 def test_materialized_view_replaces_table(project, my_materialized_view, my_table):
     run_dbt(["run", "--models", my_table.name])
     project.run_sql(
-        f"alter table {my_table.fully_qualified_path} rename to {my_materialized_view.name}"
+        f"""
+        alter table {my_table.fully_qualified_path}
+        rename to {my_materialized_view.name}
+    """
     )
+    assert query_relation_type(project, my_materialized_view) == "table"
     run_dbt(["run", "--models", my_materialized_view.name])
     assert query_relation_type(project, my_materialized_view) == "materialized_view"
 
@@ -87,8 +83,12 @@ def test_materialized_view_replaces_table(project, my_materialized_view, my_tabl
 def test_materialized_view_replaces_view(project, my_materialized_view, my_view):
     run_dbt(["run", "--models", my_view.name])
     project.run_sql(
-        f"alter view {my_view.fully_qualified_path} rename to {my_materialized_view.name}"
+        f"""
+        alter view {my_view.fully_qualified_path}
+        rename to {my_materialized_view.name}
+    """
     )
+    assert query_relation_type(project, my_materialized_view) == "view"
     run_dbt(["run", "--models", my_materialized_view.name])
     assert query_relation_type(project, my_materialized_view) == "materialized_view"
 
@@ -96,8 +96,12 @@ def test_materialized_view_replaces_view(project, my_materialized_view, my_view)
 def test_view_replaces_materialized_table(project, my_materialized_view, my_table):
     run_dbt(["run", "--models", my_materialized_view.name])
     project.run_sql(
-        f"alter materialized view {my_materialized_view.fully_qualified_path} rename to {my_table.name}"
+        f"""
+        alter materialized view {my_materialized_view.fully_qualified_path}
+        rename to {my_table.name}
+    """
     )
+    assert query_relation_type(project, my_table) == "materialized_view"
     run_dbt(["run", "--models", my_table.name])
     assert query_relation_type(project, my_table) == "table"
 
@@ -105,14 +109,18 @@ def test_view_replaces_materialized_table(project, my_materialized_view, my_tabl
 def test_view_replaces_materialized_view(project, my_materialized_view, my_view):
     run_dbt(["run", "--models", my_materialized_view.name])
     project.run_sql(
-        f"alter materialized view {my_materialized_view.fully_qualified_path} rename to {my_view.name}"
+        f"""
+        alter materialized view {my_materialized_view.fully_qualified_path}
+        rename to {my_view.name}
+    """
     )
+    assert query_relation_type(project, my_view) == "materialized_view"
     run_dbt(["run", "--models", my_view.name])
     assert query_relation_type(project, my_view) == "view"
 
 
 def test_materialized_view_only_updates_after_refresh(project, my_materialized_view, my_seed):
-    create_materialized_view_and_assert(project, my_materialized_view)
+    run_dbt(["run", "--models", my_materialized_view.name])
 
     # poll database
     table_start = query_row_count(project, my_seed)
@@ -137,37 +145,7 @@ def test_materialized_view_only_updates_after_refresh(project, my_materialized_v
     assert view_start == view_mid < view_end
 
 
-def test_materialized_view_full_refresh(project, my_materialized_view):
-    create_materialized_view_and_assert(project, my_materialized_view)
-
-    _, logs = run_dbt_and_capture(
-        ["--debug", "run", "--models", my_materialized_view.name, "--full-refresh"]
-    )
-    assert query_relation_type(project, my_materialized_view) == "materialized_view"
-    assert_message_in_logs(
-        f"Applying REPLACE to: {my_materialized_view.fully_qualified_path}", logs
-    )
-
-
-def test_indexes_are_updated_with_apply(project, my_materialized_view):
-    create_materialized_view_and_assert(project, my_materialized_view)
-    indexes = query_indexes(project, my_materialized_view)
-    assert len(indexes) == 1
-    assert indexes[0]["column_names"] == "id"
-
-    swap_indexes(project, my_materialized_view)
-    run_dbt(["run", "--models", my_materialized_view.name])
-
-    indexes = query_indexes(project, my_materialized_view)
-    assert len(indexes) == 1
-    assert indexes[0]["column_names"] == "value"
-
-
 class OnConfigurationChangeBase:
-    @pytest.fixture(scope="class")
-    def project_config_update(self):
-        return {"models": {"on_configuration_change": OnConfigurationChangeOption.Continue.value}}
-
     @pytest.fixture(scope="class", autouse=True)
     def models(self):
         yield {
@@ -181,19 +159,13 @@ class OnConfigurationChangeBase:
         run_dbt(["seed"])
         run_dbt(["run", "--models", my_materialized_view.name, "--full-refresh"])
 
+        # the tests touch these files, store their contents in memory
         initial_model = get_model_file(project, my_materialized_view)
-        new_model = initial_model.replace(
-            "indexes=[{'columns': ['id']}]",
-            "indexes=[{'columns': ['value']}]",
-        )
-        set_model_file(project, my_materialized_view, new_model)
 
         yield
 
+        # and then reset them after the test runs
         set_model_file(project, my_materialized_view, initial_model)
-
-        run_dbt(["seed"])
-        run_dbt(["run", "--models", my_materialized_view.name, "--full-refresh"])
 
 
 class TestOnConfigurationChangeApply(OnConfigurationChangeBase):
@@ -201,22 +173,27 @@ class TestOnConfigurationChangeApply(OnConfigurationChangeBase):
     def project_config_update(self):
         return {"models": {"on_configuration_change": OnConfigurationChangeOption.Apply.value}}
 
-    def test_materialized_view_full_refresh_with_changes_apply(
-        self, project, my_materialized_view
-    ):
-        run_dbt(["run", "--models", my_materialized_view.name, "--full-refresh"])
-        assert query_relation_type(project, my_materialized_view) == "materialized_view"
-
-    def test_materialized_view_with_changes_apply(self, project, my_materialized_view):
+    def test_index_updates_are_applied_with_alter(self, project, my_materialized_view):
         indexes = query_indexes(project, my_materialized_view)
         assert len(indexes) == 1
         assert indexes[0]["column_names"] == "id"
 
-        run_dbt(["run", "--models", my_materialized_view.name])
+        swap_indexes(project, my_materialized_view)
+        _, logs = run_dbt_and_capture(["--debug", "run", "--models", my_materialized_view.name])
 
         indexes = query_indexes(project, my_materialized_view)
         assert len(indexes) == 1
-        assert indexes[0]["column_names"] == "value"
+        assert indexes[0]["column_names"] == "value"  # this changed
+
+        assert_message_in_logs(
+            f"Applying ALTER to: {my_materialized_view.fully_qualified_path}", logs
+        )
+        assert_message_in_logs(
+            f"Applying ALTER INDEXES to: {my_materialized_view.fully_qualified_path}", logs
+        )
+        assert_message_in_logs(
+            f"Applying REPLACE to: {my_materialized_view.fully_qualified_path}", logs, False
+        )
 
 
 class TestOnConfigurationChangeContinue(OnConfigurationChangeBase):
@@ -224,22 +201,56 @@ class TestOnConfigurationChangeContinue(OnConfigurationChangeBase):
     def project_config_update(self):
         return {"models": {"on_configuration_change": OnConfigurationChangeOption.Continue.value}}
 
-    def test_materialized_view_full_refresh_with_changes_continue(
-        self, project, my_materialized_view
-    ):
-        run_dbt(["run", "--models", my_materialized_view.name, "--full-refresh"])
-        assert query_relation_type(project, my_materialized_view) == "materialized_view"
-
-    def test_materialized_view_with_changes_continue(self, project, my_materialized_view):
+    def test_index_updates_are_not_applied(self, project, my_materialized_view):
         indexes = query_indexes(project, my_materialized_view)
         assert len(indexes) == 1
         assert indexes[0]["column_names"] == "id"
 
-        run_dbt(["run", "--models", my_materialized_view.name])
+        swap_indexes(project, my_materialized_view)
+        _, logs = run_dbt_and_capture(["--debug", "run", "--models", my_materialized_view.name])
 
         indexes = query_indexes(project, my_materialized_view)
         assert len(indexes) == 1
+        assert indexes[0]["column_names"] == "id"  # this did not change
+
+        assert_message_in_logs(
+            f"Configuration changes were identified and `on_configuration_change` was set"
+            f" to `continue` for `{my_materialized_view.fully_qualified_path}`",
+            logs,
+        )
+        assert_message_in_logs(
+            f"Applying ALTER to: {my_materialized_view.fully_qualified_path}", logs, False
+        )
+        assert_message_in_logs(
+            f"Applying UPDATE INDEXES to: {my_materialized_view.fully_qualified_path}", logs, False
+        )
+        assert_message_in_logs(
+            f"Applying REPLACE to: {my_materialized_view.fully_qualified_path}", logs, False
+        )
+
+    def test_index_updates_are_applied_on_full_refresh(self, project, my_materialized_view):
+        indexes = query_indexes(project, my_materialized_view)
+        assert len(indexes) == 1
         assert indexes[0]["column_names"] == "id"
+
+        swap_indexes(project, my_materialized_view)
+        _, logs = run_dbt_and_capture(
+            ["--debug", "run", "--models", my_materialized_view.name, "--full-refresh"]
+        )
+
+        indexes = query_indexes(project, my_materialized_view)
+        assert len(indexes) == 1
+        assert indexes[0]["column_names"] == "value"  # this changed despite `continue`
+
+        assert_message_in_logs(
+            f"Applying ALTER to: {my_materialized_view.fully_qualified_path}", logs, False
+        )
+        assert_message_in_logs(
+            f"Applying UPDATE INDEXES to: {my_materialized_view.fully_qualified_path}", logs, False
+        )
+        assert_message_in_logs(
+            f"Applying REPLACE to: {my_materialized_view.fully_qualified_path}", logs, True
+        )
 
 
 class TestOnConfigurationChangeFail(OnConfigurationChangeBase):
@@ -247,17 +258,55 @@ class TestOnConfigurationChangeFail(OnConfigurationChangeBase):
     def project_config_update(self):
         return {"models": {"on_configuration_change": OnConfigurationChangeOption.Fail.value}}
 
-    def test_materialized_view_full_refresh_with_changes_fail(self, project, my_materialized_view):
-        run_dbt(["run", "--models", my_materialized_view.name, "--full-refresh"])
-        assert query_relation_type(project, my_materialized_view) == "materialized_view"
-
-    def test_materialized_view_with_changes_fail(self, project, my_materialized_view):
+    def test_index_updates_are_not_applied(self, project, my_materialized_view):
         indexes = query_indexes(project, my_materialized_view)
         assert len(indexes) == 1
         assert indexes[0]["column_names"] == "id"
 
-        run_dbt(["run", "--models", my_materialized_view.name], expect_pass=False)
+        swap_indexes(project, my_materialized_view)
+        _, logs = run_dbt_and_capture(
+            ["--debug", "run", "--models", my_materialized_view.name], expect_pass=False
+        )
 
         indexes = query_indexes(project, my_materialized_view)
         assert len(indexes) == 1
+        assert indexes[0]["column_names"] == "id"  # this did not change
+
+        assert_message_in_logs(
+            f"Configuration changes were identified and `on_configuration_change` was set"
+            f" to `fail` for `{my_materialized_view.fully_qualified_path}`",
+            logs,
+        )
+        assert_message_in_logs(
+            f"Applying ALTER to: {my_materialized_view.fully_qualified_path}", logs, False
+        )
+        assert_message_in_logs(
+            f"Applying UPDATE INDEXES to: {my_materialized_view.fully_qualified_path}", logs, False
+        )
+        assert_message_in_logs(
+            f"Applying REPLACE to: {my_materialized_view.fully_qualified_path}", logs, False
+        )
+
+    def test_index_updates_are_applied_on_full_refresh(self, project, my_materialized_view):
+        indexes = query_indexes(project, my_materialized_view)
+        assert len(indexes) == 1
         assert indexes[0]["column_names"] == "id"
+
+        swap_indexes(project, my_materialized_view)
+        _, logs = run_dbt_and_capture(
+            ["--debug", "run", "--models", my_materialized_view.name, "--full-refresh"]
+        )
+
+        indexes = query_indexes(project, my_materialized_view)
+        assert len(indexes) == 1
+        assert indexes[0]["column_names"] == "value"  # this changed despite `fail`
+
+        assert_message_in_logs(
+            f"Applying ALTER to: {my_materialized_view.fully_qualified_path}", logs, False
+        )
+        assert_message_in_logs(
+            f"Applying UPDATE INDEXES to: {my_materialized_view.fully_qualified_path}", logs, False
+        )
+        assert_message_in_logs(
+            f"Applying REPLACE to: {my_materialized_view.fully_qualified_path}", logs, True
+        )

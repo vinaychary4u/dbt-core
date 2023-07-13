@@ -101,7 +101,7 @@ class PostgresIndexRelation(RelationComponent, ValidationMixin):
         return index
 
     @classmethod
-    def parse_model_node(cls, model_node_entry: dict) -> dict:
+    def parse_node(cls, node_entry: dict) -> dict:
         """
         Parse a `ModelNode` instance into a `PostgresIndexRelation` instance as a dict
 
@@ -109,7 +109,7 @@ class PostgresIndexRelation(RelationComponent, ValidationMixin):
         version is more appropriate.
 
         Args:
-            model_node_entry: an entry from the `model` attribute (e.g. `config.model`) in the jinja context
+            node_entry: an entry from the `model` attribute (e.g. `config.model`) in the jinja context
 
         Example `model_node`:
 
@@ -127,9 +127,9 @@ class PostgresIndexRelation(RelationComponent, ValidationMixin):
         Returns: a `PostgresIndexRelation` instance as a dict, can be passed into `from_dict`
         """
         config_dict = {
-            "column_names": set(model_node_entry.get("columns", set())),
-            "unique": model_node_entry.get("unique"),
-            "method": model_node_entry.get("type"),
+            "column_names": set(node_entry.get("columns", set())),
+            "unique": node_entry.get("unique"),
+            "method": node_entry.get("type"),
         }
         return config_dict
 

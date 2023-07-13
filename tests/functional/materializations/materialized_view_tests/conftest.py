@@ -13,6 +13,9 @@ def relation_factory():
         relation_models={
             RelationType.MaterializedView: relation_models.PostgresMaterializedViewRelation,
         },
+        relation_changesets={
+            RelationType.MaterializedView: relation_models.PostgresMaterializedViewRelationChangeset,
+        },
         relation_can_be_renamed={
             RelationType.MaterializedView,
             RelationType.Table,

@@ -1,10 +1,10 @@
 from abc import ABC
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Dict, Type
+from typing import Any, Dict, Type
 
 import agate
-from dbt.contracts.graph.nodes import ModelNode
+from dbt.contracts.graph.nodes import CompiledNode
 from dbt.contracts.relation import ComponentName, RelationType
 
 from dbt.adapters.relation.models._relation_component import RelationComponent
@@ -56,12 +56,12 @@ class Relation(RelationComponent, ABC):
         return self.schema.database_name
 
     @classmethod
-    def from_dict(cls, config_dict) -> "Relation":
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "Relation":
         """
         Parse `config_dict` into a `MaterializationViewRelation` instance, applying defaults
         """
         # default configuration
-        kwargs_dict = {
+        kwargs_dict: Dict[str, Any] = {
             "type": cls.type,
             "can_be_renamed": cls.can_be_renamed,
             "SchemaParser": cls._default_schema_parser(),
@@ -70,7 +70,7 @@ class Relation(RelationComponent, ABC):
         kwargs_dict.update(config_dict)
 
         if schema := config_dict.get("schema"):
-            schema_parser: Type[SchemaRelation] = kwargs_dict["SchemaParser"]  # type: ignore
+            schema_parser: Type[SchemaRelation] = kwargs_dict["SchemaParser"]
             kwargs_dict.update({"schema": schema_parser.from_dict(schema)})
 
         relation = super().from_dict(kwargs_dict)
@@ -78,19 +78,19 @@ class Relation(RelationComponent, ABC):
         return relation
 
     @classmethod
-    def parse_model_node(cls, model_node: ModelNode) -> dict:
+    def parse_node(cls, node: CompiledNode) -> Dict[str, Any]:  # type: ignore
         """
-        Parse `ModelNode` into a dict representation of a `Relation` instance
+        Parse `CompiledNode` into a dict representation of a `Relation` instance
 
-        This is generally used indirectly by calling `from_model_node()`, but there are times when the dict
+        This is generally used indirectly by calling `from_node()`, but there are times when the dict
         version is more useful
 
         Args:
-            model_node: the `model` (`ModelNode`) attribute (e.g. `config.model`) in the global jinja context
+            node: the `model` attribute in the global jinja context
 
-        Example `model_node`:
+        Example `node`:
 
-        ModelNode({
+        NodeConfig({
             "compiled_code": "create view my_view as\n    select * from my_table;\n",
             "database": "my_database",
             "identifier": "my_view",
@@ -100,17 +100,18 @@ class Relation(RelationComponent, ABC):
 
         Returns: a `Relation` instance as a dict, can be passed into `from_dict`
         """
+        # we need a `CompiledNode` here instead of just `ParsedNodeMandatory` because we need access to `query`
         config_dict = {
-            "name": model_node.identifier,
-            "schema": cls._default_schema_parser().parse_model_node(model_node),
-            "query": (model_node.compiled_code or "").strip(),
+            "name": node.identifier,
+            "schema": cls._default_schema_parser().parse_node(node),
+            "query": (node.compiled_code or "").strip(),
         }
         return config_dict
 
     @classmethod
     def parse_describe_relation_results(  # type: ignore
         cls, describe_relation_results: Dict[str, agate.Table]
-    ) -> dict:
+    ) -> Dict[str, Any]:
         """
         Parse database metadata into a dict representation of a `Relation` instance
 

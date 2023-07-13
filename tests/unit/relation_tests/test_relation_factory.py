@@ -47,8 +47,8 @@ def test_make_from_describe_relation_results(
     assert materialized_view.query == "select 42 from meaning_of_life"
 
 
-def test_make_from_model_node(relation_factory, materialized_view_model_node):
-    materialized_view = relation_factory.make_from_model_node(materialized_view_model_node)
+def test_make_from_node(relation_factory, materialized_view_compiled_node):
+    materialized_view = relation_factory.make_from_node(materialized_view_compiled_node)
 
     assert materialized_view.name == "my_materialized_view"
     assert materialized_view.schema_name == "my_schema"

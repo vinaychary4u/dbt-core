@@ -4,6 +4,25 @@ changes on those relations. It arose from the materialized view work and is curr
 materialized views for Postgres, Redshift, and BigQuery as well as dynamic tables for Snowflake. There are three main
 classes in this package.
 
+## RelationFactory
+This factory is the entrypoint that should be used to consistently create `Relation` objects. An instance of this
+factory exists, and is configured, on `BaseAdapter` and its subclasses. Using this ensures that if a materialized view
+relation is needed, one is always created using the same subclass of `Relation`. An adapter should take an instance
+of this class in the `available` method `BaseAdapter.relation_factory()`. This factory also has some
+useful shortcut methods for common operations in jinja:
+
+- `make_from_node`
+- `make_from_describe_relation_results`
+- `make_ref`
+- `make_backup_ref`
+- `make_intermediate`
+- `make_changeset`
+
+In addition to being useful in its own right, this factory also gets passed to `Materialization` classes to
+streamline jinja workflows. While the adapter maintainer could call `make_backup_ref` directly, it's more likely
+that a process that takes a `Materialization` instance is doing that for them.
+See `../materialization/README.md` for more information.
+
 ## Relation
 This class holds the primary parsing methods required for marshalling data from a user config or a database metadata
 query into a `Relation` subclass. `Relation` is a good class to subclass from for things like tables, views, etc.
@@ -52,19 +71,3 @@ whereas updating a setting like `autorefresh` for Redshift would require only th
 ## RelationChangeset
 This class is effectively a bin for collecting instances of `RelationChange`. It comes with a few helper
 methods that facilitate rolling up concepts like `require_full_refresh` to the aggregate level.
-
-## Validation
-
-- `ValidationMixin`
-- `ValidationRule`
-
-These classes live in `validation.py`, outside of `relation` because they don't pertain specifically to `Relation`.
-However, they are only currently used by `Relation`, so their documentation is included here.
-`ValidationMixin` provides optional validation mechanics that can be applied to either `Relation`, `RelationComponent`,
-or `RelationChange` subclasses. To implement `ValidationMixin`, include it as a subclass in your `Relation`-like
-object and add a method `validation_rules()` that returns a set of `ValidationRule` objects.
-A `ValidationRule` is a combination of a `validation_check`, something that should always evaluate to `True`
-in expected scenarios (i.e. a `False` is an invalid configuration), and an optional `validation_error`,
-an instance of `DbtRuntimeError` that should be raised in the event the `validation_check` fails.
-While optional, it's recommended that the `validation_error` be provided for clearer transparency to the end user
-as the default does not know why the `validation_check` failed.

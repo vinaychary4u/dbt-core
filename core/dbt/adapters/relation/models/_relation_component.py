@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, Union
+from typing import Any, Dict, Union
 
 import agate
 
-from dbt.contracts.graph.nodes import ModelNode
+from dbt.contracts.graph.nodes import ParsedNode
 from dbt.exceptions import DbtRuntimeError
 from dbt.utils import filter_null_values
 
@@ -50,7 +50,7 @@ class RelationComponent(ABC):
     render: RenderPolicy = field(compare=False)
 
     @classmethod
-    def from_dict(cls, config_dict) -> "RelationComponent":
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "RelationComponent":
         """
         This assumes the subclass of `Relation` is flat, in the sense that no attribute is
         itself another subclass of `Relation`. If that's not the case, this should be overriden
@@ -74,41 +74,40 @@ class RelationComponent(ABC):
         return relation_component
 
     @classmethod
-    def from_model_node(cls, model_node: ModelNode) -> "RelationComponent":
+    def from_node(cls, node: ParsedNode) -> "RelationComponent":
         """
-        A wrapper around `parse_model_node()` and `from_dict()` that pipes the results of the first into
+        A wrapper around `parse_node()` and `from_dict()` that pipes the results of the first into
         the second. This shouldn't really need to be overridden; instead, the component methods should be overridden.
 
         Args:
-            model_node: the `model` (`ModelNode`) attribute (e.g. `config.model`) in the global jinja context
+            node: the `config.model` attribute in the global jinja context
 
         Returns:
             a validated `Relation` instance specific to the adapter and relation type
         """
-        relation_config = cls.parse_model_node(model_node)
+        relation_config = cls.parse_node(node)
         relation = cls.from_dict(relation_config)
         return relation
 
     @classmethod
     @abstractmethod
-    def parse_model_node(cls, model_node: ModelNode) -> dict:
+    def parse_node(cls, node: ParsedNode) -> Dict[str, Any]:
         """
-        The purpose of this method is to translate the dbt/user generic parlance into the database parlance and
-        format it for `Relation.from_dict` consumption.
+        Parse `ParsedNodeMandatory` into a dict representation of a `Relation` instance
 
         In many cases this may be a one-to-one mapping; e.g. dbt calls it "schema" and the database calls it
         "schema_name". In some cases it could require a calculation or dispatch to a lower grain object.
 
-        See `dbt/adapters/postgres/relation_config/materialized_view.py` to see an example implementation.
+        See `dbt/adapters/postgres/relation/index.py` to see an example implementation.
 
         Args:
-            model_node: the `model` (`ModelNode`) attribute (e.g. `config.model`) in the global jinja context
+            node: the `model` attribute in the global jinja context
 
         Returns:
             a non-validated dictionary version of a `Relation` instance specific to the adapter and relation type
         """
         raise NotImplementedError(
-            "`parse_model_node()` needs to be implemented for this relation."
+            "`parse_node_config()` needs to be implemented for this relation."
         )
 
     @classmethod
@@ -135,7 +134,7 @@ class RelationComponent(ABC):
     @abstractmethod
     def parse_describe_relation_results(
         cls, describe_relation_results: DescribeRelationResults
-    ) -> dict:
+    ) -> Dict[str, Any]:
         """
         The purpose of this method is to parse the database parlance for `Relation.from_dict` consumption.
 

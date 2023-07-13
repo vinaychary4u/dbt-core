@@ -7,8 +7,9 @@ with a `RelationRef` instance, then it should also support execution with a `Rel
 is not true (e.g. `create_sql`).
 """
 from dataclasses import dataclass
+from typing import Any, Dict
 
-from dbt.contracts.graph.nodes import ModelNode
+from dbt.contracts.graph.nodes import CompiledNode
 
 from dbt.adapters.relation.models._database import DatabaseRelation
 from dbt.adapters.relation.models._policy import RenderPolicy
@@ -20,7 +21,7 @@ from dbt.adapters.relation.models._schema import SchemaRelation
 @dataclass(frozen=True)
 class DatabaseRelationRef(DatabaseRelation):
     @classmethod
-    def from_dict(cls, config_dict) -> "DatabaseRelationRef":
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "DatabaseRelationRef":
         database_ref = cls(
             **{
                 "name": config_dict["name"],
@@ -31,13 +32,13 @@ class DatabaseRelationRef(DatabaseRelation):
         return database_ref
 
     @classmethod
-    def parse_model_node(cls, model_node: ModelNode) -> dict:
+    def parse_node(cls, node: CompiledNode) -> Dict[str, Any]:  # type: ignore
         return {}
 
     @classmethod
     def parse_describe_relation_results(
         cls, describe_relation_results: DescribeRelationResults
-    ) -> dict:
+    ) -> Dict[str, Any]:
         return {}
 
 
@@ -46,7 +47,7 @@ class SchemaRelationRef(SchemaRelation):
     render: RenderPolicy
 
     @classmethod
-    def from_dict(cls, config_dict) -> "SchemaRelationRef":
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "SchemaRelationRef":
         schema_ref = cls(
             **{
                 "name": config_dict["name"],
@@ -59,13 +60,13 @@ class SchemaRelationRef(SchemaRelation):
         return schema_ref
 
     @classmethod
-    def parse_model_node(cls, model_node: ModelNode) -> dict:
+    def parse_node(cls, node: CompiledNode) -> Dict[str, Any]:  # type: ignore
         return {}
 
     @classmethod
     def parse_describe_relation_results(
         cls, describe_relation_results: DescribeRelationResults
-    ) -> dict:
+    ) -> Dict[str, Any]:
         return {}
 
 
@@ -74,7 +75,7 @@ class RelationRef(Relation):
     can_be_renamed: bool
 
     @classmethod
-    def from_dict(cls, config_dict) -> "RelationRef":
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "RelationRef":
         relation_ref = cls(
             **{
                 "name": config_dict["name"],
@@ -90,11 +91,11 @@ class RelationRef(Relation):
         return relation_ref
 
     @classmethod
-    def parse_model_node(cls, model_node: ModelNode) -> dict:
+    def parse_node(cls, node: CompiledNode) -> Dict[str, Any]:  # type: ignore
         return {}
 
     @classmethod
     def parse_describe_relation_results(
         cls, describe_relation_results: DescribeRelationResults
-    ) -> dict:
+    ) -> Dict[str, Any]:
         return {}

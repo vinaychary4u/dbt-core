@@ -5,7 +5,7 @@ from typing import Dict, FrozenSet, Optional, Set
 import agate
 from dbt.adapters.relation.models import Relation, RelationChangeset
 from dbt.adapters.validation import ValidationMixin, ValidationRule
-from dbt.contracts.graph.nodes import ModelNode
+from dbt.contracts.graph.nodes import CompiledNode
 from dbt.contracts.relation import RelationType
 from dbt.exceptions import DbtRuntimeError
 
@@ -111,7 +111,7 @@ class PostgresMaterializedViewRelation(Relation, ValidationMixin):
         return materialized_view
 
     @classmethod
-    def parse_model_node(cls, model_node: ModelNode) -> dict:
+    def parse_node(cls, node: CompiledNode) -> dict:
         """
         Parse a `ModelNode` instance into a `PostgresMaterializedViewRelation` instance as a dict
 
@@ -119,7 +119,7 @@ class PostgresMaterializedViewRelation(Relation, ValidationMixin):
         version is more appropriate.
 
         Args:
-            model_node: the `model` attribute (e.g. `config.model`) in the jinja context
+            node: the `model` attribute (e.g. `config.model`) in the jinja context
 
         Example `model_node`:
 
@@ -140,14 +140,12 @@ class PostgresMaterializedViewRelation(Relation, ValidationMixin):
 
         Returns: a `PostgresMaterializedViewRelation` instance as a dict, can be passed into `from_dict`
         """
-        config_dict = super().parse_model_node(model_node)
+        config_dict = super().parse_node(node)
 
-        if indexes := model_node.config.extra.get("indexes"):
+        if indexes := node.config.extra.get("indexes"):
             config_dict.update(
                 {
-                    "indexes": [
-                        PostgresIndexRelation.parse_model_node(index) for index in indexes
-                    ],
+                    "indexes": [PostgresIndexRelation.parse_node(index) for index in indexes],
                 }
             )
 

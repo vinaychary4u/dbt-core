@@ -33,6 +33,7 @@ def test_make_from_describe_relation_results(
     materialized_view = relation_factory.make_from_describe_relation_results(
         materialized_view_describe_relation_results, RelationType.MaterializedView
     )
+    assert isinstance(materialized_view, models.PostgresMaterializedViewRelation)
 
     assert materialized_view.name == "my_materialized_view"
     assert materialized_view.schema_name == "my_schema"
@@ -55,8 +56,9 @@ def test_make_from_describe_relation_results(
     assert index_2 in materialized_view.indexes
 
 
-def test_make_from_model_node(relation_factory, materialized_view_model_node):
-    materialized_view = relation_factory.make_from_model_node(materialized_view_model_node)
+def test_make_from_node(relation_factory, materialized_view_compiled_node):
+    materialized_view = relation_factory.make_from_node(materialized_view_compiled_node)
+    assert isinstance(materialized_view, models.PostgresMaterializedViewRelation)
 
     assert materialized_view.name == "my_materialized_view"
     assert materialized_view.schema_name == "my_schema"

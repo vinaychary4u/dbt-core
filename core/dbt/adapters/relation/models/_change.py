@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Hashable
+from typing import Any, Dict, Hashable
 
 from dbt.dataclass_schema import StrEnum
 from dbt.exceptions import DbtRuntimeError
@@ -56,7 +56,7 @@ class RelationChangeset(ABC):
             self.force_full_refresh()
 
     @classmethod
-    def from_dict(cls, config_dict) -> "RelationChangeset":
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "RelationChangeset":
         kwargs_dict = deepcopy(config_dict)
         try:
             changeset = cls(**filter_null_values(kwargs_dict))
@@ -80,7 +80,9 @@ class RelationChangeset(ABC):
         return cls.from_dict(kwargs_dict)
 
     @classmethod
-    def parse_relations(cls, existing_relation: Relation, target_relation: Relation) -> dict:
+    def parse_relations(
+        cls, existing_relation: Relation, target_relation: Relation
+    ) -> Dict[str, Any]:
         raise NotImplementedError(
             "Configuration change management has not been fully configured for this adapter and/or relation type."
         )

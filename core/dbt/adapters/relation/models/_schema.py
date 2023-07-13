@@ -1,13 +1,16 @@
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Type
+from typing import Any, Dict, Type
 
 import agate
 
-from dbt.contracts.graph.nodes import ModelNode
+from dbt.contracts.graph.nodes import ParsedNode
 from dbt.contracts.relation import ComponentName
 
-from dbt.adapters.relation.models._relation import RelationComponent
+from dbt.adapters.relation.models._relation_component import (
+    DescribeRelationResults,
+    RelationComponent,
+)
 from dbt.adapters.relation.models._database import DatabaseRelation
 
 
@@ -47,12 +50,12 @@ class SchemaRelation(RelationComponent):
         return self.database.name
 
     @classmethod
-    def from_dict(cls, config_dict) -> "SchemaRelation":
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "SchemaRelation":
         """
         Parse `config_dict` into a `SchemaRelation` instance, applying defaults
         """
         # default configuration
-        kwargs_dict = {
+        kwargs_dict: Dict[str, Any] = {
             "DatabaseParser": cls._default_database_parser(),
         }
 
@@ -60,22 +63,22 @@ class SchemaRelation(RelationComponent):
 
         if database := config_dict.get("database"):
             database_parser = kwargs_dict["DatabaseParser"]
-            kwargs_dict.update({"database": database_parser.from_dict(database)})  # type: ignore
+            kwargs_dict.update({"database": database_parser.from_dict(database)})
 
         schema = super().from_dict(kwargs_dict)
         assert isinstance(schema, SchemaRelation)
         return schema
 
     @classmethod
-    def parse_model_node(cls, model_node: ModelNode) -> dict:
+    def parse_node(cls, node: ParsedNode) -> Dict[str, Any]:
         """
-        Parse `ModelNode` into a dict representation of a `SchemaRelation` instance
+        Parse `ParsedMandatoryNode` into a dict representation of a `SchemaRelation` instance
 
         This is generally used indirectly by calling `from_model_node()`, but there are times when the dict
         version is more useful
 
         Args:
-            model_node: the `model` (`ModelNode`) attribute (e.g. `config.model`) in the global jinja context
+            node: the `model` attribute in the global jinja context
 
         Example `model_node`:
 
@@ -88,13 +91,15 @@ class SchemaRelation(RelationComponent):
         Returns: a `SchemaRelation` instance as a dict, can be passed into `from_dict`
         """
         config_dict = {
-            "name": model_node.schema,
-            "database": cls._default_database_parser().parse_model_node(model_node),
+            "name": node.schema,
+            "database": cls._default_database_parser().parse_node(node),
         }
         return config_dict
 
     @classmethod
-    def parse_describe_relation_results(cls, describe_relation_results: agate.Row) -> dict:  # type: ignore
+    def parse_describe_relation_results(
+        cls, describe_relation_results: DescribeRelationResults
+    ) -> Dict[str, Any]:
         """
         Parse database metadata into a dict representation of a `SchemaRelation` instance
 
@@ -113,6 +118,7 @@ class SchemaRelation(RelationComponent):
 
         Returns: a `SchemaRelation` instance as a dict, can be passed into `from_dict`
         """
+        assert isinstance(describe_relation_results, agate.Row)
         config_dict = {
             "name": describe_relation_results["schema_name"],
             "database": cls._default_database_parser().parse_describe_relation_results(

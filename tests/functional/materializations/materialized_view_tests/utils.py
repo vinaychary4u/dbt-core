@@ -1,6 +1,16 @@
 from typing import Dict, List, Optional
 
 from dbt.adapters.relation.models import Relation
+from dbt.tests.util import get_model_file, set_model_file
+
+
+def swap_indexes(project, my_materialized_view):
+    initial_model = get_model_file(project, my_materialized_view)
+    new_model = initial_model.replace(
+        "indexes=[{'columns': ['id']}]",
+        "indexes=[{'columns': ['value']}]",
+    )
+    set_model_file(project, my_materialized_view, new_model)
 
 
 def query_relation_type(project, relation: Relation) -> Optional[str]:

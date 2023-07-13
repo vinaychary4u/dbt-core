@@ -2,9 +2,9 @@ from dbt.adapters.materialization.models import MaterializationType
 from dbt.contracts.relation import RelationType
 
 
-def test_make_from_runtime_config(materialization_factory, materialized_view_runtime_config):
-    materialization = materialization_factory.make_from_runtime_config(
-        runtime_config=materialized_view_runtime_config,
+def test_make_from_runtime_config(materialization_factory, materialized_view_compiled_node):
+    materialization = materialization_factory.make_from_node(
+        node=materialized_view_compiled_node,
         materialization_type=MaterializationType.MaterializedView,
         existing_relation_ref=None,
     )

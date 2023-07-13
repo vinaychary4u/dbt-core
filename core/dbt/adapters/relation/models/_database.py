@@ -1,11 +1,15 @@
 from dataclasses import dataclass
+from typing import Any, Dict
 
 import agate
 
-from dbt.contracts.graph.nodes import ModelNode
+from dbt.contracts.graph.nodes import ParsedNode
 from dbt.contracts.relation import ComponentName
 
-from dbt.adapters.relation.models._relation_component import RelationComponent
+from dbt.adapters.relation.models._relation_component import (
+    DescribeRelationResults,
+    RelationComponent,
+)
 
 
 @dataclass(frozen=True)
@@ -27,7 +31,7 @@ class DatabaseRelation(RelationComponent):
         return path
 
     @classmethod
-    def from_dict(cls, config_dict) -> "DatabaseRelation":
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "DatabaseRelation":
         """
         Parse `config_dict` into a `DatabaseRelation` instance, applying defaults
         """
@@ -36,7 +40,7 @@ class DatabaseRelation(RelationComponent):
         return database
 
     @classmethod
-    def parse_model_node(cls, model_node: ModelNode) -> dict:
+    def parse_node(cls, node: ParsedNode) -> Dict[str, Any]:
         """
         Parse `ModelNode` into a dict representation of a `DatabaseRelation` instance
 
@@ -44,7 +48,7 @@ class DatabaseRelation(RelationComponent):
         version is more useful
 
         Args:
-            model_node: the `model` (`ModelNode`) attribute (e.g. `config.model`) in the global jinja context
+            node: the `model` attribute in the global jinja context
 
         Example `model_node`:
 
@@ -55,11 +59,13 @@ class DatabaseRelation(RelationComponent):
 
         Returns: a `DatabaseRelation` instance as a dict, can be passed into `from_dict`
         """
-        config_dict = {"name": model_node.database}
+        config_dict = {"name": node.database}
         return config_dict
 
     @classmethod
-    def parse_describe_relation_results(cls, describe_relation_results: agate.Row) -> dict:  # type: ignore
+    def parse_describe_relation_results(
+        cls, describe_relation_results: DescribeRelationResults
+    ) -> Dict[str, Any]:
         """
         Parse database metadata into a dict representation of a `DatabaseRelation` instance
 
@@ -77,5 +83,6 @@ class DatabaseRelation(RelationComponent):
 
         Returns: a `DatabaseRelation` instance as a dict, can be passed into `from_dict`
         """
+        assert isinstance(describe_relation_results, agate.Row)
         config_dict = {"name": describe_relation_results["database_name"]}
         return config_dict

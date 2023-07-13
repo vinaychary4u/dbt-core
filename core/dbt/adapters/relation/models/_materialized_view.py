@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Any, Dict
 
 from dbt.contracts.relation import RelationType
 from dbt.exceptions import DbtRuntimeError
@@ -39,7 +40,7 @@ class MaterializedViewRelation(Relation):
     can_be_renamed = False
 
     @classmethod
-    def from_dict(cls, config_dict: dict) -> "MaterializedViewRelation":
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "MaterializedViewRelation":
         """
         Creates an instance of this class given the dict representation
 
@@ -58,7 +59,9 @@ class MaterializedViewRelation(Relation):
 @dataclass
 class MaterializedViewRelationChangeset(RelationChangeset):
     @classmethod
-    def parse_relations(cls, existing_relation: Relation, target_relation: Relation) -> dict:
+    def parse_relations(
+        cls, existing_relation: Relation, target_relation: Relation
+    ) -> Dict[str, Any]:
         try:
             assert isinstance(existing_relation, MaterializedViewRelation)
             assert isinstance(target_relation, MaterializedViewRelation)

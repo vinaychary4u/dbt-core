@@ -1,9 +1,10 @@
 from abc import ABC
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from dbt.adapters.relation.factory import RelationFactory
 from dbt.adapters.relation.models import Relation, RelationRef
+from dbt.contracts.graph.nodes import CompiledNode
 
 from dbt.adapters.materialization.models._materialization import (
     Materialization,
@@ -19,10 +20,8 @@ class MaterializedViewMaterialization(Materialization, ABC):
     as built-ins that make macros more extensible. Additional parameters may be added by subclassing for your adapter.
     """
 
-    target_relation: Relation = None  # type: ignore
-    existing_relation_ref: RelationRef = None  # type: ignore
-    intermediate_relation: Relation = None  # type: ignore
-    backup_relation_ref: RelationRef = None  # type: ignore
+    target_relation: Relation
+    existing_relation_ref: Optional[RelationRef] = None
 
     @property
     def build_strategy(self) -> MaterializationBuildStrategy:
@@ -42,14 +41,12 @@ class MaterializedViewMaterialization(Materialization, ABC):
             return MaterializationBuildStrategy.Alter
 
     @classmethod
-    def parse_runtime_config(
+    def parse_node(
         cls,
-        runtime_config,
+        node: CompiledNode,
         relation_factory: RelationFactory,
         existing_relation_ref: Optional[RelationRef] = None,
-    ) -> dict:
-        config_dict = super().parse_runtime_config(
-            runtime_config, relation_factory, existing_relation_ref
-        )
+    ) -> Dict[str, Any]:
+        config_dict = super().parse_node(node, relation_factory, existing_relation_ref)
         config_dict.update({"type": MaterializationType.MaterializedView})
         return config_dict

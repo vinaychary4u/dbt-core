@@ -6,10 +6,11 @@ where the details are not needed to perform the action. It should be the case th
 with a `RelationRef` instance, then it should also support execution with a `Relation` instance. The converse
 is not true (e.g. `create_sql`).
 """
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Dict
 
-from dbt.contracts.graph.nodes import CompiledNode
+from dbt.contracts.graph.nodes import ParsedNode
 
 from dbt.adapters.relation.models._database import DatabaseRelation
 from dbt.adapters.relation.models._policy import RenderPolicy
@@ -32,7 +33,7 @@ class DatabaseRelationRef(DatabaseRelation):
         return database_ref
 
     @classmethod
-    def parse_node(cls, node: CompiledNode) -> Dict[str, Any]:  # type: ignore
+    def parse_node(cls, node: ParsedNode) -> Dict[str, Any]:
         return {}
 
     @classmethod
@@ -48,10 +49,12 @@ class SchemaRelationRef(SchemaRelation):
 
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "SchemaRelationRef":
+        database_dict = deepcopy(config_dict["database"])
+        database_dict.update({"render": config_dict["render"]})
         schema_ref = cls(
             **{
                 "name": config_dict["name"],
-                "database": DatabaseRelation.from_dict(config_dict["database"]),
+                "database": DatabaseRelationRef.from_dict(database_dict),
                 "render": config_dict["render"],
                 "DatabaseParser": DatabaseRelationRef,
             }
@@ -60,7 +63,7 @@ class SchemaRelationRef(SchemaRelation):
         return schema_ref
 
     @classmethod
-    def parse_node(cls, node: CompiledNode) -> Dict[str, Any]:  # type: ignore
+    def parse_node(cls, node: ParsedNode) -> Dict[str, Any]:
         return {}
 
     @classmethod
@@ -76,10 +79,12 @@ class RelationRef(Relation):
 
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "RelationRef":
+        schema_dict = deepcopy(config_dict["schema"])
+        schema_dict.update({"render": config_dict["render"]})
         relation_ref = cls(
             **{
                 "name": config_dict["name"],
-                "schema": SchemaRelationRef.from_dict(config_dict["schema"]),
+                "schema": SchemaRelationRef.from_dict(schema_dict),
                 "query": "",
                 "render": config_dict["render"],
                 "type": config_dict["type"],
@@ -91,7 +96,7 @@ class RelationRef(Relation):
         return relation_ref
 
     @classmethod
-    def parse_node(cls, node: CompiledNode) -> Dict[str, Any]:  # type: ignore
+    def parse_node(cls, node: ParsedNode) -> Dict[str, Any]:
         return {}
 
     @classmethod

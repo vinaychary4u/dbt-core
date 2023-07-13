@@ -57,7 +57,7 @@ class RenderPolicy:
 
         return rendered_value
 
-    def full(self, parts: OrderedDict[ComponentName, str]) -> str:
+    def full(self, parts: OrderedDict[ComponentName, str]) -> Optional[str]:
         """
         Apply `Render.part` to each part and then concatenate in order.
 

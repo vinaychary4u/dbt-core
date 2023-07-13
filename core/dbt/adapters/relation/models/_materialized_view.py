@@ -39,22 +39,6 @@ class MaterializedViewRelation(Relation):
     SchemaParser = SchemaRelation
     can_be_renamed = False
 
-    @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "MaterializedViewRelation":
-        """
-        Creates an instance of this class given the dict representation
-
-        This is generally used indirectly by calling either `from_model_node()` or `from_relation_results()`
-
-        Args:
-            config_dict: a dict that aligns with the structure of this class
-
-        Returns: an instance of this class
-        """
-        materialized_view = super().from_dict(config_dict)
-        assert isinstance(materialized_view, MaterializedViewRelation)
-        return materialized_view
-
 
 @dataclass
 class MaterializedViewRelationChangeset(RelationChangeset):
@@ -63,8 +47,8 @@ class MaterializedViewRelationChangeset(RelationChangeset):
         cls, existing_relation: Relation, target_relation: Relation
     ) -> Dict[str, Any]:
         try:
-            assert isinstance(existing_relation, MaterializedViewRelation)
-            assert isinstance(target_relation, MaterializedViewRelation)
+            assert existing_relation.type == RelationType.MaterializedView
+            assert target_relation.type == RelationType.MaterializedView
         except AssertionError:
             raise DbtRuntimeError(
                 f"Two materialized view relations were expected, but received:\n"

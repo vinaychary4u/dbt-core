@@ -68,7 +68,7 @@ class RelationComponent(ABC):
         kwargs_dict.update(config_dict)
 
         try:
-            relation_component = cls(**filter_null_values(kwargs_dict))  # type: ignore
+            relation_component = cls(**filter_null_values(kwargs_dict))
         except TypeError:
             raise DbtRuntimeError(f"Unexpected configuration received:\n" f"    {config_dict}\n")
         return relation_component
@@ -154,3 +154,28 @@ class RelationComponent(ABC):
         raise NotImplementedError(
             "`parse_describe_relation_results()` needs to be implemented for this relation."
         )
+
+    @classmethod
+    def _parse_single_record_from_describe_relation_results(
+        cls,
+        describe_relation_results: DescribeRelationResults,
+        table: str,
+    ) -> agate.Row:
+        try:
+            assert isinstance(describe_relation_results, agate.Row)
+            return describe_relation_results
+        except AssertionError:
+            try:
+                assert isinstance(describe_relation_results, Dict)
+                describe_relation_results_table = describe_relation_results.get(table)
+                assert isinstance(describe_relation_results_table, agate.Table)
+                assert describe_relation_results_table is not None
+                assert len(describe_relation_results_table) == 1
+                return describe_relation_results_table.rows[0]
+            except AssertionError:
+                raise DbtRuntimeError(
+                    f"This method expects either an `agate.Row` instance or a `Dict[str, agate.Table]` instance "
+                    f"where {table} is in the keys and the `agate.Table` has exactly one row."
+                    f"one row. Received:\n"
+                    f"    {describe_relation_results}"
+                )

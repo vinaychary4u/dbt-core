@@ -1,6 +1,6 @@
 {%- materialization materialized_view, default -%}
 
-    {%- set materialization = adapter.make_materialization_from_node(config.model, 'materialized_view') -%}
+    {%- set materialization = adapter.make_materialization_from_node(config.model) -%}
 
     {%- set build_sql = materialized_view_build_sql(materialization) -%}
 

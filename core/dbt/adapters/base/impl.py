@@ -35,27 +35,15 @@ from dbt.adapters.base.relation import (
 )
 from dbt.adapters.cache import RelationsCache, _make_ref_key_dict
 from dbt.adapters.materialization import MaterializationFactory
-from dbt.adapters.materialization.models import (
-    Materialization,
-    MaterializationType,
-    MaterializedViewMaterialization,
-)
+from dbt.adapters.materialization.models import Materialization
 from dbt.adapters.protocol import AdapterConfig, ConnectionManagerProtocol
 from dbt.adapters.relation import RelationFactory
-from dbt.adapters.relation.models import (
-    MaterializedViewRelation,
-    MaterializedViewRelationChangeset,
-    Relation as RelationModel,
-    RelationChangeset,
-    RelationRef,
-    RenderPolicy,
-)
+from dbt.adapters.relation.models import Relation as RelationModel, RelationChangeset, RelationRef
 from dbt.clients.agate_helper import empty_table, merge_tables, table_from_rows
 from dbt.clients.jinja import MacroGenerator
 from dbt.contracts.graph.manifest import MacroManifest, Manifest
 from dbt.contracts.graph.nodes import (
     ColumnLevelConstraint,
-    CompiledNode,
     ConstraintType,
     ModelLevelConstraint,
     ParsedNode,
@@ -243,25 +231,23 @@ class BaseAdapter(metaclass=AdapterMeta):
 
     @property
     def relation_factory(self) -> RelationFactory:
-        return RelationFactory(
-            relation_models={
-                RelationType.MaterializedView: MaterializedViewRelation,
-            },
-            relation_changesets={
-                RelationType.MaterializedView: MaterializedViewRelationChangeset,
-            },
-            relation_can_be_renamed=set(),
-            render_policy=RenderPolicy(),
-        )
+        """
+        It's common to overwrite `Relation` instances in an adapter. In those cases this method
+        should also be overridden to register those new `Relation` instances.
+        """
+        return RelationFactory()
 
     @property
     def materialization_factory(self) -> MaterializationFactory:
-        return MaterializationFactory(
-            relation_factory=self.relation_factory,
-            materialization_map={
-                MaterializationType.MaterializedView: MaterializedViewMaterialization,
-            },
-        )
+        """
+        It's common to overwrite `Relation` instances in an adapter. In those cases `self.relation_factory`
+        should also be overridden to register those new `Relation` instances. Take the adapter's setting
+        to override the default in `MaterializationFactory`.
+
+        It's uncommon to overwrite `Materialization` instances. In those cases the adapter should
+        override this method to override the default in `MaterializationFactory`.
+        """
+        return MaterializationFactory(relation_factory=self.relation_factory)
 
     def __init__(self, config):
         self.config = config
@@ -1466,34 +1452,23 @@ class BaseAdapter(metaclass=AdapterMeta):
     """
 
     @available
-    def make_materialization_from_node(
-        self, node: CompiledNode, materialization_type: MaterializationType
-    ) -> Materialization:
+    def make_materialization_from_node(self, node: ParsedNode) -> Materialization:
         """
         Produce a `Materialization` instance along with whatever associated `Relation` and `RelationRef`
         instances are needed.
 
         *Note:* The node that comes in could be any one of `ParsedNode`, `CompiledNode`, or `ModelNode`. We
-        need at least a `CompiledNode` to process a materialization that requires a query.
+        need at least a `ParsedNode` to process a materialization in general, and at least a `CompiledNode`
+        to process a materialization that requires a query.
 
         Args:
             node: `model` or `config.model` in the global jinja context
-            materialization_type: the name of the materialization
 
         Returns:
             a `Materialization` instance that contains all the information required to execute the materialization
         """
-        try:
-            assert isinstance(node, CompiledNode)
-        except AssertionError:
-            raise DbtRuntimeError(
-                f"A `CompiledNode` is required to produce a materialization, but a {node.__class__} was received."
-            )
         existing_relation_ref = self._get_existing_relation_ref_from_node(node)
-        materialization = self.materialization_factory.make_from_node(
-            node, materialization_type, existing_relation_ref
-        )
-        return materialization
+        return self.materialization_factory.make_from_node(node, existing_relation_ref)
 
     def _get_existing_relation_ref_from_node(self, node: ParsedNode) -> Optional[RelationRef]:
         """
@@ -1597,12 +1572,17 @@ class BaseAdapter(metaclass=AdapterMeta):
         Returns:
             a converted `BaseRelation` instance
         """
+        try:
+            relation_type = RelationType(relation.type)
+        except ValueError:
+            relation_type = RelationType.External
+
         base_relation: BaseRelation = self.Relation.create(
             database=relation.database_name,
             schema=relation.schema_name,
             identifier=relation.name,
             quote_policy=self.relation_factory.render_policy.quote_policy,
-            type=relation.type,
+            type=relation_type,
         )
         assert isinstance(base_relation, BaseRelation)  # mypy
         return base_relation

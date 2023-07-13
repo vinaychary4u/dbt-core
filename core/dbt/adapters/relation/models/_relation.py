@@ -1,13 +1,16 @@
 from abc import ABC
 from collections import OrderedDict
-from dataclasses import dataclass
-from typing import Any, Dict, Type
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional, Type
 
-import agate
-from dbt.contracts.graph.nodes import CompiledNode
-from dbt.contracts.relation import ComponentName, RelationType
+from dbt.contracts.graph.nodes import ParsedNode, CompiledNode
+from dbt.contracts.relation import ComponentName
+from dbt.dataclass_schema import StrEnum
 
-from dbt.adapters.relation.models._relation_component import RelationComponent
+from dbt.adapters.relation.models._relation_component import (
+    DescribeRelationResults,
+    RelationComponent,
+)
 from dbt.adapters.relation.models._schema import SchemaRelation
 
 
@@ -24,19 +27,19 @@ class Relation(RelationComponent, ABC):
     query: str
 
     # configuration
-    type: RelationType
+    type: StrEnum  # this will generally be `RelationType`, however this allows for extending that Enum
     can_be_renamed: bool
-    SchemaParser: Type[SchemaRelation]
+    SchemaParser: Type[SchemaRelation] = field(init=False)
 
     @classmethod
     def _default_schema_parser(cls) -> Type[SchemaRelation]:
         return getattr(cls, "SchemaParser", SchemaRelation)
 
     def __str__(self) -> str:
-        return self.fully_qualified_path
+        return self.fully_qualified_path or ""
 
     @property
-    def fully_qualified_path(self) -> str:
+    def fully_qualified_path(self) -> Optional[str]:
         return self.render.full(
             OrderedDict(
                 {
@@ -78,7 +81,14 @@ class Relation(RelationComponent, ABC):
         return relation
 
     @classmethod
-    def parse_node(cls, node: CompiledNode) -> Dict[str, Any]:  # type: ignore
+    def from_node(cls, node: ParsedNode) -> "Relation":
+        # tighten the return type
+        relation = super().from_node(node)
+        assert isinstance(relation, Relation)
+        return relation
+
+    @classmethod
+    def parse_node(cls, node: ParsedNode) -> Dict[str, Any]:
         """
         Parse `CompiledNode` into a dict representation of a `Relation` instance
 
@@ -104,13 +114,22 @@ class Relation(RelationComponent, ABC):
         config_dict = {
             "name": node.identifier,
             "schema": cls._default_schema_parser().parse_node(node),
-            "query": (node.compiled_code or "").strip(),
+            "query": cls._parse_query_from_node(node),
         }
         return config_dict
 
     @classmethod
-    def parse_describe_relation_results(  # type: ignore
-        cls, describe_relation_results: Dict[str, agate.Table]
+    def from_describe_relation_results(
+        cls, describe_relation_results: DescribeRelationResults
+    ) -> "Relation":
+        # tighten the return type
+        relation = super().from_describe_relation_results(describe_relation_results)
+        assert isinstance(relation, Relation)
+        return relation
+
+    @classmethod
+    def parse_describe_relation_results(
+        cls, describe_relation_results: DescribeRelationResults
     ) -> Dict[str, Any]:
         """
         Parse database metadata into a dict representation of a `Relation` instance
@@ -132,11 +151,21 @@ class Relation(RelationComponent, ABC):
 
         Returns: a `Relation` instance as a dict, can be passed into `from_dict`
         """
-        relation: agate.Row = describe_relation_results["relation"].rows[0]
-
+        relation = cls._parse_single_record_from_describe_relation_results(
+            describe_relation_results, "relation"
+        )
         config_dict = {
             "name": relation["name"],
             "schema": cls._default_schema_parser().parse_describe_relation_results(relation),
             "query": relation["query"].strip(),
         }
         return config_dict
+
+    @classmethod
+    def _parse_query_from_node(cls, node: ParsedNode) -> str:
+        try:
+            assert isinstance(node, CompiledNode)
+            query = node.compiled_code or ""
+            return query.strip()
+        except AssertionError:
+            return ""

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, Hashable
 
 from dbt.dataclass_schema import StrEnum
@@ -25,7 +25,7 @@ class RelationChange(ABC):
     `context` tends to be the whole object, in particular for `create`.
     """
 
-    action: RelationChangeAction
+    action: StrEnum  # this will generally be `RelationChangeAction`, however this allows for extending that Enum
     context: Hashable  # this is usually a RelationConfig, e.g. `IndexConfig`, or single value, e.g. `str`
 
     @property
@@ -46,8 +46,8 @@ class RelationChange(ABC):
 
 @dataclass
 class RelationChangeset(ABC):
-    existing_relation: Relation
-    target_relation: Relation
+    existing_relation: Relation = field(init=False)
+    target_relation: Relation = field(init=False)
     _requires_full_refresh_override: bool = False
 
     def __post_init__(self):
@@ -59,10 +59,9 @@ class RelationChangeset(ABC):
     def from_dict(cls, config_dict: Dict[str, Any]) -> "RelationChangeset":
         kwargs_dict = deepcopy(config_dict)
         try:
-            changeset = cls(**filter_null_values(kwargs_dict))
+            return cls(**filter_null_values(kwargs_dict))
         except TypeError:
             raise DbtRuntimeError(f"Unexpected configuration received:\n" f"    {config_dict}\n")
-        return changeset
 
     @classmethod
     def from_relations(
@@ -80,6 +79,7 @@ class RelationChangeset(ABC):
         return cls.from_dict(kwargs_dict)
 
     @classmethod
+    @abstractmethod
     def parse_relations(
         cls, existing_relation: Relation, target_relation: Relation
     ) -> Dict[str, Any]:

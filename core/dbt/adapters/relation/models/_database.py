@@ -1,7 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict
-
-import agate
+from typing import Any, Dict, Optional
 
 from dbt.contracts.graph.nodes import ParsedNode
 from dbt.contracts.relation import ComponentName
@@ -22,13 +20,11 @@ class DatabaseRelation(RelationComponent):
     name: str
 
     def __str__(self) -> str:
-        return self.fully_qualified_path
+        return self.fully_qualified_path or ""
 
     @property
-    def fully_qualified_path(self) -> str:
-        path = self.render.part(ComponentName.Database, self.name)
-        assert isinstance(path, str)
-        return path
+    def fully_qualified_path(self) -> Optional[str]:
+        return self.render.part(ComponentName.Database, self.name)
 
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "DatabaseRelation":
@@ -59,8 +55,7 @@ class DatabaseRelation(RelationComponent):
 
         Returns: a `DatabaseRelation` instance as a dict, can be passed into `from_dict`
         """
-        config_dict = {"name": node.database}
-        return config_dict
+        return {"name": node.database}
 
     @classmethod
     def parse_describe_relation_results(
@@ -83,6 +78,7 @@ class DatabaseRelation(RelationComponent):
 
         Returns: a `DatabaseRelation` instance as a dict, can be passed into `from_dict`
         """
-        assert isinstance(describe_relation_results, agate.Row)
-        config_dict = {"name": describe_relation_results["database_name"]}
-        return config_dict
+        relation = cls._parse_single_record_from_describe_relation_results(
+            describe_relation_results, "relation"
+        )
+        return {"name": relation["database_name"]}

@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from dbt.adapters.relation.factory import RelationFactory
-from dbt.adapters.relation.models import Relation, RelationRef
-from dbt.contracts.graph.nodes import CompiledNode
+from dbt.adapters.relation.models import RelationRef
+from dbt.contracts.graph.nodes import ParsedNode
 
 from dbt.adapters.materialization.models._materialization import (
     Materialization,
@@ -19,9 +19,6 @@ class MaterializedViewMaterialization(Materialization, ABC):
     This config identifies the minimal materialization parameters required for dbt to function as well
     as built-ins that make macros more extensible. Additional parameters may be added by subclassing for your adapter.
     """
-
-    target_relation: Relation
-    existing_relation_ref: Optional[RelationRef] = None
 
     @property
     def build_strategy(self) -> MaterializationBuildStrategy:
@@ -43,7 +40,7 @@ class MaterializedViewMaterialization(Materialization, ABC):
     @classmethod
     def parse_node(
         cls,
-        node: CompiledNode,
+        node: ParsedNode,
         relation_factory: RelationFactory,
         existing_relation_ref: Optional[RelationRef] = None,
     ) -> Dict[str, Any]:

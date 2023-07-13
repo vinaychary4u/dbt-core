@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 from dbt.adapters.relation.factory import RelationFactory
 from dbt.adapters.relation.models import DescribeRelationResults, Relation, RelationRef
 from dbt.contracts.graph.model_config import OnConfigurationChangeOption
-from dbt.contracts.graph.nodes import CompiledNode
+from dbt.contracts.graph.nodes import ParsedNode
 from dbt.dataclass_schema import StrEnum
 from dbt.flags import get_flag_obj
 from dbt.utils import filter_null_values
@@ -34,7 +34,7 @@ class MaterializationBuildStrategy(StrEnum):
 @dataclass
 class Materialization(ABC):
 
-    type: MaterializationType
+    type: StrEnum  # this will generally be `MaterializationType`, however this allows for extending that Enum
     relation_factory: RelationFactory
     target_relation: Relation
     existing_relation_ref: Optional[RelationRef] = None
@@ -80,6 +80,7 @@ class Materialization(ABC):
     def backup_relation_ref(self) -> Optional[RelationRef]:
         if self.existing_relation_ref:
             return self.relation_factory.make_backup_ref(self.existing_relation_ref)
+        # don't throw an exception here, that way it behaves like `existing_relation_ref`, which is a property
         return None
 
     @property
@@ -106,7 +107,7 @@ class Materialization(ABC):
     @classmethod
     def from_node(
         cls,
-        node: CompiledNode,
+        node: ParsedNode,
         relation_factory: RelationFactory,
         existing_relation_ref: Optional[RelationRef] = None,
     ) -> "Materialization":
@@ -117,7 +118,7 @@ class Materialization(ABC):
     @classmethod
     def parse_node(
         cls,
-        node: CompiledNode,
+        node: ParsedNode,
         relation_factory: RelationFactory,
         existing_relation_ref: Optional[RelationRef] = None,
     ) -> Dict[str, Any]:

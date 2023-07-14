@@ -7,7 +7,6 @@ from dbt.adapters.postgres.relation import models as relation_models
 def test_make_from_node(materialization_factory, materialized_view_compiled_node):
     materialization = materialization_factory.make_from_node(
         node=materialized_view_compiled_node,
-        materialization_type=MaterializationType.MaterializedView,
         existing_relation_ref=None,
     )
     assert materialization.type == MaterializationType.MaterializedView

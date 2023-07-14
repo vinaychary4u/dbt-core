@@ -1,5 +1,6 @@
 from collections import OrderedDict
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from typing import Any, Dict, Type, Optional
 
 from dbt.contracts.graph.nodes import ParsedNode
@@ -23,11 +24,7 @@ class SchemaRelation(RelationComponent):
     database: DatabaseRelation
 
     # configuration of base class
-    DatabaseParser: Type[DatabaseRelation]
-
-    @classmethod
-    def _default_database_parser(cls) -> Type[DatabaseRelation]:
-        return getattr(cls, "DatabaseParser", DatabaseRelation)
+    DatabaseParser: Type[DatabaseRelation] = field(default=DatabaseRelation, init=False)
 
     def __str__(self) -> str:
         return self.fully_qualified_path or ""
@@ -52,16 +49,10 @@ class SchemaRelation(RelationComponent):
         """
         Parse `config_dict` into a `SchemaRelation` instance, applying defaults
         """
-        # default configuration
-        kwargs_dict: Dict[str, Any] = {
-            "DatabaseParser": cls._default_database_parser(),
-        }
-
-        kwargs_dict.update(config_dict)
+        kwargs_dict = deepcopy(config_dict)
 
         if database := config_dict.get("database"):
-            database_parser = kwargs_dict["DatabaseParser"]
-            kwargs_dict.update({"database": database_parser.from_dict(database)})
+            kwargs_dict.update({"database": cls.DatabaseParser.from_dict(database)})
 
         schema = super().from_dict(kwargs_dict)
         assert isinstance(schema, SchemaRelation)
@@ -90,7 +81,7 @@ class SchemaRelation(RelationComponent):
         """
         config_dict = {
             "name": node.schema,
-            "database": cls._default_database_parser().parse_node(node),
+            "database": cls.DatabaseParser.parse_node(node),
         }
         return config_dict
 
@@ -121,7 +112,7 @@ class SchemaRelation(RelationComponent):
         )
         config_dict = {
             "name": relation["schema_name"],
-            "database": cls._default_database_parser().parse_describe_relation_results(
+            "database": cls.DatabaseParser.parse_describe_relation_results(
                 describe_relation_results
             ),
         }

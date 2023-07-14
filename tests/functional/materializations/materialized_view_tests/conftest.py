@@ -10,6 +10,7 @@ from dbt.adapters.postgres.relation import models as relation_models
 @pytest.fixture(scope="class")
 def relation_factory():
     return RelationFactory(
+        relation_types=RelationType,
         relation_models={
             RelationType.MaterializedView: relation_models.PostgresMaterializedViewRelation,
         },

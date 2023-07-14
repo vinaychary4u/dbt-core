@@ -29,11 +29,7 @@ class Relation(RelationComponent, ABC):
     # configuration
     type: StrEnum  # this will generally be `RelationType`, however this allows for extending that Enum
     can_be_renamed: bool
-    SchemaParser: Type[SchemaRelation] = field(init=False)
-
-    @classmethod
-    def _default_schema_parser(cls) -> Type[SchemaRelation]:
-        return getattr(cls, "SchemaParser", SchemaRelation)
+    SchemaParser: Type[SchemaRelation] = field(default=SchemaRelation, init=False)
 
     def __str__(self) -> str:
         return self.fully_qualified_path or ""
@@ -67,14 +63,12 @@ class Relation(RelationComponent, ABC):
         kwargs_dict: Dict[str, Any] = {
             "type": cls.type,
             "can_be_renamed": cls.can_be_renamed,
-            "SchemaParser": cls._default_schema_parser(),
         }
 
         kwargs_dict.update(config_dict)
 
         if schema := config_dict.get("schema"):
-            schema_parser: Type[SchemaRelation] = kwargs_dict["SchemaParser"]
-            kwargs_dict.update({"schema": schema_parser.from_dict(schema)})
+            kwargs_dict.update({"schema": cls.SchemaParser.from_dict(schema)})
 
         relation = super().from_dict(kwargs_dict)
         assert isinstance(relation, Relation)
@@ -113,7 +107,7 @@ class Relation(RelationComponent, ABC):
         # we need a `CompiledNode` here instead of just `ParsedNodeMandatory` because we need access to `query`
         config_dict = {
             "name": node.identifier,
-            "schema": cls._default_schema_parser().parse_node(node),
+            "schema": cls.SchemaParser.parse_node(node),
             "query": cls._parse_query_from_node(node),
         }
         return config_dict
@@ -156,7 +150,7 @@ class Relation(RelationComponent, ABC):
         )
         config_dict = {
             "name": relation["name"],
-            "schema": cls._default_schema_parser().parse_describe_relation_results(relation),
+            "schema": cls.SchemaParser.parse_describe_relation_results(relation),
             "query": relation["query"].strip(),
         }
         return config_dict

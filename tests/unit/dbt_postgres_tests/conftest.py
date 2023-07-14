@@ -21,6 +21,7 @@ from dbt.adapters.postgres.relation import models
 @pytest.fixture
 def relation_factory() -> RelationFactory:
     return RelationFactory(
+        relation_types=RelationType,
         relation_models={
             RelationType.MaterializedView: models.PostgresMaterializedViewRelation,
         },
@@ -148,24 +149,24 @@ Make sure the fixtures at least work, more thorough testing is done elsewhere
 
 def test_relation_factory(relation_factory):
     assert (
-        relation_factory._get_parser(RelationType.MaterializedView)
+        relation_factory._get_relation_model(RelationType.MaterializedView)
         == models.PostgresMaterializedViewRelation
     )
 
 
 def test_materialization_factory(materialization_factory):
-    postgres_parser = materialization_factory.relation_factory._get_parser(
+    relation_model = materialization_factory.relation_factory._get_relation_model(
         RelationType.MaterializedView
     )
-    assert postgres_parser == models.PostgresMaterializedViewRelation
+    assert relation_model == models.PostgresMaterializedViewRelation
 
 
 def test_materialized_view_ref(materialized_view_ref):
     assert materialized_view_ref.name == "my_materialized_view"
 
 
-def test_materialized_view_model_node(materialized_view_model_node):
-    assert materialized_view_model_node.name == "my_materialized_view"
+def test_materialized_view_model_node(materialized_view_compiled_node):
+    assert materialized_view_compiled_node.name == "my_materialized_view"
 
 
 def test_materialized_view_relation(materialized_view_relation):

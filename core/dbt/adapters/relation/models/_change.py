@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, Hashable
 
 from dbt.dataclass_schema import StrEnum
@@ -46,8 +46,8 @@ class RelationChange(ABC):
 
 @dataclass
 class RelationChangeset(ABC):
-    existing_relation: Relation = field(init=False)
-    target_relation: Relation = field(init=False)
+    existing_relation: Relation
+    target_relation: Relation
     _requires_full_refresh_override: bool = False
 
     def __post_init__(self):

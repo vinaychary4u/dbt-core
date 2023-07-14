@@ -1,5 +1,5 @@
 from dataclasses import replace
-from typing import Dict, Set, Type
+from typing import Dict, FrozenSet, Type
 
 from dbt.contracts.graph.nodes import ParsedNode
 from dbt.contracts.relation import ComponentName, RelationType
@@ -43,26 +43,28 @@ class RelationFactory:
                 RelationType.MaterializedView: MaterializedViewRelationChangeset,
             },
         )
-        self.relation_can_be_renamed: Set[StrEnum] = kwargs.get("relation_can_be_renamed", {set()})
+        self.relation_can_be_renamed: FrozenSet[StrEnum] = kwargs.get(
+            "relation_can_be_renamed", {frozenset()}
+        )
         self.render_policy: RenderPolicy = kwargs.get("render_policy", RenderPolicy())
 
         try:
-            assert {self.relation_models.keys}.issubset({self.relation_types})
+            for relation_type in self.relation_models.keys():
+                assert relation_type in self.relation_types
         except AssertionError:
-            unmapped_models = {self.relation_models.keys}.difference({self.relation_types})
             raise DbtRuntimeError(
-                f"Received models for {', '.join(str(model) for model in unmapped_models)} "
+                f"Received models for {relation_type} "
                 f"but these relation types are not registered on this factory.\n"
                 f"    registered relation types: {', '.join(self.relation_types)}\n"
             )
 
         try:
-            assert {self.relation_changesets.keys}.issubset({self.relation_types})
+            for relation_type in self.relation_changesets.keys():
+                assert relation_type in self.relation_types
         except AssertionError:
-            unmapped_changesets = {self.relation_changesets.keys}.difference({self.relation_types})
             raise DbtRuntimeError(
-                f"Received changesets for {', '.join(str(changeset) for changeset in unmapped_changesets)} "
-                f"but these relation types are not registered on this factory.\n"
+                f"Received changeset for {relation_type}"
+                f"but this relation type is not registered on this factory.\n"
                 f"    registered relation types: {', '.join(self.relation_types)}\n"
             )
 

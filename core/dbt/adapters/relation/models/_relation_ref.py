@@ -46,6 +46,7 @@ class DatabaseRelationRef(DatabaseRelation):
 @dataclass(frozen=True)
 class SchemaRelationRef(SchemaRelation):
     render: RenderPolicy
+    DatabaseParser = DatabaseRelationRef
 
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "SchemaRelationRef":
@@ -56,7 +57,6 @@ class SchemaRelationRef(SchemaRelation):
                 "name": config_dict["name"],
                 "database": DatabaseRelationRef.from_dict(database_dict),
                 "render": config_dict["render"],
-                "DatabaseParser": DatabaseRelationRef,
             }
         )
         assert isinstance(schema_ref, SchemaRelationRef)
@@ -76,6 +76,7 @@ class SchemaRelationRef(SchemaRelation):
 @dataclass(frozen=True)
 class RelationRef(Relation):
     can_be_renamed: bool
+    SchemaParser = SchemaRelationRef
 
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "RelationRef":
@@ -89,7 +90,6 @@ class RelationRef(Relation):
                 "render": config_dict["render"],
                 "type": config_dict["type"],
                 "can_be_renamed": config_dict["can_be_renamed"],
-                "SchemaParser": SchemaRelationRef,
             }
         )
         assert isinstance(relation_ref, RelationRef)

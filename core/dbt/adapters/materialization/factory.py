@@ -32,13 +32,11 @@ class MaterializationFactory:
         )
 
         try:
-            assert {self.materialization_models.keys}.issubset({self.materialization_types})
+            for relation_type in self.materialization_models.keys():
+                assert relation_type in self.materialization_types
         except AssertionError:
-            unmapped_models = {self.materialization_models.keys}.difference(
-                {self.materialization_types}
-            )
             raise DbtRuntimeError(
-                f"Received models for {', '.join(str(model) for model in unmapped_models)} "
+                f"Received models for {relation_type} "
                 f"but these materialization types are not registered on this factory.\n"
                 f"    registered materialization types: {', '.join(self.materialization_types)}\n"
             )

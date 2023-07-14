@@ -144,7 +144,7 @@ def test_relation_factory(relation_factory):
 
 
 def test_materialization_factory(materialization_factory):
-    postgres_parser = materialization_factory.relation_factory._get_relation_class(
+    postgres_parser = materialization_factory.relation_factory._get_relation_model(
         RelationType.MaterializedView
     )
     assert postgres_parser == MaterializedViewRelation

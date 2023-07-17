@@ -114,3 +114,7 @@ class BaseMergeExcludeColumns:
             update_sql_file=None,
         )
         self.check_scenario_correctness(expected_fields, test_case_fields, project)
+
+
+class TestMergeExcludeColumns(BaseMergeExcludeColumns):
+    pass

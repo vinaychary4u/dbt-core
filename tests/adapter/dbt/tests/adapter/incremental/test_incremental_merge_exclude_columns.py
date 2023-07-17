@@ -35,7 +35,7 @@ select 3 as id, 'anyway' as msg, 'purple' as color
 seeds__expected_merge_exclude_columns_csv = """id,msg,color
 1,hello,blue
 2,goodbye,green
-3,anyway,purple
+3,NULL,purple
 """
 
 ResultHolder = namedtuple(

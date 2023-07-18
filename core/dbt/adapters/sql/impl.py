@@ -1,16 +1,15 @@
 import agate
-from typing import Any, Optional, Tuple, Type, List
+from typing import Any, List, Optional, Tuple, Type
 
-from dbt.contracts.connection import Connection, AdapterResponse
-from dbt.exceptions import RelationTypeNullError
 from dbt.adapters.base import BaseAdapter, available
+from dbt.adapters.base.relation import BaseRelation
 from dbt.adapters.cache import _make_ref_key_dict
 from dbt.adapters.sql import SQLConnectionManager
+from dbt.contracts.connection import AdapterResponse, Connection
 from dbt.events.functions import fire_event
 from dbt.events.types import ColTypeChange, SchemaCreation, SchemaDrop
+from dbt.exceptions import RelationTypeNullError
 
-
-from dbt.adapters.base.relation import BaseRelation
 
 LIST_RELATIONS_MACRO_NAME = "list_relations_without_caching"
 GET_COLUMNS_IN_RELATION_MACRO_NAME = "get_columns_in_relation"
@@ -222,14 +221,14 @@ class SQLAdapter(BaseAdapter):
     def validate_sql(self, sql: str) -> AdapterResponse:
         """Submit the given SQL to the engine for validation, but not execution.
 
-        By default we simply prefix the query with the explain keyword and allow the
+        By default, we simply prefix the query with the explain keyword and allow the
         exceptions thrown by the underlying engine on invalid SQL inputs to bubble up
         to the exception handler. For adjustments to the explain statement - such as
         for adapters that have different mechanisms for hinting at query validation
         or dry-run - callers may be able to override the validate_sql_query macro with
         the addition of an <adapter>__validate_sql implementation.
 
-        :param sql str: The sql to validate
+        :param sql: str The sql to validate
         """
         kwargs = {
             "sql": sql,

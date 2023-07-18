@@ -1,5 +1,5 @@
 import abc
-from concurrent.futures import as_completed, Future
+from concurrent.futures import Future, as_completed
 from contextlib import contextmanager
 from datetime import datetime
 from enum import Enum
@@ -20,11 +20,36 @@ from typing import (
     Union,
 )
 
-from dbt.contracts.graph.nodes import ColumnLevelConstraint, ConstraintType, ModelLevelConstraint
-
 import agate
 import pytz
 
+from dbt import deprecations
+from dbt.adapters.base import Column as BaseColumn, Credentials
+from dbt.adapters.base.connections import AdapterResponse, Connection
+from dbt.adapters.base.meta import AdapterMeta, available
+from dbt.adapters.base.relation import BaseRelation, InformationSchema, SchemaSearchMap
+from dbt.adapters.cache import RelationsCache, _make_ref_key_dict
+from dbt.adapters.protocol import AdapterConfig, ConnectionManagerProtocol
+from dbt.clients.agate_helper import empty_table, merge_tables, table_from_rows
+from dbt.clients.jinja import MacroGenerator
+from dbt.contracts.graph.manifest import Manifest, MacroManifest
+from dbt.contracts.graph.nodes import (
+    ColumnLevelConstraint,
+    ConstraintType,
+    ModelLevelConstraint,
+    ResultNode,
+)
+from dbt.contracts.relation import ComponentName
+from dbt.events.functions import fire_event, warn_or_error
+from dbt.events.types import (
+    CacheMiss,
+    CatalogGenerationError,
+    CodeExecution,
+    CodeExecutionStatus,
+    ConstraintNotEnforced,
+    ConstraintNotSupported,
+    ListRelations,
+)
 from dbt.exceptions import (
     DbtInternalError,
     DbtRuntimeError,
@@ -42,36 +67,8 @@ from dbt.exceptions import (
     UnexpectedNonTimestampError,
     UnexpectedNullError,
 )
-
-from dbt.adapters.protocol import AdapterConfig, ConnectionManagerProtocol
-from dbt.clients.agate_helper import empty_table, merge_tables, table_from_rows
-from dbt.clients.jinja import MacroGenerator
-from dbt.contracts.graph.manifest import Manifest, MacroManifest
-from dbt.contracts.graph.nodes import ResultNode
-from dbt.events.functions import fire_event, warn_or_error
-from dbt.events.types import (
-    CacheMiss,
-    ListRelations,
-    CodeExecution,
-    CodeExecutionStatus,
-    CatalogGenerationError,
-    ConstraintNotSupported,
-    ConstraintNotEnforced,
-)
 from dbt.utils import filter_null_values, executor, cast_to_str, AttrDict
 
-from dbt.adapters.base.connections import Connection, AdapterResponse
-from dbt.adapters.base.meta import AdapterMeta, available
-from dbt.adapters.base.relation import (
-    ComponentName,
-    BaseRelation,
-    InformationSchema,
-    SchemaSearchMap,
-)
-from dbt.adapters.base import Column as BaseColumn
-from dbt.adapters.base import Credentials
-from dbt.adapters.cache import RelationsCache, _make_ref_key_dict
-from dbt import deprecations
 
 GET_CATALOG_MACRO_NAME = "get_catalog"
 FRESHNESS_MACRO_NAME = "collect_freshness"
@@ -848,8 +845,8 @@ class BaseAdapter(metaclass=AdapterMeta):
         """Drop the given schema (and everything in it) if it exists."""
         raise NotImplementedError("`drop_schema` is not implemented for this adapter!")
 
-    @available
     @classmethod
+    @available
     @abc.abstractmethod
     def quote(cls, identifier: str) -> str:
         """Quote the given identifier, as appropriate for the database."""
@@ -857,7 +854,7 @@ class BaseAdapter(metaclass=AdapterMeta):
 
     @available
     def quote_as_configured(self, identifier: str, quote_key: str) -> str:
-        """Quote or do not quote the given identifer as configured in the
+        """Quote or do not quote the given identifier as configured in the
         project config for the quote key.
 
         The quote key should be one of 'database' (on bigquery, 'profile'),
@@ -965,8 +962,8 @@ class BaseAdapter(metaclass=AdapterMeta):
         """
         raise NotImplementedError("`convert_time_type` is not implemented for this adapter!")
 
-    @available
     @classmethod
+    @available
     def convert_type(cls, agate_table: agate.Table, col_idx: int) -> Optional[str]:
         return cls.convert_agate_type(agate_table, col_idx)
 
@@ -1349,8 +1346,8 @@ class BaseAdapter(metaclass=AdapterMeta):
 
         return rendered_column_constraint
 
-    @available
     @classmethod
+    @available
     def render_raw_columns_constraints(cls, raw_columns: Dict[str, Dict[str, Any]]) -> List:
         rendered_column_constraints = []
 
@@ -1398,8 +1395,8 @@ class BaseAdapter(metaclass=AdapterMeta):
         except Exception:
             raise DbtValidationError(f"Could not parse constraint: {raw_constraint}")
 
-    @available
     @classmethod
+    @available
     def render_raw_model_constraints(cls, raw_constraints: List[Dict[str, Any]]) -> List[str]:
         return [c for c in map(cls.render_raw_model_constraint, raw_constraints) if c is not None]
 

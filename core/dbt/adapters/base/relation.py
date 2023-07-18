@@ -1,25 +1,24 @@
 from collections.abc import Hashable
 from dataclasses import dataclass, field
-from typing import Optional, TypeVar, Any, Type, Dict, Iterator, Tuple, Set
+from typing import Any, Dict, Iterator, Optional, Set, Tuple, Type, TypeVar
 
-from dbt.contracts.graph.nodes import SourceDefinition, ManifestNode, ResultNode, ParsedNode
+from dbt.contracts.graph.nodes import ManifestNode, ParsedNode, ResultNode, SourceDefinition
 from dbt.contracts.relation import (
-    RelationType,
     ComponentName,
-    HasQuoting,
     FakeAPIObject,
-    Policy,
+    HasQuoting,
     Path,
+    Policy,
+    RelationType,
 )
+import dbt.exceptions
 from dbt.exceptions import (
     ApproximateMatchError,
     DbtInternalError,
     MultipleDatabasesNotAllowedError,
 )
 from dbt.node_types import NodeType
-from dbt.utils import filter_null_values, deep_merge, classproperty
-
-import dbt.exceptions
+from dbt.utils import classproperty, deep_merge, filter_null_values
 
 
 Self = TypeVar("Self", bound="BaseRelation")
@@ -31,7 +30,8 @@ class BaseRelation(FakeAPIObject, Hashable):
     type: Optional[RelationType] = None
     quote_character: str = '"'
     # Python 3.11 requires that these use default_factory instead of simple default
-    # ValueError: mutable default <class 'dbt.contracts.relation.Policy'> for field include_policy is not allowed: use default_factory
+    # ValueError: mutable default <class 'dbt.contracts.relation.Policy'> for field include_policy is not allowed:
+    # use default_factory
     include_policy: Policy = field(default_factory=lambda: Policy())
     quote_policy: Policy = field(default_factory=lambda: Policy())
     dbt_created: bool = False
@@ -170,13 +170,14 @@ class BaseRelation(FakeAPIObject, Hashable):
 
     def _render_iterator(self) -> Iterator[Tuple[Optional[ComponentName], Optional[str]]]:
 
-        for key in ComponentName:
+        for member in ComponentName:
             path_part: Optional[str] = None
-            if self.include_policy.get_part(key):
-                path_part = self.path.get_part(key)
-                if path_part is not None and self.quote_policy.get_part(key):
+            component = ComponentName(member)
+            if self.include_policy.get_part(component):
+                path_part = self.path.get_part(component)
+                if path_part is not None and self.quote_policy.get_part(component):
                     path_part = self.quoted(path_part)
-            yield key, path_part
+            yield component, path_part
 
     def render(self) -> str:
         # if there is nothing set, this will return the empty string.
@@ -259,7 +260,7 @@ class BaseRelation(FakeAPIObject, Hashable):
             return cls.create_from_source(node, **kwargs)
         else:
             # Can't use ManifestNode here because of parameterized generics
-            if not isinstance(node, (ParsedNode)):
+            if not isinstance(node, ParsedNode):
                 raise DbtInternalError(
                     f"type mismatch, expected ManifestNode but got {type(node)}"
                 )

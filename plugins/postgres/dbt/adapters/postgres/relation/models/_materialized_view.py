@@ -7,11 +7,11 @@ from dbt.adapters.validation import ValidationMixin, ValidationRule
 from dbt.contracts.graph.nodes import ModelNode
 from dbt.exceptions import DbtRuntimeError
 
-from dbt.adapters.postgres.relation.models import (
-    MAX_CHARACTERS_IN_IDENTIFIER,
+from dbt.adapters.postgres.relation.models._index import (
     PostgresIndexRelation,
     PostgresIndexRelationChange,
 )
+from dbt.adapters.postgres.relation.models._policy import MAX_CHARACTERS_IN_IDENTIFIER
 
 
 @dataclass(frozen=True, eq=True, unsafe_hash=True)
@@ -52,7 +52,7 @@ class PostgresMaterializedViewRelation(RelationComponent, ValidationMixin):
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "PostgresMaterializedViewRelation":
         kwargs_dict = {
-            "table_name": config_dict.get("table_name"),
+            "name": config_dict.get("name"),
             "query": config_dict.get("query"),
             "indexes": frozenset(
                 PostgresIndexRelation.from_dict(index) for index in config_dict.get("indexes", {})
@@ -72,7 +72,7 @@ class PostgresMaterializedViewRelation(RelationComponent, ValidationMixin):
     def parse_node(cls, node: ModelNode) -> Dict[str, Any]:
         indexes: List[dict] = node.config.extra.get("indexes", [])
         config_dict = {
-            "table_name": node.identifier,
+            "name": node.identifier,
             "query": node.compiled_code,
             "indexes": [PostgresIndexRelation.parse_node(index) for index in indexes],
         }

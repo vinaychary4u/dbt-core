@@ -845,8 +845,8 @@ class BaseAdapter(metaclass=AdapterMeta):
         """Drop the given schema (and everything in it) if it exists."""
         raise NotImplementedError("`drop_schema` is not implemented for this adapter!")
 
-    @classmethod
     @available
+    @classmethod
     @abc.abstractmethod
     def quote(cls, identifier: str) -> str:
         """Quote the given identifier, as appropriate for the database."""
@@ -962,8 +962,8 @@ class BaseAdapter(metaclass=AdapterMeta):
         """
         raise NotImplementedError("`convert_time_type` is not implemented for this adapter!")
 
-    @classmethod
     @available
+    @classmethod
     def convert_type(cls, agate_table: agate.Table, col_idx: int) -> Optional[str]:
         return cls.convert_agate_type(agate_table, col_idx)
 
@@ -1346,8 +1346,8 @@ class BaseAdapter(metaclass=AdapterMeta):
 
         return rendered_column_constraint
 
-    @classmethod
     @available
+    @classmethod
     def render_raw_columns_constraints(cls, raw_columns: Dict[str, Dict[str, Any]]) -> List:
         rendered_column_constraints = []
 
@@ -1395,8 +1395,8 @@ class BaseAdapter(metaclass=AdapterMeta):
         except Exception:
             raise DbtValidationError(f"Could not parse constraint: {raw_constraint}")
 
-    @classmethod
     @available
+    @classmethod
     def render_raw_model_constraints(cls, raw_constraints: List[Dict[str, Any]]) -> List[str]:
         return [c for c in map(cls.render_raw_model_constraint, raw_constraints) if c is not None]
 

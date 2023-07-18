@@ -1,5 +1,5 @@
 {% macro drop_materialized_view(relation) -%}
-  {{ return(adapter.dispatch('drop_materialized_view_template', 'dbt')(relation)) }}
+  {{ return(adapter.dispatch('drop_materialized_view', 'dbt')(relation)) }}
 {%- endmacro %}
 
 

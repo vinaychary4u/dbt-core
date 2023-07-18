@@ -190,7 +190,7 @@ class ConfiguredParser(
         # message reasons
         return UnparsedNode(
             name=name,
-            resource_type=self.resource_type,
+            resource_type=self.resource_type,  # type: ignore
             path=path,
             original_file_path=original_file_path,
             package_name=self.project.project_name,
@@ -237,6 +237,7 @@ class ConfiguredParser(
             "checksum": block.file.checksum.to_dict(omit_none=True),
         }
         dct.update(kwargs)
+
         try:
             return self.parse_from_dict(dct, validate=True)
         except ValidationError as exc:

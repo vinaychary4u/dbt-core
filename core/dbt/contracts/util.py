@@ -16,7 +16,6 @@ from dbt.dataclass_schema import dbtClassMixin
 from dbt.dataclass_schema import (
     ValidatedStringMixin,
     ValidationError,
-    register_pattern,
 )
 
 
@@ -90,7 +89,9 @@ class AdditionalPropertiesMixin:
         cls_keys = cls._get_field_names()
         new_dict = {}
         for key, value in data.items():
-            if key not in cls_keys and key != "_extra":
+            # The pre-hook/post-hook mess hasn't been converted yet... That happens in
+            # the super().__pre_deserialize__ below...
+            if key not in cls_keys and key not in ["_extra", "pre-hook", "post-hook"]:
                 if "_extra" not in new_dict:
                     new_dict["_extra"] = {}
                 new_dict["_extra"][key] = value
@@ -192,10 +193,9 @@ class VersionedSchema(dbtClassMixin):
     dbt_schema_version: ClassVar[SchemaVersion]
 
     @classmethod
-    def json_schema(cls, embeddable: bool = False) -> Dict[str, Any]:
-        result = super().json_schema(embeddable=embeddable)
-        if not embeddable:
-            result["$id"] = str(cls.dbt_schema_version)
+    def json_schema(cls) -> Dict[str, Any]:
+        result = super().json_schema()
+        result["$id"] = str(cls.dbt_schema_version)
         return result
 
     @classmethod
@@ -271,6 +271,3 @@ class Identifier(ValidatedStringMixin):
             return False
 
         return True
-
-
-register_pattern(Identifier, r"^[^\d\W]\w*$")

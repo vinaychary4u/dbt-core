@@ -1,0 +1,6 @@
+kind: Dependencies
+body: Pin click<9 + sqlparse<0.5
+time: 2023-07-19T12:37:43.716495+02:00
+custom:
+  Author: jtcohen6
+  PR: "8146"

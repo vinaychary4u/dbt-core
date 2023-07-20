@@ -15,8 +15,6 @@ import time
 from pathlib import PosixPath, WindowsPath
 
 from contextlib import contextmanager
-from dbt.exceptions import ConnectionException
-from dbt.events.functions import fire_event
 from dbt.events.types import RetryExternalCall, RecordRetryException
 from dbt import flags
 from enum import Enum
@@ -39,6 +37,7 @@ from typing import (
     Sequence,
 )
 
+import dbt.events.functions
 import dbt.exceptions
 
 DECIMALS: Tuple[Type[Any], ...]
@@ -326,15 +325,18 @@ class JSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, DECIMALS):
             return float(obj)
-        if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
+        elif isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
             return obj.isoformat()
-        if isinstance(obj, jinja2.Undefined):
+        elif isinstance(obj, jinja2.Undefined):
             return ""
-        if hasattr(obj, "to_dict"):
+        elif isinstance(obj, Exception):
+            return repr(obj)
+        elif hasattr(obj, "to_dict"):
             # if we have a to_dict we should try to serialize the result of
             # that!
             return obj.to_dict(omit_none=True)
-        return super().default(obj)
+        else:
+            return super().default(obj)
 
 
 class ForgivingJSONEncoder(JSONEncoder):
@@ -612,12 +614,14 @@ def _connection_exception_retry(fn, max_attempts: int, attempt: int = 0):
         ReadError,
     ) as exc:
         if attempt <= max_attempts - 1:
-            fire_event(RecordRetryException(exc=exc))
-            fire_event(RetryExternalCall(attempt=attempt, max=max_attempts))
+            dbt.events.functions.fire_event(RecordRetryException(exc=exc))
+            dbt.events.functions.fire_event(RetryExternalCall(attempt=attempt, max=max_attempts))
             time.sleep(1)
             return _connection_exception_retry(fn, max_attempts, attempt + 1)
         else:
-            raise ConnectionException("External connection exception occurred: " + str(exc))
+            raise dbt.exceptions.ConnectionException(
+                "External connection exception occurred: " + str(exc)
+            )
 
 
 # This is used to serialize the args in the run_results and in the logs.

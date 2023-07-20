@@ -863,6 +863,7 @@ def test(ctx, **kwargs):
 @p.select
 @p.selector
 @p.state
+@p.defer_state
 @p.deprecated_state
 @p.store_failures
 @p.target

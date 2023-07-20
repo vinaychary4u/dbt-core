@@ -13,6 +13,7 @@ from contextlib import contextmanager
 import dbt.semver
 import dbt.config
 import dbt.exceptions
+from dbt.contracts.results import RunStatus
 
 from dbt.tests.util import check_relations_equal, run_dbt, run_dbt_and_capture
 
@@ -64,7 +65,7 @@ sources:
     schema: "{{ var('schema_override', target.schema) }}"
     tables:
       - name: my_table
-        identifier: seed
+        identifier: seed_subpackage_generate_alias_name
 """
 
 macros__macro_sql = """
@@ -156,11 +157,17 @@ class TestSimpleDependency(BaseDependencyTest):
 
         check_relations_equal(
             project.adapter,
-            [f"{project.test_schema}.source_override_model", f"{project.test_schema}.seed"],
+            [
+                f"{project.test_schema}.source_override_model",
+                f"{project.test_schema}.seed_subpackage_generate_alias_name",
+            ],
         )
         check_relations_equal(
             project.adapter,
-            [f"{project.test_schema}.dep_source_model", f"{project.test_schema}.seed"],
+            [
+                f"{project.test_schema}.dep_source_model",
+                f"{project.test_schema}.seed_subpackage_generate_alias_name",
+            ],
         )
 
     def test_no_dependency_paths(self, project):
@@ -201,8 +208,9 @@ class TestMissingDependency(object):
 
     def test_missing_dependency(self, project):
         # dbt should raise a runtime exception
-        with pytest.raises(dbt.exceptions.DbtRuntimeError):
-            run_dbt(["compile"])
+        res = run_dbt(["compile"], expect_pass=False)
+        assert len(res) == 1
+        assert res[0].status == RunStatus.Error
 
 
 class TestSimpleDependencyWithSchema(BaseDependencyTest):

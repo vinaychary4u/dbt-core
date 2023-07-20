@@ -13,6 +13,7 @@ from typing import Callable, Dict, List, Optional, TextIO
 import uuid
 from google.protobuf.json_format import MessageToDict
 
+import dbt.utils
 
 LOG_VERSION = 3
 metadata_vars: Optional[Dict[str, str]] = None
@@ -39,14 +40,18 @@ def setup_event_logger(flags, callbacks: List[Callable[[EventMsg], None]] = []) 
     else:
         if flags.LOG_LEVEL != "none":
             line_format = _line_format_from_str(flags.LOG_FORMAT, LineFormat.PlainText)
-            log_level = EventLevel.DEBUG if flags.DEBUG else EventLevel(flags.LOG_LEVEL)
+            log_level = (
+                EventLevel.ERROR
+                if flags.QUIET
+                else EventLevel.DEBUG
+                if flags.DEBUG
+                else EventLevel(flags.LOG_LEVEL)
+            )
             console_config = _get_stdout_config(
                 line_format,
-                flags.DEBUG,
                 flags.USE_COLORS,
                 log_level,
                 flags.LOG_CACHE_EVENTS,
-                flags.QUIET,
             )
             EVENT_MANAGER.add_logger(console_config)
 
@@ -81,11 +86,9 @@ def _line_format_from_str(format_str: str, default: LineFormat) -> LineFormat:
 
 def _get_stdout_config(
     line_format: LineFormat,
-    debug: bool,
     use_colors: bool,
     level: EventLevel,
     log_cache_events: bool,
-    quiet: bool,
 ) -> LoggerConfig:
 
     return LoggerConfig(
@@ -97,8 +100,6 @@ def _get_stdout_config(
         filter=partial(
             _stdout_filter,
             log_cache_events,
-            debug,
-            quiet,
             line_format,
         ),
         output_stream=sys.stdout,
@@ -107,16 +108,11 @@ def _get_stdout_config(
 
 def _stdout_filter(
     log_cache_events: bool,
-    debug_mode: bool,
-    quiet_mode: bool,
     line_format: LineFormat,
     msg: EventMsg,
 ) -> bool:
-    return (
-        (msg.info.name not in ["CacheAction", "CacheDumpGraph"] or log_cache_events)
-        and (EventLevel(msg.info.level) != EventLevel.DEBUG or debug_mode)
-        and (EventLevel(msg.info.level) == EventLevel.ERROR or not quiet_mode)
-        and not (line_format == LineFormat.Json and type(msg.data) == Formatting)
+    return (msg.info.name not in ["CacheAction", "CacheDumpGraph"] or log_cache_events) and not (
+        line_format == LineFormat.Json and type(msg.data) == Formatting
     )
 
 
@@ -147,11 +143,9 @@ def _get_logbook_log_config(
 ) -> LoggerConfig:
     config = _get_stdout_config(
         LineFormat.PlainText,
-        debug,
         use_colors,
-        EventLevel.DEBUG if debug else EventLevel.INFO,
+        EventLevel.ERROR if quiet else EventLevel.DEBUG if debug else EventLevel.INFO,
         log_cache_events,
-        quiet,
     )
     config.name = "logbook_log"
     config.filter = (
@@ -183,7 +177,7 @@ EVENT_MANAGER: EventManager = EventManager()
 EVENT_MANAGER.add_logger(
     _get_logbook_log_config(False, True, False, False)  # type: ignore
     if ENABLE_LEGACY_LOGGER
-    else _get_stdout_config(LineFormat.PlainText, False, True, EventLevel.INFO, False, False)
+    else _get_stdout_config(LineFormat.PlainText, True, EventLevel.INFO, False)
 )
 
 # This global, and the following two functions for capturing stdout logs are
@@ -207,7 +201,7 @@ def stop_capture_stdout_logs():
 # the message may contain secrets which must be scrubbed at the usage site.
 def msg_to_json(msg: EventMsg) -> str:
     msg_dict = msg_to_dict(msg)
-    raw_log_line = json.dumps(msg_dict, sort_keys=True)
+    raw_log_line = json.dumps(msg_dict, sort_keys=True, cls=dbt.utils.ForgivingJSONEncoder)
     return raw_log_line
 
 
@@ -247,14 +241,16 @@ def warn_or_error(event, node=None):
 # an alternative to fire_event which only creates and logs the event value
 # if the condition is met. Does nothing otherwise.
 def fire_event_if(
-    conditional: bool, lazy_e: Callable[[], BaseEvent], level: EventLevel = None
+    conditional: bool, lazy_e: Callable[[], BaseEvent], level: Optional[EventLevel] = None
 ) -> None:
     if conditional:
         fire_event(lazy_e(), level=level)
 
 
 # a special case of fire_event_if, to only fire events in our unit/functional tests
-def fire_event_if_test(lazy_e: Callable[[], BaseEvent], level: EventLevel = None) -> None:
+def fire_event_if_test(
+    lazy_e: Callable[[], BaseEvent], level: Optional[EventLevel] = None
+) -> None:
     fire_event_if(conditional=("pytest" in sys.modules), lazy_e=lazy_e, level=level)
 
 
@@ -262,7 +258,7 @@ def fire_event_if_test(lazy_e: Callable[[], BaseEvent], level: EventLevel = None
 # this is where all the side effects happen branched by event type
 # (i.e. - mutating the event history, printing to stdout, logging
 # to files, etc.)
-def fire_event(e: BaseEvent, level: EventLevel = None) -> None:
+def fire_event(e: BaseEvent, level: Optional[EventLevel] = None) -> None:
     EVENT_MANAGER.fire_event(e, level=level)
 
 

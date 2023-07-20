@@ -138,6 +138,11 @@ class SchemaParser(SimpleParser[YamlBlock, ModelNode]):
             self.root_project, self.project.project_name, self.schema_yaml_vars
         )
 
+    # This is unnecessary, but mypy was requiring it. Clean up parser code so
+    # we don't have to do this.
+    def parse_from_dict(self, dct):
+        pass
+
     @classmethod
     def get_compiled_path(cls, block: FileBlock) -> str:
         # should this raise an error?

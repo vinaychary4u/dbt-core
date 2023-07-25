@@ -1,0 +1,6 @@
+kind: "Dependencies"
+body: "Update dbt-extractor requirement from ~=0.4.1 to >=0.4.1,<0.6.0 in /core"
+time: 2023-07-25T00:10:42.00000Z
+custom:
+  Author: dependabot[bot]
+  PR: 8202

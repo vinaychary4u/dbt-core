@@ -34,6 +34,7 @@ class NodeType(StrEnum):
     Metric = "metric"
     Group = "group"
     SemanticModel = "semantic_model"
+    Unit = "unit test"
 
     @classmethod
     def executable(cls) -> List["NodeType"]:
@@ -47,6 +48,7 @@ class NodeType(StrEnum):
             cls.Documentation,
             cls.RPCCall,
             cls.SqlOperation,
+            cls.Unit,
         ]
 
     @classmethod

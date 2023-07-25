@@ -330,6 +330,26 @@ class MacroGenerator(BaseMacroGenerator):
             return self.call_macro(*args, **kwargs)
 
 
+class UnitTestMacroGenerator(MacroGenerator):
+    # this makes UnitTestMacroGenerator objects callable like functions
+    def __init__(
+        self,
+        macro_generator: MacroGenerator,
+        call_return_value: Any,
+    ) -> None:
+        super().__init__(
+            macro_generator.macro,
+            macro_generator.context,
+            macro_generator.node,
+            macro_generator.stack,
+        )
+        self.call_return_value = call_return_value
+
+    def __call__(self, *args, **kwargs):
+        with self.track_call():
+            return self.call_return_value
+
+
 class QueryStringGenerator(BaseMacroGenerator):
     def __init__(self, template_str: str, context: Dict[str, Any]) -> None:
         super().__init__(context)

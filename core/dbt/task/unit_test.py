@@ -169,6 +169,7 @@ class UnitTestTask(RunTask):
     """
 
     def __init__(self, args, config, manifest, collection):
+        # This will initialize the RunTask with the unit test manifest ("collection") as the manifest
         super().__init__(args, config, collection)
         self.collection = collection
         self.original_manifest = manifest

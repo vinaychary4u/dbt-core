@@ -6,6 +6,12 @@
     <img src="https://github.com/dbt-labs/dbt-core/actions/workflows/main.yml/badge.svg?event=push" alt="CI Badge"/>
   </a>
 </p>
+<p align="center">
+  <a href="https://codecov.io/gh/dbt-labs/dbt-core" >
+    <img src="https://codecov.io/gh/dbt-labs/dbt-core/branch/main/graph/badge.svg?token=Ad9y04dO4L"/>
+  </a>
+</p>
+
 
 **[dbt](https://www.getdbt.com/)** enables data analysts and engineers to transform their data using the same practices that software engineers use to build applications.
 

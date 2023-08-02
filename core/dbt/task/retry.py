@@ -17,6 +17,7 @@ from dbt.task.run_operation import RunOperationTask
 from dbt.task.seed import SeedTask
 from dbt.task.snapshot import SnapshotTask
 from dbt.task.test import TestTask
+from dbt.task.unit_test import UnitTestTask
 
 RETRYABLE_STATUSES = {NodeStatus.Error, NodeStatus.Fail, NodeStatus.Skipped, NodeStatus.RuntimeErr}
 
@@ -30,6 +31,7 @@ TASK_DICT = {
     "test": TestTask,
     "run": RunTask,
     "run-operation": RunOperationTask,
+    "unit-test": UnitTestTask,
 }
 
 CMD_DICT = {
@@ -42,6 +44,7 @@ CMD_DICT = {
     "test": CliCommand.TEST,
     "run": CliCommand.RUN,
     "run-operation": CliCommand.RUN_OPERATION,
+    "unit-test": CliCommand.UNIT_TEST,
 }
 
 

@@ -847,7 +847,7 @@ def test(ctx, **kwargs):
     return results, success
 
 
-# dbt test
+# dbt unit-test
 @cli.command("unit-test")
 @click.pass_context
 @p.defer

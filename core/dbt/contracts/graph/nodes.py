@@ -1253,6 +1253,10 @@ class SourceDefinition(NodeInfoMixin, ParsedSourceMandatory):
     def search_name(self):
         return f"{self.source_name}.{self.name}"
 
+    @property
+    def group(self):
+        return None
+
 
 # ====================================
 # Exposure node
@@ -1615,6 +1619,10 @@ class SemanticModel(GraphNode):
             if self.primary_entity is not None
             else None
         )
+
+    @property
+    def group(self):
+        return None
 
 
 # ====================================

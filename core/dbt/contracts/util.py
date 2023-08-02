@@ -17,6 +17,7 @@ from dbt.dataclass_schema import (
     ValidatedStringMixin,
     ValidationError,
 )
+from mashumaro.jsonschema import build_json_schema
 
 
 SourceKey = Tuple[str, str]
@@ -194,9 +195,10 @@ class VersionedSchema(dbtClassMixin):
 
     @classmethod
     def json_schema(cls) -> Dict[str, Any]:
-        result = super().json_schema()
-        result["$id"] = str(cls.dbt_schema_version)
-        return result
+        json_schema_obj = build_json_schema(cls, all_refs=True)
+        json_schema = json_schema_obj.to_dict()
+        json_schema["$id"] = str(cls.dbt_schema_version)
+        return json_schema
 
     @classmethod
     def is_compatible_version(cls, schema_version):

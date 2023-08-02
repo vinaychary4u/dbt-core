@@ -16,7 +16,7 @@ from dbt.utils import translate_aliases, md5
 from dbt.events.functions import fire_event
 from dbt.events.types import NewConnectionOpening
 from dbt.events.contextvars import get_node_info
-from typing_extensions import Protocol
+from typing_extensions import Protocol, Annotated
 from dbt.dataclass_schema import (
     dbtClassMixin,
     StrEnum,
@@ -24,7 +24,6 @@ from dbt.dataclass_schema import (
     ValidatedStringMixin,
 )
 from dbt.contracts.util import Replaceable
-from typing import Annotated
 from mashumaro.jsonschema.annotations import Pattern
 
 

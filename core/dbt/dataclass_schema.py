@@ -73,7 +73,7 @@ class dbtClassMixin(DataClassDictMixin):
 
     @classmethod
     def json_schema(cls):
-        json_schema_obj = build_json_schema(cls)
+        json_schema_obj = build_json_schema(cls, all_refs=True)
         json_schema = json_schema_obj.to_dict()
         return json_schema
 

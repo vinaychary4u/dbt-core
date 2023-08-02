@@ -8,7 +8,8 @@ from dbt.dataclass_schema import (
     dbtMashConfig,
 )
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Union, Any, ClassVar, Annotated
+from typing import Optional, List, Dict, Union, Any, ClassVar
+from typing_extensions import Annotated
 from mashumaro.types import SerializableType
 from mashumaro.jsonschema.annotations import Pattern
 

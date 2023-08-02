@@ -11,7 +11,8 @@ from dbt.events import AdapterLogger
 
 from dbt.helper_types import Port
 from dataclasses import dataclass
-from typing import Optional, Annotated
+from typing import Optional
+from typing_extensions import Annotated
 from mashumaro.jsonschema.annotations import Maximum, Minimum
 
 

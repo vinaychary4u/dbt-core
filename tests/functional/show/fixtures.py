@@ -2,6 +2,14 @@ models__sample_model = """
 select * from {{ ref('sample_seed') }}
 """
 
+models__sample_number_model = """
+select
+  cast(1.0 as int) as float_to_int_field,
+  3.0 as float_field,
+  4.3 as float_with_dec_field,
+  5 as int_field
+"""
+
 models__second_model = """
 select
     sample_num as col_one,
@@ -75,10 +83,10 @@ from {{ ref('ephemeral_model') }}
 
 seeds__sample_seed = """sample_num,sample_bool
 1,true
-2,false
+2.0,false
 3,true
-4,false
+4.3,false
 5,true
-6,false
+6.5,false
 7,true
 """

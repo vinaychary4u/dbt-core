@@ -19,8 +19,20 @@ class Number(agate.data_types.Number):
     def cast(self, d):
         if type(d) == bool:
             raise agate.exceptions.CastError("Do not cast True to 1 or False to 0.")
+        # preserve integers as native Python int
+        elif type(d) == int:
+            return d
         else:
             return super().cast(d)
+
+    def jsonify(self, d):
+        if d is None:
+            return d
+        # do not cast integers to floats
+        elif type(d) == int:
+            return d
+
+        return float(d)
 
 
 class ISODateTime(agate.data_types.DateTime):

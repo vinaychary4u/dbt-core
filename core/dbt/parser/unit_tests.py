@@ -1,9 +1,10 @@
 from dbt.contracts.graph.unparsed import UnparsedUnitTestSuite
-from dbt.contracts.graph.nodes import NodeConfig
+from dbt.contracts.graph.model_config import NodeConfig
 from dbt_extractor import py_extract_from_source  # type: ignore
 from dbt.contracts.graph.nodes import (
     ModelNode,
     UnitTestNode,
+    RefArgs,
 )
 from dbt.contracts.graph.manifest import Manifest
 from dbt.parser.schemas import (
@@ -24,6 +25,7 @@ from dbt.contracts.files import FileHash, SchemaSourceFile
 from dbt.node_types import NodeType
 
 from dbt.context.providers import generate_parse_exposure, get_rendered
+from typing import List
 
 
 def _is_model_node(node_id, manifest):
@@ -191,15 +193,17 @@ class UnitTestParser(YamlReader):
     def _get_original_input_node(self, input: str):
         statically_parsed = py_extract_from_source(f"{{{{ {input} }}}}")
         if statically_parsed["refs"]:
-            ref = statically_parsed["refs"][0]
-            if len(ref) == 2:
-                input_package_name, input_model_name = ref
-            else:
-                input_package_name, input_model_name = None, ref[0]
-            # TODO: disabled lookup, versioned lookup, public models
-            original_input_node = self.manifest.ref_lookup.find(
-                input_model_name, input_package_name, None, self.manifest
-            )
+            # set refs and sources on the node object
+            refs: List[RefArgs] = []
+            for ref in statically_parsed["refs"]:
+                name = ref.get("name")
+                package = ref.get("package")
+                version = ref.get("version")
+                refs.append(RefArgs(name, package, version))
+                # TODO: disabled lookup, versioned lookup, public models
+                original_input_node = self.manifest.ref_lookup.find(
+                    name, package, version, self.manifest
+                )
         elif statically_parsed["sources"]:
             input_package_name, input_source_name = statically_parsed["sources"][0]
             original_input_node = self.manifest.source_lookup.find(

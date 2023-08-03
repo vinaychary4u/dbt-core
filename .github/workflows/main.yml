@@ -158,10 +158,10 @@ jobs:
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11"]
         os: [ubuntu-20.04]
+        tox-env: [integration, adapter]
         split-group: ${{ fromJson(needs.integration-metadata.outputs.split-groups) }}
         include: ${{ fromJson(needs.integration-metadata.outputs.include) }}
     env:
-      TOXENV: integration
       DBT_INVOCATION_ENV: github-actions
       DBT_TEST_USER_1: dbt_test_user_1
       DBT_TEST_USER_2: dbt_test_user_2
@@ -203,6 +203,7 @@ jobs:
       - name: Run tests
         run: tox -- --ddtrace
         env:
+          TOXENV: ${{ matrix.tox-env }}
           PYTEST_ADDOPTS: ${{ format('--splits {0} --group {1}', env.PYTHON_INTEGRATION_TEST_WORKERS, matrix.split-group) }}
 
       - name: Get current date

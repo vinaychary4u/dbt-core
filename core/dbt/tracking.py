@@ -4,7 +4,7 @@ import traceback
 import uuid
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 
 import logbook
 import pytz
@@ -210,6 +210,21 @@ def track(user, *args, **kwargs):
             tracker.track_struct_event(*args, **kwargs)
         except Exception:
             fire_event(SendEventFailure())
+
+
+def track_spec(action: str, spec: str, options: Dict[str, Any]):
+    assert (
+        active_user is not None
+    ), f"Cannot track {action.replace('_', ' ')} when active user is None"
+    context = [SelfDescribingJson(spec, options)]
+
+    track(
+        active_user,
+        category="dbt",
+        action=action,
+        label=get_invocation_id(),
+        context=context,
+    )
 
 
 def track_project_id(options):

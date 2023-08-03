@@ -1,4 +1,5 @@
 from codecs import BOM_UTF8
+from decimal import Decimal
 
 import agate
 import datetime
@@ -21,7 +22,7 @@ class Number(agate.data_types.Number):
             raise agate.exceptions.CastError("Do not cast True to 1 or False to 0.")
         # preserve integers as native Python int
         elif type(d) == int:
-            return d
+            return Decimal(d).__int__()
         else:
             return super().cast(d)
 
@@ -30,7 +31,7 @@ class Number(agate.data_types.Number):
             return d
         # do not cast integers to floats
         elif type(d) == int:
-            return d
+            return Decimal(d).__int__()
 
         return float(d)
 

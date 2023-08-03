@@ -83,10 +83,10 @@ from {{ ref('ephemeral_model') }}
 
 seeds__sample_seed = """sample_num,sample_bool
 1,true
-2.0,false
+2,false
 3,true
-4.3,false
+4,false
 5,true
-6.5,false
+6,false
 7,true
 """

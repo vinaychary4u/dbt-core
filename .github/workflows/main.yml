@@ -147,7 +147,7 @@ jobs:
           echo "include=${INCLUDE_GROUPS}" >> $GITHUB_OUTPUT
 
   integration:
-    name: (${{ matrix.split-group }}) integration test / python ${{ matrix.python-version }} / ${{ matrix.os }}
+    name: (${{ matrix.split-group }}) ${{ matrix.tox-env }} test / python ${{ matrix.python-version }} / ${{ matrix.os }}
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30

@@ -34,7 +34,7 @@ class NodeType(StrEnum):
     Metric = "metric"
     Group = "group"
     SemanticModel = "semantic_model"
-    Unit = "unit test"
+    Unit = "unit_test"
 
     @classmethod
     def executable(cls) -> List["NodeType"]:

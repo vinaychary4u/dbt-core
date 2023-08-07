@@ -1,6 +1,7 @@
 from collections.abc import Hashable
 from dataclasses import dataclass, field
 from typing import Optional, TypeVar, Any, Type, Dict, Iterator, Tuple, Set
+import uuid
 
 from dbt.contracts.graph.nodes import SourceDefinition, ManifestNode, ResultNode, ParsedNode
 from dbt.contracts.relation import (
@@ -35,6 +36,7 @@ class BaseRelation(FakeAPIObject, Hashable):
     include_policy: Policy = field(default_factory=lambda: Policy())
     quote_policy: Policy = field(default_factory=lambda: Policy())
     dbt_created: bool = False
+    sample: Optional[int] = None
 
     def _is_exactish_match(self, field: ComponentName, value: str) -> bool:
         if self.dbt_created and self.quote_policy.get_part(field) is False:
@@ -180,7 +182,11 @@ class BaseRelation(FakeAPIObject, Hashable):
 
     def render(self) -> str:
         # if there is nothing set, this will return the empty string.
-        return ".".join(part for _, part in self._render_iterator() if part is not None)
+        rendered_parts = ".".join(part for _, part in self._render_iterator() if part is not None)
+        if self.sample and rendered_parts:
+            alias = f"_dbt_sample_{uuid.uuid4().hex.upper()[:6]}"
+            return f"(select * from {rendered_parts} limit {self.sample}) {alias}"
+        return rendered_parts
 
     def quoted(self, identifier):
         return "{quote_char}{identifier}{quote_char}".format(

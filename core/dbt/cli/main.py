@@ -323,6 +323,7 @@ def docs_serve(ctx, **kwargs):
 @p.profile
 @p.profiles_dir
 @p.project_dir
+@p.sample
 @p.select
 @p.selector
 @p.inline
@@ -551,6 +552,7 @@ def parse(ctx, **kwargs):
 @p.profile
 @p.profiles_dir
 @p.project_dir
+@p.sample
 @p.select
 @p.selector
 @p.state

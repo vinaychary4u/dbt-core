@@ -503,6 +503,7 @@ class ManifestLoader:
             self.manifest.selectors = self.root_project.manifest_selectors
 
             # inject any available external nodes
+            self.manifest.build_parent_and_child_maps()
             external_nodes_modified = self.inject_external_nodes()
             if external_nodes_modified:
                 self.manifest.rebuild_ref_lookup()

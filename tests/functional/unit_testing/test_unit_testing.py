@@ -98,12 +98,6 @@ unit:
           - {date_a: "2020-01-01"}
 """
 
-packages_yml = """
-packages:
-  - git: "https://github.com/dbt-labs/dbt-utils.git"
-    revision: 0.9.2
-"""
-
 
 class TestUnitTests:
     @pytest.fixture(scope="class")
@@ -114,10 +108,6 @@ class TestUnitTests:
             "my_model_b.sql": my_model_b_sql,
             "test_my_model.yml": test_my_model_yml,
         }
-
-    @pytest.fixture(scope="class")
-    def packages(self):
-        return packages_yml
 
     @pytest.fixture(scope="class")
     def project_config_update(self):

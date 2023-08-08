@@ -204,6 +204,7 @@ class OnConfigurationChangeOption(StrEnum):
 @dataclass
 class ContractConfig(dbtClassMixin, Replaceable):
     enforced: bool = False
+    inferred: bool = False
 
 
 @dataclass

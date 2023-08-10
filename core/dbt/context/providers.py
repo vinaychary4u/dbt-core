@@ -179,7 +179,11 @@ class BaseDatabaseWrapper:
 
         for package_name in search_packages:
             for prefix in self._get_adapter_macro_prefixes():
-                search_name = f"{prefix}__{macro_name}"
+                search_name = (
+                    macro_name
+                    if macro_name.startswith("materialization_")
+                    else f"{prefix}__{macro_name}"
+                )
                 try:
                     # this uses the namespace from the context
                     macro = self._namespace.get_from_package(package_name, search_name)

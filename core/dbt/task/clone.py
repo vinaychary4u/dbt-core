@@ -2,7 +2,6 @@ import threading
 from typing import AbstractSet, Any, List, Iterable, Set
 
 from dbt.adapters.base import BaseRelation
-from dbt.clients.jinja import MacroGenerator
 from dbt.context.providers import generate_runtime_model_context
 from dbt.contracts.results import RunStatus, RunResult
 from dbt.dataclass_schema import dbtClassMixin
@@ -80,7 +79,7 @@ class CloneRunner(BaseRunner):
 
         hook_ctx = self.adapter.pre_model_hook(context_config)
         try:
-            result = MacroGenerator(materialization_macro, context)()
+            result = context["adapter"].dispatch(materialization_macro.name)()
         finally:
             self.adapter.post_model_hook(context_config, hook_ctx)
 

@@ -2,6 +2,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from dataclasses import field
 import datetime
+from dbt.tracing import tracer
 import os
 import traceback
 from typing import (
@@ -620,6 +621,7 @@ class ManifestLoader:
 
     # Parse the files in the 'parser_files' dictionary, for parsers listed in
     # 'parser_types'
+    @tracer.wrap(service="dbt-core")
     def parse_project(
         self,
         project: Project,

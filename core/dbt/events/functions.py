@@ -1,8 +1,8 @@
 from dbt.constants import METADATA_ENV_PREFIX
 from dbt.events.base_types import BaseEvent, EventLevel, EventMsg
-from dbt.events.eventmgr import EventManager, LoggerConfig, LineFormat, NoFilter
+from dbt.events.eventmgr import EventManager, LoggerConfig, LineFormat, NoFilter, IEventManager
 from dbt.events.helpers import env_secrets, scrub_secrets
-from dbt.events.types import Formatting, Note
+from dbt.events.types import Note
 from dbt.flags import get_flags, ENABLE_LEGACY_LOGGER
 from dbt.logger import GLOBAL_LOGGER, make_log_dir_if_missing
 from functools import partial
@@ -115,9 +115,7 @@ def _stdout_filter(
     line_format: LineFormat,
     msg: EventMsg,
 ) -> bool:
-    return (msg.info.name not in ["CacheAction", "CacheDumpGraph"] or log_cache_events) and not (
-        line_format == LineFormat.Json and type(msg.data) == Formatting
-    )
+    return msg.info.name not in ["CacheAction", "CacheDumpGraph"] or log_cache_events
 
 
 def _get_logfile_config(
@@ -140,10 +138,8 @@ def _get_logfile_config(
 
 
 def _logfile_filter(log_cache_events: bool, line_format: LineFormat, msg: EventMsg) -> bool:
-    return (
-        msg.info.code not in nofile_codes
-        and not (msg.info.name in ["CacheAction", "CacheDumpGraph"] and not log_cache_events)
-        and not (line_format == LineFormat.Json and type(msg.data) == Formatting)
+    return msg.info.code not in nofile_codes and not (
+        msg.info.name in ["CacheAction", "CacheDumpGraph"] and not log_cache_events
     )
 
 
@@ -182,7 +178,7 @@ def cleanup_event_logger():
 # Since dbt-rpc does not do its own log setup, and since some events can
 # currently fire before logs can be configured by setup_event_logger(), we
 # create a default configuration with default settings and no file output.
-EVENT_MANAGER: EventManager = EventManager()
+EVENT_MANAGER: IEventManager = EventManager()
 EVENT_MANAGER.add_logger(
     _get_logbook_log_config(False, True, False, False)  # type: ignore
     if ENABLE_LEGACY_LOGGER
@@ -273,7 +269,7 @@ def fire_event(e: BaseEvent, level: Optional[EventLevel] = None) -> None:
 
 def get_metadata_vars() -> Dict[str, str]:
     global metadata_vars
-    if metadata_vars is None:
+    if not metadata_vars:
         metadata_vars = {
             k[len(METADATA_ENV_PREFIX) :]: v
             for k, v in os.environ.items()
@@ -295,3 +291,8 @@ def set_invocation_id() -> None:
     # This is primarily for setting the invocation_id for separate
     # commands in the dbt servers. It shouldn't be necessary for the CLI.
     EVENT_MANAGER.invocation_id = str(uuid.uuid4())
+
+
+def ctx_set_event_manager(event_manager: IEventManager):
+    global EVENT_MANAGER
+    EVENT_MANAGER = event_manager

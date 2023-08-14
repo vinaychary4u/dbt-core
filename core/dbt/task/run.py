@@ -1,32 +1,18 @@
 import functools
 import threading
 import time
+from datetime import datetime
 from typing import List, Dict, Any, Iterable, Set, Tuple, Optional, AbstractSet
 
-from dbt.dataclass_schema import dbtClassMixin
-
-from .compile import CompileRunner, CompileTask
-
-from .printer import (
-    print_run_end_messages,
-    get_counts,
-)
-from datetime import datetime
 from dbt import tracking
 from dbt import utils
 from dbt.adapters.base import BaseRelation
-from dbt.clients.jinja import MacroGenerator
 from dbt.context.providers import generate_runtime_model_context
 from dbt.contracts.graph.model_config import Hook
 from dbt.contracts.graph.nodes import HookNode, ResultNode
 from dbt.contracts.results import NodeStatus, RunResult, RunStatus, RunningStatus, BaseResult
-from dbt.exceptions import (
-    CompilationError,
-    DbtInternalError,
-    MissingMaterializationError,
-    DbtRuntimeError,
-    DbtValidationError,
-)
+from dbt.dataclass_schema import dbtClassMixin
+from dbt.events.base_types import EventLevel
 from dbt.events.functions import fire_event, get_invocation_id
 from dbt.events.types import (
     DatabaseErrorRunningHook,
@@ -38,7 +24,15 @@ from dbt.events.types import (
     LogHookEndLine,
     LogHookStartLine,
 )
-from dbt.events.base_types import EventLevel
+from dbt.exceptions import (
+    CompilationError,
+    DbtInternalError,
+    MissingMaterializationError,
+    DbtRuntimeError,
+    DbtValidationError,
+)
+from dbt.graph import ResourceTypeSelector
+from dbt.hooks import get_hook_dict
 from dbt.logger import (
     TextOnly,
     HookMetadata,
@@ -46,9 +40,12 @@ from dbt.logger import (
     TimestampNamed,
     DbtModelState,
 )
-from dbt.graph import ResourceTypeSelector
-from dbt.hooks import get_hook_dict
 from dbt.node_types import NodeType, RunHookType
+from dbt.task.compile import CompileRunner, CompileTask
+from dbt.task.printer import (
+    print_run_end_messages,
+    get_counts,
+)
 
 
 class Timer:
@@ -288,9 +285,7 @@ class ModelRunner(CompileRunner):
 
         hook_ctx = self.adapter.pre_model_hook(context_config)
         try:
-            result = MacroGenerator(
-                materialization_macro, context, stack=context["context_macro_stack"]
-            )()
+            result = context["adapter"].dispatch(materialization_macro.name)()
         finally:
             self.adapter.post_model_hook(context_config, hook_ctx)
 
@@ -327,7 +322,6 @@ class RunTask(CompileTask):
         return package_name, hook.index
 
     def get_hooks_by_type(self, hook_type: RunHookType) -> List[HookNode]:
-
         if self.manifest is None:
             raise DbtInternalError("self.manifest was None in get_hooks_by_type")
 

@@ -24,6 +24,7 @@ class Command(Enum):
     SOURCE_FRESHNESS = "freshness"
     TEST = "test"
     RETRY = "retry"
+    UNIT_TEST = "unit-test"
 
     @classmethod
     def from_str(cls, s: str) -> "Command":

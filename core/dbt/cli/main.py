@@ -39,6 +39,7 @@ from dbt.task.serve import ServeTask
 from dbt.task.show import ShowTask
 from dbt.task.snapshot import SnapshotTask
 from dbt.task.test import TestTask
+from dbt.task.unit_test import UnitTestTask
 
 
 @dataclass
@@ -840,6 +841,52 @@ def test(ctx, **kwargs):
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
+    )
+
+    results = task.run()
+    success = task.interpret_results(results)
+    return results, success
+
+
+# dbt unit-test
+@cli.command("unit-test")
+@click.pass_context
+@p.defer
+@p.deprecated_defer
+@p.exclude
+@p.fail_fast
+@p.favor_state
+@p.deprecated_favor_state
+@p.indirect_selection
+@p.show_output_format
+@p.profile
+@p.profiles_dir
+@p.project_dir
+@p.select
+@p.selector
+@p.state
+@p.defer_state
+@p.deprecated_state
+@p.store_failures
+@p.target
+@p.target_path
+@p.threads
+@p.vars
+@p.version_check
+@requires.postflight
+@requires.preflight
+@requires.profile
+@requires.project
+@requires.runtime_config
+@requires.manifest
+@requires.unit_test_collection
+def unit_test(ctx, **kwargs):
+    """Runs tests on data in deployed models. Run this after `dbt run`"""
+    task = UnitTestTask(
+        ctx.obj["flags"],
+        ctx.obj["runtime_config"],
+        ctx.obj["manifest"],
+        ctx.obj["unit_test_collection"],
     )
 
     results = task.run()

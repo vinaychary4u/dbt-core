@@ -34,6 +34,7 @@ from dbt.contracts.graph.unparsed import (
     UnparsedSourceDefinition,
     UnparsedSourceTableDefinition,
     UnparsedColumn,
+    UnparsedUnitTestOverrides,
 )
 from dbt.contracts.graph.node_args import ModelNodeArgs
 from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
@@ -983,6 +984,13 @@ class GenericTestNode(TestShouldStoreFailures, CompiledNode, HasTestMetadata):
         return "generic"
 
 
+@dataclass
+class UnitTestNode(CompiledNode):
+    resource_type: NodeType = field(metadata={"restrict": [NodeType.Unit]})
+    attached_node: Optional[str] = None
+    overrides: Optional[UnparsedUnitTestOverrides] = None
+
+
 # ====================================
 # Snapshot node
 # ====================================
@@ -1238,6 +1246,10 @@ class SourceDefinition(NodeInfoMixin, ParsedSourceMandatory):
     @property
     def search_name(self):
         return f"{self.source_name}.{self.name}"
+
+    @property
+    def group(self):
+        return None
 
 
 # ====================================
@@ -1602,6 +1614,10 @@ class SemanticModel(GraphNode):
             else None
         )
 
+    @property
+    def group(self):
+        return None
+
 
 # ====================================
 # Patches
@@ -1651,6 +1667,7 @@ ManifestSQLNode = Union[
     SqlNode,
     GenericTestNode,
     SnapshotNode,
+    UnitTestNode,
 ]
 
 # All SQL nodes plus SeedNode (csv files)
@@ -1680,7 +1697,4 @@ Resource = Union[
     Group,
 ]
 
-TestNode = Union[
-    SingularTestNode,
-    GenericTestNode,
-]
+TestNode = Union[SingularTestNode, GenericTestNode]

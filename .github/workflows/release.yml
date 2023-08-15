@@ -197,6 +197,9 @@ jobs:
   pypi-release:
     name: PyPI Release
     needs: [github-release]
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
 
     uses: dbt-labs/dbt-release/.github/workflows/pypi-release.yml@er/trusted-publisher
     with:

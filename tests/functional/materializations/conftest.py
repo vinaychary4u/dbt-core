@@ -242,7 +242,7 @@ macro-paths: ['macros']
 """
 
 override_view_default_dep__macros__default_view_sql = """
-{%- materialization view, default -%}
+{%- materialization view, adapter = 'postgres' -%}
 {{ exceptions.raise_compiler_error('intentionally raising an error in the default view materialization') }}
 {%- endmaterialization -%}
 

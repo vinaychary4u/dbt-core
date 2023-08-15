@@ -196,18 +196,12 @@ jobs:
 
   pypi-release:
     name: PyPI Release
-
     needs: [github-release]
 
-    uses: dbt-labs/dbt-release/.github/workflows/pypi-release.yml@main
-
+    uses: dbt-labs/dbt-release/.github/workflows/pypi-release.yml@er/trusted-publisher
     with:
       version_number: ${{ inputs.version_number }}
       test_run: ${{ inputs.test_run }}
-
-    secrets:
-      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-      TEST_PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
 
   slack-notification:
     name: Slack Notification

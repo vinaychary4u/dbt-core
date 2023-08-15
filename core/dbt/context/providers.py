@@ -181,8 +181,8 @@ class BaseDatabaseWrapper:
 
         for package_name in search_packages:
             if macro_name.startswith("materialization_"):
-                potential_package_name = package_name or "dbt"
-                potential_macros.append((potential_package_name, macro_name))
+                potential_macros.append((package_name, macro_name))
+                potential_macros.append(("dbt", macro_name))
             else:
                 for prefix in self._get_adapter_macro_prefixes():
                     potential_macros.append((package_name, f"{prefix}__{macro_name}"))

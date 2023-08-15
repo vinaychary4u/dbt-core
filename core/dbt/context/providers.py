@@ -180,10 +180,12 @@ class BaseDatabaseWrapper:
         failed_macros: List[Tuple[Optional[str], str]] = []
 
         for package_name in search_packages:
-            if package_name and macro_name.startswith("materialization_"):
-                potential_macros.append((package_name, macro_name))
-            for prefix in self._get_adapter_macro_prefixes():
-                potential_macros.append((package_name, f"{prefix}__{macro_name}"))
+            if macro_name.startswith("materialization_"):
+                potential_package_name = package_name or "dbt"
+                potential_macros.append((potential_package_name, macro_name))
+            else:
+                for prefix in self._get_adapter_macro_prefixes():
+                    potential_macros.append((package_name, f"{prefix}__{macro_name}"))
 
         for package_name, search_name in potential_macros:
             try:

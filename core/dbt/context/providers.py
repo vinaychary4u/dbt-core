@@ -11,6 +11,7 @@ from typing import (
     Type,
     Iterable,
     Mapping,
+    Tuple,
 )
 from typing_extensions import Protocol
 
@@ -174,34 +175,32 @@ class BaseDatabaseWrapper:
             raise MacroDispatchArgError(macro_name)
 
         search_packages = self._get_search_packages(macro_namespace)
-
-        attempts = []
+        macro = None
+        potential_macros: List[Tuple[Optional[str], str]] = []
+        failed_macros: List[Tuple[Optional[str], str]] = []
 
         for package_name in search_packages:
+            if package_name and macro_name.startswith("materialization_"):
+                potential_macros.append((package_name, macro_name))
             for prefix in self._get_adapter_macro_prefixes():
-                search_name = (
-                    macro_name
-                    if macro_name.startswith("materialization_")
-                    else f"{prefix}__{macro_name}"
-                )
-                try:
-                    # this uses the namespace from the context
-                    macro = self._namespace.get_from_package(package_name, search_name)
-                except CompilationError:
-                    # Only raise CompilationError if macro is not found in
-                    # any package
-                    macro = None
+                potential_macros.append((package_name, f"{prefix}__{macro_name}"))
 
-                if package_name is None:
-                    attempts.append(search_name)
-                else:
-                    attempts.append(f"{package_name}.{search_name}")
-
-                if macro is not None:
+        for package_name, search_name in potential_macros:
+            try:
+                macro = self._namespace.get_from_package(package_name, search_name)
+            except CompilationError:
+                # Only raise CompilationError if macro is not found in
+                # any package
+                pass
+            finally:
+                failed_macros.append((package_name, search_name))
+                if macro:
                     return macro
 
-        searched = ", ".join(repr(a) for a in attempts)
-        msg = f"In dispatch: No macro named '{macro_name}' found within namespace: '{macro_namespace}'\n    Searched for: {searched}"
+        msg = (
+            f"In dispatch: No macro named '{macro_name}' found within namespace: '{macro_namespace}'\n"
+            f"Searched for: {failed_macros}"
+        )
         raise CompilationError(msg)
 
 

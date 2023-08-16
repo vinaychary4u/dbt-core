@@ -68,7 +68,7 @@ from dbt.adapters.base.relation import BaseRelation
 # The first parameter is a list of dbt command line arguments, such as
 #   run_dbt(["run", "--vars", "seed_name: base"])
 # If the command is expected to fail, pass in "expect_pass=False"):
-#   run_dbt("test"], expect_pass=False)
+#   run_dbt(["test"], expect_pass=False)
 def run_dbt(
     args: Optional[List[str]] = None,
     expect_pass: bool = True,
@@ -149,7 +149,7 @@ def get_logging_events(log_output, event_name):
 # Used in test cases to get the manifest from the partial parsing file
 # Note: this uses an internal version of the manifest, and in the future
 # parts of it will not be supported for external use.
-def get_manifest(project_root):
+def get_manifest(project_root) -> Optional[Manifest]:
     path = os.path.join(project_root, "target", "partial_parse.msgpack")
     if os.path.exists(path):
         with open(path, "rb") as fp:

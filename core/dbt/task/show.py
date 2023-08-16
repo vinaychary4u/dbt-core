@@ -11,6 +11,9 @@ from dbt.exceptions import DbtRuntimeError
 from dbt.task.compile import CompileTask, CompileRunner
 from dbt.task.seed import SeedRunner
 
+from dbt.context.providers import generate_runtime_model_context
+from dbt.clients.jinja import get_rendered
+
 
 class ShowRunner(CompileRunner):
     def __init__(self, config, adapter, node, node_index, num_nodes):
@@ -23,13 +26,19 @@ class ShowRunner(CompileRunner):
         # Allow passing in -1 (or any negative number) to get all rows
         limit = None if self.config.args.limit < 0 else self.config.args.limit
 
+        compiled_code = compiled_node.compiled_code
+
         if "sql_header" in compiled_node.unrendered_config:
-            compiled_node.compiled_code = (
-                compiled_node.unrendered_config["sql_header"] + compiled_node.compiled_code
-            )
+            # Currently, we only render sql_header at *parse* time for *running* models:
+            # See dbt-core issues #2793, #3264, #7151
+            # So technically this should be "generate_parser_model_context" (I think) instead of "generate_runtime_model_context"
+            # Generating the context will be slower if we don't actually need to render the sql_header (if it contains no Jinja)
+            context = generate_runtime_model_context(compiled_node, self.config, manifest)
+            sql_header = get_rendered(compiled_node.unrendered_config["sql_header"], context)
+            compiled_code = sql_header + compiled_code
 
         adapter_response, execute_result = self.adapter.execute(
-            compiled_node.compiled_code, fetch=True, limit=limit
+            compiled_code, fetch=True, limit=limit
         )
         end_time = time.time()
 

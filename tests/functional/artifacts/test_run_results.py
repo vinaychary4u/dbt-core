@@ -1,8 +1,12 @@
-from multiprocessing import Process
-from pathlib import Path
 import json
-import pytest
+from multiprocessing import Process
+import os
+from pathlib import Path
 import platform
+import pytest
+import signal
+import time
+
 from dbt.tests.util import run_dbt
 
 good_model_sql = """
@@ -15,7 +19,7 @@ something bad
 
 slow_model_sql = """
 {{ config(materialized='table') }}
-select id from {{ ref('good_model') }}, pg_sleep(5)
+select id from {{ ref('good_model') }}, pg_sleep(120)
 """
 
 
@@ -41,7 +45,7 @@ class TestRunResultsTimingFailure:
         assert len(results.results[0].timing) > 0
 
 
-@pytest.mark.skipif(platform.system() != "Darwin", reason="Fails on linux in github actions")
+@pytest.mark.skipif(platform.system() == "Windows", reason="No SIGINT on Windows")
 class TestRunResultsWritesFileOnSignal:
     @pytest.fixture(scope="class")
     def models(self):
@@ -55,15 +59,16 @@ class TestRunResultsWritesFileOnSignal:
         external_process_dbt.start()
         assert external_process_dbt.is_alive()
 
-        # Wait until the first file write, then kill the process.
-        run_results_file = Path(project.project_root) / "target/run_results.json"
-        while run_results_file.is_file() is False:
-            pass
-        external_process_dbt.terminate()
+        # Wait long enough for first model to complete, then SIGINT the process.
+        # It would be better to monitor the dbt log until the first model completes.
+        time.sleep(10)
+        os.kill(external_process_dbt.pid, signal.SIGINT)
 
         # Wait until the process is dead, then check the file that there is only one result.
         while external_process_dbt.is_alive() is True:
             pass
+
+        run_results_file = Path(project.project_root) / "target/run_results.json"
         with run_results_file.open() as run_results_str:
             run_results = json.loads(run_results_str.read())
             assert len(run_results["results"]) == 1

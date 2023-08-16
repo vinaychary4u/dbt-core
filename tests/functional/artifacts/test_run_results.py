@@ -61,7 +61,7 @@ class TestRunResultsWritesFileOnSignal:
 
         # Wait long enough for first model to complete, then SIGINT the process.
         # It would be better to monitor the dbt log until the first model completes.
-        time.sleep(10)
+        time.sleep(30)
         os.kill(external_process_dbt.pid, signal.SIGINT)
 
         # Wait until the process is dead, then check the file that there is only one result.

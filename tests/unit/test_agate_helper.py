@@ -191,7 +191,7 @@ class TestAgateHelper(unittest.TestCase):
         self.assertEqual(len(tbl), len(result_set))
 
         assert isinstance(tbl.column_types[0], agate.data_types.Boolean)
-        assert isinstance(tbl.column_types[1], agate.data_types.Number)
+        assert isinstance(tbl.column_types[1], agate_helper.Integer)
 
         expected = [
             [True, Decimal(1)],

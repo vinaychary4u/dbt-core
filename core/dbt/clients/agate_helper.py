@@ -1,5 +1,4 @@
 from codecs import BOM_UTF8
-from decimal import Decimal
 
 import agate
 import datetime
@@ -10,8 +9,18 @@ from typing import Iterable, List, Dict, Union, Optional, Any
 
 from dbt.exceptions import DbtRuntimeError
 
-
 BOM = BOM_UTF8.decode("utf-8")  # '\ufeff'
+
+
+class Integer(agate.data_types.DataType):
+    def cast(self, d):
+        if type(d) == int:
+            return d
+        else:
+            raise agate.exceptions.CastError('Can not parse value "%s" as Integer.' % d)
+
+    def jsonify(self, d):
+        return d
 
 
 class Number(agate.data_types.Number):
@@ -20,20 +29,8 @@ class Number(agate.data_types.Number):
     def cast(self, d):
         if type(d) == bool:
             raise agate.exceptions.CastError("Do not cast True to 1 or False to 0.")
-        # preserve integers as native Python int
-        elif type(d) == int:
-            return Decimal(d).__int__()
         else:
             return super().cast(d)
-
-    def jsonify(self, d):
-        if d is None:
-            return d
-        # do not cast integers to floats
-        elif type(d) == int:
-            return Decimal(d).__int__()
-
-        return float(d)
 
 
 class ISODateTime(agate.data_types.DateTime):
@@ -61,6 +58,7 @@ def build_type_tester(
 ) -> agate.TypeTester:
 
     types = [
+        Integer(null_values=("null", "")),
         Number(null_values=("null", "")),
         agate.data_types.Date(null_values=("null", ""), date_format="%Y-%m-%d"),
         agate.data_types.DateTime(null_values=("null", ""), datetime_format="%Y-%m-%d %H:%M:%S"),

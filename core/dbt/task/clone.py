@@ -79,9 +79,7 @@ class CloneRunner(BaseRunner):
 
         hook_ctx = self.adapter.pre_model_hook(context_config)
         try:
-            result = context["adapter"].dispatch(
-                materialization_macro.name, stack=context["context_macro_stack"]
-            )()
+            result = context["adapter"].dispatch(materialization_macro.name)()
         finally:
             self.adapter.post_model_hook(context_config, hook_ctx)
 

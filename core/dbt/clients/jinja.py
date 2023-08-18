@@ -3,8 +3,8 @@ import linecache
 import os
 import re
 import tempfile
+import threading
 from ast import literal_eval
-from collections import deque
 from contextlib import contextmanager
 from itertools import chain, islice
 from typing import List, Union, Set, Optional, Dict, Any, Iterator, Type, NoReturn, Tuple, Callable
@@ -16,8 +16,17 @@ import jinja2.nodes
 import jinja2.parser
 import jinja2.sandbox
 
+from dbt.utils import (
+    get_dbt_macro_name,
+    get_docs_macro_name,
+    get_materialization_macro_name,
+    get_test_macro_name,
+    deep_map_render,
+)
+
 from dbt.clients._jinja_blocks import BlockIterator, BlockData, BlockTag
 from dbt.contracts.graph.nodes import GenericTestNode
+
 from dbt.exceptions import (
     CaughtMacroError,
     CaughtMacroErrorWithNodeError,
@@ -33,13 +42,7 @@ from dbt.exceptions import (
 )
 from dbt.flags import get_flags
 from dbt.node_types import ModelLanguage
-from dbt.utils import (
-    get_dbt_macro_name,
-    get_docs_macro_name,
-    get_materialization_macro_name,
-    get_test_macro_name,
-    deep_map_render,
-)
+
 
 SUPPORTED_LANG_ARG = jinja2.nodes.Name("supported_languages", "param")
 
@@ -256,8 +259,22 @@ class BaseMacroGenerator:
                 return e.value
 
 
-class MacroStack(deque):
-    pass
+class MacroStack(threading.local):
+    def __init__(self):
+        super().__init__()
+        self.call_stack = []
+
+    @property
+    def depth(self) -> int:
+        return len(self.call_stack)
+
+    def push(self, name):
+        self.call_stack.append(name)
+
+    def pop(self, name):
+        got = self.call_stack.pop()
+        if got != name:
+            raise DbtInternalError(f"popped {got}, expected {name}")
 
 
 class MacroGenerator(BaseMacroGenerator):

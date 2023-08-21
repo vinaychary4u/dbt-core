@@ -157,6 +157,7 @@ class BaseDatabaseWrapper:
         self,
         macro_name: str,
         macro_namespace: Optional[str] = None,
+        stack: Optional[MacroStack] = None,
         packages: Optional[List[str]] = None,  # eventually remove since it's fully deprecated
     ) -> MacroGenerator:
         search_packages: List[Optional[str]]
@@ -190,6 +191,8 @@ class BaseDatabaseWrapper:
         for package_name, search_name in potential_macros:
             try:
                 macro = self._namespace.get_from_package(package_name, search_name)
+                if macro:
+                    macro.stack = stack
             except CompilationError:
                 # Only raise CompilationError if macro is not found in
                 # any package

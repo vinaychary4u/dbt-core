@@ -13,12 +13,16 @@ from typing import (
     Mapping,
     Tuple,
 )
+
+import agate
 from typing_extensions import Protocol
 
+from dbt import selected_resources
 from dbt.adapters.base.column import Column
 from dbt.adapters.factory import get_adapter, get_adapter_package_names, get_adapter_type_names
 from dbt.clients import agate_helper
 from dbt.clients.jinja import get_rendered, MacroGenerator, MacroStack
+from dbt.config import IsFQNResource
 from dbt.config import RuntimeConfig, Project
 from dbt.constants import SECRET_ENV_PREFIX, DEFAULT_ENV_PLACEHOLDER
 from dbt.context.base import contextmember, contextproperty, Var
@@ -30,6 +34,7 @@ from dbt.context.macros import MacroNamespaceBuilder, MacroNamespace
 from dbt.context.manifest import ManifestContext
 from dbt.contracts.connection import AdapterResponse
 from dbt.contracts.graph.manifest import Manifest, Disabled
+from dbt.contracts.graph.metrics import MetricReference, ResolvedMetricReference
 from dbt.contracts.graph.nodes import (
     Macro,
     Exposure,
@@ -41,7 +46,6 @@ from dbt.contracts.graph.nodes import (
     AccessType,
     SemanticModel,
 )
-from dbt.contracts.graph.metrics import MetricReference, ResolvedMetricReference
 from dbt.contracts.graph.unparsed import NodeVersion
 from dbt.events.functions import get_metadata_vars
 from dbt.exceptions import (
@@ -70,15 +74,8 @@ from dbt.exceptions import (
     DbtValidationError,
     DbtReferenceError,
 )
-from dbt.config import IsFQNResource
 from dbt.node_types import NodeType, ModelLanguage
-
 from dbt.utils import merge, AttrDict, MultiDict, args_to_dict, cast_to_str
-
-from dbt import selected_resources
-
-import agate
-
 
 _MISSING = object()
 
@@ -187,6 +184,9 @@ class BaseDatabaseWrapper:
             else:
                 for prefix in self._get_adapter_macro_prefixes():
                     potential_macros.append((package_name, f"{prefix}__{macro_name}"))
+                    potential_macros.append(
+                        (package_name, f"materialization_{macro_name}_{prefix}")
+                    )
 
         for package_name, search_name in potential_macros:
             try:

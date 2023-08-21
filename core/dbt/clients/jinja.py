@@ -271,10 +271,11 @@ class MacroStack(threading.local):
     def push(self, name):
         self.call_stack.append(name)
 
-    def pop(self, name):
+    def pop(self, name: Optional[str] = None):
         got = self.call_stack.pop()
-        if got != name:
+        if name and got != name:
             raise DbtInternalError(f"popped {got}, expected {name}")
+        return got
 
 
 class MacroGenerator(BaseMacroGenerator):

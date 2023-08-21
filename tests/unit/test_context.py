@@ -464,6 +464,23 @@ def test_macro_namespace_duplicates(config_postgres, manifest_fx):
     mn.add_macros(mock_macro("macro_a", "dbt"), {})
 
 
+def test_macro_stack(config_postgres, manifest_fx):
+    stack = MacroStack()
+    stack.push("foo")
+    stack.push("bar")
+    mn = macros.MacroNamespaceBuilder("root", "search", stack, ["dbt_postgres", "dbt"])
+    mn.add_macros(manifest_fx.macros.values(), {})
+
+    stack = mn.thread_ctx
+    assert stack.depth == 2
+    assert stack.pop() == "bar"
+
+    with pytest.raises(dbt.exceptions.DbtInternalError):
+        stack.pop("bar")
+
+    assert stack.depth == 0
+
+
 def test_macro_namespace(config_postgres, manifest_fx):
     mn = macros.MacroNamespaceBuilder("root", "search", MacroStack(), ["dbt_postgres", "dbt"])
 

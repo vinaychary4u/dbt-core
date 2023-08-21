@@ -195,9 +195,10 @@ class BaseDatabaseWrapper:
                 # any package
                 pass
             finally:
-                failed_macros.append((package_name, search_name))
                 if macro:
                     return macro
+                else:
+                    failed_macros.append((package_name, search_name))
 
         msg = (
             f"In dispatch: No macro named '{macro_name}' found within namespace: '{macro_namespace}'\n"

@@ -24,6 +24,12 @@ from dbt.logger import (
     ModelMetadata,
     NodeCount,
 )
+from dbt.execute import current_node
+from dbt.contracts.results import (
+    NodeStatus,
+    RunExecutionResult,
+    RunningStatus,
+)
 from dbt.events.functions import fire_event, warn_or_error
 from dbt.events.types import (
     Formatting,
@@ -38,7 +44,6 @@ from dbt.events.types import (
 )
 from dbt.events.contextvars import log_contextvars, task_contextvars
 from dbt.contracts.graph.nodes import SourceDefinition, ResultNode
-from dbt.contracts.results import NodeStatus, RunExecutionResult, RunningStatus
 from dbt.contracts.state import PreviousState
 from dbt.exceptions import (
     DbtInternalError,
@@ -176,6 +181,7 @@ class GraphRunnableTask(ConfiguredTask):
         return cls(self.config, adapter, node, run_count, num_nodes)
 
     def call_runner(self, runner):
+        current_node.set(runner.node.unique_id)
         uid_context = UniqueID(runner.node.unique_id)
         with RUNNING_STATE, uid_context, log_contextvars(node_info=runner.node.node_info):
             startctx = TimestampNamed("node_started_at")

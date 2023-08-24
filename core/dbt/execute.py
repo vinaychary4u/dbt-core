@@ -13,8 +13,9 @@ executed = defaultdict(list)
 current_node = ContextVar("current_node", default="")  # type: ignore
 
 prev_execution_record = {}  # type: ignore
-unmatched = defaultdict(list)
+unmatched = defaultdict(list)  # type: ignore
 diffs = defaultdict(list)
+DEFAULT_RESPONSE = {"_message": "", "code": "SUCCESS", "rows_affected": 0, "query_id": ""}
 
 
 def add_execution(sql: str, response: AdapterResponse, table: Table) -> None:
@@ -45,19 +46,19 @@ def get_result(unique_id: str, sql: str) -> Tuple[dict, str]:
                 "prev": "",
             }
         )
-        return {}, "{}"
+        return DEFAULT_RESPONSE, "{}"
     prev = prev_execution_record[unique_id].pop(0)
     if matches(sql, prev["sql"]):
         return prev["response"], prev["table"]
     else:
-        for i, existing_results in enumerate(prev_execution_record[unique_id]):
+        for i, existing_results in enumerate(unmatched[unique_id]):
             if matches(sql, existing_results["sql"]):
                 prev_execution_record[unique_id].pop(i)
                 return existing_results["response"], existing_results["table"]
 
         unmatched[unique_id].append(prev)
         diffs[unique_id].append({"current": sql, "prev": prev["sql"]})
-        return {}, "{}"
+        return DEFAULT_RESPONSE, "{}"
 
 
 def get_execution_result(sql) -> Tuple[AdapterResponse, Table]:

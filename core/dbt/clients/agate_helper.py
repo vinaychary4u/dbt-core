@@ -9,7 +9,6 @@ from typing import Iterable, List, Dict, Union, Optional, Any
 
 from dbt.exceptions import DbtRuntimeError
 
-
 BOM = BOM_UTF8.decode("utf-8")  # '\ufeff'
 
 

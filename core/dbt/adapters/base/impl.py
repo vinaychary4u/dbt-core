@@ -23,6 +23,8 @@ from typing import (
 from dbt.contracts.graph.nodes import ColumnLevelConstraint, ConstraintType, ModelLevelConstraint
 
 import agate
+from dbt.execute import add_execution, get_execution_result
+from dbt.flags import get_flags
 import pytz
 
 from dbt.exceptions import (
@@ -287,7 +289,15 @@ class BaseAdapter(metaclass=AdapterMeta):
         :return: A tuple of the query status and results (empty if fetch=False).
         :rtype: Tuple[AdapterResponse, agate.Table]
         """
-        return self.connections.execute(sql=sql, auto_begin=auto_begin, fetch=fetch, limit=limit)
+        if get_flags().COMPARE_RECORD:
+            response, table = get_execution_result(sql)
+        else:
+            response, table = self.connections.execute(
+                sql=sql, auto_begin=auto_begin, fetch=fetch, limit=limit
+            )
+            if get_flags().RECORD_EXECUTION:
+                add_execution(sql, response, table)
+        return response, table
 
     def validate_sql(self, sql: str) -> AdapterResponse:
         """Submit the given SQL to the engine for validation, but not execution.

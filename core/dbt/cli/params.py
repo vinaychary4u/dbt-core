@@ -336,6 +336,30 @@ quiet = click.option(
     help="Suppress all non-error logging to stdout. Does not affect {{ print() }} macro calls.",
 )
 
+record_execution = click.option(
+    "--record-execution",
+    is_flag=True,
+    envvar="DBT_RECORD_EXECUTION",
+    help="Record all sql issued during a dbt invocation to a file in the target directory.",
+    default=False,
+)
+
+compare_record = click.option(
+    "--compare-record",
+    is_flag=True,
+    envvar="DBT_COMPARE_RECORD",
+    help="Compare the current execution record to the last execution record.",
+    default=False,
+)
+
+execution_record_path = click.option(
+    "--execution-record-path",
+    envvar="DBT_EXECUTION_RECORD_PATH",
+    help="Specify the path to the execution record file.",
+    default=None,
+    type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+)
+
 record_timing_info = click.option(
     "--record-timing-info",
     "-r",

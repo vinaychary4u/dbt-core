@@ -14,6 +14,7 @@ from dbt.adapters.base import BaseRelation
 from dbt.adapters.factory import get_adapter
 from dbt.contracts.graph.manifest import WritableManifest
 from dbt.contracts.graph.nodes import ResultNode
+from dbt.execute import current_node
 from dbt.contracts.results import (
     NodeStatus,
     RunExecutionResult,
@@ -185,6 +186,7 @@ class GraphRunnableTask(ConfiguredTask):
         return cls(self.config, adapter, node, run_count, num_nodes)
 
     def call_runner(self, runner):
+        current_node.set(runner.node.unique_id)
         uid_context = UniqueID(runner.node.unique_id)
         with RUNNING_STATE, uid_context, log_contextvars(node_info=runner.node.node_info):
             startctx = TimestampNamed("node_started_at")

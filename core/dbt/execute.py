@@ -58,7 +58,10 @@ def get_result(unique_id: str, sql: str) -> Tuple[dict, str]:
 
         unmatched[unique_id].append(prev)
         diffs[unique_id].append({"current": sql, "prev": prev["sql"]})
-        return DEFAULT_RESPONSE, "{}"
+        # TODO better determine what to return here, some results will greatly affect
+        # the execution of models
+        # return DEFAULT_RESPONSE, "{}"
+        return prev["response"], prev["table"]
 
 
 def get_execution_result(sql) -> Tuple[AdapterResponse, Table]:

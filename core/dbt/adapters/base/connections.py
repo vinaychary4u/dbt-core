@@ -390,7 +390,7 @@ class BaseConnectionManager(metaclass=abc.ABCMeta):
     def commit_if_has_connection(self) -> None:
         """If the named connection exists, commit the current transaction."""
         connection = self.get_if_exists()
-        if connection:
+        if connection and connection.transaction_open:
             self.commit()
 
     def _add_query_comment(self, sql: str) -> str:

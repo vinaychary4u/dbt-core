@@ -56,9 +56,6 @@ class PostgresCredentials(Credentials):
             "search_path",
             "keepalives_idle",
             "sslmode",
-            "sslcert",
-            "sslkey",
-            "sslrootcert",
             "application_name",
             "retries",
         )

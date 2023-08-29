@@ -23,6 +23,7 @@ from dbt.exceptions import (
     MissingMaterializationError,
 )
 from dbt.node_types import NodeType
+from dbt.parser.unit_tests import UnitTestManifestLoader
 
 
 @dataclass
@@ -152,6 +153,7 @@ class UnitTestRunner(CompileRunner):
 
 
 class UnitTestSelector(ResourceTypeSelector):
+    # This is what filters out nodes except Unit Tests, in filter_selection
     def __init__(self, graph, manifest, previous_state):
         super().__init__(
             graph=graph,
@@ -168,20 +170,52 @@ class UnitTestTask(RunTask):
         constraints are satisfied.
     """
 
-    def __init__(self, args, config, manifest, collection):
-        # This will initialize the RunTask with the unit test manifest ("collection") as the manifest
-        super().__init__(args, config, collection)
-        self.collection = collection
+    def __init__(self, args, config, manifest):
+        # This will initialize the RunTask with the regular manifest
+        super().__init__(args, config, manifest)
+        # TODO: We might not need this, but leaving here for now.
         self.original_manifest = manifest
+        self.using_unit_test_manifest = False
 
     __test__ = False
 
     def raise_on_first_error(self):
         return False
 
-    def get_node_selector(self) -> UnitTestSelector:
+    @property
+    def selection_arg(self):
+        if self.using_unit_test_manifest is False:
+            return self.args.select
+        else:
+            # Everything in the unit test should be selected, since we
+            # created in from a selection list.
+            return ()
+
+    @property
+    def exclusion_arg(self):
+        if self.using_unit_test_manifest is False:
+            return self.args.exclude
+        else:
+            # Everything in the unit test should be selected, since we
+            # created in from a selection list.
+            return ()
+
+    def build_unit_test_manifest(self):
+        loader = UnitTestManifestLoader(self.manifest, self.config, self.job_queue._selected)
+        return loader.load()
+
+    def reset_job_queue_and_manifest(self):
+        # We have the selected models from the "regular" manifest, now we switch
+        # to using the unit_test_manifest to run the unit tests.
+        self.using_unit_test_manifest = True
+        self.manifest = self.build_unit_test_manifest()
+        self.compile_manifest()  # create the networkx graph
+        self.job_queue = self.get_graph_queue()
+
+    def get_node_selector(self) -> ResourceTypeSelector:
         if self.manifest is None or self.graph is None:
             raise DbtInternalError("manifest and graph must be set to get perform node selection")
+        # Filter out everything except unit tests
         return UnitTestSelector(
             graph=self.graph,
             manifest=self.manifest,

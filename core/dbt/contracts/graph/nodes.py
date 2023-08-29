@@ -34,7 +34,8 @@ from dbt.contracts.graph.unparsed import (
     UnparsedSourceDefinition,
     UnparsedSourceTableDefinition,
     UnparsedColumn,
-    UnparsedUnitTestOverrides,
+    UnitTestOverrides,
+    InputFixture,
 )
 from dbt.contracts.graph.node_args import ModelNodeArgs
 from dbt.contracts.util import Replaceable, AdditionalPropertiesMixin
@@ -1055,7 +1056,22 @@ class GenericTestNode(TestShouldStoreFailures, CompiledNode, HasTestMetadata):
 class UnitTestNode(CompiledNode):
     resource_type: NodeType = field(metadata={"restrict": [NodeType.Unit]})
     attached_node: Optional[str] = None
-    overrides: Optional[UnparsedUnitTestOverrides] = None
+    overrides: Optional[UnitTestOverrides] = None
+
+
+@dataclass
+class UnitTestDefinition(GraphNode):
+    model: str
+    attached_node: str
+    given: Sequence[InputFixture]
+    expect: List[Dict[str, Any]]
+    description: str = ""
+    overrides: Optional[UnitTestOverrides] = None
+    depends_on: DependsOn = field(default_factory=DependsOn)
+
+    @property
+    def depends_on_nodes(self):
+        return self.depends_on.nodes
 
 
 # ====================================
@@ -1754,6 +1770,7 @@ GraphMemberNode = Union[
     Exposure,
     Metric,
     SemanticModel,
+    UnitTestDefinition,
 ]
 
 # All "nodes" (or node-like objects) in this file

@@ -671,6 +671,7 @@ class PartialParsing:
         handle_change("metrics", self.delete_schema_metric)
         handle_change("groups", self.delete_schema_group)
         handle_change("semantic_models", self.delete_schema_semantic_model)
+        handle_change("unit", self.delete_schema_unit_test)
 
     def _handle_element_change(
         self, schema_file, saved_yaml_dict, new_yaml_dict, env_var_changes, dict_key: str, delete
@@ -699,6 +700,7 @@ class PartialParsing:
     # Take a "section" of the schema file yaml dictionary from saved and new schema files
     # and determine which parts have changed
     def get_diff_for(self, key, saved_yaml_dict, new_yaml_dict):
+        dict_name = "model" if key == "unit" else "name"
         if key in saved_yaml_dict or key in new_yaml_dict:
             saved_elements = saved_yaml_dict[key] if key in saved_yaml_dict else []
             new_elements = new_yaml_dict[key] if key in new_yaml_dict else []
@@ -709,9 +711,9 @@ class PartialParsing:
         new_elements_by_name = {}
         # sources have two part names?
         for element in saved_elements:
-            saved_elements_by_name[element["name"]] = element
+            saved_elements_by_name[element[dict_name]] = element
         for element in new_elements:
-            new_elements_by_name[element["name"]] = element
+            new_elements_by_name[element[dict_name]] = element
 
         # now determine which elements, by name, are added, deleted or changed
         saved_element_names = set(saved_elements_by_name.keys())
@@ -739,6 +741,7 @@ class PartialParsing:
 
     # Merge a patch file into the pp_dict in a schema file
     def merge_patch(self, schema_file, key, patch):
+        elem_name = "model" if key == "unit" else "name"
         if schema_file.pp_dict is None:
             schema_file.pp_dict = {}
         pp_dict = schema_file.pp_dict
@@ -748,11 +751,11 @@ class PartialParsing:
             # check that this patch hasn't already been saved
             found = False
             for elem in pp_dict[key]:
-                if elem["name"] == patch["name"]:
+                if elem[elem_name] == patch[elem_name]:
                     found = True
             if not found:
                 pp_dict[key].append(patch)
-        schema_file.delete_from_env_vars(key, patch["name"])
+        schema_file.delete_from_env_vars(key, patch[elem_name])
         self.add_to_pp_files(schema_file)
 
     # For model, seed, snapshot, analysis schema dictionary keys,
@@ -902,6 +905,17 @@ class PartialParsing:
                 schema_file.generated_metrics.remove(unique_id)
             elif unique_id in self.saved_manifest.disabled:
                 self.delete_disabled(unique_id, schema_file.file_id)
+
+    def delete_schema_unit_test(self, schema_file, unit_test_dict):
+        unit_test_model_name = unit_test_dict["model"]
+        unit_tests = schema_file.unit_tests.copy()
+        for unique_id in unit_tests:
+            if unique_id in self.saved_manifest.unit_tests:
+                unit_test = self.saved_manifest.unit_tests[unique_id]
+                if unit_test.model == unit_test_model_name:
+                    self.saved_manifest.unit_tests.pop(unique_id)
+                    schema_file.unit_tests.remove(unique_id)
+            # No disabled unit tests yet
 
     def get_schema_element(self, elem_list, elem_name):
         for element in elem_list:

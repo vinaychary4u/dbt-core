@@ -1,11 +1,14 @@
-from dbt.contracts.graph.unparsed import UnparsedUnitTestSuite
 from dbt.contracts.graph.model_config import NodeConfig
 from dbt_extractor import py_extract_from_source  # type: ignore
+from dbt.contracts.graph.unparsed import UnparsedUnitTestSuite
 from dbt.contracts.graph.nodes import (
     ModelNode,
     UnitTestNode,
     RefArgs,
+    UnitTestDefinition,
+    DependsOn,
 )
+from dbt.config import RuntimeConfig
 from dbt.contracts.graph.manifest import Manifest
 from dbt.parser.schemas import (
     SchemaParser,
@@ -15,17 +18,18 @@ from dbt.parser.schemas import (
     YamlParseDictError,
     YamlReader,
 )
+from dbt.node_types import NodeType
 
 from dbt.exceptions import (
     ParsingError,
 )
-from dbt.parser.search import FileBlock
 
-from dbt.contracts.files import FileHash, SchemaSourceFile
-from dbt.node_types import NodeType
+from dbt.contracts.files import FileHash
+from dbt.graph import UniqueId
 
 from dbt.context.providers import generate_parse_exposure, get_rendered
-from typing import List
+from typing import List, Set
+from dbt.utils import get_pseudo_test_path
 
 
 def _is_model_node(node_id, manifest):
@@ -33,157 +37,111 @@ def _is_model_node(node_id, manifest):
 
 
 class UnitTestManifestLoader:
-    @classmethod
-    def load(cls, manifest, root_project) -> Manifest:
-        unit_test_manifest = Manifest(macros=manifest.macros)
-        for file in manifest.files.values():
-            block = FileBlock(file)
-            if isinstance(file, SchemaSourceFile):
-                dct = file.dict_from_yaml
-                if "unit" in dct:
-                    yaml_block = YamlBlock.from_file_block(block, dct)
-                    # TODO: first root_project should be project, or we should only parse unit tests from root_project
-                    schema_parser = SchemaParser(root_project, manifest, root_project)
-                    parser = UnitTestParser(schema_parser, yaml_block, unit_test_manifest)
-                    parser.parse()
+    def __init__(self, manifest, root_project, selected) -> None:
+        self.manifest: Manifest = manifest
+        self.root_project: RuntimeConfig = root_project
+        # selected comes from the initial selection against a "regular" manifest
+        self.selected: Set[UniqueId] = selected
+        self.unit_test_manifest = Manifest(macros=manifest.macros)
 
-        model_to_unit_tests = {}
-        for node in unit_test_manifest.nodes.values():
-            if isinstance(node, UnitTestNode):
-                model_name = node.name.split("__")[0]
-                if model_name not in model_to_unit_tests:
-                    model_to_unit_tests[model_name] = [node.unique_id]
-                else:
-                    model_to_unit_tests[model_name].append(node.unique_id)
+    def load(self) -> Manifest:
+        for unique_id in self.selected:
+            unit_test_case = self.manifest.unit_tests[unique_id]
+            self.parse_unit_test_case(unit_test_case)
 
-        for node in unit_test_manifest.nodes.values():
-            if isinstance(node, UnitTestNode):
-                # a unit test should depend on its fixture nodes, and any unit tests on its ref'd nodes
-                for ref in node.refs:
-                    for unique_id in model_to_unit_tests.get(ref.name, []):
-                        node.depends_on.nodes.append(unique_id)
-        return unit_test_manifest
+        return self.unit_test_manifest
 
+    def parse_unit_test_case(self, test_case: UnitTestDefinition):
+        package_name = self.root_project.project_name
 
-class UnitTestParser(YamlReader):
-    def __init__(self, schema_parser: SchemaParser, yaml: YamlBlock, unit_test_manifest: Manifest):
-        super().__init__(schema_parser, yaml, "unit")
-        self.yaml = yaml
-        self.unit_test_manifest = unit_test_manifest
+        # Create unit test node based on the "actual" tested node
+        actual_node = self.manifest.ref_lookup.perform_lookup(
+            f"model.{package_name}.{test_case.model}", self.manifest
+        )
 
-    def parse_unit_test(self, unparsed: UnparsedUnitTestSuite):
-        package_name = self.project.project_name
-        path = self.yaml.path.relative_path
-        # TODO: fix
-        checksum = "f8f57c9e32eafaacfb002a4d03a47ffb412178f58f49ba58fd6f436f09f8a1d6"
-        unit_test_node_ids = []
-        for unit_test in unparsed.tests:
-            input_nodes = []
-            original_input_nodes = []
-            for given in unit_test.given:
-                original_input_node = self._get_original_input_node(given.input)
-                original_input_nodes.append(original_input_node)
+        # Create UnitTestNode based on model being tested. Since selection has
+        # already been done, we don't have to care about fields that are necessary
+        # for selection.
+        # Note: no depends_on, that's added later using input nodes
+        name = f"{test_case.model}__{test_case.name}"
+        unit_test_node = UnitTestNode(
+            name=name,
+            resource_type=NodeType.Unit,
+            package_name=package_name,
+            path=get_pseudo_test_path(name, test_case.original_file_path),
+            original_file_path=test_case.original_file_path,
+            unique_id=test_case.unique_id,
+            config=NodeConfig(materialized="unit", _extra={"expected_rows": test_case.expect}),
+            raw_code=actual_node.raw_code,
+            database=actual_node.database,
+            schema=actual_node.schema,
+            alias=name,
+            fqn=test_case.unique_id.split("."),
+            checksum=FileHash.empty(),
+            attached_node=actual_node.unique_id,
+            overrides=test_case.overrides,
+        )
 
-                original_input_node_columns = None
-                if (
-                    original_input_node.resource_type == NodeType.Model
-                    and original_input_node.config.contract.enforced
-                ):
-                    original_input_node_columns = {
-                        column.name: column.data_type for column in original_input_node.columns
-                    }
+        # TODO: generalize this method
+        ctx = generate_parse_exposure(
+            unit_test_node,  # type: ignore
+            self.root_project,
+            self.manifest,
+            package_name,
+        )
+        get_rendered(unit_test_node.raw_code, ctx, unit_test_node, capture_macros=True)
+        # unit_test_node now has a populated refs/sources
 
-                # TODO: package_name?
-                input_name = f"{unparsed.model}__{unit_test.name}__{original_input_node.name}"
-                input_unique_id = f"model.{package_name}.{input_name}"
+        self.unit_test_manifest.nodes[unit_test_node.unique_id] = unit_test_node
 
-                input_node = ModelNode(
-                    raw_code=self._build_raw_code(given.rows, original_input_node_columns),
-                    resource_type=NodeType.Model,
-                    package_name=package_name,
-                    path=path,
-                    # original_file_path=self.yaml.path.original_file_path,
-                    original_file_path=f"models_unit_test/{input_name}.sql",
-                    unique_id=input_unique_id,
-                    name=input_name,
-                    config=NodeConfig(materialized="ephemeral"),
-                    database=original_input_node.database,
-                    schema=original_input_node.schema,
-                    alias=original_input_node.alias,
-                    fqn=input_unique_id.split("."),
-                    checksum=FileHash(name="sha256", checksum=checksum),
-                )
-                input_nodes.append(input_node)
+        # Now create input_nodes for the test inputs
+        """
+        given:
+          - input: ref('my_model_a')
+            rows: []
+          - input: ref('my_model_b')
+            rows:
+              - {id: 1, b: 2}
+              - {id: 2, b: 2}
+        """
+        # Add the model "input" nodes, consisting of all referenced models in the unit test.
+        # This creates a model for every input in every test, so there may be multiple
+        # input models substituting for the same input ref'd model.
+        for given in test_case.given:
+            # extract the original_input_node from the ref in the "input" key of the given list
+            original_input_node = self._get_original_input_node(given.input)
 
-            actual_node = self.manifest.ref_lookup.perform_lookup(
-                f"model.{package_name}.{unparsed.model}", self.manifest
-            )
-            unit_test_unique_id = f"unit.{package_name}.{unit_test.name}.{unparsed.model}"
-            unit_test_node = UnitTestNode(
-                resource_type=NodeType.Unit,
+            original_input_node_columns = None
+            if (
+                original_input_node.resource_type == NodeType.Model
+                and original_input_node.config.contract.enforced
+            ):
+                original_input_node_columns = {
+                    column.name: column.data_type for column in original_input_node.columns
+                }
+
+            # TODO: package_name?
+            input_name = f"{test_case.model}__{test_case.name}__{original_input_node.name}"
+            input_unique_id = f"model.{package_name}.{input_name}"
+
+            input_node = ModelNode(
+                raw_code=self._build_raw_code(given.rows, original_input_node_columns),
+                resource_type=NodeType.Model,
                 package_name=package_name,
-                path=f"{unparsed.model}.sql",
-                # original_file_path=self.yaml.path.original_file_path,
-                original_file_path=f"models_unit_test/{unparsed.model}.sql",
-                unique_id=unit_test_unique_id,
-                name=f"{unparsed.model}__{unit_test.name}",
-                # TODO: merge with node config
-                config=NodeConfig(materialized="unit", _extra={"expected_rows": unit_test.expect}),
-                raw_code=actual_node.raw_code,
-                database=actual_node.database,
-                schema=actual_node.schema,
-                alias=f"{unparsed.model}__{unit_test.name}",
-                fqn=unit_test_unique_id.split("."),
-                checksum=FileHash(name="sha256", checksum=checksum),
-                attached_node=actual_node.unique_id,
-                overrides=unit_test.overrides,
+                path=original_input_node.path,
+                original_file_path=original_input_node.original_file_path,
+                unique_id=input_unique_id,
+                name=input_name,
+                config=NodeConfig(materialized="ephemeral"),
+                database=original_input_node.database,
+                schema=original_input_node.schema,
+                alias=original_input_node.alias,
+                fqn=input_unique_id.split("."),
+                checksum=FileHash.empty(),
             )
-
-            # TODO: generalize this method
-            ctx = generate_parse_exposure(
-                unit_test_node,  # type: ignore
-                self.root_project,
-                self.schema_parser.manifest,
-                package_name,
-            )
-            get_rendered(unit_test_node.raw_code, ctx, unit_test_node, capture_macros=True)
-            # unit_test_node now has a populated refs/sources
-
-            # during compilation, refs will resolve to fixtures,
-            # so add original input node ids to depends on explicitly to preserve lineage
-            for original_input_node in original_input_nodes:
-                # TODO: consider nulling out the original_input_node.raw_code
-                self.unit_test_manifest.nodes[original_input_node.unique_id] = original_input_node
-                unit_test_node.depends_on.nodes.append(original_input_node.unique_id)
-
-            self.unit_test_manifest.nodes[unit_test_node.unique_id] = unit_test_node
-            # self.unit_test_manifest.nodes[actual_node.unique_id] = actual_node
-            for input_node in input_nodes:
-                self.unit_test_manifest.nodes[input_node.unique_id] = input_node
-                # should be a process_refs / process_sources call isntead?
-                unit_test_node.depends_on.nodes.append(input_node.unique_id)
-            unit_test_node_ids.append(unit_test_node.unique_id)
-
-        # find out all nodes that are referenced but not in unittest manifest
-        all_depends_on = set()
-        for node_id in self.unit_test_manifest.nodes:
-            if _is_model_node(node_id, self.unit_test_manifest):
-                all_depends_on.update(self.unit_test_manifest.nodes[node_id].depends_on.nodes)  # type: ignore
-        not_in_manifest = all_depends_on - set(self.unit_test_manifest.nodes.keys())
-
-        # copy those node also over into unit_test_manifest
-        for node_id in not_in_manifest:
-            self.unit_test_manifest.nodes[node_id] = self.manifest.nodes[node_id]
-
-    def parse(self):
-        for data in self.get_key_dicts():
-            try:
-                UnparsedUnitTestSuite.validate(data)
-                unparsed = UnparsedUnitTestSuite.from_dict(data)
-            except (ValidationError, JSONValidationError) as exc:
-                raise YamlParseDictError(self.yaml.path, self.key, data, exc)
-
-            self.parse_unit_test(unparsed)
+            self.unit_test_manifest.nodes[input_node.unique_id] = input_node
+            # Add unique ids of input_nodes to depends_on
+            unit_test_node.depends_on.nodes.append(input_node.unique_id)
 
     def _build_raw_code(self, rows, column_name_to_data_types) -> str:
         return ("{{{{ get_fixture_sql({rows}, {column_name_to_data_types}) }}}}").format(
@@ -191,6 +149,8 @@ class UnitTestParser(YamlReader):
         )
 
     def _get_original_input_node(self, input: str):
+        """input: ref('my_model_a')"""
+        # Exract the ref or sources
         statically_parsed = py_extract_from_source(f"{{{{ {input} }}}}")
         if statically_parsed["refs"]:
             # set refs and sources on the node object
@@ -213,3 +173,46 @@ class UnitTestParser(YamlReader):
             raise ParsingError("given input must be ref or source")
 
         return original_input_node
+
+
+class UnitTestParser(YamlReader):
+    def __init__(self, schema_parser: SchemaParser, yaml: YamlBlock):
+        super().__init__(schema_parser, yaml, "unit")
+        self.schema_parser = schema_parser
+        self.yaml = yaml
+
+    def parse(self):
+        for data in self.get_key_dicts():
+            try:
+                UnparsedUnitTestSuite.validate(data)
+                unparsed = UnparsedUnitTestSuite.from_dict(data)
+            except (ValidationError, JSONValidationError) as exc:
+                raise YamlParseDictError(self.yaml.path, self.key, data, exc)
+            package_name = self.project.project_name
+
+            actual_node = self.manifest.ref_lookup.perform_lookup(
+                f"model.{package_name}.{unparsed.model}", self.manifest
+            )
+            if not actual_node:
+                raise ParsingError(
+                    "Unable to find model {unparsed.model} for unit tests in {self.yaml.path.original_file_path}"
+                )
+            for test in unparsed.tests:
+                unit_test_case_unique_id = f"unit.{package_name}.{test.name}.{unparsed.model}"
+                unit_test_case = UnitTestDefinition(
+                    name=test.name,
+                    model=unparsed.model,
+                    resource_type=NodeType.Unit,
+                    package_name=package_name,
+                    path=self.yaml.path.relative_path,
+                    original_file_path=self.yaml.path.original_file_path,
+                    unique_id=unit_test_case_unique_id,
+                    attached_node=actual_node.unique_id,
+                    given=test.given,
+                    expect=test.expect,
+                    description=test.description,
+                    overrides=test.overrides,
+                    depends_on=DependsOn(nodes=[actual_node.unique_id]),
+                    fqn=[package_name, test.name],
+                )
+                self.manifest.add_unit_test(self.yaml.file, unit_test_case)

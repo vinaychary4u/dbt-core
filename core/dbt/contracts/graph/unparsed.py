@@ -671,34 +671,6 @@ class UnparsedGroup(dbtClassMixin, Replaceable):
             raise ValidationError("Group owner must have at least one of 'name' or 'email'.")
 
 
-@dataclass
-class UnparsedInputFixture(dbtClassMixin):
-    input: str
-    rows: List[Dict[str, Any]] = field(default_factory=list)
-
-
-@dataclass
-class UnparsedUnitTestOverrides(dbtClassMixin):
-    macros: Dict[str, Any] = field(default_factory=dict)
-    vars: Dict[str, Any] = field(default_factory=dict)
-    env_vars: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class UnparsedUnitTestCase(dbtClassMixin):
-    name: str
-    given: Sequence[UnparsedInputFixture]
-    expect: List[Dict[str, Any]]
-    description: str = ""
-    overrides: Optional[UnparsedUnitTestOverrides] = None
-
-
-@dataclass
-class UnparsedUnitTestSuite(dbtClassMixin):
-    model: str  # name of the model being unit tested
-    tests: Sequence[UnparsedUnitTestCase]
-
-
 #
 # semantic interfaces unparsed objects
 #
@@ -773,3 +745,31 @@ def normalize_date(d: Optional[datetime.date]) -> Optional[datetime.datetime]:
         dt = dt.astimezone()
 
     return dt
+
+
+@dataclass
+class InputFixture(dbtClassMixin):
+    input: str
+    rows: List[Dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
+class UnitTestOverrides(dbtClassMixin):
+    macros: Dict[str, Any] = field(default_factory=dict)
+    vars: Dict[str, Any] = field(default_factory=dict)
+    env_vars: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class UnparsedUnitTestDefinition(dbtClassMixin):
+    name: str
+    given: Sequence[InputFixture]
+    expect: List[Dict[str, Any]]
+    description: str = ""
+    overrides: Optional[UnitTestOverrides] = None
+
+
+@dataclass
+class UnparsedUnitTestSuite(dbtClassMixin):
+    model: str  # name of the model being unit tested
+    tests: Sequence[UnparsedUnitTestDefinition]

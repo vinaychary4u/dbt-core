@@ -18,6 +18,7 @@ from dbt.contracts.graph.nodes import (
     ResultNode,
     ManifestNode,
     ModelNode,
+    UnitTestDefinition,
 )
 from dbt.contracts.graph.unparsed import UnparsedVersion
 from dbt.contracts.state import PreviousState
@@ -144,6 +145,21 @@ class SelectorMethod(metaclass=abc.ABCMeta):
                 continue
             yield unique_id, metric
 
+    def unit_tests(
+        self, included_nodes: Set[UniqueId]
+    ) -> Iterator[Tuple[UniqueId, UnitTestDefinition]]:
+        for unique_id, unit_test in self.manifest.unit_tests.items():
+            unique_id = UniqueId(unique_id)
+            if unique_id not in included_nodes:
+                continue
+            yield unique_id, unit_test
+
+    def parsed_and_unit_nodes(self, included_nodes: Set[UniqueId]):
+        yield from chain(
+            self.parsed_nodes(included_nodes),
+            self.unit_tests(included_nodes),
+        )
+
     def all_nodes(
         self, included_nodes: Set[UniqueId]
     ) -> Iterator[Tuple[UniqueId, SelectorTarget]]:
@@ -152,22 +168,13 @@ class SelectorMethod(metaclass=abc.ABCMeta):
             self.source_nodes(included_nodes),
             self.exposure_nodes(included_nodes),
             self.metric_nodes(included_nodes),
+            self.unit_tests(included_nodes),
         )
 
     def configurable_nodes(
         self, included_nodes: Set[UniqueId]
     ) -> Iterator[Tuple[UniqueId, ResultNode]]:
         yield from chain(self.parsed_nodes(included_nodes), self.source_nodes(included_nodes))
-
-    def non_source_nodes(
-        self,
-        included_nodes: Set[UniqueId],
-    ) -> Iterator[Tuple[UniqueId, Union[Exposure, ManifestNode, Metric]]]:
-        yield from chain(
-            self.parsed_nodes(included_nodes),
-            self.exposure_nodes(included_nodes),
-            self.metric_nodes(included_nodes),
-        )
 
     def groupable_nodes(
         self,
@@ -210,7 +217,7 @@ class QualifiedNameSelectorMethod(SelectorMethod):
 
         :param str selector: The selector or node name
         """
-        parsed_nodes = list(self.parsed_nodes(included_nodes))
+        parsed_nodes = list(self.parsed_and_unit_nodes(included_nodes))
         for node, real_node in parsed_nodes:
             if self.node_is_match(selector, real_node.fqn, real_node.is_versioned):
                 yield node
@@ -431,19 +438,22 @@ class ResourceTypeSelectorMethod(SelectorMethod):
             resource_type = NodeType(selector)
         except ValueError as exc:
             raise DbtRuntimeError(f'Invalid resource_type selector "{selector}"') from exc
-        for node, real_node in self.parsed_nodes(included_nodes):
-            if real_node.resource_type == resource_type:
-                yield node
+        for unique_id, node in self.parsed_and_unit_nodes(included_nodes):
+            if node.resource_type == resource_type:
+                yield unique_id
 
 
 class TestNameSelectorMethod(SelectorMethod):
     __test__ = False
 
     def search(self, included_nodes: Set[UniqueId], selector: str) -> Iterator[UniqueId]:
-        for node, real_node in self.parsed_nodes(included_nodes):
-            if real_node.resource_type == NodeType.Test and hasattr(real_node, "test_metadata"):
-                if fnmatch(real_node.test_metadata.name, selector):  # type: ignore[union-attr]
-                    yield node
+        for unique_id, node in self.parsed_and_unit_nodes(included_nodes):
+            if node.resource_type == NodeType.Test and hasattr(node, "test_metadata"):
+                if fnmatch(node.test_metadata.name, selector):  # type: ignore[union-attr]
+                    yield unique_id
+            elif node.resource_type == NodeType.Unit:
+                if fnmatch(node.name, selector):
+                    yield unique_id
 
 
 class TestTypeSelectorMethod(SelectorMethod):

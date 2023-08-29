@@ -58,7 +58,7 @@ class dbtRunnerResult:
     ] = None
 
 
-# Programmatic invocation
+# Programmatic invocation - test!
 class dbtRunner:
     def __init__(
         self,

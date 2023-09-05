@@ -1,6 +1,6 @@
 import json
 
-from dbt.contracts.graph.nodes import Exposure, SourceDefinition, Metric
+from dbt.contracts.graph.nodes import Exposure, SourceDefinition, Metric, SemanticModel
 from dbt.flags import get_flags
 from dbt.graph import ResourceTypeSelector
 from dbt.task.runnable import GraphRunnableTask
@@ -28,6 +28,7 @@ class ListTask(GraphRunnableTask):
             NodeType.Source,
             NodeType.Exposure,
             NodeType.Metric,
+            NodeType.SemanticModel,
         )
     )
     ALL_RESOURCE_VALUES = DEFAULT_RESOURCE_VALUES | frozenset((NodeType.Analysis,))
@@ -72,6 +73,8 @@ class ListTask(GraphRunnableTask):
                 yield self.manifest.sources[node]
             elif node in self.manifest.exposures:
                 yield self.manifest.exposures[node]
+            elif node in self.manifest.semantic_models:
+                yield self.manifest.semantic_models[node]
             elif node in self.manifest.metrics:
                 yield self.manifest.metrics[node]
             else:
@@ -97,6 +100,18 @@ class ListTask(GraphRunnableTask):
                 # metrics are searched for by pkg.metric_name
                 metric_selector = ".".join([node.package_name, node.name])
                 yield f"metric:{metric_selector}"
+            # TODO
+            # We need to include this, or something like it. Otherwise a model and
+            # a semantic_model with the same name will be indistinguishable.
+            # TODO
+            # If we do this, we should also support semantic_model:{name} as a selection method.
+            # Exposures + metrics + semantic models all support the same selection syntax,
+            # so it's probably worth a refactor there.
+            elif node.resource_type == NodeType.SemanticModel:
+                assert isinstance(node, SemanticModel)
+                # metrics are searched for by pkg.metric_name
+                semantic_model_selector = ".".join([node.package_name, node.name])
+                yield f"semantic_model:{semantic_model_selector}"
             else:
                 # everything else is from `fqn`
                 yield ".".join(node.fqn)

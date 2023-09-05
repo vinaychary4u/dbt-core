@@ -1,3 +1,4 @@
+import os
 import shutil
 
 from dbt.clients import system
@@ -58,7 +59,7 @@ class LocalPinnedPackage(LocalPackageMixin, PinnedPackage):
                 system.remove_file(dest_path)
         try:
             fire_event(DepsCreatingLocalSymlink())
-            system.make_symlink(src_path, dest_path)
+            os.symlink(src_path, dest_path)
         except OSError:
             fire_event(DepsSymlinkNotAvailable())
             shutil.copytree(src_path, dest_path)

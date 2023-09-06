@@ -10,6 +10,7 @@
 # This will run when called manually.
 
 name: Cut new release branch
+run-name: "Cutting New Branch:  ${{ inputs.new_branch_name }}"
 
 on:
   workflow_dispatch:

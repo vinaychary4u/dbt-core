@@ -631,7 +631,7 @@ class RuntimeMetricResolver(BaseMetricResolver):
                 target_package=target_package,
             )
 
-        return ResolvedMetricReference(target_metric, self.manifest, self.Relation)
+        return ResolvedMetricReference(target_metric, self.manifest)
 
 
 # `var` implementations.

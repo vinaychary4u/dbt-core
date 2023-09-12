@@ -49,6 +49,8 @@ class UnrenderedConfig(ConfigSource):
             model_configs = unrendered.get("semantic_models")
         elif resource_type == NodeType.Exposure:
             model_configs = unrendered.get("exposures")
+        elif resource_type == NodeType.Unit:
+            model_configs = unrendered.get("unit_tests")
         else:
             model_configs = unrendered.get("models")
         if model_configs is None:
@@ -76,6 +78,8 @@ class RenderedConfig(ConfigSource):
             model_configs = self.project.semantic_models
         elif resource_type == NodeType.Exposure:
             model_configs = self.project.exposures
+        elif resource_type == NodeType.Unit:
+            model_configs = self.project.unit_tests
         else:
             model_configs = self.project.models
         return model_configs

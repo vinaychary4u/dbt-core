@@ -750,6 +750,7 @@ class UnparsedUnitTestDefinition(dbtClassMixin):
     expect: List[Dict[str, Any]]
     description: str = ""
     overrides: Optional[UnitTestOverrides] = None
+    config: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

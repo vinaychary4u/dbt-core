@@ -35,9 +35,16 @@ select
 from {{ ref('sample_model') }}
 """
 
-models__sql_header = """
+models__sql_header_no_rendering = """
 {% call set_sql_header(config) %}
-set session time zone '{{ var("timezone", "Europe/Paris") }}';
+set session time zone 'Asia/Kolkata';
+{%- endcall %}
+select current_setting('timezone') as timezone
+"""
+
+models__sql_header_yes_rendering = """
+{% call set_sql_header(config) %}
+set session time zone '{{ var("timezone", "Asia/Kolkata") }}';
 {%- endcall %}
 select current_setting('timezone') as timezone
 """

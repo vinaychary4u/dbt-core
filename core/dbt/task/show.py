@@ -12,7 +12,7 @@ from dbt.task.compile import CompileTask, CompileRunner
 from dbt.task.seed import SeedRunner
 
 from dbt.context.providers import generate_runtime_model_context
-from dbt.clients.jinja import get_rendered
+from dbt.clients.jinja import get_rendered, _HAS_RENDER_CHARS_PAT
 
 
 class ShowRunner(CompileRunner):
@@ -26,18 +26,20 @@ class ShowRunner(CompileRunner):
         # Allow passing in -1 (or any negative number) to get all rows
         limit = None if self.config.args.limit < 0 else self.config.args.limit
 
-        compiled_code = compiled_node.compiled_code
-
         if "sql_header" in compiled_node.unrendered_config:
-            # Currently, we only render sql_header at *parse* time for *running* models:
-            # See dbt-core issues #2793, #3264, #7151
-            # So technically this should be "generate_parser_model_context" (I think) instead of "generate_runtime_model_context"
+            sql_header = compiled_node.unrendered_config["sql_header"]
+            # Does the sql_header contain Jinja and need to be rendered?
             # Generating the context will be slower if we don't actually need to render the sql_header (if it contains no Jinja)
-            context = generate_runtime_model_context(compiled_node, self.config, manifest)
-            sql_header = get_rendered(compiled_node.unrendered_config["sql_header"], context)
+            if _HAS_RENDER_CHARS_PAT.search(sql_header):
+                # Currently, we only render sql_header at *parse* time while *running* models
+                # See dbt-core issues #2793, #3264, #7151
+                # For simplicity, we will use "generate_runtime_model_context" instead of "generate_parser_model_context"
+                context = generate_runtime_model_context(compiled_node, self.config, manifest)
+                import ipdb; ipdb.set_trace()
+                sql_header = get_rendered(compiled_node.unrendered_config["sql_header"], context)
             compiled_code = sql_header + compiled_code
 
-        adapter_response, execute_result = self.adapter.execute(
+        adapter_response, execute_result = self.adapter.execute_macro(
             compiled_code, fetch=True, limit=limit
         )
         end_time = time.time()

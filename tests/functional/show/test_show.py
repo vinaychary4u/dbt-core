@@ -11,7 +11,8 @@ from tests.functional.show.fixtures import (
     models__second_model,
     models__ephemeral_model,
     schema_yml,
-    models__sql_header,
+    models__sql_header_no_rendering,
+    models__sql_header_yes_rendering,
     private_model_yml,
 )
 
@@ -25,7 +26,8 @@ class ShowBase:
             "sample_number_model_with_nulls.sql": models__sample_number_model_with_nulls,
             "second_model.sql": models__second_model,
             "ephemeral_model.sql": models__ephemeral_model,
-            "sql_header.sql": models__sql_header,
+            "sql_header_no_rendering.sql": models__sql_header_no_rendering,
+            "sql_header_yes_rendering.sql": models__sql_header_yes_rendering,
         }
 
     @pytest.fixture(scope="class")
@@ -164,14 +166,15 @@ class TestShowSeed(ShowBase):
         (_, log_output) = run_dbt_and_capture(["show", "--select", "sample_seed"])
         assert "Previewing node 'sample_seed'" in log_output
 
-
-class TestShowSqlHeader(ShowBase):
-    def test_sql_header(self, project):
-        run_dbt(["build", "--vars", "timezone: Asia/Kolkata"])
-        (_, log_output) = run_dbt_and_capture(
-            ["show", "--select", "sql_header", "--vars", "timezone: Asia/Kolkata"]
-        )
+    def test_sql_header_no_rendering(self, project):
+        (_, log_output) = run_dbt_and_capture(["show", "--select", "sql_header_no_rendering"])
         assert "Asia/Kolkata" in log_output
+
+    def test_sql_header_yes_rendering(self, project):
+        (_, log_output) = run_dbt_and_capture(
+            ["show", "--select", "sql_header_yes_rendering", "--vars", "timezone: Europe/Paris"]
+        )
+        assert "Europe/Paris" in log_output
 
 
 class TestShowModelVersions:

@@ -216,7 +216,6 @@ T = TypeVar("T", bound="BaseConfig")
 
 @dataclass
 class BaseConfig(AdditionalPropertiesAllowed, Replaceable):
-
     # enable syntax like: config['key']
     def __getitem__(self, key):
         return self.get(key)
@@ -560,6 +559,8 @@ class TestConfig(NodeAndTestConfig):
     fail_calc: str = "count(*)"
     warn_if: str = "!= 0"
     error_if: str = "!= 0"
+    # this is typically a RelationType, but is generalized to StrEnum for adapters that implement custom relations
+    strategy: Union[StrEnum, str] = "ephemeral"
 
     @classmethod
     def same_contents(cls, unrendered: Dict[str, Any], other: Dict[str, Any]) -> bool:

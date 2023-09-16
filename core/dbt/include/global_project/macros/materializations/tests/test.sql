@@ -1,6 +1,6 @@
 {%- materialization test, default -%}
 
-    {% set relations = [] %}
+  {% set relations = [] %}
     {% set relation_type = config.get('strategy') %}
 
     {% if relation_type in ['view', 'table'] %}

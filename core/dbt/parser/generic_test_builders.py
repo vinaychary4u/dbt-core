@@ -101,7 +101,6 @@ class TestBuilder(Generic[Testable]):
         "error_if",
         "fail_calc",
         "store_failures",
-        "strategy",
         "meta",
         "database",
         "schema",
@@ -243,10 +242,6 @@ class TestBuilder(Generic[Testable]):
         return self.config.get("store_failures")
 
     @property
-    def strategy(self) -> Optional[str]:
-        return self.config.get("strategy")
-
-    @property
     def where(self) -> Optional[str]:
         return self.config.get("where")
 
@@ -298,8 +293,6 @@ class TestBuilder(Generic[Testable]):
             config["fail_calc"] = self.fail_calc
         if self.store_failures is not None:
             config["store_failures"] = self.store_failures
-        if self.strategy is not None:
-            config["strategy"] = self.strategy
         if self.meta is not None:
             config["meta"] = self.meta
         if self.database is not None:

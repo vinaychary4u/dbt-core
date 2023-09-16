@@ -991,7 +991,9 @@ class TestShouldStoreFailures:
 
     @property
     def is_relational(self):
-        return self.should_store_failures
+        if self.should_store_failures:
+            return True
+        return False
 
 
 @dataclass

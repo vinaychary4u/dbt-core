@@ -132,6 +132,7 @@ def get_rendered_tst_config(**updates):
         "tags": [],
         "severity": "ERROR",
         "store_failures": None,
+        "strategy": None,
         "warn_if": "!= 0",
         "error_if": "!= 0",
         "fail_calc": "count(*)",
@@ -201,7 +202,6 @@ class LineIndifferent:
 
 
 def expected_seeded_manifest(project, model_database=None, quote_model=False):
-
     model_sql_path = os.path.join("models", "model.sql")
     second_model_sql_path = os.path.join("models", "second_model.sql")
     model_schema_yml_path = os.path.join("models", "schema.yml")

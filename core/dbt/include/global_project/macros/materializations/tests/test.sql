@@ -45,7 +45,8 @@
       {% do relations.append(target_relation) %}
 
       {% set main_sql %}
-          select * from {{ target_relation }}
+          select *
+          from {{ target_relation }}
       {% endset %}
 
       {{ adapter.commit() }}
@@ -63,7 +64,7 @@
 
   {% call statement('main', fetch_result=True) -%}
 
-      {{ get_test_sql(main_sql, fail_calc, warn_if, error_if, limit) }}
+    {{ get_test_sql(main_sql, fail_calc, warn_if, error_if, limit)}}
 
   {%- endcall %}
 

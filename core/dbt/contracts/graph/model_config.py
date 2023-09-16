@@ -559,8 +559,7 @@ class TestConfig(NodeAndTestConfig):
     fail_calc: str = "count(*)"
     warn_if: str = "!= 0"
     error_if: str = "!= 0"
-    # this is typically a RelationType, but is generalized to StrEnum for adapters that implement custom relations
-    strategy: Union[StrEnum, str] = "ephemeral"
+    strategy: Optional[str] = None
 
     @classmethod
     def same_contents(cls, unrendered: Dict[str, Any], other: Dict[str, Any]) -> bool:
@@ -573,6 +572,7 @@ class TestConfig(NodeAndTestConfig):
             "warn_if",
             "error_if",
             "store_failures",
+            "strategy",
         ]
 
         seen = set()

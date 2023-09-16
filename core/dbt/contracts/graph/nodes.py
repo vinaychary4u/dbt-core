@@ -779,7 +779,6 @@ class ModelNode(CompiledNode):
             or enforced_column_constraint_removed
             or materialization_changed
         ):
-
             breaking_changes = []
             if contract_enforced_disabled:
                 breaking_changes.append(
@@ -984,15 +983,15 @@ Error raised for '{self.unique_id}', which has these hooks defined: \n{hook_list
 class TestShouldStoreFailures:
     @property
     def should_store_failures(self):
-        if self.config.store_failures:
+        if self.config.strategy in ["view", "table"]:
+            return True
+        elif self.config.store_failures:
             return self.config.store_failures
         return get_flags().STORE_FAILURES
 
     @property
     def is_relational(self):
-        if self.should_store_failures:
-            return True
-        return False
+        return self.should_store_failures
 
 
 @dataclass

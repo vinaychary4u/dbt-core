@@ -149,6 +149,7 @@ class TestBuilder(Generic[Testable]):
             if not value and "config" in self.args:
                 value = self.args["config"].pop(key, None)
             if isinstance(value, str):
+
                 try:
                     value = get_rendered(value, render_ctx, native=True)
                 except UndefinedMacroError as e:

@@ -19,7 +19,7 @@ from dbt import deprecations
 from dbt.constants import DEPENDENCIES_FILE_NAME, PACKAGES_FILE_NAME
 from dbt.clients.system import path_exists, resolve_path_from_base, load_file_contents
 from dbt.clients.yaml_helper import load_yaml_text
-from dbt.contracts.connection import QueryComment
+from dbt.adapters.contracts.connection import QueryComment
 from dbt.exceptions import (
     DbtProjectError,
     SemverError,
@@ -39,7 +39,7 @@ from dbt.contracts.project import (
     SemverString,
 )
 from dbt.contracts.project import PackageConfig, ProjectPackageMetadata
-from dbt.dataclass_schema import ValidationError
+from dbt.common.dataclass_schema import ValidationError
 from .renderer import DbtProjectYamlRenderer, PackageRenderer
 from .selectors import (
     selector_config_from_data,

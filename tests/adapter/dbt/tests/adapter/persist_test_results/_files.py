@@ -24,7 +24,7 @@ TEST__PASS_WITH_VIEW_STRATEGY = """
 {{ config(strategy="view") }}
 select *
 from {{ ref('chipmunks') }}
-where shirt = 'purple'
+where shirt = 'grape'
 """
 
 

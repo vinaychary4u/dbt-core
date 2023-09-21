@@ -10,8 +10,8 @@ from dbt.contracts.sql import (
     RemoteRunResult,
     ResultTable,
 )
-from dbt.events.functions import fire_event
-from dbt.events.types import SQLRunnerException
+from dbt.common.events.functions import fire_event
+from dbt.common.events.types import SQLRunnerException
 from dbt.task.compile import CompileRunner
 
 
@@ -19,7 +19,7 @@ SQLResult = TypeVar("SQLResult", bound=RemoteCompileResultMixin)
 
 
 class GenericSqlRunner(CompileRunner, Generic[SQLResult]):
-    def __init__(self, config, adapter, node, node_index, num_nodes):
+    def __init__(self, config, adapter, node, node_index, num_nodes) -> None:
         CompileRunner.__init__(self, config, adapter, node, node_index, num_nodes)
 
     def handle_exception(self, e, ctx):

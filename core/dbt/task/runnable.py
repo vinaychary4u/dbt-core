@@ -5,7 +5,7 @@ from concurrent.futures import as_completed
 from datetime import datetime
 from multiprocessing.dummy import Pool as ThreadPool
 from pathlib import Path
-from typing import Optional, Dict, List, Set, Tuple, Iterable, AbstractSet
+from typing import AbstractSet, Optional, Dict, List, Set, Tuple, Iterable
 
 import dbt.exceptions
 import dbt.tracking
@@ -23,9 +23,9 @@ from dbt.contracts.results import (
     BaseResult,
 )
 from dbt.contracts.state import PreviousState
-from dbt.events.contextvars import log_contextvars, task_contextvars
-from dbt.events.functions import fire_event, warn_or_error
-from dbt.events.types import (
+from dbt.common.events.contextvars import log_contextvars, task_contextvars
+from dbt.common.events.functions import fire_event, warn_or_error
+from dbt.common.events.types import (
     Formatting,
     LogCancelLine,
     DefaultSelector,

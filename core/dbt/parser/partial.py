@@ -8,9 +8,9 @@ from dbt.contracts.files import (
     parse_file_type_to_parser,
     SchemaSourceFile,
 )
-from dbt.events.functions import fire_event
-from dbt.events.base_types import EventLevel
-from dbt.events.types import (
+from dbt.common.events.functions import fire_event
+from dbt.common.events.base_types import EventLevel
+from dbt.common.events.types import (
     PartialParsingEnabled,
     PartialParsingFile,
 )
@@ -68,7 +68,9 @@ special_override_macros = [
 # to preserve an unchanged file object in case we need to drop back to a
 # a full parse (such as for certain macro changes)
 class PartialParsing:
-    def __init__(self, saved_manifest: Manifest, new_files: MutableMapping[str, AnySourceFile]):
+    def __init__(
+        self, saved_manifest: Manifest, new_files: MutableMapping[str, AnySourceFile]
+    ) -> None:
         self.saved_manifest = saved_manifest
         self.new_files = new_files
         self.project_parser_files: Dict = {}

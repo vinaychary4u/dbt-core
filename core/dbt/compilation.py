@@ -28,11 +28,11 @@ from dbt.exceptions import (
     DbtRuntimeError,
 )
 from dbt.graph import Graph
-from dbt.events.functions import fire_event, get_invocation_id
-from dbt.events.types import FoundStats, Note, WritingInjectedSQLForNode
-from dbt.events.contextvars import get_node_info
+from dbt.common.events.functions import fire_event, get_invocation_id
+from dbt.common.events.types import FoundStats, Note, WritingInjectedSQLForNode
+from dbt.common.events.contextvars import get_node_info
 from dbt.node_types import NodeType, ModelLanguage
-from dbt.events.format import pluralize
+from dbt.common.events.format import pluralize
 import dbt.tracking
 import dbt.task.list as list_task
 import sqlparse
@@ -125,7 +125,7 @@ def _get_tests_for_node(manifest: Manifest, unique_id: UniqueID) -> List[UniqueI
 
 
 class Linker:
-    def __init__(self, data=None):
+    def __init__(self, data=None) -> None:
         if data is None:
             data = {}
         self.graph = nx.DiGraph(**data)
@@ -274,7 +274,7 @@ class Linker:
 
 
 class Compiler:
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         self.config = config
 
     def initialize(self):

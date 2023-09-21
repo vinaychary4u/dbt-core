@@ -6,16 +6,16 @@ from dbt.graph import ResourceTypeSelector
 from dbt.task.runnable import GraphRunnableTask
 from dbt.task.test import TestSelector
 from dbt.node_types import NodeType
-from dbt.events.functions import (
+from dbt.common.events.functions import (
     fire_event,
     warn_or_error,
 )
-from dbt.events.types import (
+from dbt.common.events.types import (
     NoNodesSelected,
     ListCmdOut,
 )
 from dbt.exceptions import DbtRuntimeError, DbtInternalError
-from dbt.events.contextvars import task_contextvars
+from dbt.common.events.contextvars import task_contextvars
 
 
 class ListTask(GraphRunnableTask):
@@ -46,7 +46,7 @@ class ListTask(GraphRunnableTask):
         )
     )
 
-    def __init__(self, args, config, manifest):
+    def __init__(self, args, config, manifest) -> None:
         super().__init__(args, config, manifest)
         if self.args.models:
             if self.args.select:

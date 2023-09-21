@@ -14,8 +14,8 @@ from dbt.exceptions import (
     ReferencedLinkNotCachedError,
     TruncatedModelNameCausedCollisionError,
 )
-from dbt.events.functions import fire_event, fire_event_if
-from dbt.events.types import CacheAction, CacheDumpGraph
+from dbt.common.events.functions import fire_event, fire_event_if
+from dbt.common.events.types import CacheAction, CacheDumpGraph
 from dbt.flags import get_flags
 from dbt.utils import lowercase
 
@@ -38,8 +38,8 @@ class _CachedRelation:
     :attr BaseRelation inner: The underlying dbt relation.
     """
 
-    def __init__(self, inner):
-        self.referenced_by = {}
+    def __init__(self, inner) -> None:
+        self.referenced_by: Dict[_ReferenceKey, _CachedRelation] = {}
         self.inner = inner
 
     def __str__(self) -> str:

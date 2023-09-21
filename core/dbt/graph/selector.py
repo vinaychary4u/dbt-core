@@ -5,8 +5,8 @@ from .queue import GraphQueue
 from .selector_methods import MethodManager
 from .selector_spec import SelectionCriteria, SelectionSpec, IndirectSelection
 
-from dbt.events.functions import fire_event, warn_or_error
-from dbt.events.types import SelectorReportInvalidSelector, NoNodesForSelectionCriteria
+from dbt.common.events.functions import fire_event, warn_or_error
+from dbt.common.events.types import SelectorReportInvalidSelector, NoNodesForSelectionCriteria
 from dbt.node_types import NodeType
 from dbt.exceptions import (
     DbtInternalError,
@@ -44,7 +44,7 @@ class NodeSelector(MethodManager):
         manifest: Manifest,
         previous_state: Optional[PreviousState] = None,
         include_empty_nodes: bool = False,
-    ):
+    ) -> None:
         super().__init__(manifest, previous_state)
         self.full_graph = graph
         self.include_empty_nodes = include_empty_nodes
@@ -325,7 +325,7 @@ class ResourceTypeSelector(NodeSelector):
         previous_state: Optional[PreviousState],
         resource_types: List[NodeType],
         include_empty_nodes: bool = False,
-    ):
+    ) -> None:
         super().__init__(
             graph=graph,
             manifest=manifest,

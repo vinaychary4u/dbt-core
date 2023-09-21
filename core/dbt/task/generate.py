@@ -25,8 +25,8 @@ from dbt.contracts.results import (
 )
 from dbt.exceptions import DbtInternalError, AmbiguousCatalogMatchError
 from dbt.include.global_project import DOCS_INDEX_FILE_PATH
-from dbt.events.functions import fire_event
-from dbt.events.types import (
+from dbt.common.events.functions import fire_event
+from dbt.common.events.types import (
     WriteCatalogFailure,
     CatalogWritten,
     CannotGenerateDocs,
@@ -63,7 +63,7 @@ def build_catalog_table(data) -> CatalogTable:
 
 # keys are database name, schema name, table name
 class Catalog(Dict[CatalogKey, CatalogTable]):
-    def __init__(self, columns: List[PrimitiveDict]):
+    def __init__(self, columns: List[PrimitiveDict]) -> None:
         super().__init__()
         for col in columns:
             self.add_column(col)

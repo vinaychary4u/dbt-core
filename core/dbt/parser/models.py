@@ -1,9 +1,9 @@
 from copy import deepcopy
 from dbt.context.context_config import ContextConfig
 from dbt.contracts.graph.nodes import ModelNode, RefArgs
-from dbt.events.base_types import EventLevel
-from dbt.events.types import Note
-from dbt.events.functions import fire_event_if_test
+from dbt.common.events.base_types import EventLevel
+from dbt.common.events.types import Note
+from dbt.common.events.functions import fire_event_if_test
 from dbt.flags import get_flags
 from dbt.node_types import NodeType, ModelLanguage
 from dbt.parser.base import SimpleSQLParser
@@ -33,9 +33,9 @@ dbt_function_full_names = set(["dbt.ref", "dbt.source", "dbt.config", "dbt.confi
 
 
 class PythonValidationVisitor(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.dbt_errors = []
+        self.dbt_errors: List[str] = []
         self.num_model_def = 0
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:

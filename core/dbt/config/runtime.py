@@ -23,8 +23,8 @@ from dbt.contracts.graph.manifest import ManifestMetadata
 from dbt.contracts.project import Configuration, UserConfig
 from dbt.contracts.relation import ComponentName
 from dbt.common.dataclass_schema import ValidationError
-from dbt.events.functions import warn_or_error
-from dbt.events.types import UnusedResourceConfigPath
+from dbt.common.events.functions import warn_or_error
+from dbt.common.events.types import UnusedResourceConfigPath
 from dbt.exceptions import (
     ConfigContractBrokenError,
     DbtProjectError,
@@ -407,7 +407,7 @@ class RuntimeConfig(Project, Profile, AdapterRequiredConfig):
 
 
 class UnsetCredentials(Credentials):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("", "")
 
     @property

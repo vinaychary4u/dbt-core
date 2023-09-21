@@ -48,8 +48,8 @@ from dbt.clients.agate_helper import empty_table, merge_tables, table_from_rows
 from dbt.clients.jinja import MacroGenerator
 from dbt.contracts.graph.manifest import Manifest, MacroManifest
 from dbt.contracts.graph.nodes import ResultNode
-from dbt.events.functions import fire_event, warn_or_error
-from dbt.events.types import (
+from dbt.common.events.functions import fire_event, warn_or_error
+from dbt.common.events.types import (
     CacheMiss,
     ListRelations,
     CodeExecution,
@@ -222,7 +222,7 @@ class BaseAdapter(metaclass=AdapterMeta):
         ConstraintType.foreign_key: ConstraintSupport.ENFORCED,
     }
 
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         self.config = config
         self.cache = RelationsCache()
         self.connections = self.ConnectionManager(config)

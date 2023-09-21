@@ -17,8 +17,8 @@ from dbt.exceptions import (
     DbtRuntimeError,
     ProfileConfigError,
 )
-from dbt.events.types import MissingProfileTarget
-from dbt.events.functions import fire_event
+from dbt.common.events.types import MissingProfileTarget
+from dbt.common.events.functions import fire_event
 from dbt.utils import coerce_dict_str
 
 from .renderer import ProfileRenderer
@@ -83,7 +83,7 @@ class Profile(HasCredentials):
         user_config: UserConfig,
         threads: int,
         credentials: Credentials,
-    ):
+    ) -> None:
         """Explicitly defining `__init__` to work around bug in Python 3.9.7
         https://bugs.python.org/issue45081
         """

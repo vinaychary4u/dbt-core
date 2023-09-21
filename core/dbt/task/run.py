@@ -27,8 +27,8 @@ from dbt.exceptions import (
     DbtRuntimeError,
     DbtValidationError,
 )
-from dbt.events.functions import fire_event, get_invocation_id
-from dbt.events.types import (
+from dbt.common.events.functions import fire_event, get_invocation_id
+from dbt.common.events.types import (
     DatabaseErrorRunningHook,
     Formatting,
     HooksRunning,
@@ -38,7 +38,7 @@ from dbt.events.types import (
     LogHookEndLine,
     LogHookStartLine,
 )
-from dbt.events.base_types import EventLevel
+from dbt.common.events.base_types import EventLevel
 from dbt.logger import (
     TextOnly,
     HookMetadata,
@@ -52,7 +52,7 @@ from dbt.node_types import NodeType, RunHookType
 
 
 class Timer:
-    def __init__(self):
+    def __init__(self) -> None:
         self.start = None
         self.end = None
 

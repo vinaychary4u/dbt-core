@@ -13,14 +13,14 @@ from dbt_semantic_interfaces.validations.semantic_manifest_validator import (
 )
 
 from dbt.clients.system import write_file
-from dbt.events.base_types import EventLevel
-from dbt.events.functions import fire_event
-from dbt.events.types import SemanticValidationFailure
+from dbt.common.events.base_types import EventLevel
+from dbt.common.events.functions import fire_event
+from dbt.common.events.types import SemanticValidationFailure
 from dbt.exceptions import ParsingError
 
 
 class SemanticManifest:
-    def __init__(self, manifest):
+    def __init__(self, manifest) -> None:
         self.manifest = manifest
 
     def validate(self) -> bool:

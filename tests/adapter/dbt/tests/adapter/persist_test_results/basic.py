@@ -1,9 +1,10 @@
-from typing import Dict, Set, Tuple
+from collections import namedtuple
+from typing import Dict
 
 import pytest
 
 from dbt.contracts.results import TestStatus
-from dbt.tests.util import run_dbt
+from dbt.tests.util import run_dbt, check_relation_types
 
 from dbt.tests.adapter.persist_test_results._files import (
     SEED__CHIPMUNKS,
@@ -61,19 +62,16 @@ class PersistTestResults:
             "pass_with_table_strategy.sql": TEST__PASS_WITH_TABLE_STRATEGY,
         }
 
-    def get_audit_relation_summary(self, project) -> Set[Tuple]:
+    def row_count(self, project, relation_name: str) -> int:
         """
-        Return summary stats about each relation in the audit schema to be verified in a test.
+        Return the row count for the relation.
 
         Args:
             project: the project fixture
+            relation_name: the name of the relation
 
         Returns:
-            Relation stats, e.g.:
-            {
-                ("my_table", "table", 0)
-                ("my_view", "view", 1)
-            }
+            the row count as an integer
         """
         raise NotImplementedError(
             "To use this test, please implement `get_audit_relation_summary`, inherited from `PersistTestResults`."
@@ -90,39 +88,50 @@ class PersistTestResults:
         )
 
     def test_tests_run_successfully_and_are_persisted_correctly(self, project):
+        # set up the expected results
+        TestResult = namedtuple("TestResult", ["name", "status", "type", "row_count"])
+        expected_results = {
+            TestResult("pass_with_view_strategy", TestStatus.Pass, "view", 0),
+            TestResult("fail_with_view_strategy", TestStatus.Fail, "view", 1),
+            TestResult("pass_with_table_strategy", TestStatus.Pass, "table", 0),
+            TestResult("fail_with_table_strategy", TestStatus.Fail, "table", 1),
+        }
+
         # run the tests once
         results = run_dbt(["test"], expect_pass=False)
 
-        # make sure the results are what we expect
-        actual_results = {(result.node.name, result.status) for result in results}
-        expected_results = {
-            ("pass_with_view_strategy", TestStatus.Pass),
-            ("fail_with_view_strategy", TestStatus.Fail),
-            ("pass_with_table_strategy", TestStatus.Pass),
-            ("fail_with_table_strategy", TestStatus.Fail),
-        }
-        assert actual_results == expected_results
+        # show that the statuses are what we expect
+        actual = {(result.node.name, result.status) for result in results}
+        expected = {(result.name, result.status) for result in expected_results}
+        assert actual == expected
 
         # show that the results are persisted in the correct database objects
-        persisted_objects = self.get_audit_relation_summary(project)
-        assert persisted_objects == {
-            ("pass_with_view_strategy", "view", 0),
-            ("fail_with_view_strategy", "view", 1),
-            ("pass_with_table_strategy", "table", 0),
-            ("fail_with_table_strategy", "table", 1),
+        check_relation_types(
+            project.adapter, {result.name: result.type for result in expected_results}
+        )
+
+        # show that only the failed records show up
+        actual = {
+            (result.name, self.row_count(project, result.name)) for result in expected_results
         }
+        expected = {(result.name, result.row_count) for result in expected_results}
+        assert actual == expected
 
         # insert a new record in the model that fails the "pass" tests
+        # show that the view updates, but not the table
         self.insert_record(project, {"name": "dave", "shirt": "purple"})
+        expected_results.remove(TestResult("pass_with_view_strategy", TestStatus.Pass, "view", 0))
+        expected_results.add(TestResult("pass_with_view_strategy", TestStatus.Pass, "view", 1))
 
         # delete the original record from the model that failed the "fail" tests
+        # show that the view updates, but not the table
         self.delete_record(project, {"name": "theodore", "shirt": "green"})
+        expected_results.remove(TestResult("fail_with_view_strategy", TestStatus.Fail, "view", 1))
+        expected_results.add(TestResult("fail_with_view_strategy", TestStatus.Fail, "view", 0))
 
-        # show that the views update and the tables do not
-        persisted_objects = self.get_audit_relation_summary(project)
-        assert persisted_objects == {
-            ("pass_with_view_strategy", "view", 1),  # the views update
-            ("fail_with_view_strategy", "view", 0),  # the views update
-            ("pass_with_table_strategy", "table", 0),  # the tables do not update
-            ("fail_with_table_strategy", "table", 1),  # the tables do not update
+        # show that the views update without needing to run dbt, but the tables do not update
+        actual = {
+            (result.name, self.row_count(project, result.name)) for result in expected_results
         }
+        expected = {(result.name, result.row_count) for result in expected_results}
+        assert actual == expected

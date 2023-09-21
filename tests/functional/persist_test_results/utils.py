@@ -1,47 +1,12 @@
-from typing import Dict, Set, Tuple
+from typing import Dict
 
 
-def get_relation_summary_in_schema(project, schema: str) -> Set[Tuple]:
-    """
-    Returns a summary like this:
-        {
-            ("my_table", "table", 0),
-            ("my_view", "view", 1),
-        }
-    """
+def row_count(project, schema: str, relation_name: str) -> int:
     # postgres only supports schema names of 63 characters
     # a schema with a longer name still gets created, but the name gets truncated
     schema_name = schema[:63]
-
-    sql = f"""
-    select
-        tablename as relation_name,
-        'table' as relation_type
-    from pg_tables
-    where schemaname ilike '{schema_name}'
-    union all
-    select
-        viewname as relation_name,
-        'view' as relation_type
-    from pg_views
-    where schemaname ilike '{schema_name}'
-    union all
-    select
-        matviewname as relation_name,
-        'materialized_view' as relation_type
-    from pg_matviews
-    where schemaname ilike '{schema_name}'
-    """
-    relation_types = project.run_sql(sql, fetch="all")
-
-    results = set()
-    for relation_name, relation_type in relation_types:
-        row_count_sql = f"select count(*) from {schema_name}.{relation_name}"
-        row_count = project.run_sql(row_count_sql, fetch="one")[0]
-        summary = (relation_name, relation_type, row_count)
-        results.add(summary)
-
-    return results
+    sql = f"select count(*) from {schema_name}.{relation_name}"
+    return project.run_sql(sql, fetch="one")[0]
 
 
 def insert_record(project, schema: str, table_name: str, record: Dict[str, str]):

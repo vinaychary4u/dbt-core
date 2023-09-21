@@ -1,17 +1,17 @@
-from typing import Dict, Set, Tuple
+from typing import Dict
 
 from dbt.tests.adapter.persist_test_results.basic import PersistTestResults
 
 from tests.functional.persist_test_results.utils import (
     delete_record,
-    get_relation_summary_in_schema,
     insert_record,
+    row_count,
 )
 
 
 class TestPersistTestResults(PersistTestResults):
-    def get_audit_relation_summary(self, project) -> Set[Tuple]:
-        return get_relation_summary_in_schema(project, self.audit_schema)
+    def row_count(self, project, relation_name) -> int:
+        return row_count(project, self.audit_schema, relation_name)
 
     def insert_record(self, project, record: Dict[str, str]):
         insert_record(project, project.test_schema, self.model_table, record)

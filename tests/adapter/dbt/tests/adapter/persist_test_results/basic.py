@@ -135,7 +135,7 @@ class PersistTestResults:
 
         # insert a new record in the model that fails the "pass" tests
         # show that the view updates, but not the table
-        self.insert_record(project, {"name": "dave", "shirt": "purple"})
+        self.insert_record(project, {"name": "dave", "shirt": "grape"})
         expected_results.remove(TestResult("pass_with_view_strategy", TestStatus.Pass, "view", 0))
         expected_results.add(TestResult("pass_with_view_strategy", TestStatus.Pass, "view", 1))
 

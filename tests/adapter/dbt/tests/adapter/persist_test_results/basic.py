@@ -34,7 +34,9 @@ class PersistTestResults:
         run_dbt(["run"])
 
         # the name of the audit schema doesn't change in a class, but the fixtures run out of order for some reason
-        self.audit_schema = f"{project.test_schema}_dbt_test__audit"
+        # postgres only supports schema names of 63 characters
+        # a schema with a longer name still gets created, but the name gets truncated
+        self.audit_schema = f"{project.test_schema}_dbt_test__audit"[:63]
 
         yield
 
@@ -73,19 +75,32 @@ class PersistTestResults:
         Returns:
             the row count as an integer
         """
-        raise NotImplementedError(
-            "To use this test, please implement `get_audit_relation_summary`, inherited from `PersistTestResults`."
-        )
+        sql = f"select count(*) from {self.audit_schema}.{relation_name}"
+        return project.run_sql(sql, fetch="one")[0]
 
     def insert_record(self, project, record: Dict[str, str]):
-        raise NotImplementedError(
-            "To use this test, please implement `insert_record`, inherited from `PersistTestResults`."
-        )
+        field_names, field_values = [], []
+        for field_name, field_value in record.items():
+            field_names.append(field_name)
+            field_values.append(f"'{field_value}'")
+        field_name_clause = ", ".join(field_names)
+        field_value_clause = ", ".join(field_values)
+
+        sql = f"""
+        insert into {project.test_schema}.{self.model_table} ({field_name_clause})
+        values ({field_value_clause})
+        """
+        project.run_sql(sql)
 
     def delete_record(self, project, record: Dict[str, str]):
-        raise NotImplementedError(
-            "To use this test, please implement `delete_record`, inherited from `PersistTestResults`."
+        where_clause = " and ".join(
+            [f"{field_name} = '{field_value}'" for field_name, field_value in record.items()]
         )
+        sql = f"""
+        delete from {project.test_schema}.{self.model_table}
+        where {where_clause}
+        """
+        project.run_sql(sql)
 
     def test_tests_run_successfully_and_are_persisted_correctly(self, project):
         # set up the expected results

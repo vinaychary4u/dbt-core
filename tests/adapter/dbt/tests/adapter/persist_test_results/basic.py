@@ -23,21 +23,22 @@ class PersistTestResults:
     audit_schema: str
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_teardown_class(self, project):
+    def setup_class(self, project):
         # the seed doesn't get touched, load it once
         run_dbt(["seed"])
         yield
 
     @pytest.fixture(scope="function", autouse=True)
-    def setup_teardown_method(self, project, setup_teardown_class):
+    def setup_method(self, project, setup_class):
         # make sure the model is always right
         run_dbt(["run"])
 
-        # the name of the audit schema doesn't change in a class, but the fixtures run out of order for some reason
-        # postgres only supports schema names of 63 characters
-        # a schema with a longer name still gets created, but the name gets truncated
-        self.audit_schema = f"{project.test_schema}_dbt_test__audit"[:63]
+        # the name of the audit schema doesn't change in a class, but this doesn't run at the class level
+        self.audit_schema = f"{project.test_schema}_dbt_test__audit"
+        yield
 
+    @pytest.fixture(scope="function", autouse=True)
+    def teardown_method(self, project):
         yield
 
         # clear out the audit schema after each test case

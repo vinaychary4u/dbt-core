@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from importlib import import_module
 from multiprocessing import get_context
 from pprint import pformat as pf
-from typing import Callable, Dict, List, Set, Union
+from typing import Callable, Dict, List, Set, Union, Optional
 
 from click import Context, get_current_context
 from click.core import Command, Group, ParameterSource
@@ -52,7 +52,7 @@ def args_to_context(args: List[str]) -> Context:
     from dbt.cli.main import cli
 
     cli_ctx = cli.make_context(cli.name, args)
-    # Split args if they're a comma seperated string.
+    # Split args if they're a comma separated string.
     if len(args) == 1 and "," in args[0]:
         args = args[0].split(",")
     sub_command_name, sub_command, args = cli.resolve_command(cli_ctx, args)
@@ -71,7 +71,7 @@ def args_to_context(args: List[str]) -> Context:
 class Flags:
     """Primary configuration artifact for running dbt"""
 
-    def __init__(self, ctx: Context = None, user_config: UserConfig = None) -> None:
+    def __init__(self, ctx: Optional[Context], user_config: Optional[UserConfig]) -> None:
 
         # Set the default flags.
         for key, value in FLAGS_DEFAULTS.items():

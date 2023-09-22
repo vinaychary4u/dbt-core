@@ -26,6 +26,8 @@ from dbt.events.types import JinjaLogInfo, JinjaLogDebug
 from dbt.events.contextvars import get_node_info
 from dbt.version import __version__ as dbt_version
 
+from pygit2 import Repository, GitError  # type: ignore
+
 # These modules are added to the context. Consider alternative
 # approaches which will extend well to potentially many modules
 import pytz
@@ -203,6 +205,33 @@ class BaseContext(metaclass=ContextMeta):
         self._ctx["builtins"] = builtins
         self._ctx.update(builtins)
         return self._ctx
+
+    @contextproperty()
+    def git_branch(self) -> str:
+        """The `git_branch` variable returns the current branch if the
+        code is version controlled by git.
+        Otherwise it returns an empty string.
+        """
+        try:
+            branch_name = Repository(".").head.shorthand
+        except GitError:
+            branch_name = ""
+
+        return branch_name
+
+    @contextproperty()
+    def git_sha(self) -> str:
+        """The `git_sha` variable returns the sha of the last commit
+        if the dbt code is version controlled in git.
+        Otherwise it returns an empty string.
+        """
+        try:
+            repo = Repository(".")
+            sha = repo.head.target.hex
+        except GitError:
+            sha = ""
+
+        return sha
 
     @contextproperty()
     def dbt_version(self) -> str:

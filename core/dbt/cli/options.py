@@ -59,7 +59,7 @@ class MultiOption(click.Option):
                 self._eat_all_parser = our_parser  # type: ignore[assignment]
                 self._previous_parser_process = our_parser.process
                 # mypy doesnt like assingment to a method see https://github.com/python/mypy/issues/708
-                our_parser.process = parser_process  # type: ignore[method-assign]
+                our_parser.process = parser_process  # type: ignore[assignment]
                 break
         return retval
 

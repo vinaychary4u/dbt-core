@@ -19,6 +19,7 @@ from dbt.tests.adapter.persist_test_results._files import (
 class PersistTestResults:
     seed_table: str = "chipmunks_stage"
     model_table: str = "chipmunks"
+    audit_schema_suffix: str = "dbt_test__audit"
 
     audit_schema: str
 
@@ -34,7 +35,7 @@ class PersistTestResults:
         run_dbt(["run"])
 
         # the name of the audit schema doesn't change in a class, but this doesn't run at the class level
-        self.audit_schema = f"{project.test_schema}_dbt_test__audit"
+        self.audit_schema = f"{project.test_schema}_{self.audit_schema_suffix}"
         yield
 
     @pytest.fixture(scope="function", autouse=True)

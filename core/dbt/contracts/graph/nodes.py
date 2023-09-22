@@ -68,6 +68,7 @@ from dbt_semantic_interfaces.parsing.where_filter_parser import WhereFilterParse
 
 from .model_config import (
     NodeConfig,
+    ModelConfig,
     SeedConfig,
     TestConfig,
     SourceConfig,
@@ -575,6 +576,7 @@ class HookNode(CompiledNode):
 class ModelNode(CompiledNode):
     resource_type: Literal[NodeType.Model]
     access: AccessType = AccessType.Protected
+    config: ModelConfig = field(default_factory=ModelConfig)
     constraints: List[ModelLevelConstraint] = field(default_factory=list)
     version: Optional[NodeVersion] = None
     latest_version: Optional[NodeVersion] = None
@@ -611,7 +613,7 @@ class ModelNode(CompiledNode):
             path="",
             unrendered_config=unrendered_config,
             depends_on=DependsOn(nodes=args.depends_on_nodes),
-            config=NodeConfig(enabled=args.enabled),
+            config=ModelConfig(enabled=args.enabled),
         )
 
     @property

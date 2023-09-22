@@ -89,7 +89,7 @@ def find_unique_id_for_package(storage, key, package: Optional[PackageName]):
 
 
 class DocLookup(dbtClassMixin):
-    def __init__(self, manifest: "Manifest"):
+    def __init__(self, manifest: "Manifest") -> None:
         self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
         self.populate(manifest)
 
@@ -120,7 +120,7 @@ class DocLookup(dbtClassMixin):
 
 
 class SourceLookup(dbtClassMixin):
-    def __init__(self, manifest: "Manifest"):
+    def __init__(self, manifest: "Manifest") -> None:
         self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
         self.populate(manifest)
 
@@ -157,7 +157,7 @@ class RefableLookup(dbtClassMixin):
     _lookup_types: ClassVar[set] = set(NodeType.refable())
     _versioned_types: ClassVar[set] = set(NodeType.versioned())
 
-    def __init__(self, manifest: "Manifest"):
+    def __init__(self, manifest: "Manifest") -> None:
         self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
         self.populate(manifest)
 
@@ -268,7 +268,7 @@ class RefableLookup(dbtClassMixin):
 
 
 class MetricLookup(dbtClassMixin):
-    def __init__(self, manifest: "Manifest"):
+    def __init__(self, manifest: "Manifest") -> None:
         self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
         self.populate(manifest)
 
@@ -307,7 +307,7 @@ class SemanticModelByMeasureLookup(dbtClassMixin):
     the semantic models in a manifest.
     """
 
-    def __init__(self, manifest: "Manifest"):
+    def __init__(self, manifest: "Manifest") -> None:
         self.storage: DefaultDict[str, Dict[PackageName, UniqueID]] = defaultdict(dict)
         self.populate(manifest)
 
@@ -356,7 +356,7 @@ class SemanticModelByMeasureLookup(dbtClassMixin):
 
 # This handles both models/seeds/snapshots and sources/metrics/exposures/semantic_models
 class DisabledLookup(dbtClassMixin):
-    def __init__(self, manifest: "Manifest"):
+    def __init__(self, manifest: "Manifest") -> None:
         self.storage: Dict[str, Dict[PackageName, List[Any]]] = {}
         self.populate(manifest)
 
@@ -1440,12 +1440,12 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
 
 
 class MacroManifest(MacroMethods):
-    def __init__(self, macros):
+    def __init__(self, macros) -> None:
         self.macros = macros
         self.metadata = ManifestMetadata()
         # This is returned by the 'graph' context property
         # in the ProviderContext class.
-        self.flat_graph = {}
+        self.flat_graph: Dict[str, Any] = {}
 
 
 AnyManifest = Union[Manifest, MacroManifest]

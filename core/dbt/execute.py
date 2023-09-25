@@ -1,3 +1,4 @@
+import difflib
 import re
 from typing import Tuple
 from agate import Table
@@ -51,6 +52,7 @@ def get_result(unique_id: str, sql: str) -> Tuple[dict, str]:
     if matches(sql, prev["sql"]):
         return prev["response"], prev["table"]
     else:
+        # The search here actually did not got hit. We will need more tests to catch it
         for i, existing_results in enumerate(unmatched[unique_id]):
             if matches(sql, existing_results["sql"]):
                 prev_execution_record[unique_id].pop(i)
@@ -86,3 +88,17 @@ def write_diffs() -> None:
     json.dump(
         diffs, open(f"{get_flags().TARGET_PATH or './target'}/diffs-{dbt_version}.json", "w")
     )
+    print_diffs()
+
+
+def print_diffs() -> None:
+    for key, value in diffs.items():
+        print(f"Model: {key}")
+        for item in value:
+            diff = difflib.unified_diff(
+                item["current"].splitlines(), item["prev"].splitlines(), lineterm=""
+            )
+            # cosmatic change removal
+            for line in diff:
+                print(line)
+        print("==========")

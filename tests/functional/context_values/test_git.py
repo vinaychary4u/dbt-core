@@ -29,6 +29,8 @@ class TestContextGitValues:
         os.chdir(project.project_root)
         # Initialize a new git repository
         subprocess.run(["git", "init"], check=True)
+        subprocess.run(["git", "config", "user.email", "no-mail@dbtlabs.com"], check=True)
+        subprocess.run(["git", "config", "user.name", "dbt Labs"], check=True)
         subprocess.run(["git", "checkout", "-b" "new_branch_for_testing"], check=True)
         subprocess.run(["git", "add", "*"], check=True)
         subprocess.run(["git", "commit", "-m", "commit to git"], check=True)

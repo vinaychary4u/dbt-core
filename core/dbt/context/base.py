@@ -208,12 +208,18 @@ class BaseContext(metaclass=ContextMeta):
 
     @contextproperty()
     def git_branch(self) -> str:
-        """The `git_branch` variable returns the current branch if the
+        """The `git_branch` variable returns the current branch name if the
         code is version controlled by git.
         Otherwise it returns an empty string.
         """
+
+        if hasattr(get_flags(), "PROJECT_DIR"):
+            project_dir = get_flags().PROJECT_DIR
+        else:
+            project_dir = "."
+
         try:
-            branch_name = Repository(".").head.shorthand
+            branch_name = Repository(project_dir).head.shorthand
         except GitError:
             branch_name = ""
 
@@ -225,8 +231,14 @@ class BaseContext(metaclass=ContextMeta):
         if the dbt code is version controlled in git.
         Otherwise it returns an empty string.
         """
+
+        if hasattr(get_flags(), "PROJECT_DIR"):
+            project_dir = get_flags().PROJECT_DIR
+        else:
+            project_dir = "."
+
         try:
-            repo = Repository(".")
+            repo = Repository(project_dir)
             sha = repo.head.target.hex
         except GitError:
             sha = ""

@@ -52,7 +52,7 @@ def args_to_context(args: List[str]) -> Context:
     from dbt.cli.main import cli
 
     cli_ctx = cli.make_context(cli.name, args)
-    # Split args if they're a comma seperated string.
+    # Split args if they're a comma separated string.
     if len(args) == 1 and "," in args[0]:
         args = args[0].split(",")
     sub_command_name, sub_command, args = cli.resolve_command(cli_ctx, args)

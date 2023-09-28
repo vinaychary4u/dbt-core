@@ -62,6 +62,8 @@ def get_result(unique_id: str, sql: str) -> Tuple[dict, str]:
 
 def get_execution_result(sql) -> Tuple[AdapterResponse, Table]:
     response_dict, agate_json = get_result(current_node.get(), sql)
+    if "_message" not in response_dict:
+        response_dict["_message"] = ""
     response = AdapterResponse.from_dict(response_dict)
     table = Table.from_object(json.loads(agate_json))
     return response, table

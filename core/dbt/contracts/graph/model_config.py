@@ -583,12 +583,6 @@ class TestConfig(NodeAndTestConfig):
                     return False
         return True
 
-    @classmethod
-    def validate(cls, data):
-        super().validate(data)
-        if data.get("materialized") and data.get("materialized") != "test":
-            raise ValidationError("A test must have a materialized value of 'test'")
-
 
 @dataclass
 class EmptySnapshotConfig(NodeConfig):

@@ -544,6 +544,7 @@ def basic_compiled_schema_test_dict():
         "config": {
             "enabled": True,
             "materialized": "test",
+            "store_failures_as": "table",
             "tags": [],
             "severity": "warn",
             "schema": "dbt_test__audit",

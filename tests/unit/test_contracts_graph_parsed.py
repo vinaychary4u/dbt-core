@@ -1038,6 +1038,7 @@ def basic_parsed_schema_test_dict():
         "config": {
             "enabled": True,
             "materialized": "test",
+            "store_failures_as": "table",
             "tags": [],
             "severity": "ERROR",
             "warn_if": "!= 0",
@@ -1117,6 +1118,7 @@ def complex_parsed_schema_test_dict():
         "config": {
             "enabled": True,
             "materialized": "table",
+            "store_failures_as": "table",
             "tags": [],
             "severity": "WARN",
             "warn_if": "!= 0",

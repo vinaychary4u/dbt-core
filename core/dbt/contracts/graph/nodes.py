@@ -779,6 +779,7 @@ class ModelNode(CompiledNode):
             or enforced_column_constraint_removed
             or materialization_changed
         ):
+
             breaking_changes = []
             if contract_enforced_disabled:
                 breaking_changes.append(

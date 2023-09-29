@@ -12,32 +12,32 @@ select *
 from {{ ref('chipmunks_stage') }}
 """
 
-TEST__FAIL_WITH_VIEW_STRATEGY = """
-{{ config(strategy="view") }}
+TEST__FAIL_AS_VIEW = """
+{{ config(store_failures_as="view") }}
 select *
 from {{ ref('chipmunks') }}
 where shirt = 'green'
 """
 
 
-TEST__PASS_WITH_VIEW_STRATEGY = """
-{{ config(strategy="view") }}
+TEST__PASS_AS_VIEW = """
+{{ config(store_failures_as="view") }}
 select *
 from {{ ref('chipmunks') }}
 where shirt = 'grape'
 """
 
 
-TEST__FAIL_WITH_TABLE_STRATEGY = """
-{{ config(strategy="table") }}
+TEST__FAIL_AS_TABLE = """
+{{ config(store_failures_as="table") }}
 select *
 from {{ ref('chipmunks') }}
 where shirt = 'green'
 """
 
 
-TEST__PASS_WITH_TABLE_STRATEGY = """
-{{ config(strategy="table") }}
+TEST__PASS_AS_TABLE = """
+{{ config(store_failures_as="table") }}
 select *
 from {{ ref('chipmunks') }}
 where shirt = 'purple'

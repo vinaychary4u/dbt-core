@@ -554,12 +554,12 @@ class TestConfig(NodeAndTestConfig):
     # Annotated is used by mashumaro for jsonschema generation
     severity: Annotated[Severity, Pattern(SEVERITY_PATTERN)] = Severity("ERROR")
     store_failures: Optional[bool] = None
+    store_failures_as: Optional[str] = None
     where: Optional[str] = None
     limit: Optional[int] = None
     fail_calc: str = "count(*)"
     warn_if: str = "!= 0"
     error_if: str = "!= 0"
-    strategy: Optional[str] = None
 
     @classmethod
     def same_contents(cls, unrendered: Dict[str, Any], other: Dict[str, Any]) -> bool:
@@ -572,7 +572,7 @@ class TestConfig(NodeAndTestConfig):
             "warn_if",
             "error_if",
             "store_failures",
-            "strategy",
+            "store_failures_as",
         ]
 
         seen = set()

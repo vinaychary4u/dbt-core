@@ -983,9 +983,7 @@ Error raised for '{self.unique_id}', which has these hooks defined: \n{hook_list
 class TestShouldStoreFailures:
     @property
     def should_store_failures(self):
-        if self.config.strategy in ["view", "table"]:
-            return True
-        elif self.config.store_failures:
+        if self.config.store_failures:
             return self.config.store_failures
         return get_flags().STORE_FAILURES
 

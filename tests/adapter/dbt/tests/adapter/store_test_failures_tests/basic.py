@@ -6,17 +6,17 @@ import pytest
 from dbt.contracts.results import TestStatus
 from dbt.tests.util import run_dbt, check_relation_types
 
-from dbt.tests.adapter.persist_test_results._files import (
+from dbt.tests.adapter.store_test_failures_tests._files import (
     SEED__CHIPMUNKS,
     MODEL__CHIPMUNKS,
-    TEST__FAIL_WITH_VIEW_STRATEGY,
-    TEST__PASS_WITH_VIEW_STRATEGY,
-    TEST__FAIL_WITH_TABLE_STRATEGY,
-    TEST__PASS_WITH_TABLE_STRATEGY,
+    TEST__FAIL_AS_VIEW,
+    TEST__PASS_AS_VIEW,
+    TEST__FAIL_AS_TABLE,
+    TEST__PASS_AS_TABLE,
 )
 
 
-class PersistTestResults:
+class StoreTestFailures:
     seed_table: str = "chipmunks_stage"
     model_table: str = "chipmunks"
     audit_schema_suffix: str = "dbt_test__audit"
@@ -60,10 +60,10 @@ class PersistTestResults:
     @pytest.fixture(scope="class")
     def tests(self):
         return {
-            "fail_with_view_strategy.sql": TEST__FAIL_WITH_VIEW_STRATEGY,
-            "pass_with_view_strategy.sql": TEST__PASS_WITH_VIEW_STRATEGY,
-            "fail_with_table_strategy.sql": TEST__FAIL_WITH_TABLE_STRATEGY,
-            "pass_with_table_strategy.sql": TEST__PASS_WITH_TABLE_STRATEGY,
+            "fail_as_view.sql": TEST__FAIL_AS_VIEW,
+            "pass_as_view.sql": TEST__PASS_AS_VIEW,
+            "fail_as_table.sql": TEST__FAIL_AS_TABLE,
+            "pass_as_table.sql": TEST__PASS_AS_TABLE,
         }
 
     def row_count(self, project, relation_name: str) -> int:
@@ -104,18 +104,18 @@ class PersistTestResults:
         """
         project.run_sql(sql)
 
-    def test_tests_run_successfully_and_are_persisted_correctly(self, project):
+    def test_tests_run_successfully_and_are_stored_as_expected(self, project):
         # set up the expected results
         TestResult = namedtuple("TestResult", ["name", "status", "type", "row_count"])
         expected_results = {
-            TestResult("pass_with_view_strategy", TestStatus.Pass, "view", 0),
-            TestResult("fail_with_view_strategy", TestStatus.Fail, "view", 1),
-            TestResult("pass_with_table_strategy", TestStatus.Pass, "table", 0),
-            TestResult("fail_with_table_strategy", TestStatus.Fail, "table", 1),
+            TestResult("pass_as_view", TestStatus.Pass, "view", 0),
+            TestResult("fail_as_view", TestStatus.Fail, "view", 1),
+            TestResult("pass_as_table", TestStatus.Pass, "table", 0),
+            TestResult("fail_as_table", TestStatus.Fail, "table", 1),
         }
 
         # run the tests once
-        results = run_dbt(["test"], expect_pass=False)
+        results = run_dbt(["test", "--store-failures"], expect_pass=False)
 
         # show that the statuses are what we expect
         actual = {(result.node.name, result.status) for result in results}
@@ -137,14 +137,14 @@ class PersistTestResults:
         # insert a new record in the model that fails the "pass" tests
         # show that the view updates, but not the table
         self.insert_record(project, {"name": "dave", "shirt": "grape"})
-        expected_results.remove(TestResult("pass_with_view_strategy", TestStatus.Pass, "view", 0))
-        expected_results.add(TestResult("pass_with_view_strategy", TestStatus.Pass, "view", 1))
+        expected_results.remove(TestResult("pass_as_view", TestStatus.Pass, "view", 0))
+        expected_results.add(TestResult("pass_as_view", TestStatus.Pass, "view", 1))
 
         # delete the original record from the model that failed the "fail" tests
         # show that the view updates, but not the table
         self.delete_record(project, {"name": "theodore", "shirt": "green"})
-        expected_results.remove(TestResult("fail_with_view_strategy", TestStatus.Fail, "view", 1))
-        expected_results.add(TestResult("fail_with_view_strategy", TestStatus.Fail, "view", 0))
+        expected_results.remove(TestResult("fail_as_view", TestStatus.Fail, "view", 1))
+        expected_results.add(TestResult("fail_as_view", TestStatus.Fail, "view", 0))
 
         # show that the views update without needing to run dbt, but the tables do not update
         actual = {

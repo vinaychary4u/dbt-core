@@ -554,7 +554,7 @@ class TestConfig(NodeAndTestConfig):
     # Annotated is used by mashumaro for jsonschema generation
     severity: Annotated[Severity, Pattern(SEVERITY_PATTERN)] = Severity("ERROR")
     store_failures: Optional[bool] = None
-    store_failures_as: Optional[str] = None
+    store_failures_as: Optional[str] = "table"
     where: Optional[str] = None
     limit: Optional[int] = None
     fail_calc: str = "count(*)"

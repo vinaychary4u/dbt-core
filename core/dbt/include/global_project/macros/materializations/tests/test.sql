@@ -7,7 +7,7 @@
     {% set identifier = model['alias'] %}
     {% set old_relation = adapter.get_relation(database=database, schema=schema, identifier=identifier) %}
 
-    {% set store_failures_as = config.get('store_failures_as', 'table') %}
+    {% set store_failures_as = config.get('store_failures_as') %}
     {% set target_relation = api.Relation.create(
         identifier=identifier, schema=schema, database=database, type=store_failures_as) -%} %}
 

@@ -5809,6 +5809,12 @@
             }
           ],
           "default": null
+        },
+        "meta": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": true

@@ -5,7 +5,7 @@ from dbt.context.context_config import ContextConfig
 from dbt.context.providers import generate_parse_exposure, get_rendered
 from dbt.contracts.files import FileHash
 from dbt.contracts.graph.manifest import Manifest
-from dbt.contracts.graph.model_config import NodeConfig
+from dbt.contracts.graph.model_config import UnitTestNodeConfig, ModelConfig
 from dbt.contracts.graph.nodes import (
     ModelNode,
     UnitTestNode,
@@ -66,7 +66,9 @@ class UnitTestManifestLoader:
             path=get_pseudo_test_path(name, test_case.original_file_path),
             original_file_path=test_case.original_file_path,
             unique_id=test_case.unique_id,
-            config=NodeConfig(materialized="unit", _extra={"expected_rows": test_case.expect}),
+            config=UnitTestNodeConfig(
+                materialized="unit", expected_rows=test_case.expect.get_rows()
+            ),
             raw_code=actual_node.raw_code,
             database=actual_node.database,
             schema=actual_node.schema,
@@ -118,16 +120,15 @@ class UnitTestManifestLoader:
             # TODO: package_name?
             input_name = f"{test_case.model}__{test_case.name}__{original_input_node.name}"
             input_unique_id = f"model.{package_name}.{input_name}"
-
             input_node = ModelNode(
-                raw_code=self._build_raw_code(given.rows, original_input_node_columns),
+                raw_code=self._build_raw_code(given.get_rows(), original_input_node_columns),
                 resource_type=NodeType.Model,
                 package_name=package_name,
                 path=original_input_node.path,
                 original_file_path=original_input_node.original_file_path,
                 unique_id=input_unique_id,
                 name=input_name,
-                config=NodeConfig(materialized="ephemeral"),
+                config=ModelConfig(materialized="ephemeral"),
                 database=original_input_node.database,
                 schema=original_input_node.schema,
                 alias=original_input_node.alias,
@@ -188,6 +189,11 @@ class UnitTestParser(YamlReader):
                 )
                 unit_test_fqn = [self.project.project_name] + model_name_split + [test.name]
                 unit_test_config = self._build_unit_test_config(unit_test_fqn, test.config)
+
+                # Check that format and type of rows matches for each given input
+                for input in test.given:
+                    input.validate_fixture("input", test.name)
+                test.expect.validate_fixture("expected", test.name)
 
                 unit_test_definition = UnitTestDefinition(
                     name=test.name,

@@ -6011,6 +6011,13 @@
               "type": "string"
             }
           }
+        },
+        "format": {
+          "enum": [
+            "csv",
+            "dict"
+          ],
+          "default": "dict"
         }
       },
       "additionalProperties": false,

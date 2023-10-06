@@ -59,7 +59,7 @@ from dbt_semantic_interfaces.references import (
 )
 from dbt_semantic_interfaces.references import MetricReference as DSIMetricReference
 from dbt_semantic_interfaces.type_enums import MetricType, TimeGranularity
-from dbt_semantic_interfaces.parsing.where_filter_parser import WhereFilterParser
+from dbt_semantic_interfaces.parsing.where_filter.where_filter_parser import WhereFilterParser
 
 from .model_config import (
     NodeConfig,

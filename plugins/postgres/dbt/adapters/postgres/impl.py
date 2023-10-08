@@ -1,9 +1,15 @@
 from datetime import datetime
 from dataclasses import dataclass
-from typing import Optional, Set, List, Any
+from typing import Any, Dict, Optional, Set, List
 
 from dbt.adapters.base.meta import available
-from dbt.adapters.base.impl import AdapterConfig, AdapterFeature, ConstraintSupport
+from dbt.adapters.base.impl import (
+    AdapterConfig,
+    Capability,
+    ConstraintSupport,
+    CapabilitySupport,
+    Support,
+)
 from dbt.adapters.sql import SQLAdapter
 from dbt.adapters.postgres import PostgresConnectionManager
 from dbt.adapters.postgres.column import PostgresColumn
@@ -75,7 +81,12 @@ class PostgresAdapter(SQLAdapter):
 
     CATALOG_BY_RELATION_SUPPORT = True
 
-    SUPPORTED_FEATURES: Set[AdapterFeature] = frozenset([AdapterFeature.CatalogByRelations])
+    _capabilities: Dict[Capability, CapabilitySupport] = {
+        Capability.SchemaMetadataByRelations: CapabilitySupport(
+            capability=Capability.SchemaMetadataByRelations,
+            support=Support.Full,
+        )
+    }
 
     @classmethod
     def date_function(cls):
@@ -149,5 +160,14 @@ class PostgresAdapter(SQLAdapter):
         self.execute("select 1 as id")
 
     @classmethod
-    def has_feature(cls, feature: AdapterFeature) -> bool:
-        return feature in cls.SUPPORTED_FEATURES
+    def capabilities(cls) -> List[CapabilitySupport]:
+        return cls._capabilities.values()
+
+    def capability_support(self, capability: Capability) -> CapabilitySupport:
+        if capability in self._capabilities:
+            return self._capabilities[capability]
+        else:
+            return CapabilitySupport(
+                capability=capability,
+                support=Support.Unknown,
+            )

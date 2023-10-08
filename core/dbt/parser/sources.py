@@ -1,6 +1,8 @@
 import itertools
 from pathlib import Path
 from typing import Iterable, Dict, Optional, Set, Any, List
+
+from dbt.adapters.base.impl import Capability
 from dbt.adapters.factory import get_adapter
 from dbt.config import RuntimeConfig
 from dbt.context.context_config import (
@@ -26,7 +28,7 @@ from dbt.contracts.graph.unparsed import (
 )
 from dbt.events.functions import warn_or_error
 from dbt.events.types import UnusedTables
-from dbt.exceptions import DbtInternalError
+from dbt.exceptions import DbtInternalError, ParsingError
 from dbt.node_types import NodeType
 
 from dbt.parser.common import ParserRef
@@ -183,6 +185,17 @@ class SourcePatcher:
             config=config,
             unrendered_config=unrendered_config,
         )
+
+        if (
+            parsed_source.freshness
+            and not parsed_source.loaded_at_field
+            and not get_adapter(self.root_project).capability_support(
+                Capability.TableLastModifiedMetadata
+            )
+        ):
+            raise ParsingError(
+                "Adapter does not support metadata-based freshness. A loaded_at_field must be specified for source freshness."
+            )
 
         # relation name is added after instantiation because the adapter does
         # not provide the relation name for a UnpatchedSourceDefinition object

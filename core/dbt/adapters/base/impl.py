@@ -1,4 +1,5 @@
 import abc
+import dataclasses
 from concurrent.futures import as_completed, Future
 from contextlib import contextmanager
 from datetime import datetime
@@ -17,6 +18,7 @@ from typing import (
     Set,
     Tuple,
     Type,
+    TypedDict,
     Union,
 )
 
@@ -76,6 +78,7 @@ from dbt import deprecations
 GET_CATALOG_MACRO_NAME = "get_catalog"
 GET_CATALOG_RELATIONS_MACRO_NAME = "get_catalog_relations"
 FRESHNESS_MACRO_NAME = "collect_freshness"
+GET_RELATION_LAST_MODIFIED_MACRO_NAME = "get_relation_last_modified"
 
 
 class ConstraintSupport(str, Enum):
@@ -90,6 +93,14 @@ def _expect_row_value(key: str, row: agate.Row):
             'Got a row without "{}" column, columns: {}'.format(key, row.keys())
         )
     return row[key]
+
+
+def _get_column_value_uncased(key: str, row: agate.Row) -> Any:
+    for col_name, value in row.items():
+        if col_name.casefold() == key.casefold():
+            return value
+
+    raise KeyError
 
 
 def _catalog_filter_schemas(manifest: Manifest) -> Callable[[agate.Row], bool]:
@@ -110,7 +121,7 @@ def _catalog_filter_schemas(manifest: Manifest) -> Callable[[agate.Row], bool]:
     return test
 
 
-def _utc(dt: Optional[datetime], source: BaseRelation, field_name: str) -> datetime:
+def _utc(dt: Optional[datetime], source: Optional[BaseRelation], field_name: str) -> datetime:
     """If dt has a timezone, return a new datetime that's in UTC. Otherwise,
     assume the datetime is already for UTC and add the timezone.
     """
@@ -162,12 +173,50 @@ class PythonJobHelper:
         raise NotImplementedError("PythonJobHelper submit function is not implemented yet")
 
 
-class AdapterFeature(str, Enum):
+class Capability(str, Enum):
     """Enumeration of optional adapter features which can be probed using BaseAdapter.has_feature()"""
 
-    CatalogByRelations = "CatalogByRelations"
-    """Flags support for retrieving catalog information using a list of relations, rather than always retrieving all
-    the relations in a schema """
+    SchemaMetadataByRelations = "CatalogByRelations"
+    """Indicates efficient support for retrieving schema metadata for a list of relations, rather than always retrieving
+    all the relations in a schema."""
+
+    TableLastModifiedMetadata = "TableLastModifiedMetadata"
+    """Indicates support for determining the time of the last table modification by querying database metadata."""
+
+
+class Support(str, Enum):
+    Unknown = "Unknown"
+    """The adapter has not declared whether this capability is a feature of the underlying DBMS."""
+
+    Unsupported = "Unsupported"
+    """This capability is not possible with the underlying DBMS, so the adapter does not implement related macros."""
+
+    NotImplemented = "NotImplemented"
+    """This capability is available in the underlying DBMS, but support has not yet been implemented in the adapter."""
+
+    Versioned = "Versioned"
+    """Some versions of the DBMS supported by the adapter support this capability and the adapter has implemented any
+    macros needed to use it."""
+
+    Full = "Full"
+    """All versions of the DBMS supported by the adapter support this capability and the adapter has implemented any
+    macros needed to use it."""
+
+
+@dataclasses.dataclass
+class CapabilitySupport:
+    capability: Capability
+    support: Support
+    first_version: Optional[str] = None
+
+    def __bool__(self):
+        return self.support == Support.Versioned or self.support == Support.Full
+
+
+class FreshnessResponse(TypedDict):
+    max_loaded_at: datetime
+    snapshotted_at: datetime
+    age: float  # age in seconds
 
 
 class BaseAdapter(metaclass=AdapterMeta):
@@ -1147,7 +1196,9 @@ class BaseAdapter(metaclass=AdapterMeta):
         with executor(self.config) as tpe:
             futures: List[Future[agate.Table]] = []
             relation_count = len(self._get_catalog_relations(manifest))
-            if relation_count <= 100 and self.has_feature(AdapterFeature.CatalogByRelations):
+            if relation_count <= 100 and self.capability_support(
+                Capability.SchemaMetadataByRelations
+            ):
                 relations_by_schema = self._get_catalog_relations_by_info_schema(manifest)
                 for info_schema in relations_by_schema:
                     name = ".".join([str(info_schema.database), "information_schema"])
@@ -1186,7 +1237,7 @@ class BaseAdapter(metaclass=AdapterMeta):
         loaded_at_field: str,
         filter: Optional[str],
         manifest: Optional[Manifest] = None,
-    ) -> Tuple[Optional[AdapterResponse], Dict[str, Any]]:
+    ) -> Tuple[Optional[AdapterResponse], FreshnessResponse]:
         """Calculate the freshness of sources in dbt, and return it"""
         kwargs: Dict[str, Any] = {
             "source": source,
@@ -1221,12 +1272,52 @@ class BaseAdapter(metaclass=AdapterMeta):
 
         snapshotted_at = _utc(table[0][1], source, loaded_at_field)
         age = (snapshotted_at - max_loaded_at).total_seconds()
-        freshness = {
+        freshness: FreshnessResponse = {
             "max_loaded_at": max_loaded_at,
             "snapshotted_at": snapshotted_at,
             "age": age,
         }
         return adapter_response, freshness
+
+    def calculate_freshness_from_metadata(
+        self,
+        source: BaseRelation,
+        manifest: Optional[Manifest] = None,
+    ) -> Tuple[Optional[AdapterResponse], FreshnessResponse]:
+        kwargs: Dict[str, Any] = {
+            "information_schema": source.information_schema_only(),
+            "relations": [source],
+        }
+        result = self.execute_macro(
+            GET_RELATION_LAST_MODIFIED_MACRO_NAME, kwargs=kwargs, manifest=manifest
+        )
+        adapter_response, table = result.response, result.table  # type: ignore[attr-defined]
+
+        try:
+            assert len(table) == 1  # There should be one row since we requested one relation
+            row = table[0]
+            last_modified_val = _get_column_value_uncased("last_modified", row)
+            snapshotted_at_val = _get_column_value_uncased("snapshotted_at", row)
+
+            if last_modified_val is None:
+                # no records in the table, so really the max_loaded_at was
+                # infinitely long ago. Just call it 0:00 January 1 year UTC
+                max_loaded_at = datetime(1, 1, 1, 0, 0, 0, tzinfo=pytz.UTC)
+            else:
+                max_loaded_at = _utc(last_modified_val, None, "last_modified")
+
+            snapshotted_at = _utc(snapshotted_at_val, None, "snapshotted_at")
+            age = (snapshotted_at - max_loaded_at).total_seconds()
+
+            freshness: FreshnessResponse = {
+                "max_loaded_at": max_loaded_at,
+                "snapshotted_at": snapshotted_at,
+                "age": age,
+            }
+
+            return adapter_response, freshness
+        except Exception:
+            raise MacroResultError(GET_RELATION_LAST_MODIFIED_MACRO_NAME, table)
 
     def pre_model_hook(self, config: Mapping[str, Any]) -> Any:
         """A hook for running some operation before the model materialization
@@ -1501,12 +1592,14 @@ class BaseAdapter(metaclass=AdapterMeta):
         else:
             return None
 
-    @classmethod
-    def has_feature(cls, feature: AdapterFeature) -> bool:
-        # The base adapter implementation does not implement any optional
-        # features, so always return false. Adapters which wish to provide
-        # optional features will have to override this function.
-        return False
+    def capabilities(self) -> List[CapabilitySupport]:
+        return []
+
+    def capability_support(self, capability: Capability) -> CapabilitySupport:
+        return CapabilitySupport(
+            capability=capability,
+            support=Support.Unknown,
+        )
 
 
 COLUMNS_EQUAL_SQL = """

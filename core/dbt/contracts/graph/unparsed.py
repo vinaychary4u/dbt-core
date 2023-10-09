@@ -721,6 +721,16 @@ class UnparsedSemanticModel(dbtClassMixin):
     primary_entity: Optional[str] = None
 
 
+@dataclass
+class UnparsedSavedQuery(dbtClassMixin):
+    name: str
+    description: Optional[str] = None
+    label: Optional[str] = None
+    metrics: List[str] = field(default_factory=list)
+    group_bys: List[str] = field(default_factory=list)
+    where: List[str] = field(default_factory=list)
+
+
 def normalize_date(d: Optional[datetime.date]) -> Optional[datetime.datetime]:
     """Convert date to datetime (at midnight), and add local time zone if naive"""
     if d is None:

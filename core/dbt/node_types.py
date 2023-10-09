@@ -33,6 +33,7 @@ class NodeType(StrEnum):
     Exposure = "exposure"
     Metric = "metric"
     Group = "group"
+    SavedQuery = "saved_query"
     SemanticModel = "semantic_model"
 
     @classmethod

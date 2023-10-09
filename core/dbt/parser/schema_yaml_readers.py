@@ -1,4 +1,4 @@
-from dbt.parser.schemas import YamlReader, SchemaParser
+from dbt.parser.schemas import YamlReader, SchemaParser, ParseResult
 from dbt.parser.common import YamlBlock
 from dbt.node_types import NodeType
 from dbt.contracts.graph.unparsed import (
@@ -13,6 +13,7 @@ from dbt.contracts.graph.unparsed import (
     UnparsedMetricInputMeasure,
     UnparsedMetricTypeParams,
     UnparsedNonAdditiveDimension,
+    UnparsedSavedQuery,
     UnparsedSemanticModel,
 )
 from dbt.contracts.graph.nodes import (
@@ -26,6 +27,7 @@ from dbt.contracts.graph.nodes import (
     SemanticModel,
     WhereFilter,
 )
+from dbt.contracts.graph.saved_query import SavedQuery
 from dbt.contracts.graph.semantic_models import (
     Dimension,
     DimensionTypeParams,
@@ -631,3 +633,49 @@ class SemanticModelParser(YamlReader):
                 raise YamlParseDictError(self.yaml.path, self.key, data, exc)
 
             self.parse_semantic_model(unparsed)
+
+
+class SavedQueryParser(YamlReader):
+    def __init__(self, schema_parser: SchemaParser, yaml: YamlBlock) -> None:
+        super().__init__(schema_parser, yaml, "saved_queries")
+        self.schema_parser = schema_parser
+        self.yaml = yaml
+
+    def parse_saved_query(self, unparsed: UnparsedSavedQuery) -> None:
+        package_name = self.project.project_name
+        unique_id = f"{NodeType.SavedQuery}.{package_name}.{unparsed.name}"
+        path = self.yaml.path.relative_path
+
+        fqn = self.schema_parser.get_fqn_prefix(path)
+        fqn.append(unparsed.name)
+
+        parsed = SavedQuery(
+            description=unparsed.description,
+            label=unparsed.label,
+            fqn=fqn,
+            group_bys=unparsed.group_bys,
+            metrics=unparsed.metrics,
+            name=unparsed.name,
+            original_file_path=self.yaml.path.original_file_path,
+            package_name=package_name,
+            path=path,
+            resource_type=NodeType.SavedQuery,
+            unique_id=unique_id,
+            where=[WhereFilter(where_sql_template=where_str) for where_str in unparsed.where],
+        )
+
+        self.manifest.add_saved_query(self.yaml.file, parsed)
+
+    def parse(self) -> ParseResult:
+        for data in self.get_key_dicts():
+            try:
+                UnparsedSavedQuery.validate(data)
+                unparsed = UnparsedSavedQuery.from_dict(data)
+            except (ValidationError, JSONValidationError) as exc:
+                raise YamlParseDictError(self.yaml.path, self.key, data, exc)
+
+            self.parse_saved_query(unparsed)
+
+        # The supertype (YamlReader) requires `parse` to return a ParseResult, so
+        # we return an empty one because we don't have one to actually return.
+        return ParseResult()

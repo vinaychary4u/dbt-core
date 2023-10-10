@@ -37,6 +37,7 @@ class TestSavedQueryParsing:
         assert len(saved_query.metrics) == 1
         assert len(saved_query.group_bys) == 1
         assert len(saved_query.where) == 2
+        assert len(saved_query.depends_on.nodes) == 1
 
     def test_saved_query_error(self, project):
         error_schema_yml = saved_queries_yml.replace("simple_metric", "metric_not_found")
@@ -46,5 +47,5 @@ class TestSavedQueryParsing:
 
         result = runner.invoke(["parse", "--no-partial-parse"])
         assert not result.success
-        validation_errors = [e for e in events if e.info.name == "SemanticValidationFailure"]
+        validation_errors = [e for e in events if e.info.name == "MainEncounteredError"]
         assert validation_errors

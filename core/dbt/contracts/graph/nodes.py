@@ -1744,6 +1744,11 @@ class SavedQuery(GraphNode):
     config: SavedQueryConfig = field(default_factory=SavedQueryConfig)
     unrendered_config: Dict[str, Any] = field(default_factory=dict)
     group: Optional[str] = None
+    depends_on: DependsOn = field(default_factory=DependsOn)
+
+    @property
+    def depends_on_nodes(self):
+        return self.depends_on.nodes
 
 
 # ====================================

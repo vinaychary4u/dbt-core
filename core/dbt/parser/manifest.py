@@ -529,6 +529,7 @@ class ManifestLoader:
             self.process_refs(self.root_project.project_name, self.root_project.dependencies)
             self.process_docs(self.root_project)
             self.process_metrics(self.root_project)
+            self.process_saved_queries(self.root_project)
             self.check_valid_group_config()
             self.check_valid_access_property()
 
@@ -1106,6 +1107,15 @@ class ManifestLoader:
                 continue
             _process_metrics_for_node(self.manifest, current_project, exposure)
 
+    def process_saved_queries(self, config: RuntimeConfig):
+        """Processes SavedQuery nodes to populate their `depends_on`."""
+        current_project = config.project_name
+        for saved_query in self.manifest.saved_queries.values():
+            # TODO:
+            # 1. process `where` of SavedQuery for `depends_on`s
+            # 2. process `group_bys` of SavedQuery for `depends_on``
+            _process_metrics_for_node(self.manifest, current_project, saved_query)
+
     def update_semantic_model(self, semantic_model) -> None:
         # This has to be done at the end of parsing because the referenced model
         # might have alias/schema/database fields that are updated by yaml config.
@@ -1583,14 +1593,19 @@ def _process_metric_node(
 def _process_metrics_for_node(
     manifest: Manifest,
     current_project: str,
-    node: Union[ManifestNode, Metric, Exposure],
+    node: Union[ManifestNode, Metric, Exposure, SavedQuery],
 ):
     """Given a manifest and a node in that manifest, process its metrics"""
 
+    metrics: List[List[str]]
     if isinstance(node, SeedNode):
         return
+    elif isinstance(node, SavedQuery):
+        metrics = [[metric] for metric in node.metrics]
+    else:
+        metrics = node.metrics
 
-    for metric in node.metrics:
+    for metric in metrics:
         target_metric: Optional[Union[Disabled, Metric]] = None
         target_metric_name: str
         target_metric_package: Optional[str] = None

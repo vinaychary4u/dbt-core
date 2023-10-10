@@ -641,6 +641,31 @@ class SavedQueryParser(YamlReader):
         self.schema_parser = schema_parser
         self.yaml = yaml
 
+    def _generate_saved_query_config(
+        self, target: UnparsedSavedQuery, fqn: List[str], package_name: str, rendered: bool
+    ):
+        generator: BaseContextConfigGenerator
+        if rendered:
+            generator = ContextConfigGenerator(self.root_project)
+        else:
+            generator = UnrenderedConfigGenerator(self.root_project)
+
+        # configs with precendence set
+        precedence_configs = dict()
+        # first apply semantic model configs
+        precedence_configs.update(target.config)
+
+        config = generator.calculate_node_config(
+            config_call_dict={},
+            fqn=fqn,
+            resource_type=NodeType.SavedQuery,
+            project_name=package_name,
+            base=False,
+            patch_config_dict=precedence_configs,
+        )
+
+        return config
+
     def parse_saved_query(self, unparsed: UnparsedSavedQuery) -> None:
         package_name = self.project.project_name
         unique_id = f"{NodeType.SavedQuery}.{package_name}.{unparsed.name}"
@@ -648,6 +673,22 @@ class SavedQueryParser(YamlReader):
 
         fqn = self.schema_parser.get_fqn_prefix(path)
         fqn.append(unparsed.name)
+
+        config = self._generate_saved_query_config(
+            target=unparsed,
+            fqn=fqn,
+            package_name=package_name,
+            rendered=True,
+        )
+
+        config = config.finalize_and_validate()
+
+        unrendered_config = self._generate_saved_query_config(
+            target=unparsed,
+            fqn=fqn,
+            package_name=package_name,
+            rendered=False,
+        )
 
         parsed = SavedQuery(
             description=unparsed.description,
@@ -662,6 +703,8 @@ class SavedQueryParser(YamlReader):
             resource_type=NodeType.SavedQuery,
             unique_id=unique_id,
             where=[WhereFilter(where_sql_template=where_str) for where_str in unparsed.where],
+            config=config,
+            unrendered_config=unrendered_config,
         )
 
         self.manifest.add_saved_query(self.yaml.file, parsed)

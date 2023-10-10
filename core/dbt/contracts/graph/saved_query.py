@@ -1,6 +1,7 @@
-from dataclasses import dataclass
-from typing import List, Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
+from dbt.contracts.graph.model_config import SavedQueryConfig
 from dbt.contracts.graph.nodes import GraphNode, SourceFileMetadata, WhereFilter
 
 
@@ -12,3 +13,5 @@ class SavedQuery(GraphNode):
     description: Optional[str] = None
     label: Optional[str] = None
     metadata: Optional[SourceFileMetadata] = None
+    config: SavedQueryConfig = field(default_factory=SavedQueryConfig)
+    unrendered_config: Dict[str, Any] = field(default_factory=dict)

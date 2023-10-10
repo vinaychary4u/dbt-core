@@ -729,6 +729,7 @@ class UnparsedSavedQuery(dbtClassMixin):
     metrics: List[str] = field(default_factory=list)
     group_bys: List[str] = field(default_factory=list)
     where: List[str] = field(default_factory=list)
+    config: Dict[str, Any] = field(default_factory=dict)
 
 
 def normalize_date(d: Optional[datetime.date]) -> Optional[datetime.datetime]:

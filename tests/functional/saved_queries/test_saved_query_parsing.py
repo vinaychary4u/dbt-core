@@ -6,7 +6,7 @@ from dbt.contracts.graph.manifest import Manifest
 from dbt.events.base_types import BaseEvent
 from dbt.tests.util import write_file
 from tests.functional.assertions.test_runner import dbtTestRunner
-from tests.functional.saved_queries.fixtures import saved_queries_yml
+from tests.functional.saved_queries.fixtures import saved_queries_yml, saved_query_description
 from tests.functional.semantic_models.fixtures import (
     fct_revenue_sql,
     metricflow_time_spine_sql,
@@ -22,11 +22,12 @@ class TestSavedQueryParsing:
             "schema.yml": schema_yml,
             "fct_revenue.sql": fct_revenue_sql,
             "metricflow_time_spine.sql": metricflow_time_spine_sql,
+            "docs.md": saved_query_description,
         }
 
     def test_semantic_model_parsing(self, project):
         runner = dbtTestRunner()
-        result = runner.invoke(["parse"])
+        result = runner.invoke(["parse", "--no-partial-parse"])
         result.result
         assert result.success
         assert isinstance(result.result, Manifest)
@@ -38,6 +39,7 @@ class TestSavedQueryParsing:
         assert len(saved_query.group_bys) == 1
         assert len(saved_query.where) == 2
         assert len(saved_query.depends_on.nodes) == 1
+        assert saved_query.description == "My SavedQuery Description"
 
     def test_saved_query_error(self, project):
         error_schema_yml = saved_queries_yml.replace("simple_metric", "metric_not_found")
@@ -59,6 +61,7 @@ class TestSavedQueryPartialParsing:
             "schema.yml": schema_yml,
             "fct_revenue.sql": fct_revenue_sql,
             "metricflow_time_spine.sql": metricflow_time_spine_sql,
+            "docs.md": saved_query_description,
         }
 
     def test_saved_query_metrics_changed(self, project):

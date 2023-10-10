@@ -1195,6 +1195,13 @@ class ManifestLoader:
                 config.project_name,
             )
             _process_docs_for_semantic_model(ctx, semantic_model)
+        for saved_query in self.manifest.saved_queries.values():
+            if saved_query.created_at < self.started_at:
+                continue
+            ctx = generate_runtime_docs_context(
+                config, saved_query, self.manifest, config.project_name
+            )
+            _process_docs_for_saved_query(ctx, saved_query)
 
     # Loops through all nodes and exposures, for each element in
     # 'sources' array finds the source node and updates the
@@ -1449,6 +1456,11 @@ def _process_docs_for_semantic_model(
     for entity in semantic_model.entities:
         if entity.description:
             entity.description = get_rendered(entity.description, context)
+
+
+def _process_docs_for_saved_query(context: Dict[str, Any], saved_query: SavedQuery) -> None:
+    if saved_query.description:
+        saved_query.description = get_rendered(saved_query.description, context)
 
 
 def _process_refs(

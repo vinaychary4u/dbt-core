@@ -1,9 +1,13 @@
+saved_query_description = """
+{% docs saved_query_description %} My SavedQuery Description {% enddocs %}
+"""
+
 saved_queries_yml = """
 version: 2
 
 saved_queries:
   - name: test_saved_query
-    description: A saved query for testing
+    description: "{{ doc('saved_query_description') }}"
     label: Test Saved Query
     metrics:
         - simple_metric

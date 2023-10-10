@@ -1746,6 +1746,7 @@ class SavedQuery(GraphNode):
     group: Optional[str] = None
     depends_on: DependsOn = field(default_factory=DependsOn)
     created_at: float = field(default_factory=lambda: time.time())
+    refs: List[RefArgs] = field(default_factory=list)
 
     @property
     def depends_on_nodes(self):

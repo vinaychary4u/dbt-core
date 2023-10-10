@@ -100,3 +100,51 @@ class TestGroups:
         )
         with pytest.raises(ParsingError):
             results = run_dbt(["--partial-parse", "run"])
+
+
+my_model_c = """
+select * from {{ ref("my_model_a") }} union all
+select * from {{ ref("my_model_b") }}
+"""
+
+models_yml = """
+models:
+  - name: my_model_a
+  - name: my_model_b
+  - name: my_model_c
+"""
+
+models_and_groups_yml = """
+groups:
+  - name: sales_analytics
+    owner:
+      name: Sales Analytics
+      email: sales@jaffleshop.com
+
+models:
+  - name: my_model_a
+    access: private
+    group: sales_analytics
+  - name: my_model_b
+    access: private
+    group: sales_analytics
+  - name: my_model_c
+    access: private
+    group: sales_analytics
+"""
+
+
+class TestAddingModelsToNewGroups:
+    @pytest.fixture(scope="class")
+    def models(self):
+        return {
+            "my_model_a.sql": "select 1 as id",
+            "my_model_b.sql": "select 2 as id",
+            "my_model_c.sql": my_model_c,
+            "models.yml": models_yml,
+        }
+
+    def test_adding_models_to_new_groups(self, project):
+        run_dbt(["compile"])
+        write_file(models_and_groups_yml, project.project_root, "models", "models.yml")
+        run_dbt(["compile"])

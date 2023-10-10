@@ -981,6 +981,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         groupable_nodes = list(
             chain(
                 self.nodes.values(),
+                self.saved_queries.values(),
                 self.semantic_models.values(),
                 self.metrics.values(),
             )

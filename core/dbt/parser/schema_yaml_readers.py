@@ -705,6 +705,7 @@ class SavedQueryParser(YamlReader):
             where=[WhereFilter(where_sql_template=where_str) for where_str in unparsed.where],
             config=config,
             unrendered_config=unrendered_config,
+            group=config.group,
         )
 
         # Only add thes saved query if it's enabled, otherwise we track it with other diabled nodes

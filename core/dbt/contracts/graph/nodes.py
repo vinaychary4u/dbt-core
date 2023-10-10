@@ -1743,6 +1743,7 @@ class SavedQuery(GraphNode):
     metadata: Optional[SourceFileMetadata] = None
     config: SavedQueryConfig = field(default_factory=SavedQueryConfig)
     unrendered_config: Dict[str, Any] = field(default_factory=dict)
+    group: Optional[str] = None
 
 
 # ====================================

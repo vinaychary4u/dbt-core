@@ -94,6 +94,7 @@ from dbt.contracts.graph.nodes import (
     Macro,
     Exposure,
     Metric,
+    SavedQuery,
     SeedNode,
     SemanticModel,
     ManifestNode,
@@ -1236,12 +1237,15 @@ class ManifestLoader:
         for semantic_model in manifest.semantic_models.values():
             self.check_valid_group_config_node(semantic_model, group_names)
 
+        for saved_query in manifest.saved_queries.values():
+            self.check_valid_group_config_node(saved_query, group_names)
+
         for node in manifest.nodes.values():
             self.check_valid_group_config_node(node, group_names)
 
     def check_valid_group_config_node(
         self,
-        groupable_node: Union[Metric, SemanticModel, ManifestNode],
+        groupable_node: Union[Metric, SavedQuery, SemanticModel, ManifestNode],
         valid_group_names: Set[str],
     ):
         groupable_node_group = groupable_node.group

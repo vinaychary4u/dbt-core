@@ -853,6 +853,9 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             "semantic_models": {
                 k: v.to_dict(omit_none=False) for k, v in self.semantic_models.items()
             },
+            "saved_queries": {
+                k: v.to_dict(omit_none=False) for k, v in self.saved_queries.items()
+            },
         }
 
     def build_disabled_by_file_id(self):
@@ -914,6 +917,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self.sources.values(),
             self.metrics.values(),
             self.semantic_models.values(),
+            self.saved_queries.values(),
         )
         for resource in all_resources:
             resource_type_plural = resource.resource_type.pluralize()
@@ -949,6 +953,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             files={k: _deepcopy(v) for k, v in self.files.items()},
             state_check=_deepcopy(self.state_check),
             semantic_models={k: _deepcopy(v) for k, v in self.semantic_models.items()},
+            saved_queries={k: _deepcopy(v) for k, v in self.saved_queries.items()},
         )
         copy.build_flat_graph()
         return copy
@@ -961,6 +966,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                 self.exposures.values(),
                 self.metrics.values(),
                 self.semantic_models.values(),
+                self.saved_queries.values(),
             )
         )
         forward_edges, backward_edges = build_node_edges(edge_members)
@@ -1010,6 +1016,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             parent_map=self.parent_map,
             group_map=self.group_map,
             semantic_models=self.semantic_models,
+            saved_queries=self.saved_queries,
         )
 
     def write(self, path):
@@ -1453,6 +1460,8 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                 source_file.add_test(node.unique_id, test_from)
             if isinstance(node, Metric):
                 source_file.metrics.append(node.unique_id)
+            if isinstance(node, SavedQuery):
+                source_file.saved_queries.append(node.unique_id)
             if isinstance(node, SemanticModel):
                 source_file.semantic_models.append(node.unique_id)
             if isinstance(node, Exposure):
@@ -1502,6 +1511,7 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             self.disabled,
             self.env_vars,
             self.semantic_models,
+            self.saved_queries,
             self._doc_lookup,
             self._source_lookup,
             self._ref_lookup,
@@ -1571,6 +1581,9 @@ class WritableManifest(ArtifactMixin):
         metadata=dict(
             description="A mapping from group names to their nodes",
         )
+    )
+    saved_queries: Mapping[UniqueID, SavedQuery] = field(
+        metadata=dict(description=("The saved queries defined in the dbt project"))
     )
     semantic_models: Mapping[UniqueID, SemanticModel] = field(
         metadata=dict(description=("The semantic models defined in the dbt project"))

@@ -76,6 +76,7 @@ schema_file_keys = (
     "exposures",
     "metrics",
     "semantic_models",
+    "saved_queries",
 )
 
 

@@ -12,7 +12,12 @@ from dbt.adapters.factory import Adapter
 from dbt.main import handle_and_check
 from dbt.logger import log_manager
 from dbt.contracts.graph.manifest import Manifest
-from dbt.events.functions import fire_event, capture_stdout_logs, stop_capture_stdout_logs, reset_metadata_vars
+from dbt.events.functions import (
+    fire_event,
+    capture_stdout_logs,
+    stop_capture_stdout_logs,
+    reset_metadata_vars,
+)
 from dbt.events.test_types import IntegrationTestDebug
 
 # =============================================================================
@@ -382,16 +387,18 @@ def check_relations_equal_with_relations(
         ]
 
         for relation in compares:
-            sql = adapter.get_rows_different_sql(basis, relation, column_names=column_names)  # type: ignore
+            sql = adapter.get_rows_different_sql(
+                basis, relation, column_names=column_names
+            )  # type: ignore
             _, tbl = adapter.execute(sql, fetch=True)
             num_rows = len(tbl)
             assert (
                 num_rows == 1
-            ), f"Invalid sql query from get_rows_different_sql: incorrect number of rows ({num_rows})"
+            ), f"Invalid sql query from get_rows_different_sql: incorrect number of rows ({num_rows})"  # noqa: E501
             num_cols = len(tbl[0])
             assert (
                 num_cols == 2
-            ), f"Invalid sql query from get_rows_different_sql: incorrect number of cols ({num_cols})"
+            ), f"Invalid sql query from get_rows_different_sql: incorrect number of cols ({num_cols})"  # noqa: E501
             row_count_difference = tbl[0][0]
             assert (
                 row_count_difference == 0

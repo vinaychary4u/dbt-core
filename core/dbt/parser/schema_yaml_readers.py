@@ -707,7 +707,11 @@ class SavedQueryParser(YamlReader):
             unrendered_config=unrendered_config,
         )
 
-        self.manifest.add_saved_query(self.yaml.file, parsed)
+        # Only add thes saved query if it's enabled, otherwise we track it with other diabled nodes
+        if parsed.config.enabled:
+            self.manifest.add_saved_query(self.yaml.file, parsed)
+        else:
+            self.manifest.add_disabled(self.yaml.file, parsed)
 
     def parse(self) -> ParseResult:
         for data in self.get_key_dicts():

@@ -645,6 +645,9 @@ class Disabled(Generic[D]):
 MaybeMetricNode = Optional[Union[Metric, Disabled[Metric]]]
 
 
+MaybeSavedQueryNode = Optional[Union[SavedQuery, Disabled[SavedQuery]]]
+
+
 MaybeDocumentation = Optional[Documentation]
 
 
@@ -1208,18 +1211,26 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         target_saved_query_package: Optional[str],
         current_project: str,
         node_package: str,
-    ) -> Optional[SavedQuery]:
+    ) -> MaybeSavedQueryNode:
         """Tries to find the SavedQuery by name within the available project and packages.
 
-        Will return the first SavedQuery matching the name found while iterating over the
-        scoped packages. Returns `None` if no match is found.
+        Will return the first enabled SavedQuery matching the name found while iterating over
+        the scoped packages. If no enabled SavedQuery node match is found, returns the last
+        disabled SavedQuery node. Otherwise it returns None.
         """
+        disabled: Optional[List[SavedQuery]] = None
         candidates = _packages_to_search(current_project, node_package, target_saved_query_package)
         for pkg in candidates:
             saved_query = self.saved_query_lookup.find(target_saved_query_name, pkg, self)
 
-            if saved_query is not None:
+            if saved_query is not None and saved_query.config.enabled:
                 return saved_query
+
+            # it's possible that the node is disabled
+            if disabled is None:
+                disabled = self.disabled_lookup.find(f"{target_saved_query_name}", pkg)
+        if disabled:
+            return Disabled(disabled[0])
 
         return None
 

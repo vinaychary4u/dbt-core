@@ -465,7 +465,7 @@ sources:
     freshness:
       warn_after: {count: 10, period: hour}
       error_after: {count: 1, period: day}
-    schema: "{{ var(env_var('DBT_TEST_SCHEMA_NAME_VARIABLE')) }}"
+    schema: my_schema
     quoting:
       identifier: True
     tables:

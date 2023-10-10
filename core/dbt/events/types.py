@@ -1247,7 +1247,7 @@ class UnversionedBreakingChange(WarnLevel):
 
 
 class WarnStateTargetEqual(WarnLevel):
-    def code(self):
+    def code(self) -> str:
         return "I072"
 
     def message(self) -> str:
@@ -1255,6 +1255,14 @@ class WarnStateTargetEqual(WarnLevel):
             f"Warning: The state and target directories are the same: '{self.state_path}'. "
             f"This could lead to missing changes due to overwritten state including non-idempotent retries."
         )
+
+
+class FreshnessConfigProblem(WarnLevel):
+    def code(self) -> str:
+        return "I073"
+
+    def message(self) -> str:
+        return self.msg
 
 
 # =======================================================

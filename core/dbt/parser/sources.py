@@ -26,9 +26,10 @@ from dbt.contracts.graph.unparsed import (
     UnparsedColumn,
     Time,
 )
-from dbt.events.functions import warn_or_error
-from dbt.events.types import UnusedTables
-from dbt.exceptions import DbtInternalError, ParsingError
+
+from dbt.events.functions import warn_or_error, fire_event
+from dbt.events.types import UnusedTables, FreshnessConfigProblem
+from dbt.exceptions import DbtInternalError
 from dbt.node_types import NodeType
 
 from dbt.parser.common import ParserRef
@@ -193,8 +194,14 @@ class SourcePatcher:
                 Capability.TableLastModifiedMetadata
             )
         ):
-            raise ParsingError(
-                "Adapter does not support metadata-based freshness. A loaded_at_field must be specified for source freshness."
+            # Metadata-based freshness is being used by default for this node,
+            # but is not available through the configured adapter, so warn the
+            # user that freshness info will not be collected for this node at
+            # runtime.
+            fire_event(
+                FreshnessConfigProblem(
+                    msg=f"The configured adapter does not support metadata-based freshness. A loaded_at_field must be specified for source '{source.name}'."
+                )
             )
 
         # relation name is added after instantiation because the adapter does

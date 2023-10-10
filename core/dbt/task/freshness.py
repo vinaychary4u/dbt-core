@@ -21,12 +21,15 @@ from dbt.events.types import (
     FreshnessCheckComplete,
     LogStartLine,
     LogFreshnessResult,
+    Note,
 )
 from dbt.node_types import NodeType
 
 from dbt.graph import ResourceTypeSelector
 from dbt.contracts.graph.nodes import SourceDefinition
+from ..adapters.base.impl import Capability
 from ..contracts.connection import AdapterResponse
+from ..events.base_types import EventLevel
 
 RESULT_FILE_NAME = "sources.json"
 
@@ -110,10 +113,15 @@ class FreshnessRunner(BaseRunner):
                     compiled_node.freshness.filter,
                     manifest=manifest,
                 )
-            else:
+
+                status = compiled_node.freshness.status(freshness["age"])
+            elif self.adapter.capability_support(Capability.TableLastModifiedMetadata):
                 if compiled_node.freshness.filter is not None:
-                    raise DbtRuntimeError(
-                        "A filter cannot be applied to a metadata freshness check."
+                    fire_event(
+                        Note(
+                            f"A filter cannot be applied to a metadata freshness check on source '{compiled_node.name}'.",
+                            EventLevel.WARN,
+                        )
                     )
 
                 adapter_response, freshness = self.adapter.calculate_freshness_from_metadata(
@@ -121,7 +129,12 @@ class FreshnessRunner(BaseRunner):
                     manifest=manifest,
                 )
 
-        status = compiled_node.freshness.status(freshness["age"])
+                status = compiled_node.freshness.status(freshness["age"])
+            else:
+                status = FreshnessStatus.Warn
+                fire_event(
+                    Note(f"Skipping freshness for source {compiled_node.name}."),
+                )
 
         # adapter_response was not returned in previous versions, so this will be None
         # we cannot call to_dict() on NoneType

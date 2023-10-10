@@ -1317,8 +1317,7 @@ class BaseAdapter(metaclass=AdapterMeta):
             snapshotted_at_val = _get_column_value_uncased("snapshotted_at", row)
 
             if last_modified_val is None:
-                # no records in the table, so really the max_loaded_at was
-                # infinitely long ago. Just call it 0:00 January 1 year UTC
+                # Interpret missing value as "infinitely long ago"
                 max_loaded_at = datetime(1, 1, 1, 0, 0, 0, tzinfo=pytz.UTC)
             else:
                 max_loaded_at = _utc(last_modified_val, None, "last_modified")

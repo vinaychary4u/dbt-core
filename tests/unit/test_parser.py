@@ -11,7 +11,7 @@ from dbt import tracking
 from dbt.context.context_config import ContextConfig
 from dbt.contracts.files import SourceFile, FileHash, FilePath, SchemaSourceFile
 from dbt.contracts.graph.manifest import Manifest
-from dbt.contracts.graph.model_config import NodeConfig, TestConfig, SnapshotConfig
+from dbt.contracts.graph.model_config import NodeConfig, TestConfig, SnapshotConfig, ModelConfig
 from dbt.contracts.graph.nodes import (
     ModelNode,
     Macro,
@@ -615,7 +615,7 @@ class SchemaParserVersionedModels(SchemaParserTest):
     def setUp(self):
         super().setUp()
         my_model_v1_node = MockNode(
-            package="root",
+            package="snowplow",
             name="arbitrary_file_name",
             config=mock.MagicMock(enabled=True),
             refs=[],
@@ -624,7 +624,7 @@ class SchemaParserVersionedModels(SchemaParserTest):
             file_id="snowplow://models/arbitrary_file_name.sql",
         )
         my_model_v2_node = MockNode(
-            package="root",
+            package="snowplow",
             name="my_model_v2",
             config=mock.MagicMock(enabled=True),
             refs=[],
@@ -931,7 +931,7 @@ class ModelParserTest(BaseParserTest):
             fqn=["snowplow", "nested", "model_1"],
             package_name="snowplow",
             original_file_path=normalize("models/nested/model_1.sql"),
-            config=NodeConfig(materialized="table"),
+            config=ModelConfig(materialized="table"),
             path=normalize("nested/model_1.sql"),
             language="sql",
             raw_code=sql_model,
@@ -969,7 +969,7 @@ class ModelParserTest(BaseParserTest):
             fqn=["snowplow", "nested", "py_model"],
             package_name="snowplow",
             original_file_path=normalize("models/nested/py_model.py"),
-            config=NodeConfig(materialized="table", packages=python_packages),
+            config=ModelConfig(materialized="table", packages=python_packages),
             # config.packages = ['textblob']
             path=normalize("nested/py_model.py"),
             language="python",
@@ -1126,7 +1126,7 @@ class StaticModelParserTest(BaseParserTest):
             fqn=["snowplow", "nested", "model_1"],
             package_name="snowplow",
             original_file_path=normalize("models/nested/model_1.sql"),
-            config=NodeConfig(materialized="table"),
+            config=ModelConfig(materialized="table"),
             path=normalize("nested/model_1.sql"),
             language="sql",
             raw_code=raw_code,
@@ -1162,7 +1162,7 @@ class StaticModelParserUnitTest(BaseParserTest):
             fqn=["snowplow", "nested", "model_1"],
             package_name="snowplow",
             original_file_path=normalize("models/nested/model_1.sql"),
-            config=NodeConfig(materialized="table"),
+            config=ModelConfig(materialized="table"),
             path=normalize("nested/model_1.sql"),
             language="sql",
             raw_code='{{ config(materialized="table") }}select 1 as id',

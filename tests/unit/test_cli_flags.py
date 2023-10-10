@@ -1,9 +1,9 @@
-import pytest
-
-import click
 from multiprocessing import get_context
 from pathlib import Path
 from typing import List, Optional
+
+import click
+import pytest
 
 from dbt.cli.exceptions import DbtUsageException
 from dbt.cli.flags import Flags
@@ -56,6 +56,11 @@ class TestFlags:
         flags = Flags(run_context)
         assert hasattr(flags, "LOG_PATH")
         assert getattr(flags, "LOG_PATH") == Path("logs")
+
+    def test_log_file_max_size_default(self, run_context):
+        flags = Flags(run_context)
+        assert hasattr(flags, "LOG_FILE_MAX_BYTES")
+        assert getattr(flags, "LOG_FILE_MAX_BYTES") == 10 * 1024 * 1024
 
     @pytest.mark.parametrize(
         "set_stats_param,do_not_track,expected_anonymous_usage_stats",
@@ -351,6 +356,19 @@ class TestFlags:
         with pytest.raises(DbtUsageException):
             Flags(context)
 
+    def test_global_flag_at_child_context(self):
+        parent_context_a = self.make_dbt_context("parent_context_a", ["--no-use-colors"])
+        child_context_a = self.make_dbt_context("child_context_a", ["run"], parent_context_a)
+        flags_a = Flags(child_context_a)
+
+        parent_context_b = self.make_dbt_context("parent_context_b", ["run"])
+        child_context_b = self.make_dbt_context(
+            "child_context_b", ["--no-use-colors"], parent_context_b
+        )
+        flags_b = Flags(child_context_b)
+
+        assert flags_a.USE_COLORS == flags_b.USE_COLORS
+
     def _create_flags_from_dict(self, cmd, d):
         write_file("", "profiles.yml")
         result = Flags.from_dict(cmd, d)
@@ -365,7 +383,7 @@ class TestFlags:
         }
         result = self._create_flags_from_dict(Command.RUN, args_dict)
         assert "model_one" in result.select[0]
-        assert "model_two" in result.select[0]
+        assert "model_two" in result.select[1]
 
     def test_from_dict__build(self):
         args_dict = {
@@ -386,3 +404,8 @@ class TestFlags:
         args_dict = {"which": "some bad command"}
         with pytest.raises(DbtInternalError, match=r"does not match value of which"):
             self._create_flags_from_dict(Command.RUN, args_dict)
+
+    def test_from_dict_0_value(self):
+        args_dict = {"log_file_max_bytes": 0}
+        flags = Flags.from_dict(Command.RUN, args_dict)
+        assert flags.LOG_FILE_MAX_BYTES == 0

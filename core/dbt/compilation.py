@@ -4,7 +4,6 @@ import json
 import networkx as nx  # type: ignore
 import os
 import pickle
-import sqlparse
 
 from collections import defaultdict
 from typing import List, Dict, Any, Tuple, Optional
@@ -36,6 +35,7 @@ from dbt.node_types import NodeType, ModelLanguage
 from dbt.events.format import pluralize
 import dbt.tracking
 import dbt.task.list as list_task
+import sqlparse
 
 graph_file_name = "graph.gpickle"
 
@@ -125,7 +125,7 @@ def _get_tests_for_node(manifest: Manifest, unique_id: UniqueID) -> List[UniqueI
 
 
 class Linker:
-    def __init__(self, data=None):
+    def __init__(self, data=None) -> None:
         if data is None:
             data = {}
         self.graph = nx.DiGraph(**data)
@@ -183,10 +183,10 @@ class Linker:
     def link_graph(self, manifest: Manifest):
         for source in manifest.sources.values():
             self.add_node(source.unique_id)
-        for semantic_model in manifest.semantic_models.values():
-            self.add_node(semantic_model.unique_id)
         for node in manifest.nodes.values():
             self.link_node(node, manifest)
+        for semantic_model in manifest.semantic_models.values():
+            self.link_node(semantic_model, manifest)
         for exposure in manifest.exposures.values():
             self.link_node(exposure, manifest)
         for metric in manifest.metrics.values():
@@ -274,7 +274,7 @@ class Linker:
 
 
 class Compiler:
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         self.config = config
 
     def initialize(self):
@@ -319,6 +319,10 @@ class Compiler:
         """
         if model.compiled_code is None:
             raise DbtRuntimeError("Cannot inject ctes into an uncompiled node", model)
+
+        # tech debt: safe flag/arg access (#6259)
+        if not getattr(self.config.args, "inject_ephemeral_ctes", True):
+            return (model, [])
 
         # extra_ctes_injected flag says that we've already recursively injected the ctes
         if model.extra_ctes_injected:
@@ -378,16 +382,16 @@ class Compiler:
 
             _add_prepended_cte(prepended_ctes, InjectedCTE(id=cte.id, sql=sql))
 
-        injected_sql = inject_ctes_into_sql(
-            model.compiled_code,
-            prepended_ctes,
-        )
         # Check again before updating for multi-threading
         if not model.extra_ctes_injected:
+            injected_sql = inject_ctes_into_sql(
+                model.compiled_code,
+                prepended_ctes,
+            )
+            model.extra_ctes_injected = True
             model._pre_injected_sql = model.compiled_code
             model.compiled_code = injected_sql
             model.extra_ctes = prepended_ctes
-            model.extra_ctes_injected = True
 
         # if model.extra_ctes is not set to prepended ctes, something went wrong
         return model, model.extra_ctes
@@ -523,6 +527,12 @@ class Compiler:
         the node's raw_code into compiled_code, and then calls the
         recursive method to "prepend" the ctes.
         """
+        # Make sure Lexer for sqlparse 0.4.4 is initialized
+        from sqlparse.lexer import Lexer  # type: ignore
+
+        if hasattr(Lexer, "get_default_instance"):
+            Lexer.get_default_instance()
+
         node = self._compile_code(node, manifest, extra_context)
 
         node, _ = self._recursively_prepend_ctes(node, manifest, extra_context)

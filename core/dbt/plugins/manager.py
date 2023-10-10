@@ -6,6 +6,7 @@ from dbt.contracts.graph.manifest import Manifest
 from dbt.exceptions import DbtRuntimeError
 from dbt.plugins.contracts import PluginArtifacts
 from dbt.plugins.manifest import PluginNodes
+import dbt.tracking
 
 
 def dbt_hook(func):
@@ -25,7 +26,7 @@ class dbtPlugin:
     Its interface is **not** stable and will likely change between dbt-core versions.
     """
 
-    def __init__(self, project_name: str):
+    def __init__(self, project_name: str) -> None:
         self.project_name = project_name
         try:
             self.initialize()
@@ -66,7 +67,7 @@ class PluginManager:
     PLUGIN_MODULE_PREFIX = "dbt_"
     PLUGIN_ATTR_NAME = "plugins"
 
-    def __init__(self, plugins: List[dbtPlugin]):
+    def __init__(self, plugins: List[dbtPlugin]) -> None:
         self._plugins = plugins
         self._valid_hook_names = set()
         # default hook implementations from dbtPlugin
@@ -119,5 +120,14 @@ class PluginManager:
         all_plugin_nodes = PluginNodes()
         for hook_method in self.hooks.get("get_nodes", []):
             plugin_nodes = hook_method()
+            dbt.tracking.track_plugin_get_nodes(
+                {
+                    "plugin_name": hook_method.__self__.name,  # type: ignore
+                    "num_model_nodes": len(plugin_nodes.models),
+                    "num_model_packages": len(
+                        {model.package_name for model in plugin_nodes.models.values()}
+                    ),
+                }
+            )
             all_plugin_nodes.update(plugin_nodes)
         return all_plugin_nodes

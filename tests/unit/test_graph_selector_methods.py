@@ -17,13 +17,16 @@ from dbt.contracts.graph.nodes import (
     MetricTypeParams,
     MetricInputMeasure,
     Group,
+    NodeRelation,
     SeedNode,
+    SemanticModel,
     SingularTestNode,
     GenericTestNode,
     SourceDefinition,
     TestConfig,
     TestMetadata,
     ColumnInfo,
+    AccessType,
 )
 from dbt.contracts.graph.manifest import Manifest, ManifestMetadata
 from dbt.contracts.graph.unparsed import ExposureType, Owner
@@ -46,6 +49,7 @@ from dbt.graph.selector_methods import (
     ExposureSelectorMethod,
     MetricSelectorMethod,
     VersionSelectorMethod,
+    SemanticModelSelectorMethod,
 )
 import dbt.exceptions
 import dbt.contracts.graph.nodes
@@ -125,7 +129,7 @@ def make_model(
         checksum=FileHash.from_contents(""),
         version=version,
         latest_version=latest_version,
-        access=access,
+        access=access or AccessType.Protected,
     )
 
 
@@ -426,6 +430,33 @@ def make_group(pkg, name, path=None):
     )
 
 
+def make_semantic_model(pkg: str, name: str, path=None, model=None):
+    if path is None:
+        path = "schema.yml"
+
+    if model is None:
+        model = name
+
+    node_relation = NodeRelation(
+        alias=model,
+        schema_name="dbt",
+    )
+
+    return SemanticModel(
+        name=name,
+        resource_type=NodeType.SemanticModel,
+        model=model,
+        node_relation=node_relation,
+        package_name=pkg,
+        path=path,
+        description="Customer entity",
+        primary_entity="customer",
+        unique_id=f"semantic_model.{pkg}.{name}",
+        original_file_path=path,
+        fqn=[pkg, "semantic_models", name],
+    )
+
+
 @pytest.fixture
 def macro_test_unique():
     return make_macro(
@@ -638,6 +669,21 @@ def versioned_model_v3(seed):
 
 
 @pytest.fixture
+def versioned_model_v12_string(seed):
+    return make_model(
+        "pkg",
+        "versioned_model",
+        'select * from {{ ref("seed") }}',
+        config_kwargs={"materialized": "table"},
+        refs=[seed],
+        sources=[],
+        path="subdirectory/versioned_model_v12.sql",
+        version="12",
+        latest_version=2,
+    )
+
+
+@pytest.fixture
 def versioned_model_v4_nested_dir(seed):
     return make_model(
         "pkg",
@@ -731,6 +777,7 @@ def manifest(
     versioned_model_v2,
     versioned_model_v3,
     versioned_model_v4_nested_dir,
+    versioned_model_v12_string,
     ext_source_2,
     ext_source_other,
     ext_source_other_2,
@@ -759,6 +806,7 @@ def manifest(
         versioned_model_v2,
         versioned_model_v3,
         versioned_model_v4_nested_dir,
+        versioned_model_v12_string,
         ext_model,
         table_id_unique,
         table_id_not_null,
@@ -780,6 +828,7 @@ def manifest(
         nodes={n.unique_id: n for n in nodes},
         sources={s.unique_id: s for s in sources},
         macros={m.unique_id: m for m in macros},
+        semantic_models={},
         docs={},
         files={},
         exposures={},
@@ -797,7 +846,8 @@ def search_manifest_using_method(manifest, method, selection):
         set(manifest.nodes)
         | set(manifest.sources)
         | set(manifest.exposures)
-        | set(manifest.metrics),
+        | set(manifest.metrics)
+        | set(manifest.semantic_models),
         selection,
     )
     results = {manifest.expect(uid).search_name for uid in selected}
@@ -822,6 +872,7 @@ def test_select_fqn(manifest):
         "versioned_model.v2",
         "versioned_model.v3",
         "versioned_model.v4",
+        "versioned_model.v12",
         "table_model",
         "table_model_py",
         "table_model_csv",
@@ -839,6 +890,7 @@ def test_select_fqn(manifest):
         "versioned_model.v2",
         "versioned_model.v3",
         "versioned_model.v4",
+        "versioned_model.v12",
     }
     assert search_manifest_using_method(manifest, method, "versioned_model.v1") == {
         "versioned_model.v1"
@@ -1050,6 +1102,7 @@ def test_select_package(manifest):
         "versioned_model.v2",
         "versioned_model.v3",
         "versioned_model.v4",
+        "versioned_model.v12",
         "table_model",
         "table_model_py",
         "table_model_csv",
@@ -1102,6 +1155,7 @@ def test_select_config_materialized(manifest):
         "versioned_model.v2",
         "versioned_model.v3",
         "versioned_model.v4",
+        "versioned_model.v12",
         "mynamespace.union_model",
     }
 
@@ -1188,6 +1242,7 @@ def test_select_version(manifest):
     assert search_manifest_using_method(manifest, method, "prerelease") == {
         "versioned_model.v3",
         "versioned_model.v4",
+        "versioned_model.v12",
     }
     assert search_manifest_using_method(manifest, method, "none") == {
         "table_model_py",
@@ -1222,6 +1277,37 @@ def test_select_metric(manifest):
     assert search_manifest_using_method(manifest, method, "my_metric") == {"my_metric"}
     assert not search_manifest_using_method(manifest, method, "not_my_metric")
     assert search_manifest_using_method(manifest, method, "*_metric") == {"my_metric"}
+
+
+def test_select_semantic_model(manifest):
+    semantic_model = make_semantic_model(
+        "pkg",
+        "customer",
+        model="customers",
+        path="_semantic_models.yml",
+    )
+    manifest.semantic_models[semantic_model.unique_id] = semantic_model
+    methods = MethodManager(manifest, None)
+    method = methods.get_method("semantic_model", [])
+    assert isinstance(method, SemanticModelSelectorMethod)
+    assert search_manifest_using_method(manifest, method, "customer") == {"customer"}
+    assert not search_manifest_using_method(manifest, method, "not_customer")
+    assert search_manifest_using_method(manifest, method, "*omer") == {"customer"}
+
+
+def test_select_semantic_model_by_tag(manifest):
+    semantic_model = make_semantic_model(
+        "pkg",
+        "customer",
+        model="customers",
+        path="_semantic_models.yml",
+    )
+    manifest.semantic_models[semantic_model.unique_id] = semantic_model
+    methods = MethodManager(manifest, None)
+    method = methods.get_method("tag", [])
+    assert isinstance(method, TagSelectorMethod)
+    assert method.arguments == []
+    search_manifest_using_method(manifest, method, "any_tag")
 
 
 @pytest.fixture

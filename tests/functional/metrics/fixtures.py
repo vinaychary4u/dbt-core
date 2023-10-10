@@ -70,7 +70,7 @@ metrics:
     type_params:
       measure:
         name: "years_tenure"
-        filter: "{{dimension('loves_dbt')}} is true"
+        filter: "{{ Dimension('id__loves_dbt') }} is true"
 
   - name: average_tenure
     label: "Average tenure"
@@ -115,7 +115,9 @@ metrics:
     type_params:
       measure:
         name: years_tenure
-        filter: "{{dimension('loves_dbt')}} is true"
+        filter: "{{ Dimension('id__loves_dbt') }} is true"
+        join_to_timespine: true
+        fill_nulls_with: 0
 
   - name: collective_window
     label: "Collective window"
@@ -124,7 +126,7 @@ metrics:
     type_params:
       measure:
         name: years_tenure
-        filter: "{{dimension('loves_dbt')}} is true"
+        filter: "{{ Dimension('id__loves_dbt') }} is true"
       window: 14 days
 
   - name: average_tenure
@@ -452,7 +454,7 @@ metrics:
     type_params:
       measure:
         name: years_tenure
-        filter: "{{dimension('loves_dbt')}} is true"
+        filter: "{{ Dimension('id__loves_dbt') }} is true"
 
 """
 
@@ -479,7 +481,7 @@ metrics:
     type_params:
       measure:
         name: years_tenure
-        filter: "{{dimension('loves_dbt')}} is true"
+        filter: "{{ Dimension('id__loves_dbt') }} is true"
 
 """
 

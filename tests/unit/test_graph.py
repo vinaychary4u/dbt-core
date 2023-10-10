@@ -18,6 +18,7 @@ from dbt import tracking
 from dbt.contracts.files import SourceFile, FileHash, FilePath
 from dbt.contracts.graph.manifest import MacroManifest, ManifestStateCheck
 from dbt.graph import NodeSelector, parse_difference
+from dbt.events.functions import setup_event_logger
 
 try:
     from queue import Empty
@@ -115,16 +116,6 @@ class GraphTest(unittest.TestCase):
 
         self.mock_source_file.side_effect = mock_load_source_file
 
-        @patch("dbt.parser.hooks.HookParser.get_path")
-        def _mock_hook_path(self):
-            path = FilePath(
-                searched_path=".",
-                project_root=os.path.normcase(os.getcwd()),
-                relative_path="dbt_project.yml",
-                modification_time=0.0,
-            )
-            return path
-
     def get_config(self, extra_cfg=None):
         if extra_cfg is None:
             extra_cfg = {}
@@ -140,6 +131,7 @@ class GraphTest(unittest.TestCase):
 
         config = config_from_parts_or_dicts(project=cfg, profile=self.profile)
         dbt.flags.set_from_args(Namespace(), config)
+        setup_event_logger(dbt.flags.get_flags())
         object.__setattr__(dbt.flags.get_flags(), "PARTIAL_PARSE", False)
         return config
 

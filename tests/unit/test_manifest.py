@@ -19,7 +19,7 @@ from dbt.contracts.graph.manifest import Manifest, ManifestMetadata
 from dbt.contracts.graph.nodes import (
     ModelNode,
     DependsOn,
-    NodeConfig,
+    ModelConfig,
     SeedNode,
     SourceDefinition,
     Exposure,
@@ -113,7 +113,7 @@ class ManifestTest(unittest.TestCase):
 
         self.maxDiff = None
 
-        self.model_config = NodeConfig.from_dict(
+        self.model_config = ModelConfig.from_dict(
             {
                 "enabled": True,
                 "materialized": "view",
@@ -386,7 +386,7 @@ class ManifestTest(unittest.TestCase):
                 "group_map": {},
                 "metadata": {
                     "generated_at": "2018-02-14T09:15:13Z",
-                    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v10.json",
+                    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v11.json",
                     "dbt_version": dbt.version.__version__,
                     "env": {ENV_KEY_NAME: "value"},
                     "invocation_id": invocation_id,
@@ -562,7 +562,7 @@ class ManifestTest(unittest.TestCase):
                 "docs": {},
                 "metadata": {
                     "generated_at": "2018-02-14T09:15:13Z",
-                    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v10.json",
+                    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v11.json",
                     "dbt_version": dbt.version.__version__,
                     "project_id": "098f6bcd4621d373cade4e832627b4f6",
                     "user_id": "cfc9500f-dc7f-4c83-9ea7-2c581c1b38cf",
@@ -670,7 +670,7 @@ class MixedManifestTest(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
 
-        self.model_config = NodeConfig.from_dict(
+        self.model_config = ModelConfig.from_dict(
             {
                 "enabled": True,
                 "materialized": "view",
@@ -902,7 +902,7 @@ class MixedManifestTest(unittest.TestCase):
                 "group_map": {},
                 "metadata": {
                     "generated_at": "2018-02-14T09:15:13Z",
-                    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v10.json",
+                    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v11.json",
                     "dbt_version": dbt.version.__version__,
                     "invocation_id": "01234567-0123-0123-0123-0123456789ab",
                     "env": {ENV_KEY_NAME: "value"},

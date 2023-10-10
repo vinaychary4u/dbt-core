@@ -37,6 +37,7 @@ def get_rendered_model_config(**updates):
         "incremental_strategy": None,
         "docs": {"node_color": None, "show": True},
         "contract": {"enforced": False},
+        "access": "protected",
     }
     result.update(updates)
     return result
@@ -55,6 +56,7 @@ def get_rendered_seed_config(**updates):
         "pre-hook": [],
         "post-hook": [],
         "column_types": {},
+        "delimiter": ",",
         "quoting": {},
         "tags": [],
         "quote_columns": True,

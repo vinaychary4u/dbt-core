@@ -1751,6 +1751,44 @@ class SavedQuery(GraphNode):
     def depends_on_nodes(self):
         return self.depends_on.nodes
 
+    def same_metrics(self, old: "SavedQuery") -> bool:
+        return self.metrics == old.metrics
+
+    def same_group_bys(self, old: "SavedQuery") -> bool:
+        return self.group_bys == old.group_bys
+
+    def same_description(self, old: "SavedQuery") -> bool:
+        return self.description == old.description
+
+    def same_where(self, old: "SavedQuery") -> bool:
+        return self.where == old.where
+
+    def same_label(self, old: "SavedQuery") -> bool:
+        return self.label == old.label
+
+    def same_config(self, old: "SavedQuery") -> bool:
+        return self.config == old.config
+
+    def same_group(self, old: "SavedQuery") -> bool:
+        return self.group == old.group
+
+    def same_contents(self, old: Optional["SavedQuery"]) -> bool:
+        # existing when it didn't before is a change!
+        # metadata/tags changes are not "changes"
+        if old is None:
+            return True
+
+        return (
+            self.same_metrics(old)
+            and self.same_group_bys(old)
+            and self.same_description(old)
+            and self.same_where(old)
+            and self.same_label(old)
+            and self.same_config(old)
+            and self.same_group(old)
+            and True
+        )
+
 
 # ====================================
 # Patches

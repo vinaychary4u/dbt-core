@@ -889,6 +889,7 @@ def expected_seeded_manifest(project, model_database=None, quote_model=False):
         },
         "disabled": {},
         "semantic_models": {},
+        "saved_queries": {},
     }
 
 
@@ -1448,6 +1449,7 @@ def expected_references_manifest(project):
             }
         },
         "semantic_models": {},
+        "saved_queries": {},
     }
 
 
@@ -1927,4 +1929,5 @@ def expected_versions_manifest(project):
         "disabled": {},
         "macros": {},
         "semantic_models": {},
+        "saved_queries": {},
     }

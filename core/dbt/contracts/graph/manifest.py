@@ -37,13 +37,13 @@ from dbt.contracts.graph.nodes import (
     ModelNode,
     DeferRelation,
     ResultNode,
+    SavedQuery,
     SemanticModel,
     SourceDefinition,
     UnpatchedSourceDefinition,
 )
 from dbt.contracts.graph.unparsed import SourcePatch, NodeVersion, UnparsedVersion
 from dbt.contracts.graph.manifest_upgrade import upgrade_manifest_json
-from dbt.contracts.graph.saved_query import SavedQuery
 from dbt.contracts.files import SourceFile, SchemaSourceFile, FileHash, AnySourceFile
 from dbt.contracts.util import BaseArtifactMetadata, SourceKey, ArtifactMixin, schema_version
 from dbt.dataclass_schema import dbtClassMixin

@@ -8,10 +8,10 @@ from dbt.contracts.graph.nodes import (
     MetricTimeWindow,
     MetricTypeParams,
     NodeRelation,
+    SavedQuery,
     SemanticModel,
     WhereFilter,
 )
-from dbt.contracts.graph.saved_query import SavedQuery
 from dbt.contracts.graph.semantic_models import (
     Dimension,
     DimensionTypeParams,

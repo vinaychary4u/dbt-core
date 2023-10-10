@@ -72,6 +72,7 @@ from .model_config import (
     EmptySnapshotConfig,
     SnapshotConfig,
     SemanticModelConfig,
+    SavedQueryConfig,
 )
 
 
@@ -1725,6 +1726,23 @@ class SemanticModel(GraphNode):
             and self.same_group(old)
             and True
         )
+
+
+# ====================================
+# SavedQuery and related classes
+# ====================================
+
+
+@dataclass
+class SavedQuery(GraphNode):
+    metrics: List[str]
+    group_bys: List[str]
+    where: List[WhereFilter]
+    description: Optional[str] = None
+    label: Optional[str] = None
+    metadata: Optional[SourceFileMetadata] = None
+    config: SavedQueryConfig = field(default_factory=SavedQueryConfig)
+    unrendered_config: Dict[str, Any] = field(default_factory=dict)
 
 
 # ====================================

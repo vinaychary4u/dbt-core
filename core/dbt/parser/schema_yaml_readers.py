@@ -25,9 +25,9 @@ from dbt.contracts.graph.nodes import (
     MetricTimeWindow,
     MetricTypeParams,
     SemanticModel,
+    SavedQuery,
     WhereFilter,
 )
-from dbt.contracts.graph.saved_query import SavedQuery
 from dbt.contracts.graph.semantic_models import (
     Dimension,
     DimensionTypeParams,

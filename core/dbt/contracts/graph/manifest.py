@@ -986,6 +986,8 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
             return self.metrics[unique_id]
         elif unique_id in self.semantic_models:
             return self.semantic_models[unique_id]
+        elif unique_id in self.saved_queries:
+            return self.saved_queries[unique_id]
         else:
             # something terrible has happened
             raise dbt.exceptions.DbtInternalError(

@@ -1811,6 +1811,7 @@ GraphMemberNode = Union[
     ResultNode,
     Exposure,
     Metric,
+    SavedQuery,
     SemanticModel,
 ]
 

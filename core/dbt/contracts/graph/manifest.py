@@ -300,6 +300,41 @@ class MetricLookup(dbtClassMixin):
         return manifest.metrics[unique_id]
 
 
+class SavedQueryLookup(dbtClassMixin):
+    """Lookup utility for finding SavedQuery nodes"""
+
+    def __init__(self, manifest: "Manifest") -> None:
+        self.storage: Dict[str, Dict[PackageName, UniqueID]] = {}
+        self.populate(manifest)
+
+    def get_unique_id(self, search_name, package: Optional[PackageName]):
+        return find_unique_id_for_package(self.storage, search_name, package)
+
+    def find(self, search_name, package: Optional[PackageName], manifest: "Manifest"):
+        unique_id = self.get_unique_id(search_name, package)
+        if unique_id is not None:
+            return self.perform_lookup(unique_id, manifest)
+        return None
+
+    def add_saved_query(self, saved_query: SavedQuery):
+        if saved_query.search_name not in self.storage:
+            self.storage[saved_query.search_name] = {}
+
+        self.storage[saved_query.search_name][saved_query.package_name] = saved_query.unique_id
+
+    def populate(self, manifest):
+        for saved_query in manifest.saved_queries.values():
+            if hasattr(saved_query, "name"):
+                self.add_saved_query(saved_query)
+
+    def perform_lookup(self, unique_id: UniqueID, manifest: "Manifest") -> SavedQuery:
+        if unique_id not in manifest.metrics:
+            raise dbt.exceptions.DbtInternalError(
+                f"SavedQUery {unique_id} found in cache but not found in manifest"
+            )
+        return manifest.saved_queries[unique_id]
+
+
 class SemanticModelByMeasureLookup(dbtClassMixin):
     """Lookup utility for finding SemanticModel by measure
 
@@ -768,6 +803,9 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
     _metric_lookup: Optional[MetricLookup] = field(
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
     )
+    _saved_query_lookup: Optional[SavedQueryLookup] = field(
+        default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
+    )
     _semantic_model_by_measure_lookup: Optional[SemanticModelByMeasureLookup] = field(
         default=None, metadata={"serialize": lambda x: None, "deserialize": lambda x: None}
     )
@@ -1025,6 +1063,13 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
         return self._metric_lookup
 
     @property
+    def saved_query_lookup(self) -> SavedQueryLookup:
+        """Retuns a SavedQueryLookup, instantiating it first if necessary."""
+        if self._saved_query_lookup is None:
+            self._saved_query_lookup = SavedQueryLookup(self)
+        return self._saved_query_lookup
+
+    @property
     def semantic_model_by_measure_lookup(self) -> SemanticModelByMeasureLookup:
         """Gets (and creates if necessary) the lookup utility for getting SemanticModels by measures"""
         if self._semantic_model_by_measure_lookup is None:
@@ -1155,6 +1200,27 @@ class Manifest(MacroMethods, DataClassMessagePackMixin, dbtClassMixin):
                 disabled = self.disabled_lookup.find(f"{target_metric_name}", pkg)
         if disabled:
             return Disabled(disabled[0])
+        return None
+
+    def resolve_saved_query(
+        self,
+        target_saved_query_name: str,
+        target_saved_query_package: Optional[str],
+        current_project: str,
+        node_package: str,
+    ) -> Optional[SavedQuery]:
+        """Tries to find the SavedQuery by name within the available project and packages.
+
+        Will return the first SavedQuery matching the name found while iterating over the
+        scoped packages. Returns `None` if no match is found.
+        """
+        candidates = _packages_to_search(current_project, node_package, target_saved_query_package)
+        for pkg in candidates:
+            saved_query = self.saved_query_lookup.find(target_saved_query_name, pkg, self)
+
+            if saved_query is not None:
+                return saved_query
+
         return None
 
     def resolve_semantic_model_for_measure(

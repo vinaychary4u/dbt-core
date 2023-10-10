@@ -80,6 +80,8 @@ class NodeType(StrEnum):
     def pluralize(self) -> str:
         if self is self.Analysis:
             return "analyses"
+        elif self is self.SavedQuery:
+            return "saved_queries"
         return f"{self}s"
 
 

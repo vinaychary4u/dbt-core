@@ -4582,6 +4582,22 @@
         "where_sql_template"
       ]
     },
+    "WhereFilterIntersection": {
+      "type": "object",
+      "title": "WhereFilterIntersection",
+      "properties": {
+        "where_filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WhereFilter"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "where_filters"
+      ]
+    },
     "MetricInputMeasure": {
       "type": "object",
       "title": "MetricInputMeasure",
@@ -4592,7 +4608,7 @@
         "filter": {
           "anyOf": [
             {
-              "$ref": "#/$defs/WhereFilter"
+              "$ref": "#/$defs/WhereFilterIntersection"
             },
             {
               "type": "null"
@@ -4665,7 +4681,7 @@
         "filter": {
           "anyOf": [
             {
-              "$ref": "#/$defs/WhereFilter"
+              "$ref": "#/$defs/WhereFilterIntersection"
             },
             {
               "type": "null"
@@ -4935,7 +4951,7 @@
         "filter": {
           "anyOf": [
             {
-              "$ref": "#/$defs/WhereFilter"
+              "$ref": "#/$defs/WhereFilterIntersection"
             },
             {
               "type": "null"
@@ -5161,10 +5177,14 @@
           }
         },
         "where": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/WhereFilter"
-          }
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WhereFilterIntersection"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "description": {
           "anyOf": [

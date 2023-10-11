@@ -1,5 +1,6 @@
 import abc
 import dataclasses
+from collections import UserDict
 from concurrent.futures import as_completed, Future
 from contextlib import contextmanager
 from datetime import datetime
@@ -20,6 +21,7 @@ from typing import (
     Type,
     TypedDict,
     Union,
+    TYPE_CHECKING,
 )
 
 from dbt.contracts.graph.nodes import ColumnLevelConstraint, ConstraintType, ModelLevelConstraint
@@ -211,6 +213,18 @@ class CapabilitySupport:
 
     def __bool__(self):
         return self.support == Support.Versioned or self.support == Support.Full
+
+
+# Make python 3.8 happy with this generic type, remove when we support 3.9+
+if TYPE_CHECKING:
+    CapabilityUserDict = UserDict[Capability, CapabilitySupport]
+else:
+    CapabilityUserDict = UserDict
+
+
+class CapabilityDict(CapabilityUserDict):
+    def __missing__(self, key):
+        return CapabilitySupport(capability=key, support=Support.Unknown)
 
 
 class FreshnessResponse(TypedDict):
@@ -1213,9 +1227,7 @@ class BaseAdapter(metaclass=AdapterMeta):
             futures: List[Future[agate.Table]] = []
             catalog_relations = self._get_catalog_relations(manifest, selected_nodes)
             relation_count = len(catalog_relations)
-            if relation_count <= 100 and self.capability_support(
-                Capability.SchemaMetadataByRelations
-            ):
+            if relation_count <= 100 and self.supports(Capability.SchemaMetadataByRelations):
                 relations_by_schema = self._get_catalog_relations_by_info_schema(catalog_relations)
                 for info_schema in relations_by_schema:
                     name = ".".join([str(info_schema.database), "information_schema"])
@@ -1608,14 +1620,11 @@ class BaseAdapter(metaclass=AdapterMeta):
         else:
             return None
 
-    def capabilities(self) -> List[CapabilitySupport]:
-        return []
+    def capabilities(self) -> CapabilityDict:
+        return CapabilityDict()
 
-    def capability_support(self, capability: Capability) -> CapabilitySupport:
-        return CapabilitySupport(
-            capability=capability,
-            support=Support.Unknown,
-        )
+    def supports(self, capability: Capability) -> bool:
+        return bool(self.capabilities()[capability])
 
 
 COLUMNS_EQUAL_SQL = """

@@ -115,7 +115,7 @@ class FreshnessRunner(BaseRunner):
                 )
 
                 status = compiled_node.freshness.status(freshness["age"])
-            elif self.adapter.capability_support(Capability.TableLastModifiedMetadata):
+            elif self.adapter.supports(Capability.TableLastModifiedMetadata):
                 if compiled_node.freshness.filter is not None:
                     fire_event(
                         Note(

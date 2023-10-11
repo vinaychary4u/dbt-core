@@ -1408,9 +1408,18 @@ class WhereFilter(dbtClassMixin):
 
 
 @dataclass
+class WhereFilterIntersection(dbtClassMixin):
+    where_filters: List[WhereFilter]
+
+    @property
+    def filter_expression_parameter_sets(self) -> Sequence[Tuple[str, FilterCallParameterSets]]:
+        raise NotImplementedError
+
+
+@dataclass
 class MetricInputMeasure(dbtClassMixin):
     name: str
-    filter: Optional[WhereFilter] = None
+    filter: Optional[WhereFilterIntersection] = None
     alias: Optional[str] = None
     join_to_timespine: bool = False
     fill_nulls_with: Optional[int] = None
@@ -1431,7 +1440,7 @@ class MetricTimeWindow(dbtClassMixin):
 @dataclass
 class MetricInput(dbtClassMixin):
     name: str
-    filter: Optional[WhereFilter] = None
+    filter: Optional[WhereFilterIntersection] = None
     alias: Optional[str] = None
     offset_window: Optional[MetricTimeWindow] = None
     offset_to_grain: Optional[TimeGranularity] = None
@@ -1468,7 +1477,7 @@ class Metric(GraphNode):
     label: str
     type: MetricType
     type_params: MetricTypeParams
-    filter: Optional[WhereFilter] = None
+    filter: Optional[WhereFilterIntersection] = None
     metadata: Optional[SourceFileMetadata] = None
     resource_type: Literal[NodeType.Metric]
     meta: Dict[str, Any] = field(default_factory=dict)
@@ -1737,7 +1746,7 @@ class SemanticModel(GraphNode):
 class SavedQuery(GraphNode):
     metrics: List[str]
     group_bys: List[str]
-    where: List[WhereFilter]
+    where: Optional[WhereFilterIntersection]
     description: Optional[str] = None
     label: Optional[str] = None
     metadata: Optional[SourceFileMetadata] = None

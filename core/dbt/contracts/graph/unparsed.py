@@ -582,7 +582,7 @@ class MetricTime(dbtClassMixin, Mergeable):
 @dataclass
 class UnparsedMetricInputMeasure(dbtClassMixin):
     name: str
-    filter: Optional[str] = None
+    filter: Optional[Union[str, List[str]]] = None
     alias: Optional[str] = None
     join_to_timespine: bool = False
     fill_nulls_with: Optional[int] = None
@@ -591,7 +591,7 @@ class UnparsedMetricInputMeasure(dbtClassMixin):
 @dataclass
 class UnparsedMetricInput(dbtClassMixin):
     name: str
-    filter: Optional[str] = None
+    filter: Optional[Union[str, List[str]]] = None
     alias: Optional[str] = None
     offset_window: Optional[str] = None
     offset_to_grain: Optional[str] = None  # str is really a TimeGranularity Enum
@@ -615,7 +615,7 @@ class UnparsedMetric(dbtClassMixin):
     type: str
     type_params: UnparsedMetricTypeParams
     description: str = ""
-    filter: Optional[str] = None
+    filter: Optional[Union[str, List[str]]] = None
     # metadata: Optional[Unparsedetadata] = None # TODO
     meta: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
@@ -728,7 +728,7 @@ class UnparsedSavedQuery(dbtClassMixin):
     label: Optional[str] = None
     metrics: List[str] = field(default_factory=list)
     group_bys: List[str] = field(default_factory=list)
-    where: List[str] = field(default_factory=list)
+    where: Optional[Union[str, List[str]]] = None
     config: Dict[str, Any] = field(default_factory=dict)
 
 

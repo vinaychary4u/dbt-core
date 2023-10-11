@@ -27,6 +27,7 @@ from dbt.contracts.graph.nodes import (
     SemanticModel,
     SavedQuery,
     WhereFilter,
+    WhereFilterIntersection,
 )
 from dbt.contracts.graph.semantic_models import (
     Dimension,
@@ -54,6 +55,17 @@ from dbt_semantic_interfaces.type_enums import (
     TimeGranularity,
 )
 from typing import List, Optional, Union
+
+
+def parse_where_filter(
+    where: Optional[Union[List[str], str]]
+) -> Optional[WhereFilterIntersection]:
+    if where is None:
+        return None
+    elif isinstance(where, str):
+        return WhereFilterIntersection([WhereFilter(where)])
+    else:
+        return WhereFilterIntersection([WhereFilter(where_str) for where_str in where])
 
 
 class ExposureParser(YamlReader):
@@ -172,13 +184,9 @@ class MetricParser(YamlReader):
         if isinstance(unparsed_input_measure, str):
             return MetricInputMeasure(name=unparsed_input_measure)
         else:
-            filter: Optional[WhereFilter] = None
-            if unparsed_input_measure.filter is not None:
-                filter = WhereFilter(where_sql_template=unparsed_input_measure.filter)
-
             return MetricInputMeasure(
                 name=unparsed_input_measure.name,
-                filter=filter,
+                filter=parse_where_filter(unparsed_input_measure.filter),
                 alias=unparsed_input_measure.alias,
                 join_to_timespine=unparsed_input_measure.join_to_timespine,
                 fill_nulls_with=unparsed_input_measure.fill_nulls_with,
@@ -256,13 +264,9 @@ class MetricParser(YamlReader):
             if unparsed.offset_to_grain is not None:
                 offset_to_grain = TimeGranularity(unparsed.offset_to_grain)
 
-            filter: Optional[WhereFilter] = None
-            if unparsed.filter is not None:
-                filter = WhereFilter(where_sql_template=unparsed.filter)
-
             return MetricInput(
                 name=unparsed.name,
-                filter=filter,
+                filter=parse_where_filter(unparsed.filter),
                 alias=unparsed.alias,
                 offset_window=self._get_time_window(unparsed.offset_window),
                 offset_to_grain=offset_to_grain,
@@ -336,10 +340,6 @@ class MetricParser(YamlReader):
                 f"Calculated a {type(config)} for a metric, but expected a MetricConfig"
             )
 
-        filter: Optional[WhereFilter] = None
-        if unparsed.filter is not None:
-            filter = WhereFilter(where_sql_template=unparsed.filter)
-
         parsed = Metric(
             resource_type=NodeType.Metric,
             package_name=package_name,
@@ -352,7 +352,7 @@ class MetricParser(YamlReader):
             label=unparsed.label,
             type=MetricType(unparsed.type),
             type_params=self._get_metric_type_params(unparsed.type_params),
-            filter=filter,
+            filter=parse_where_filter(unparsed.filter),
             meta=unparsed.meta,
             tags=unparsed.tags,
             config=config,
@@ -702,7 +702,7 @@ class SavedQueryParser(YamlReader):
             path=path,
             resource_type=NodeType.SavedQuery,
             unique_id=unique_id,
-            where=[WhereFilter(where_sql_template=where_str) for where_str in unparsed.where],
+            where=parse_where_filter(unparsed.where),
             config=config,
             unrendered_config=unrendered_config,
             group=config.group,

@@ -27,6 +27,7 @@ from dbt.contracts.graph.nodes import (
     MetricInputMeasure,
     MetricTypeParams,
     WhereFilter,
+    WhereFilterIntersection,
     Group,
     RefArgs,
 )
@@ -156,7 +157,10 @@ class ManifestTest(unittest.TestCase):
                 type=MetricType.SIMPLE,
                 type_params=MetricTypeParams(
                     measure=MetricInputMeasure(
-                        name="customers", filter=WhereFilter(where_sql_template="is_new = True")
+                        name="customers",
+                        filter=WhereFilterIntersection(
+                            [WhereFilter(where_sql_template="is_new = True")]
+                        ),
                     )
                 ),
                 resource_type=NodeType.Metric,
